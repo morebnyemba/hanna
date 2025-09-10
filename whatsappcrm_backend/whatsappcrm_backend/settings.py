@@ -37,7 +37,7 @@ ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STRING.split(',') if hos
 # This is crucial for your React frontend to be able to log in and submit data.
 CSRF_TRUSTED_ORIGINS_STRING = os.getenv(
     'CSRF_TRUSTED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173,https://dashboard.hanna.co.zw,https://backend.hanna.co.zw'
+    'http://localhost:5173,http://127.0.0.1:5173,https://dashboard.hanna.co.zw,http://dashboard.hanna.co.zw,https://backend.hanna.co.zw,http://backend.hanna.co.zw'
 )
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_STRING.split(',') if origin.strip()]
 
@@ -194,7 +194,7 @@ SIMPLE_JWT = {
 # This tells the browser that it's safe to accept cross-origin requests from your frontend.
 CORS_ALLOWED_ORIGINS_STRING = os.getenv(
     'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173,https://dashboard.hanna.co.zw'
+    'http://localhost:5173,http://127.0.0.1:5173,https://dashboard.hanna.co.zw,http://dashboard.hanna.co.zw'
 )
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STRING.split(',') if origin.strip()]
 CORS_ALLOW_CREDENTIALS = True
