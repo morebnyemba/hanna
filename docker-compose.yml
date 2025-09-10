@@ -99,8 +99,10 @@ services:
       - staticfiles_volume:/srv/www/static/:ro # Use the named volume for static files
       - ./whatsappcrm_backend/mediafiles:/srv/www/media/:ro # Bind mount the host's media directory for Nginx to serve
       # Mounts for Let's Encrypt:
-      - ./data/letsencrypt/www:/var/www/letsencrypt:ro
-      - ./data/letsencrypt/conf:/etc/nginx/ssl:ro
+      # Map the standard host directory for Certbot challenges into the container.
+      - /var/www/letsencrypt:/var/www/letsencrypt:ro
+      # Map the standard host directory where Certbot stores certificates into the container.
+      - /etc/letsencrypt:/etc/nginx/ssl:ro
     depends_on:
       - backend
       - frontend
