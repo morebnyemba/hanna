@@ -5,6 +5,11 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from flows.models import Flow, FlowStep, FlowTransition
 from flows.definitions.lead_gen_flow import LEAD_GENERATION_FLOW
+from flows.definitions.erp_quote_flow import ERP_QUOTE_FLOW
+from flows.definitions.payroll_flow import PAYROLL_SOFTWARE_FLOW
+from flows.definitions.fiscalisation_flow import FISCALISATION_FLOW
+from flows.definitions.company_details_form_flow import COMPANY_DETAILS_FORM_FLOW
+from flows.definitions.solar_installation_flow import SOLAR_INSTALLATION_FLOW
 
 class Command(BaseCommand):
     help = 'Loads or updates predefined conversational flows from definition files into the database.'
@@ -16,7 +21,11 @@ class Command(BaseCommand):
         # List of flow definitions to load
         flow_definitions = [
             LEAD_GENERATION_FLOW,
-            # You can import and add other flow definitions here in the future
+            ERP_QUOTE_FLOW,
+            PAYROLL_SOFTWARE_FLOW,
+            FISCALISATION_FLOW,
+            COMPANY_DETAILS_FORM_FLOW,
+            SOLAR_INSTALLATION_FLOW,
         ]
 
         for flow_def in flow_definitions:
@@ -27,56 +36,54 @@ class Command(BaseCommand):
     def load_flow(self, flow_def: dict):
         flow_name = flow_def['name']
         self.stdout.write(f"  Processing flow: '{flow_name}'...")
-        
+
         # Pop 'is_active' to handle it at the end, preventing validation errors.
         is_active_from_def = flow_def.get('is_active', False)
 
-        # Create or update the Flow object
+        # Create or update the Flow object, but keep it inactive for now to avoid validation issues
         flow, created = Flow.objects.update_or_create(
             name=flow_name,
             defaults={
                 'friendly_name': flow_def.get('friendly_name', flow_name.replace('_', ' ').title()),
                 'description': flow_def.get('description', ''),
                 'trigger_keywords': flow_def.get('trigger_keywords', []),
+                'trigger_config': flow_def.get('trigger_config', {}),
                 # --- IMPORTANT: Create/update as inactive first to avoid validation issues ---
                 'is_active': False
             }
         )
-        
+
         if created:
             self.stdout.write(self.style.SUCCESS(f"    Created new flow '{flow_name}'."))
         else:
-            self.stdout.write(f"    Updated existing flow '{flow_name}'.")
+            self.stdout.write(f"    Updating existing flow '{flow_name}'. Clearing old steps and transitions.")
+            # Clear all existing steps, which will cascade to transitions, ensuring a clean sync.
+            flow.steps.all().delete()
 
-        # First pass: Create or update all steps to ensure they exist for transitions
+        # First pass: Create all steps from the definition
         steps_in_db = {}
         for step_def in flow_def['steps']:
             step_name = step_def['name']
-            step, created = FlowStep.objects.update_or_create(
+            step = FlowStep.objects.create(
                 flow=flow,
                 name=step_name,
-                defaults={
-                    'step_type': step_def['step_type'],
-                    'config': step_def.get('config', {}),
-                    'is_entry_point': step_def.get('is_entry_point', False)
-                }
+                step_type=step_def['type'],
+                config=step_def.get('config', {}),
+                is_entry_point=step_def.get('is_entry_point', False)
             )
             steps_in_db[step_name] = step
-            self.stdout.write(f"      - Synced step '{step_name}'.")
+            self.stdout.write(f"      - Created step '{step_name}'.")
 
         # Second pass: Create transitions, now that all steps are guaranteed to exist
         for step_def in flow_def['steps']:
             current_step_name = step_def['name']
             current_step_obj = steps_in_db[current_step_name]
-            
-            # Clear existing transitions for this step to handle removals in the definition
-            FlowTransition.objects.filter(current_step=current_step_obj).delete()
-            
+
             for i, trans_def in enumerate(step_def.get('transitions', [])):
-                next_step_name = trans_def['next_step']
+                next_step_name = trans_def['to_step']
                 if next_step_name not in steps_in_db:
                     raise CommandError(f"Next step '{next_step_name}' not found for transition from '{current_step_name}'. Aborting.")
-                
+
                 FlowTransition.objects.create(
                     current_step=current_step_obj,
                     next_step=steps_in_db[next_step_name],
@@ -84,10 +91,10 @@ class Command(BaseCommand):
                     priority=trans_def.get('priority', i)
                 )
             if step_def.get('transitions'):
-                 self.stdout.write(f"      - Recreated transitions for step '{current_step_name}'.")
+                 self.stdout.write(f"      - Created transitions for step '{current_step_name}'.")
 
         # --- Final step: Set the intended 'is_active' status and run full validation ---
-        if flow.is_active != is_active_from_def:
+        if is_active_from_def:
             flow.is_active = is_active_from_def
             try:
                 # This will run the model's clean() method, which checks for an entry point
@@ -98,4 +105,4 @@ class Command(BaseCommand):
             except ValidationError as e:
                 self.stdout.write(self.style.ERROR(f"    Validation failed for flow '{flow_name}' when trying to activate it. Please check its definition."))
                 # Raise CommandError to ensure the transaction is rolled back.
-                raise CommandError(f"Validation error for flow '{flow_name}': {e.message_dict}")
+                raise CommandError(f"Validation error for flow '{flow_name}': {e}")
