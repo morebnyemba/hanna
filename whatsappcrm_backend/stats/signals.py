@@ -1,0 +1,103 @@
+# stats/signals.py
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from channels.layers import get_channel_layer
+import logging
+
+from conversations.models import Contact, Message
+from flows.models import Flow
+from customer_data.models import Opportunity
+from .tasks import (
+    update_dashboard_stats, 
+    broadcast_activity_log, 
+    broadcast_human_intervention_notification
+)
+
+logger = logging.getLogger(__name__)
+
+# A debounce delay in seconds to prevent flooding the system with stat updates.
+# During a burst of messages, this will trigger one update after the burst.
+DEBOUNCE_DELAY = 10
+
+@receiver(post_save, sender=Message)
+def on_new_message(sender, instance, created, **kwargs):
+    """
+    When a new message is created, schedule a debounced task to update all dashboard stats.
+    """
+    if created:
+        logger.debug(f"New message {instance.id}: Scheduling dashboard stats update.")
+        # Schedule the task to run in a few seconds. If another message comes in,
+        # Celery's task naming and ETA can be used to prevent duplicate runs,
+        # but a simple countdown is effective for debouncing.
+        update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
+
+@receiver(post_save, sender=Contact)
+def on_contact_change(sender, instance, created, **kwargs):
+    """
+    When a contact is created or updated, trigger relevant dashboard updates.
+    """
+    logger.debug(f"Contact changed {instance.id}, created={created}: Scheduling updates.")
+    
+    # --- Schedule a full stats update ---
+    # This covers new_contacts_today, total_contacts, and pending_human_handovers.
+    update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
+
+    # --- Handle specific real-time events ---
+    if created:
+        activity_payload = {
+            "id": f"contact_new_{instance.id}",
+            "text": f"New contact: {instance.name or instance.whatsapp_id}",
+            "timestamp": instance.first_seen.isoformat(),
+            "iconName": "FiUsers", 
+            "iconColor": "text-emerald-500"
+        }
+        # This can be sent immediately or through a task. Task is safer.
+        broadcast_activity_log.delay(activity_payload)
+
+    # Check for human intervention flag changes
+    update_fields = kwargs.get('update_fields') or set()
+    if instance.needs_human_intervention and ('needs_human_intervention' in update_fields or created):
+        logger.info(f"Human intervention needed for contact {instance.id}. Broadcasting notification.")
+        notification_payload = {
+            "contact_id": instance.id,
+            "name": instance.name or instance.whatsapp_id,
+            "message": f"Contact '{instance.name or instance.whatsapp_id}' requires human assistance."
+        }
+        broadcast_human_intervention_notification.delay(notification_payload)
+
+@receiver(post_save, sender=Flow)
+def on_flow_change(sender, instance, created, **kwargs):
+    """When a flow is updated, send an activity log entry."""
+    if not created:
+        logger.debug(f"Flow updated {instance.id}: Broadcasting activity log.")
+        activity_payload = {
+            "id": f"flow_update_{instance.id}_{instance.updated_at.timestamp()}",
+            "text": f"Flow '{instance.name}' was updated.",
+            "timestamp": instance.updated_at.isoformat(),
+            "iconName": "FiZap", 
+            "iconColor": "text-purple-500"
+        }
+        broadcast_activity_log.delay(activity_payload)
+
+@receiver(post_save, sender=Opportunity)
+def on_opportunity_change(sender, instance, created, **kwargs):
+    """
+    When an opportunity is created or its stage changes, update dashboard stats
+    and broadcast an activity log entry.
+    """
+    logger.debug(f"Opportunity changed {instance.id}, created={created}: Scheduling updates.")
+    update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
+
+    if created:
+        activity_payload = {
+            "id": f"opportunity_new_{instance.id}",
+            "text": f"New Opportunity: '{instance.name}' for {instance.customer}",
+            "timestamp": instance.created_at.isoformat(),
+            "iconName": "FiDollarSign",
+            "iconColor": "text-green-500"
+        }
+        broadcast_activity_log.delay(activity_payload)
+
+# The on_payment_change signal handler has been removed as the Payment model
+# appears to be part of a legacy data model and the handler was a placeholder.
+# If financial stats are needed, a new signal for the relevant model should be created.

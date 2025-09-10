@@ -1,0 +1,332 @@
+# whatsappcrm_backend/customer_data/models.py
+
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
+from django.utils import timezone
+from conversations.models import Contact
+import uuid
+
+# Import models from other apps to create relationships
+from products_and_services.models import SoftwareProduct, ProfessionalService
+
+class LeadStatus(models.TextChoices):
+    """Defines the choices for the lead status in the sales pipeline."""
+    NEW = 'new', _('New')
+    CONTACTED = 'contacted', _('Contacted')
+    QUALIFIED = 'qualified', _('Qualified')
+    PROPOSAL_SENT = 'proposal_sent', _('Proposal Sent')
+    NEGOTIATION = 'negotiation', _('Negotiation')
+    WON = 'won', _('Won')
+    LOST = 'lost', _('Lost')
+    ON_HOLD = 'on_hold', _('On Hold')
+
+class InteractionType(models.TextChoices):
+    """Defines the types of interactions that can be logged."""
+    CALL = 'call', _('Call')
+    EMAIL = 'email', _('Email')
+    WHATSAPP = 'whatsapp', _('WhatsApp Message')
+    MEETING = 'meeting', _('Meeting')
+    NOTE = 'note', _('Internal Note')
+    OTHER = 'other', _('Other')
+
+class CustomerProfile(models.Model):
+    """
+    Stores aggregated and specific data about a customer, linked to their Contact record.
+    This profile is enriched over time through conversations, forms, and manual entry.
+    """
+    contact = models.OneToOneField(
+        Contact,
+        on_delete=models.CASCADE,
+        related_name='customer_profile',
+        primary_key=True,
+        help_text=_("The contact this customer profile belongs to.")
+    )
+    
+    # Basic Info (can be synced or enriched)
+    first_name = models.CharField(_("First Name"), max_length=100, blank=True, null=True)
+    last_name = models.CharField(_("Last Name"), max_length=100, blank=True, null=True)
+    email = models.EmailField(_("Email Address"), max_length=254, blank=True, null=True)
+    company = models.CharField(_("Company"), max_length=150, blank=True, null=True)
+    role = models.CharField(_("Role/Title"), max_length=100, blank=True, null=True)
+    
+    # Location Details
+    address_line_1 = models.CharField(_("Address Line 1"), max_length=255, blank=True, null=True)
+    address_line_2 = models.CharField(_("Address Line 2"), max_length=255, blank=True, null=True)
+    city = models.CharField(_("City"), max_length=100, blank=True, null=True)
+    state_province = models.CharField(_("State/Province"), max_length=100, blank=True, null=True)
+    postal_code = models.CharField(_("Postal Code"), max_length=20, blank=True, null=True)
+    country = models.CharField(_("Country"), max_length=100, blank=True, null=True)
+    
+    # Sales & Lead Information
+    lead_status = models.CharField(
+        _("Lead Status"),
+        max_length=50,
+        choices=LeadStatus.choices,
+        default=LeadStatus.NEW,
+        db_index=True,
+        help_text=_("The current stage of the customer in the sales pipeline.")
+    )
+    potential_value = models.DecimalField(
+        _("Potential Value"),
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Estimated value of the deal or lifetime value of the customer.")
+    )
+    acquisition_source = models.CharField(
+        _("Acquisition Source"),
+        max_length=150, 
+        blank=True, 
+        null=True, 
+        help_text=_("How this customer was acquired, e.g., 'Website Form', 'Cold Call', 'Referral'")
+    )
+    lead_score = models.IntegerField(
+        _("Lead Score"),
+        default=0,
+        db_index=True,
+        help_text=_("A score to qualify leads, can be updated by flow actions.")
+    )
+    
+    # Agent Assignment & Segmentation
+    assigned_agent = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_index=True,
+        related_name='assigned_customers',
+        help_text=_("The sales or support agent assigned to this customer.")
+    )
+    tags = models.JSONField(
+        _("Tags"),
+        default=list, 
+        blank=True, 
+        help_text=_("Descriptive tags for segmentation, e.g., ['high-priority', 'tech-industry', 'follow-up']")
+    )
+    
+    # Notes & Custom Data
+    notes = models.TextField(
+        _("Notes"), 
+        blank=True, 
+        null=True,
+        help_text=_("General notes about the customer, their needs, or past interactions.")
+    )
+    custom_attributes = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=_("Flexible field for storing custom data collected via forms or integrations.")
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_interaction_date = models.DateTimeField(
+        _("Last Interaction Date"),
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=_("Timestamp of the last recorded interaction with this customer.")
+    )
+
+    def get_full_name(self) -> str | None:
+        """Returns the full name of the customer, or None if no name is set."""
+        parts = [self.first_name, self.last_name]
+        full_name = " ".join(p for p in parts if p)
+        return full_name or None
+
+    def __str__(self) -> str:
+        """Returns a string representation of the customer profile."""
+        display_name = self.get_full_name() or self.contact.name or self.contact.whatsapp_id
+        return f"Customer: {display_name}"
+
+    class Meta:
+        verbose_name = _("Customer Profile")
+        verbose_name_plural = _("Customer Profiles")
+        ordering = ['-last_interaction_date', '-updated_at']
+
+
+class Interaction(models.Model):
+    """
+    Represents a single interaction with a customer, such as a call, email, or meeting.
+    This creates a historical log of all communications.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey(
+        CustomerProfile,
+        on_delete=models.CASCADE,
+        related_name='interactions',
+        help_text=_("The customer this interaction is associated with.")
+    )
+    agent = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='interactions',
+        help_text=_("The agent who had the interaction.")
+    )
+    interaction_type = models.CharField(
+        _("Interaction Type"),
+        max_length=50,
+        choices=InteractionType.choices,
+        default=InteractionType.NOTE
+    )
+    notes = models.TextField(
+        _("Notes / Summary"),
+        help_text=_("A summary of the interaction, key points, and next steps.")
+    )
+    created_at = models.DateTimeField(
+        _("Interaction Time"),
+        default=timezone.now,
+        help_text=_("When the interaction occurred.")
+    )
+
+    def __str__(self) -> str:
+        """Returns a string representation of the interaction."""
+        return f"{self.get_interaction_type_display()} with {self.customer} on {self.created_at.strftime('%Y-%m-%d')}"
+
+    def save(self, *args, **kwargs) -> None:
+        """
+        Overrides the save method to automatically update the related customer's
+        `last_interaction_date` field. This ensures the customer profile
+        always reflects the latest activity.
+        """
+        super().save(*args, **kwargs)
+        if self.customer:
+            # Using update_fields is a performance best practice, as it avoids
+            # re-saving all fields and triggering unnecessary database operations.
+            self.customer.last_interaction_date = self.created_at
+            self.customer.save(update_fields=['last_interaction_date']) # type: ignore
+
+    class Meta:
+        verbose_name = _("Interaction")
+        verbose_name_plural = _("Interactions")
+        ordering = ['-created_at']
+
+
+class Opportunity(models.Model):
+    """
+    Represents a potential deal or sale with a customer, linking them to
+    specific products or services from the catalog.
+    """
+    class Stage(models.TextChoices):
+        PROSPECTING = 'prospecting', _('Prospecting')
+        QUALIFICATION = 'qualification', _('Qualification')
+        PROPOSAL = 'proposal', _('Proposal')
+        NEGOTIATION = 'negotiation', _('Negotiation')
+        CLOSED_WON = 'closed_won', _('Closed Won')
+        CLOSED_LOST = 'closed_lost', _('Closed Lost')
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(_("Opportunity Name"), max_length=255, help_text=_("e.g., 'Q3 Website Redesign Project'"))
+    customer = models.ForeignKey(
+        CustomerProfile,
+        on_delete=models.CASCADE,
+        related_name='opportunities'
+    )
+    stage = models.CharField(
+        _("Stage"),
+        max_length=50,
+        choices=Stage.choices,
+        default=Stage.PROSPECTING,
+        db_index=True
+    )
+    amount = models.DecimalField(_("Amount"), max_digits=12, decimal_places=2, help_text=_("The estimated or actual value of the deal."))
+    currency = models.CharField(_("Currency"), max_length=3, default='USD')
+    expected_close_date = models.DateField(_("Expected Close Date"), null=True, blank=True)
+    
+    # Links to the catalog
+    software_product = models.ForeignKey(
+        SoftwareProduct,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='opportunities',
+        help_text=_("The core software product for this opportunity.")
+    )
+    professional_services = models.ManyToManyField(ProfessionalService, blank=True, related_name='opportunities')
+    software_modules = models.ManyToManyField('products_and_services.SoftwareModule', blank=True, related_name='opportunities')
+    devices = models.ManyToManyField('products_and_services.Device', blank=True, related_name='opportunities')
+
+    assigned_agent = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='opportunities'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} for {self.customer}"
+
+    class Meta:
+        verbose_name = _("Opportunity")
+        verbose_name_plural = _("Opportunities")
+        ordering = ['-updated_at']
+
+
+class PaymentStatus(models.TextChoices):
+    PENDING = 'pending', _('Pending')
+    SUCCESSFUL = 'successful', _('Successful')
+    FAILED = 'failed', _('Failed')
+    CANCELLED = 'cancelled', _('Cancelled')
+    AWAITING_DELIVERY = 'awaiting_delivery', _('Awaiting Delivery')
+    DELIVERED = 'delivered', _('Delivered')
+
+
+class Payment(models.Model):
+    """
+    Represents a payment transaction, typically initiated through a flow
+    and processed by a payment gateway like Paynow.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey(
+        CustomerProfile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments',
+        help_text=_("The customer who made the payment.")
+    )
+    opportunity = models.ForeignKey(
+        'Opportunity',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments',
+        help_text=_("The sales opportunity this payment is for.")
+    )
+    amount = models.DecimalField(_("Amount"), max_digits=12, decimal_places=2)
+    currency = models.CharField(_("Currency"), max_length=3, default='USD')
+    status = models.CharField(
+        _("Payment Status"), max_length=50, choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING, db_index=True
+    )
+    payment_method = models.CharField(_("Payment Method"), max_length=50, default='paynow')
+    provider_transaction_id = models.CharField(
+        _("Provider Transaction ID"), max_length=255, blank=True, null=True, db_index=True,
+        help_text=_("The unique ID for this transaction from the payment provider (e.g., Paynow poll URL or reference).")
+    )
+    poll_url = models.CharField(
+        _("Paynow Poll URL"), max_length=255, blank=True, null=True,
+        help_text=_("The URL to poll for transaction status updates from Paynow.")
+    )
+    provider_response = models.JSONField(
+        _("Provider Response"), default=dict, blank=True,
+        help_text=_("The last raw response received from the payment provider.")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Payment {self.id} for {self.customer} - {self.amount} {self.currency} ({self.get_status_display()})"
+
+    class Meta:
+        verbose_name = _("Payment")
+        verbose_name_plural = _("Payments")
+        ordering = ['-created_at']
