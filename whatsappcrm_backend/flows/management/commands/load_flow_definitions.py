@@ -10,6 +10,7 @@ from flows.definitions.payroll_flow import PAYROLL_SOFTWARE_FLOW
 from flows.definitions.fiscalisation_flow import FISCALISATION_FLOW
 from flows.definitions.company_details_form_flow import COMPANY_DETAILS_FORM_FLOW
 from flows.definitions.solar_installation_flow import SOLAR_INSTALLATION_FLOW
+from flows.definitions.site_inspection_flow import SITE_INSPECTION_FLOW
 from flows.definitions.main_menu_flow import MAIN_MENU_FLOW
 
 class Command(BaseCommand):
@@ -28,6 +29,7 @@ class Command(BaseCommand):
             FISCALISATION_FLOW,
             COMPANY_DETAILS_FORM_FLOW,
             SOLAR_INSTALLATION_FLOW,
+            SITE_INSPECTION_FLOW,
         ]
 
         for flow_def in flow_definitions:

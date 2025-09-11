@@ -15,15 +15,21 @@ MAIN_MENU_FLOW = {
                 "message_config": {
                     "message_type": "interactive",
                     "interactive": {
-                        "type": "button",
+                        "type": "list",
                         "header": {"type": "text", "text": "Pfungwa Chatbot"},
                         "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome to our WhatsApp Service!{% endif %}\n\nHow can I help you today?"},
                         "footer": {"text": "Please select an option"},
                         "action": {
-                            "buttons": [
-                                {"type": "reply", "reply": {"id": "purchase_product", "title": "🛒 Purchase Product"}},
-                                {"type": "reply", "reply": {"id": "request_installation", "title": "🛠 Request Installation"}},
-                                {"type": "reply", "reply": {"id": "site_assessment", "title": "📋 Site Assessment"}}
+                            "button": "Select an Option",
+                            "sections": [
+                                {
+                                    "title": "Our Services",
+                                    "rows": [
+                                        {"id": "purchase_product", "title": "🛒 Purchase Product", "description": "Browse and buy our products."},
+                                        {"id": "request_installation", "title": "🛠 Request Installation", "description": "Schedule a new solar installation."},
+                                        {"id": "site_assessment", "title": "📋 Site Assessment", "description": "Book a site visit with our experts."}
+                                    ]
+                                }
                             ]
                         }
                     }
@@ -58,7 +64,7 @@ MAIN_MENU_FLOW = {
             "name": "switch_to_assessment_flow",
             "type": "switch_flow",
             "config": {
-                "target_flow_name": "site_assessment_request",
+                "target_flow_name": "site_inspection_request",
                 "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []
