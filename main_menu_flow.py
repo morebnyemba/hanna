@@ -16,14 +16,14 @@ MAIN_MENU_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "header": {"type": "text", "text": "Main Menu"},
-                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome to Hanna Solar!{% endif %}\n\nHow can I help you today?"},
+                        "header": {"type": "text", "text": "Pfungwa Chatbot"},
+                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome to our WhatsApp Service!{% endif %}\n\nHow can I help you today?"},
                         "footer": {"text": "Please select an option"},
                         "action": {
                             "buttons": [
-                                {"type": "reply", "reply": {"id": "get_solar_quote", "title": "Get a Solar Quote"}},
-                                {"type": "reply", "reply": {"id": "other_products", "title": "Other Products"}},
-                                {"type": "reply", "reply": {"id": "customer_support", "title": "Customer Support"}}
+                                {"type": "reply", "reply": {"id": "purchase_product", "title": "🛒 Purchase Product"}},
+                                {"type": "reply", "reply": {"id": "request_installation", "title": "🛠 Request Installation"}},
+                                {"type": "reply", "reply": {"id": "site_assessment", "title": "📋 Site Assessment"}}
                             ]
                         }
                     }
@@ -31,22 +31,13 @@ MAIN_MENU_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "menu_choice"}
             },
             "transitions": [
-                {"to_step": "switch_to_solar_flow", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "get_solar_quote"}},
-                {"to_step": "switch_to_lead_gen_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "other_products"}},
-                {"to_step": "handover_for_support", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "customer_support"}}
+                {"to_step": "switch_to_purchase_flow", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "purchase_product"}},
+                {"to_step": "switch_to_installation_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_installation"}},
+                {"to_step": "switch_to_assessment_flow", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "site_assessment"}}
             ]
         },
         {
-            "name": "switch_to_solar_flow",
-            "type": "switch_flow",
-            "config": {
-                "target_flow_name": "solar_installation_inquiry",
-                "initial_context_template": {"source_flow": "main_menu"}
-            },
-            "transitions": []
-        },
-        {
-            "name": "switch_to_lead_gen_flow",
+            "name": "switch_to_purchase_flow",
             "type": "switch_flow",
             "config": {
                 "target_flow_name": "lead_generation",
@@ -55,11 +46,20 @@ MAIN_MENU_FLOW = {
             "transitions": []
         },
         {
-            "name": "handover_for_support",
-            "type": "human_handover",
+            "name": "switch_to_installation_flow",
+            "type": "switch_flow",
             "config": {
-                "pre_handover_message_text": "Of course. I'm connecting you with our support team who can assist with your query. Please give them a moment to join the chat.",
-                "notification_details": "Customer requested support from the main menu."
+                "target_flow_name": "solar_installation_inquiry",
+                "initial_context_template": {"source_flow": "main_menu"}
+            },
+            "transitions": []
+        },
+        {
+            "name": "switch_to_assessment_flow",
+            "type": "switch_flow",
+            "config": {
+                "target_flow_name": "site_assessment_request",
+                "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []
         }
