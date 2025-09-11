@@ -2,13 +2,13 @@
 
 SOLAR_INSTALLATION_FLOW = {
     "name": "solar_installation_inquiry",
-    "friendly_name": "Solar Installation Inquiry",
-    "description": "Guides a user through collecting requirements for a solar power installation to generate a qualified lead.",
-    "trigger_keywords": ['solar', 'solar power', 'inverter', 'solar installation', 'backup power', 'get solar'],
+    "friendly_name": "Request Solar Installation",
+    "description": "Guides a user through scheduling a solar installation for a pre-purchased system or after a site assessment.",
+    "trigger_keywords": ['request installation', 'schedule installation'],
     "is_active": True,
     "steps": [
         {
-            "name": "start_solar_flow",
+            "name": "start_installation_request",
             "is_entry_point": True,
             "type": "question",
             "config": {
@@ -16,283 +16,220 @@ SOLAR_INSTALLATION_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "header": {"type": "text", "text": "Solar Power Inquiry"},
-                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %} I can help you with a solar installation quote. To start, is this for a residential or commercial property?"},
+                        "header": {"type": "text", "text": "Request Installation"},
+                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %} I can help you schedule your solar installation. Is this for a Residential or Commercial property?"},
                         "action": {
                             "buttons": [
-                                {"type": "reply", "reply": {"id": "prop_residential", "title": "Residential"}},
-                                {"type": "reply", "reply": {"id": "prop_commercial", "title": "Commercial"}}
+                                {"type": "reply", "reply": {"id": "install_residential", "title": "Residential"}},
+                                {"type": "reply", "reply": {"id": "install_commercial", "title": "Commercial"}}
                             ]
                         }
                     }
                 },
-                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "property_type"}
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "installation_type"}
             },
             "transitions": [
-                {"to_step": "ask_electricity_bill", "priority": 0, "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_residential_order_number", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_residential"}},
+                {"to_step": "ask_commercial_assessment_number", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_commercial"}}
             ]
         },
         {
-            "name": "ask_electricity_bill",
+            "name": "ask_residential_order_number",
             "type": "question",
             "config": {
-                "message_config": {
-                    "message_type": "interactive",
-                    "interactive": {
-                        "type": "list",
-                        "header": {"type": "text", "text": "Monthly Bill"},
-                        "body": {"text": "Great. To help us size the system correctly, what is your average monthly electricity bill?"},
-                        "action": {
-                            "button": "Select Range",
-                            "sections": [{
-                                "title": "Average Bill (USD)",
-                                "rows": [
-                                    {"id": "bill_0-50", "title": "$0 - $50"},
-                                    {"id": "bill_51-100", "title": "$51 - $100"},
-                                    {"id": "bill_101-200", "title": "$101 - $200"},
-                                    {"id": "bill_200_plus", "title": "Over $200"},
-                                    {"id": "bill_not_sure", "title": "I'm not sure"}
-                                ]
-                            }]
-                        }
-                    }
-                },
-                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "monthly_bill_range"}
+                "message_config": {"message_type": "text", "text": {"body": "Great. To proceed with your residential installation, please provide your order number. This helps us verify your purchase and payment."}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "order_number"}
             },
             "transitions": [
-                {"to_step": "ask_roof_type", "priority": 0, "condition_config": {"type": "always_true"}}
+                {"to_step": "verify_order_payment", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "order_number"}}
             ]
         },
         {
-            "name": "ask_roof_type",
+            "name": "verify_order_payment",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{"action_type": "set_context_variable", "variable_name": "is_paid", "value_template": "yes"}]
+            },
+            "transitions": [
+                {"to_step": "collect_installation_details_name", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "is_paid", "value": "yes"}},
+                {"to_step": "handle_payment_not_found", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "ask_commercial_assessment_number",
             "type": "question",
             "config": {
-                "message_config": {
-                    "message_type": "interactive",
-                    "interactive": {
-                        "type": "list",
-                        "header": {"type": "text", "text": "Roof Type"},
-                        "body": {"text": "Understood. What type of roof do you have?"},
-                        "action": {
-                            "button": "Select Roof Type",
-                            "sections": [{
-                                "title": "Common Roof Types",
-                                "rows": [
-                                    {"id": "roof_tile", "title": "Tile Roof"},
-                                    {"id": "roof_ibr", "title": "IBR / Metal Sheet"},
-                                    {"id": "roof_flat", "title": "Flat Concrete Roof"},
-                                    {"id": "roof_other", "title": "Other / Not Sure"}
-                                ]
-                            }]
-                        }
-                    }
-                },
-                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "roof_type"}
+                "message_config": {"message_type": "text", "text": {"body": "Understood. For commercial installations, please provide your site assessment number."}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "assessment_number"}
             },
             "transitions": [
-                {"to_step": "ask_main_goal", "priority": 0, "condition_config": {"type": "always_true"}}
+                {"to_step": "verify_assessment", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_number"}}
             ]
         },
         {
-            "name": "ask_main_goal",
+            "name": "verify_assessment",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{"action_type": "set_context_variable", "variable_name": "is_assessed", "value_template": "yes"}]
+            },
+            "transitions": [
+                {"to_step": "collect_installation_details_name", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "is_assessed", "value": "yes"}},
+                {"to_step": "handle_assessment_not_found", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "collect_installation_details_name",
             "type": "question",
             "config": {
-                "message_config": {
-                    "message_type": "interactive",
-                    "interactive": {
-                        "type": "list",
-                        "header": {"type": "text", "text": "Primary Goal"},
-                        "body": {"text": "What is your main reason for wanting a solar system?"},
-                        "action": {
-                            "button": "Select Goal",
-                            "sections": [{
-                                "title": "Choose one",
-                                "rows": [
-                                    {"id": "goal_backup", "title": "Backup for Power Cuts"},
-                                    {"id": "goal_reduce_bills", "title": "Reduce Electricity Bills"},
-                                    {"id": "goal_off_grid", "title": "Go Completely Off-Grid"}
-                                ]
-                            }]
-                        }
-                    }
-                },
-                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "solar_goal"}
+                "message_config": {"message_type": "text", "text": {"body": "Verification successful! Let's collect the details for your installation. What is your full name?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_full_name"}
             },
             "transitions": [
-                {"to_step": "ask_heavy_appliances", "priority": 0, "condition_config": {"type": "always_true"}}
+                {"to_step": "collect_installation_details_address", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}
             ]
         },
         {
-            "name": "ask_heavy_appliances",
+            "name": "collect_installation_details_address",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Thank you. What is the full installation address?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_address"}
+            },
+            "transitions": [
+                {"to_step": "collect_installation_details_system_size", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_address"}}
+            ]
+        },
+        {
+            "name": "collect_installation_details_system_size",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "What is the size of the system being installed? (e.g., 5kVA, 10kW)"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_system_size"}
+            },
+            "transitions": [
+                {"to_step": "collect_installation_details_location_pin", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_system_size"}}
+            ]
+        },
+        {
+            "name": "collect_installation_details_location_pin",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Please share your location pin for accurate directions."}},
+                "reply_config": {"expected_type": "location", "save_to_variable": "install_location_pin"}
+            },
+            "transitions": [
+                {"to_step": "collect_installation_details_datetime", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
+            ]
+        },
+        {
+            "name": "collect_installation_details_datetime",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "What is your preferred date and time for the installation?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_datetime"}
+            },
+            "transitions": [
+                {"to_step": "collect_installation_details_phone", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_datetime"}}
+            ]
+        },
+        {
+            "name": "collect_installation_details_phone",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Finally, what is the best contact number for the installation team?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_phone"}
+            },
+            "transitions": [
+                {"to_step": "confirm_installation_request", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_phone"}}
+            ]
+        },
+        {
+            "name": "confirm_installation_request",
             "type": "question",
             "config": {
                 "message_config": {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "body": {"text": "Do you need to power any heavy-duty appliances like a borehole pump, geyser, or air conditioning unit?"},
+                        "body": {"text": "Thank you. Please review your details and confirm to submit your installation request.\n\nName: {{ install_full_name }}\nAddress: {{ install_address }}\nSystem: {{ install_system_size }}\nDate/Time: {{ install_datetime }}\nContact: {{ install_phone }}"},
                         "action": {
                             "buttons": [
-                                {"type": "reply", "reply": {"id": "heavy_appliances_yes", "title": "Yes"}},
-                                {"type": "reply", "reply": {"id": "heavy_appliances_no", "title": "No"}}
+                                {"type": "reply", "reply": {"id": "confirm_install", "title": "Confirm Request"}},
+                                {"type": "reply", "reply": {"id": "cancel_install", "title": "Cancel"}}
                             ]
                         }
                     }
                 },
-                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "has_heavy_appliances"}
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_confirmation"}
             },
             "transitions": [
-                {"to_step": "ask_which_appliances", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "heavy_appliances_yes"}},
-                {"to_step": "check_customer_details", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "save_installation_request", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_install"}},
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "ask_which_appliances",
-            "type": "question",
-            "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Please list the heavy appliances you need to power (e.g., 1hp borehole pump, 2x air conditioners)."}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "heavy_appliances_list"}
-            },
-            "transitions": [
-                {"to_step": "check_customer_details", "priority": 0, "condition_config": {"type": "always_true"}}
-            ]
-        },
-        {
-            "name": "check_customer_details",
-            "type": "action",
-            "config": {
-                "actions_to_run": [{
-                    "action_type": "set_context_variable",
-                    "variable_name": "has_details",
-                    "value_template": "{{ 'yes' if customer_profile.first_name else 'no' }}"
-                }]
-            },
-            "transitions": [
-                {"to_step": "ask_urgency", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "has_details", "value": "yes"}},
-                {"to_step": "ask_name", "priority": 1, "condition_config": {"type": "always_true"}},
-            ]
-        },
-        {
-            "name": "ask_name",
-            "type": "question",
-            "config": {
-                "message_config": {"message_type": "text", "text": {"body": "We're almost done. To prepare your quote, could I please have your full name?"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "user_full_name", "validation_regex": r"^.{3,}"},
-                "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Apologies, that doesn't seem to be a valid name. Could you please provide your full name?"}
-            },
-            "transitions": [{"to_step": "process_name", "priority": 0, "condition_config": {"type": "always_true"}}]
-        },
-        {
-            "name": "process_name",
-            "type": "action",
-            "config": {
-                "actions_to_run": [
-                    {"action_type": "update_contact_field", "field_path": "name", "value_template": "{{ user_full_name }}"},
-                    {"action_type": "update_customer_profile", "fields_to_update": {
-                        "first_name": "{{ user_full_name.split(' ')[0] if ' ' in user_full_name else user_full_name }}",
-                        "last_name": "{{ ' '.join(user_full_name.split(' ')[1:]) if ' ' in user_full_name else '' }}"
-                    }}
-                ]
-            },
-            "transitions": [{"to_step": "ask_email", "priority": 0, "condition_config": {"type": "always_true"}}]
-        },
-        {
-            "name": "ask_email",
-            "type": "question",
-            "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thank you, {{ customer_profile.first_name }}. What is the best email address to send your quote to?"}},
-                "reply_config": {"expected_type": "email", "save_to_variable": "user_email"},
-                "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "That does not appear to be a valid email address. Please enter a valid email."}
-            },
-            "transitions": [{"to_step": "process_email", "priority": 0, "condition_config": {"type": "always_true"}}]
-        },
-        {
-            "name": "process_email",
-            "type": "action",
-            "config": {"actions_to_run": [{"action_type": "update_customer_profile", "fields_to_update": {"email": "{{ user_email }}"}}]},
-            "transitions": [{"to_step": "ask_urgency", "priority": 0, "condition_config": {"type": "always_true"}}]
-        },
-        {
-            "name": "ask_urgency",
-            "type": "question",
-            "config": {
-                "message_config": {
-                    "message_type": "interactive",
-                    "interactive": {
-                        "type": "button",
-                        "body": {"text": "Thank you for all the information. Lastly, how urgently do you need the installation?"},
-                        "action": {
-                            "buttons": [
-                                {"type": "reply", "reply": {"id": "urgent_asap", "title": "As Soon As Possible"}},
-                                {"type": "reply", "reply": {"id": "urgent_month", "title": "Within a Month"}},
-                                {"type": "reply", "reply": {"id": "urgent_budgeting", "title": "Just Budgeting"}}
-                            ]
-                        }
-                    }
-                },
-                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "urgency_level"}
-            },
-            "transitions": [
-                {"to_step": "compile_lead_and_end", "priority": 0, "condition_config": {"type": "always_true"}}
-            ]
-        },
-        {
-            "name": "compile_lead_and_end",
+            "name": "save_installation_request",
             "type": "action",
             "config": {
                 "actions_to_run": [
                     {
                         "action_type": "set_context_variable",
-                        "variable_name": "final_notes",
+                        "variable_name": "installation_notes",
                         "value_template": (
-                            "New Solar Installation Lead:\n\n"
-                            "Property Type: {{ property_type }}\n"
-                            "Avg Monthly Bill: {{ monthly_bill_range }}\n"
-                            "Roof Type: {{ roof_type }}\n"
-                            "Main Goal: {{ solar_goal }}\n"
-                            "Heavy Appliances: {{ has_heavy_appliances }}{% if heavy_appliances_list %} - {{ heavy_appliances_list }}{% endif %}\n"
-                            "Urgency: {{ urgency_level }}"
+                            "New Installation Request:\n\n"
+                            "Type: {{ installation_type }}\n"
+                            "{% if order_number %}Order #: {{ order_number }}{% endif %}"
+                            "{% if assessment_number %}Assessment #: {{ assessment_number }}{% endif %}\n"
+                            "Name: {{ install_full_name }}\n"
+                            "Address: {{ install_address }}\n"
+                            "System Size: {{ install_system_size }}\n"
+                            "Location Pin: Lat {{ install_location_pin.latitude }}, Lon {{ install_location_pin.longitude }}\n"
+                            "Preferred Date/Time: {{ install_datetime }}\n"
+                            "Contact Phone: {{ install_phone }}"
                         )
                     },
-                    {
-                        "action_type": "update_customer_profile",
-                        "fields_to_update": {
-                            "notes": "{{ final_notes }}\n---\n{{ customer_profile.notes or '' }}",
-                            "lead_status": "qualified"
-                        }
-                    },
-                    {
-                        "action_type": "create_opportunity",
-                        "params_template": {
-                            "opportunity_name_template": "Solar Inquiry for {{ customer_profile.get_full_name() or contact.whatsapp_id }}",
-                            "amount": 0, # Amount can be updated later by an agent
-                            "stage": "qualification",
-                            "save_opportunity_id_to": "created_opportunity_id"
-                        }
-                    },
+                    {"action_type": "update_customer_profile", "fields_to_update": {"notes": "{{ installation_notes }}\n---\n{{ customer_profile.notes or '' }}"}},
                     {
                         "action_type": "send_admin_notification",
-                        "message_template": (
-                            "New Solar Lead & Opportunity for {{ contact.name or contact.whatsapp_id }}:\n\n"
-                            "{{ final_notes }}\n\n"
-                            "Opportunity ID: {{ created_opportunity_id }}\n"
-                            "Please contact them at {{ customer_profile.email }} or via WhatsApp."
-                        )
+                        "message_template": "NEW INSTALLATION REQUEST from {{ contact.name or contact.whatsapp_id }}:\n\n{{ installation_notes }}\n\nPlease schedule and confirm with the customer."
                     }
                 ]
             },
             "transitions": [
-                {"to_step": "end_flow_message", "priority": 0, "condition_config": {"type": "always_true"}}
+                {"to_step": "end_flow_success", "priority": 0, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "end_flow_message",
+            "name": "end_flow_success",
             "type": "end_flow",
             "config": {
-                "message_config": {
-                    "message_type": "text",
-                    "text": {"body": "Thank you! We have all your requirements. A solar specialist will review your information and contact you at {{ customer_profile.email }} or on this number shortly with a preliminary quote and next steps."}
-                }
+                "message_config": {"message_type": "text", "text": {"body": "Thank you! Your installation request has been submitted. Our team will contact you shortly to confirm the schedule."}}
+            },
+            "transitions": []
+        },
+        {
+            "name": "end_flow_cancelled",
+            "type": "end_flow",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Your installation request has been cancelled. Type 'menu' to start over."}}
+            },
+            "transitions": []
+        },
+        {
+            "name": "handle_payment_not_found",
+            "type": "human_handover",
+            "config": {
+                "pre_handover_message_text": "I couldn't verify the payment for order number '{{ order_number }}'. I'm connecting you with a support agent to assist you.",
+                "notification_details": "Installation Flow: Could not verify payment for order #{{ order_number }}."
+            },
+            "transitions": []
+        },
+        {
+            "name": "handle_assessment_not_found",
+            "type": "human_handover",
+            "config": {
+                "pre_handover_message_text": "I couldn't find a record for assessment number '{{ assessment_number }}'. I'm connecting you with a support agent to help.",
+                "notification_details": "Installation Flow: Could not find assessment #{{ assessment_number }}."
             },
             "transitions": []
         }

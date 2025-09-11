@@ -1193,6 +1193,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 
                 
                 image_payload = message_data.get('image') if message_data.get('type') == 'image' else None
+                location_payload = message_data.get('location') if message_data.get('type') == 'location' else None
 
                 reply_is_valid = False
                 value_to_save = None
@@ -1230,6 +1231,10 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 elif expected_reply_type == 'image' and image_payload:
                     value_to_save = image_payload.get('id') # Save the WhatsApp Media ID
                     if value_to_save:
+                        reply_is_valid = True
+                elif expected_reply_type == 'location' and location_payload:
+                    value_to_save = location_payload
+                    if value_to_save and 'latitude' in value_to_save and 'longitude' in value_to_save:
                         reply_is_valid = True
                 elif expected_reply_type == 'nfm_reply' and nfm_response_data is not None:
                     value_to_save = nfm_response_data
