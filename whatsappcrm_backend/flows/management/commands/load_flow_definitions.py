@@ -10,6 +10,7 @@ from flows.definitions.payroll_flow import PAYROLL_SOFTWARE_FLOW
 from flows.definitions.fiscalisation_flow import FISCALISATION_FLOW
 from flows.definitions.company_details_form_flow import COMPANY_DETAILS_FORM_FLOW
 from flows.definitions.solar_installation_flow import SOLAR_INSTALLATION_FLOW
+from flows.definitions.main_menu_flow import MAIN_MENU_FLOW
 
 class Command(BaseCommand):
     help = 'Loads or updates predefined conversational flows from definition files into the database.'
@@ -20,6 +21,7 @@ class Command(BaseCommand):
         
         # List of flow definitions to load
         flow_definitions = [
+            MAIN_MENU_FLOW,
             LEAD_GENERATION_FLOW,
             ERP_QUOTE_FLOW,
             PAYROLL_SOFTWARE_FLOW,
