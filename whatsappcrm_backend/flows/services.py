@@ -529,6 +529,48 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                         logger.error(f"Contact {contact.id}: 'query_model' action in step {step.id} failed. Model '{app_label}.{model_name}' not found.")
                     except Exception as e:
                         logger.error(f"Contact {contact.id}: 'query_model' action in step {step.id} failed with error: {e}", exc_info=True)
+                elif action_type == 'create_model_instance':
+                    app_label = action_item_conf.app_label
+                    model_name = action_item_conf.model_name
+                    fields_template = action_item_conf.fields_template
+                    save_to_variable = action_item_conf.save_to_variable
+
+                    if not app_label or not model_name or not fields_template:
+                        logger.error(f"Contact {contact.id}: 'create_model_instance' action in step {step.id} is missing required fields. Skipping.")
+                        continue
+                    
+                    try:
+                        Model = apps.get_model(app_label, model_name)
+                        resolved_fields = _resolve_value(fields_template, current_step_context, contact)
+                        
+                        # Special handling for foreign keys to the current customer's profile
+                        if 'customer' in resolved_fields and resolved_fields['customer'] == 'current':
+                            if hasattr(contact, 'customer_profile'):
+                                resolved_fields['customer'] = contact.customer_profile
+                            else:
+                                logger.error(f"Contact {contact.id} does not have a customer_profile. Cannot create {model_name}.")
+                                continue
+                        
+                        # Special handling for location data
+                        if 'latitude' in resolved_fields and 'longitude' in resolved_fields:
+                            try:
+                                resolved_fields['latitude'] = Decimal(resolved_fields['latitude']) if resolved_fields['latitude'] is not None else None
+                                resolved_fields['longitude'] = Decimal(resolved_fields['longitude']) if resolved_fields['longitude'] is not None else None
+                            except (InvalidOperation, TypeError):
+                                logger.warning(f"Could not convert lat/lon to Decimal for {model_name}. Skipping update for these fields.")
+                                resolved_fields.pop('latitude', None)
+                                resolved_fields.pop('longitude', None)
+
+                        instance = Model.objects.create(**resolved_fields)
+                        logger.info(f"Contact {contact.id}: Created new {model_name} instance with ID {instance.pk}.")
+
+                        if save_to_variable:
+                            current_step_context[save_to_variable] = model_to_dict(instance)
+                            logger.info(f"Contact {contact.id}: Saved created instance to context variable '{save_to_variable}'.")
+                    except LookupError:
+                        logger.error(f"Contact {contact.id}: 'create_model_instance' action failed. Model '{app_label}.{model_name}' not found.")
+                    except Exception as e:
+                        logger.error(f"Contact {contact.id}: 'create_model_instance' action failed with error: {e}", exc_info=True)
                 else:
                     logger.warning(f"Contact {contact.id}: Unknown or misconfigured action_type '{action_type}' in step '{step.name}' (ID: {step.id}).")
         except ValidationError as e:

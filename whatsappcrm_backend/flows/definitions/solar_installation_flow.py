@@ -173,25 +173,37 @@ SOLAR_INSTALLATION_FLOW = {
             "config": {
                 "actions_to_run": [
                     {
-                        "action_type": "set_context_variable",
-                        "variable_name": "installation_notes",
-                        "value_template": (
-                            "New Installation Request:\n\n"
+                        "action_type": "create_model_instance",
+                        "app_label": "customer_data",
+                        "model_name": "InstallationRequest",
+                        "fields_template": {
+                            "customer": "current",
+                            "installation_type": "{{ installation_type }}",
+                            "order_number": "{{ order_number }}",
+                            "assessment_number": "{{ assessment_number }}",
+                            "full_name": "{{ install_full_name }}",
+                            "address": "{{ install_address }}",
+                            "system_size": "{{ install_system_size }}",
+                            "latitude": "{{ install_location_pin.latitude }}",
+                            "longitude": "{{ install_location_pin.longitude }}",
+                            "preferred_datetime": "{{ install_datetime }}",
+                            "contact_phone": "{{ install_phone }}"
+                        },
+                        "save_to_variable": "created_installation_request"
+                    },
+                    {
+                        "action_type": "send_admin_notification",
+                        "message_template": (
+                            "NEW INSTALLATION REQUEST from {{ contact.name or contact.whatsapp_id }} (ID: {{ created_installation_request.id }}):\n\n"
                             "Type: {{ installation_type }}\n"
                             "{% if order_number %}Order #: {{ order_number }}{% endif %}"
                             "{% if assessment_number %}Assessment #: {{ assessment_number }}{% endif %}\n"
                             "Name: {{ install_full_name }}\n"
                             "Address: {{ install_address }}\n"
                             "System Size: {{ install_system_size }}\n"
-                            "Location Pin: Lat {{ install_location_pin.latitude }}, Lon {{ install_location_pin.longitude }}\n"
                             "Preferred Date/Time: {{ install_datetime }}\n"
-                            "Contact Phone: {{ install_phone }}"
+                            "Contact Phone: {{ install_phone }}\n\nPlease schedule and confirm with the customer."
                         )
-                    },
-                    {"action_type": "update_customer_profile", "fields_to_update": {"notes": "{{ installation_notes }}\n---\n{{ customer_profile.notes or '' }}"}},
-                    {
-                        "action_type": "send_admin_notification",
-                        "message_template": "NEW INSTALLATION REQUEST from {{ contact.name or contact.whatsapp_id }}:\n\n{{ installation_notes }}\n\nPlease schedule and confirm with the customer."
                     }
                 ]
             },

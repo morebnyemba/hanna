@@ -330,3 +330,58 @@ class Payment(models.Model):
         verbose_name = _("Payment")
         verbose_name_plural = _("Payments")
         ordering = ['-created_at']
+
+
+class InstallationRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('scheduled', 'Scheduled'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    INSTALLATION_TYPES = [
+        ('residential', 'Residential'),
+        ('commercial', 'Commercial'),
+    ]
+    customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='installation_requests')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    installation_type = models.CharField(max_length=20, choices=INSTALLATION_TYPES)
+    
+    order_number = models.CharField(_("Order Number"), max_length=100, blank=True, null=True, db_index=True)
+    assessment_number = models.CharField(_("Assessment Number"), max_length=100, blank=True, null=True, db_index=True)
+    full_name = models.CharField(_("Contact Full Name"), max_length=255)
+    address = models.TextField(_("Installation Address"))
+    system_size = models.CharField(_("System Size (e.g., 5kVA)"), max_length=100)
+    latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    preferred_datetime = models.CharField(_("Preferred Date/Time"), max_length=255)
+    contact_phone = models.CharField(_("Contact Phone"), max_length=20)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Installation for {self.full_name} ({self.status})"
+
+class SiteAssessmentRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('scheduled', 'Scheduled'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='assessment_requests')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    
+    full_name = models.CharField(_("Full Name"), max_length=255)
+    company_name = models.CharField(_("Company Name"), max_length=255, blank=True, null=True)
+    address = models.TextField(_("Assessment Address"))
+    contact_info = models.CharField(_("Contact Info"), max_length=255)
+    preferred_day = models.CharField(_("Preferred Day"), max_length=255)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Assessment for {self.full_name} ({self.status})"
