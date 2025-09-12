@@ -1,7 +1,7 @@
 # whatsappcrm_backend/customer_data/models.py
 
 from django.db import models
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _ # type: ignore
 from django.conf import settings
 from django.utils import timezone
 from conversations.models import Contact
@@ -238,18 +238,6 @@ class Opportunity(models.Model):
     currency = models.CharField(_("Currency"), max_length=3, default='USD')
     expected_close_date = models.DateField(_("Expected Close Date"), null=True, blank=True)
     
-    # Links to the catalog
-    software_product = models.ForeignKey(
-        SoftwareProduct,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='opportunities',
-        help_text=_("The core software product for this opportunity.")
-    )
-    professional_services = models.ManyToManyField(ProfessionalService, blank=True, related_name='opportunities')
-    software_modules = models.ManyToManyField('products_and_services.SoftwareModule', blank=True, related_name='opportunities')
-    devices = models.ManyToManyField('products_and_services.Device', blank=True, related_name='opportunities')
-
     assigned_agent = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -258,6 +246,7 @@ class Opportunity(models.Model):
         related_name='opportunities'
     )
     
+    notes = models.TextField(_("Notes"), blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -268,6 +257,29 @@ class Opportunity(models.Model):
         verbose_name = _("Opportunity")
         verbose_name_plural = _("Opportunities")
         ordering = ['-updated_at']
+
+
+class OrderItem(models.Model):
+    """
+    Represents a line item within an Opportunity (an order), linking a specific
+    product with a quantity and price.
+    """
+    opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(
+        'products_and_services.Product', 
+        on_delete=models.PROTECT, # Don't allow deleting a product that's in an order
+        related_name='order_items'
+    )
+    quantity = models.PositiveIntegerField(_("Quantity"), default=1)
+    unit_price = models.DecimalField(
+        _("Unit Price"), max_digits=12, decimal_places=2,
+        help_text=_("Price of the product at the time the order was placed.")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.quantity} x {self.product.name} for Opportunity {self.opportunity.id}"
+
 
 
 class PaymentStatus(models.TextChoices):
@@ -352,7 +364,6 @@ class InstallationRequest(models.Model):
     assessment_number = models.CharField(_("Assessment Number"), max_length=100, blank=True, null=True, db_index=True)
     full_name = models.CharField(_("Contact Full Name"), max_length=255)
     address = models.TextField(_("Installation Address"))
-    system_size = models.CharField(_("System Size (e.g., 5kVA)"), max_length=100)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     preferred_datetime = models.CharField(_("Preferred Date/Time"), max_length=255)

@@ -4,6 +4,8 @@ from rest_framework import viewsets, permissions, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q, Prefetch, Subquery, OuterRef, Count, F
+from functools import reduce
+from operator import or_
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from channels.layers import get_channel_layer
@@ -18,11 +20,13 @@ from .serializers import (
     ContactListSerializer,
     ContactDetailSerializer,
     BroadcastCreateSerializer,
-    BroadcastSerializer,
+    BroadcastSerializer, 
+    BroadcastGroupCreateSerializer,
 )
 from .tasks import dispatch_broadcast_task
 # To get active MetaAppConfig for sending
 from meta_integration.models import MetaAppConfig
+from customer_data.models import CustomerProfile
 # To personalize messages using flow template logic
 from flows.services import _resolve_value
 
@@ -272,5 +276,57 @@ class BroadcastViewSet(viewsets.ViewSet):
         )
 
         # Immediately return the created Broadcast object to the client
+        response_serializer = BroadcastSerializer(broadcast)
+        return Response(response_serializer.data, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=False, methods=['post'], url_path='send-to-group')
+    def send_to_group(self, request):
+        """
+        Sends a template message to a dynamically generated group of contacts
+        based on CustomerProfile tags or assigned agent.
+        """
+        serializer = BroadcastGroupCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated_data = serializer.validated_data
+        tags = validated_data.get('tags', [])
+        agent_id = validated_data.get('assigned_agent_id')
+
+        # Build the filter for CustomerProfile
+        profile_filters = Q()
+        if tags:
+            # Create a Q object for each tag and combine with OR
+            tag_queries = [Q(tags__contains=tag) for tag in tags]
+            profile_filters |= reduce(or_, tag_queries)
+        
+        if agent_id:
+            # This will OR with the tag query if it exists
+            profile_filters |= Q(assigned_agent_id=agent_id)
+
+        # Get the primary keys (which are contact_ids) of the matching profiles
+        contact_ids = list(CustomerProfile.objects.filter(profile_filters).values_list('contact_id', flat=True))
+
+        if not contact_ids:
+            return Response({"message": "No contacts found matching the specified criteria."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Create the parent Broadcast object
+        broadcast = Broadcast.objects.create(
+            name=validated_data.get('name', f"Group Broadcast on {timezone.now().strftime('%Y-%m-%d %H:%M')}"),
+            template_name=validated_data['template_name'],
+            created_by=request.user,
+            status='pending',
+            total_recipients=len(contact_ids)
+        )
+        logger.info(f"Created Broadcast object {broadcast.id} for {broadcast.total_recipients} recipients based on group criteria.")
+
+        # Dispatch the Celery task
+        dispatch_broadcast_task.delay(
+            broadcast_id=broadcast.id,
+            contact_ids=contact_ids,
+            language_code=validated_data['language_code'],
+            components_template=validated_data.get('components')
+        )
+
         response_serializer = BroadcastSerializer(broadcast)
         return Response(response_serializer.data, status=status.HTTP_202_ACCEPTED)

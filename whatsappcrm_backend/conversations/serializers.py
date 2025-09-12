@@ -215,6 +215,33 @@ class BroadcastCreateSerializer(serializers.Serializer):
         return value
 
 
+class BroadcastGroupCreateSerializer(serializers.Serializer):
+    """
+    Serializer for validating the creation of a broadcast job targeted at a dynamic group.
+    """
+    name = serializers.CharField(max_length=255, required=False, help_text="An optional internal name for this broadcast.")
+    tags = serializers.ListField(
+        child=serializers.CharField(max_length=100),
+        required=False,
+        allow_empty=True,
+        help_text="A list of tags. Contacts with ANY of these tags will be targeted."
+    )
+    assigned_agent_id = serializers.IntegerField(required=False, help_text="ID of an admin/agent. All contacts assigned to this agent will be targeted.")
+    
+    template_name = serializers.CharField(max_length=255)
+    language_code = serializers.CharField(max_length=15, default="en_US")
+    components = serializers.ListField(
+        child=serializers.DictField(), 
+        required=False, 
+        help_text="A template for components with variables. E.g., [{'type': 'body', 'parameters': [{'type': 'text', 'text': '{{ customer_profile.first_name }}'}]}]"
+    )
+
+    def validate(self, data):
+        if not data.get('tags') and data.get('assigned_agent_id') is None:
+            raise serializers.ValidationError("You must provide at least one targeting option: 'tags' or 'assigned_agent_id'.")
+        return data
+
+
 class BroadcastRecipientSerializer(serializers.ModelSerializer):
     """Serializer for displaying individual recipient status within a broadcast."""
     contact = ContactSerializer(read_only=True)
