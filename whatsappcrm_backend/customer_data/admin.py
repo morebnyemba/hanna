@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomerProfile, Interaction, Opportunity
+from .models import CustomerProfile, Interaction, Opportunity, OrderItem
 
 class InteractionInline(admin.TabularInline):
     """
@@ -83,17 +83,22 @@ class InteractionAdmin(admin.ModelAdmin):
         }),
     )
 
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 1  # Show 1 empty slot for a new OrderItem
+    autocomplete_fields = ['product']
+
 @admin.register(Opportunity)
 class OpportunityAdmin(admin.ModelAdmin):
     list_display = ('name', 'customer', 'stage', 'amount', 'currency', 'assigned_agent', 'expected_close_date')
     list_filter = ('stage', 'assigned_agent', 'currency', 'expected_close_date')
     search_fields = ('name', 'customer__first_name', 'customer__last_name', 'customer__company')
-    autocomplete_fields = ['customer', 'assigned_agent', 'software_product', 'software_modules', 'professional_services', 'devices']
+    autocomplete_fields = ['customer', 'assigned_agent']
     list_editable = ('stage', 'amount')
     date_hierarchy = 'created_at'
+    inlines = [OrderItemInline]
     fieldsets = (
         (None, {'fields': ('name', 'customer', 'assigned_agent')}),
         ('Deal Details', {'fields': ('stage', ('amount', 'currency'), 'expected_close_date')}),
-        ('Associated Items', {'fields': ('software_product', 'software_modules', 'professional_services', 'devices')}),
     )
     list_select_related = ('customer', 'assigned_agent')
