@@ -324,7 +324,7 @@ LEAD_GENERATION_FLOW = {
                 "actions_to_run": [{
                     "action_type": "query_model",
                     "app_label": "products_and_services",
-                    "model_name": "Product",
+                    "model_name": "SoftwareProduct",
                     "variable_name": "direct_match_product",
                     "filters_template": {"is_active": True, "name__icontains": "{{ inquiry_topic_from_trigger }}"},
                     "limit": 1
@@ -355,11 +355,10 @@ LEAD_GENERATION_FLOW = {
                 "actions_to_run": [{
                     "action_type": "query_model",
                     "app_label": "products_and_services",
-                    "model_name": "Product",
+                    "model_name": "SoftwareProduct",
                     "variable_name": "product_options",
                     "filters_template": {
                         "is_active": True,
-                        "product_type": "software",
                         "category__name__icontains": "{{ inquiry_topic_from_trigger }}"
                     },
                     "order_by": ["name"],
@@ -375,7 +374,7 @@ LEAD_GENERATION_FLOW = {
             "name": "query_all_products",
             "type": "action",
             "config": {
-                "actions_to_run": [{"action_type": "query_model", "app_label": "products_and_services", "model_name": "Product", "variable_name": "product_options", "filters_template": {"is_active": True, "product_type": "software"}, "order_by": ["name"], "limit": 3}]
+                "actions_to_run": [{"action_type": "query_model", "app_label": "products_and_services", "model_name": "SoftwareProduct", "variable_name": "product_options", "filters_template": {"is_active": True}, "order_by": ["name"], "limit": 3}]
             },
             "transitions": [
                 {"to_step": "present_product_options", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "product_options.0"}},
@@ -408,7 +407,7 @@ LEAD_GENERATION_FLOW = {
                 "actions_to_run": [{
                     "action_type": "query_model",
                     "app_label": "products_and_services",
-                    "model_name": "Product",
+                    "model_name": "SoftwareProduct",
                     "variable_name": "chosen_product_details",
                     "filters_template": {"sku": "{{ chosen_product_sku }}"},
                     "limit": 1
@@ -595,7 +594,7 @@ LEAD_GENERATION_FLOW = {
             "name": "query_all_services",
             "type": "action",
             "config": {
-                "actions_to_run": [{"action_type": "query_model", "app_label": "products_and_services", "model_name": "Product", "variable_name": "service_options", "filters_template": {"is_active": True, "product_type": "service"}, "order_by": ["name"], "limit": 3}]
+                "actions_to_run": [{"action_type": "query_model", "app_label": "products_and_services", "model_name": "ProfessionalService", "variable_name": "service_options", "filters_template": {"is_active": True}, "order_by": ["name"], "limit": 3}]
             },
             "transitions": [
                 {"to_step": "present_service_options", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "service_options.0"}},
@@ -628,7 +627,7 @@ LEAD_GENERATION_FLOW = {
                 "actions_to_run": [{
                     "action_type": "query_model",
                     "app_label": "products_and_services",
-                    "model_name": "Product",
+                    "model_name": "ProfessionalService",
                     "variable_name": "chosen_service_details",
                     "filters_template": {"id": "{{ chosen_service_id }}"},
                     "limit": 1
