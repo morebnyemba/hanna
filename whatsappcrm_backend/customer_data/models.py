@@ -7,9 +7,6 @@ from django.utils import timezone
 from conversations.models import Contact
 import uuid
 
-# Import models from other apps to create relationships
-from products_and_services.models import SoftwareProduct, ProfessionalService
-
 class LeadStatus(models.TextChoices):
     """Defines the choices for the lead status in the sales pipeline."""
     NEW = 'new', _('New')
