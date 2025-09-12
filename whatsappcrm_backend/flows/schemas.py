@@ -33,6 +33,9 @@ class InteractiveAction(BaseModel):
     buttons: Optional[List[InteractiveButton]] = None
     button: Optional[str] = None # For list messages
     sections: Optional[List[InteractiveSection]] = None
+    # For Flow type
+    name: Optional[Literal['flow']] = None
+    parameters: Optional[Dict[str, Any]] = None
 
 class InteractiveBody(BaseModel):
     text: str
@@ -46,7 +49,7 @@ class InteractiveFooter(BaseModel):
     text: str
 
 class InteractiveMessagePayload(BaseModel):
-    type: Literal['button', 'list'] #, 'product', 'product_list']
+    type: Literal['button', 'list', 'flow']
     action: InteractiveAction
     body: InteractiveBody
     header: Optional[InteractiveHeader] = None
@@ -151,7 +154,7 @@ class FallbackConfig(BaseModel):
 
 class ReplyConfig(BaseModel):
     save_to_variable: str
-    expected_type: Literal['text', 'email', 'number', 'interactive_id', 'image'] = 'text'
+    expected_type: Literal['text', 'email', 'number', 'interactive_id', 'image', 'location', 'nfm_reply'] = 'text'
     validation_regex: Optional[str] = None
 
 class StepConfigQuestion(BaseModel):
