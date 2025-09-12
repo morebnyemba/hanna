@@ -284,14 +284,14 @@ LOGGING = {
 WHATSAPP_APP_SECRET = os.getenv('WHATSAPP_APP_SECRET', None)
 # --- Jazzmin Admin Theme Settings ---
 JAZZMIN_SETTINGS = {
-    "site_title": "AutoWhats",
+    "site_title": "Hanna",
     "site_header": os.getenv('SITE_HEADER', 'AutoWhats CRM'),
     "site_brand": "A-W",
     "site_logo_classes": "img-circle",
     # Path to logo, relative to static files.
     # It should not include /static/ in the path.
-    "site_logo": "admin/img/logo.png",
-    "welcome_sign": "Welcome to the AutoWhats Admin",
+    "site_logo": "admin/img/hanna_logo.png",
+    "welcome_sign": "Welcome to the Hanna AutoWhats Admin",
     "copyright": "Slyker Tech Web Services and Patners.",
     "search_model": ["auth.User", "meta_integration.MetaAppConfig", "conversations.Contact", "flows.Flow"],
     "user_avatar": None,
