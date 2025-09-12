@@ -14,13 +14,7 @@ ADMIN_ADD_ORDER_FLOW = {
             "config": {
                 "message_config": {"message_type": "text", "text": {"body": "Let's add a new order. What is the customer's WhatsApp number? (e.g., 263...)"}},
                 "reply_config": {
-                    "expected_type": "text",
-                    "save_to_variable": "customer_whatsapp_id",
-                    "validation_regex": "^\\+?[1-9]\\d{8,14}$"
-                },
-                "fallback_config": {
-                    "action": "re_prompt", "max_retries": 2,
-                    "re_prompt_message_text": "That doesn't look like a valid phone number. Please try again, including the country code (e.g., 263...)."
+                    "expected_type": "text", "save_to_variable": "customer_whatsapp_id"
                 }
             },
             "transitions": [
