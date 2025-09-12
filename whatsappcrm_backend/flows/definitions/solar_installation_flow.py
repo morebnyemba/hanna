@@ -97,6 +97,11 @@ SOLAR_INSTALLATION_FLOW = {
                                     {"id": "Mutare", "title": "Mutare"},
                                     {"id": "Other", "title": "Other"}
                                 ]
+                            }, {
+                                "title": "Exit",
+                                "rows": [
+                                    {"id": "cancel_install", "title": "Cancel Request"}
+                                ]
                             }]
                         }
                     }
@@ -104,73 +109,126 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_branch"}
             },
             "transitions": [
-                {"to_step": "ask_sales_person", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_branch"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "cancel_install"}},
+                {"to_step": "ask_sales_person", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
             "name": "ask_sales_person",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thank you. Who is your TV Sales Sales Person?"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "install_sales_person"}
+                "message_config": {"message_type": "text", "text": {"body": "Thank you. Who is your TV Sales Sales Person?\n\n(Type 'back' to change the branch or 'cancel' to exit)"}},
+                "reply_config": {
+                    "expected_type": "text",
+                    "save_to_variable": "install_sales_person",
+                    "validation_regex": "^.{3,}"
+                },
+                "fallback_config": {
+                    "action": "re_prompt", "max_retries": 2,
+                    "re_prompt_message_text": "Please enter a valid name (at least 3 characters)."
+                }
             },
             "transitions": [
-                {"to_step": "ask_client_name", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_sales_person"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_branch", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_client_name", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_sales_person"}}
             ]
         },
         {
             "name": "ask_client_name",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the Client Name as it appears on the invoice?"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "install_full_name"}
+                "message_config": {"message_type": "text", "text": {"body": "What is the Client Name as it appears on the invoice?\n\n(Type 'back' to change the sales person or 'cancel' to exit)"}},
+                "reply_config": {
+                    "expected_type": "text",
+                    "save_to_variable": "install_full_name",
+                    "validation_regex": "^.{3,}"
+                },
+                "fallback_config": {
+                    "action": "re_prompt", "max_retries": 2,
+                    "re_prompt_message_text": "Please enter a valid name (at least 3 characters)."
+                }
             },
             "transitions": [
-                {"to_step": "ask_client_phone", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_sales_person", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_client_phone", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}
             ]
         },
         {
             "name": "ask_client_phone",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the Client's contact number?"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "install_phone"}
+                "message_config": {"message_type": "text", "text": {"body": "What is the Client's contact number?\n\n(Type 'back' to change the client name or 'cancel' to exit)"}},
+                "reply_config": {
+                    "expected_type": "text",
+                    "save_to_variable": "install_phone",
+                    "validation_regex": "^\\+?[1-9]\\d{8,14}$"
+                },
+                "fallback_config": {
+                    "action": "re_prompt", "max_retries": 2,
+                    "re_prompt_message_text": "That doesn't look like a valid phone number. Please try again, including the country code (e.g., +263...)."
+                }
             },
             "transitions": [
-                {"to_step": "ask_alt_contact_name", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_phone"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_client_name", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_alt_contact_name", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_phone"}}
             ]
         },
         {
             "name": "ask_alt_contact_name",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the Alternative Contact's Name? (You can type 'N/A' if not applicable)"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is the Alternative Contact's Name? (You can type 'N/A' if not applicable)\n\n(Type 'back' to change the client number or 'cancel' to exit)"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "install_alt_name"}
             },
             "transitions": [
-                {"to_step": "ask_alt_contact_phone", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_alt_name"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_client_phone", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_alt_contact_phone", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_alt_name"}}
             ]
         },
         {
             "name": "ask_alt_contact_phone",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the Alternative Contact's Number? (You can type 'N/A' if not applicable)"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "install_alt_phone"}
+                "message_config": {"message_type": "text", "text": {"body": "What is the Alternative Contact's Number? (You can type 'N/A' if not applicable)\n\n(Type 'back' to change the alt. name or 'cancel' to exit)"}},
+                "reply_config": {
+                    "expected_type": "text",
+                    "save_to_variable": "install_alt_phone",
+                    "validation_regex": "^(?i)(N/A|\\+?[1-9]\\d{8,14})$"
+                },
+                "fallback_config": {
+                    "action": "re_prompt", "max_retries": 2,
+                    "re_prompt_message_text": "That doesn't look like a valid phone number. Please enter a valid number (e.g., +263...) or 'N/A'."
+                }
             },
             "transitions": [
-                {"to_step": "ask_install_date", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_alt_phone"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_alt_contact_name", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_install_date", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_alt_phone"}}
             ]
         },
         {
             "name": "ask_install_date",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is your preferred installation date?\n\n(Please note: We conduct installations within 48 hours of system delivery and this date is for confirmation purposes.)"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "install_datetime"}
+                "message_config": {"message_type": "text", "text": {"body": "What is your preferred installation date?\n\n(Please note: We conduct installations within 48 hours of system delivery and this date is for confirmation purposes.)\n\n(Type 'back' to change the alt. number or 'cancel' to exit)"}},
+                "reply_config": {
+                    "expected_type": "text",
+                    "save_to_variable": "install_datetime",
+                    "validation_regex": "^.{4,}"
+                },
+                "fallback_config": {
+                    "action": "re_prompt", "max_retries": 2,
+                    "re_prompt_message_text": "Please provide a valid date (e.g., 'Tomorrow', '25 December')."
+                }
             },
             "transitions": [
-                {"to_step": "ask_availability", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_datetime"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_alt_contact_phone", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_availability", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_datetime"}}
             ]
         },
         {
@@ -185,7 +243,9 @@ SOLAR_INSTALLATION_FLOW = {
                         "action": {
                             "buttons": [
                                 {"type": "reply", "reply": {"id": "morning", "title": "Morning"}},
-                                {"type": "reply", "reply": {"id": "afternoon", "title": "Afternoon"}}
+                                {"type": "reply", "reply": {"id": "afternoon", "title": "Afternoon"}},
+                                {"type": "reply", "reply": {"id": "go_back", "title": "Go Back"}},
+                                {"type": "reply", "reply": {"id": "cancel_install", "title": "Cancel"}}
                             ]
                         }
                     }
@@ -193,29 +253,43 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_availability"}
             },
             "transitions": [
-                {"to_step": "ask_install_address", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_availability"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "cancel_install"}},
+                {"to_step": "ask_install_date", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
+                {"to_step": "ask_install_address", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
             "name": "ask_install_address",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thank you. What is the full installation address?"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "install_address"}
+                "message_config": {"message_type": "text", "text": {"body": "Thank you. What is the full installation address?\n\n(Type 'back' to change the availability or 'cancel' to exit)"}},
+                "reply_config": {
+                    "expected_type": "text",
+                    "save_to_variable": "install_address",
+                    "validation_regex": "^.{10,}"
+                },
+                "fallback_config": {
+                    "action": "re_prompt", "max_retries": 2,
+                    "re_prompt_message_text": "Please provide a more detailed address (at least 10 characters)."
+                }
             },
             "transitions": [
-                {"to_step": "ask_location_pin", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_address"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_availability", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_location_pin", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_address"}}
             ]
         },
         {
             "name": "ask_location_pin",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Please share your location pin for accurate directions."}},
+                "message_config": {"message_type": "text", "text": {"body": "Please share your location pin for accurate directions.\n\n(Type 'back' to change the address or 'cancel' to exit)"}},
                 "reply_config": {"expected_type": "location", "save_to_variable": "install_location_pin"}
             },
             "transitions": [
-                {"to_step": "confirm_installation_request", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_phone"}}
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_install_address", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "confirm_installation_request", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
             ]
         },
         {
