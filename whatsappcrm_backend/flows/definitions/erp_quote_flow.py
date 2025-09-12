@@ -42,10 +42,11 @@ ERP_QUOTE_FLOW = {
                 "actions_to_run": [{
                     "action_type": "query_model",
                     "app_label": "products_and_services",
-                    "model_name": "SoftwareModule",
+                    "model_name": "Product",
                     "variable_name": "available_modules",
                     "filters_template": {
-                        "product__sku": "HAVANO-ERP", # Assumes a known SKU for the main product
+                        "product_type": "module",
+                        "parent_product__sku": "HAVANO-ERP", # Assumes a known SKU for the main product
                         "is_active": True,
                         "sku__not_in": "{{ selected_module_skus }}"
                     },
@@ -158,11 +159,12 @@ ERP_QUOTE_FLOW = {
                 "actions_to_run": [{
                     "action_type": "query_model",
                     "app_label": "products_and_services",
-                    "model_name": "Device",
+                    "model_name": "Product",
                     "variable_name": "available_devices",
                     "filters_template": {
                         "is_active": True,
-                        "compatible_modules__sku__in": "{{ selected_module_skus }}"
+                        "product_type": "hardware",
+                        "compatible_products__sku__in": "{{ selected_module_skus }}"
                     },
                     "distinct": True, # Ensure devices are listed only once
                     "order_by": ["name"]
@@ -205,8 +207,7 @@ ERP_QUOTE_FLOW = {
                     "params_template": {
                         "name": "New HavanoERP Inquiry from {{ contact.name }}",
                         "stage": "quoting",
-                        "software_product_sku": "HAVANO-ERP",
-                        "software_module_skus": "{{ selected_module_skus }}",
+                        "line_item_skus": "{{ selected_module_skus }}",
                         "save_opportunity_id_to": "created_opportunity_id"
                     }
                 }, {
