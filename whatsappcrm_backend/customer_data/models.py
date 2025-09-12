@@ -351,12 +351,25 @@ class InstallationRequest(models.Model):
     order_number = models.CharField(_("Order Number"), max_length=100, blank=True, null=True, db_index=True)
     assessment_number = models.CharField(_("Assessment Number"), max_length=100, blank=True, null=True, db_index=True)
     full_name = models.CharField(_("Contact Full Name"), max_length=255)
+
+    # New fields from request
+    branch = models.CharField(_("Branch"), max_length=100, blank=True, null=True)
+    sales_person_name = models.CharField(_("TV Sales Sales Person Name"), max_length=255, blank=True, null=True)
+
+    full_name = models.CharField(_("Client Name As on Invoice"), max_length=255)
     address = models.TextField(_("Installation Address"))
     system_size = models.CharField(_("System Size (e.g., 5kVA)"), max_length=100)
+    # system_size is removed as per new requirements.
+    # system_size = models.CharField(_("System Size (e.g., 5kVA)"), max_length=100)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     preferred_datetime = models.CharField(_("Preferred Date/Time"), max_length=255)
     contact_phone = models.CharField(_("Contact Phone"), max_length=20)
+    preferred_datetime = models.CharField(_("Preferred Installation Date"), max_length=255)
+    availability = models.CharField(_("Availability"), max_length=50, blank=True, null=True, help_text=_("e.g., Morning or Afternoon"))
+    contact_phone = models.CharField(_("Client Contact Number"), max_length=20)
+    alternative_contact_name = models.CharField(_("Client Alternative Contact Name"), max_length=255, blank=True, null=True)
+    alternative_contact_number = models.CharField(_("Client Alternative Contact Number"), max_length=20, blank=True, null=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
