@@ -5,8 +5,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, List
 from .services import flow_action_registry
 from conversations.models import Contact
-from customer_data.models import CustomerProfile, Opportunity, OrderItem
-from products_and_services.models import Product
+from customer_data.models import CustomerProfile, Order, OrderItem
+from products_and_services.models import Product # Assuming this is the new generic product model
 
 logger = logging.getLogger(__name__)
 
@@ -41,46 +41,46 @@ def update_lead_score(contact: Contact, context: Dict[str, Any], params: Dict[st
     
     return [] # This action does not return any messages to the user
 
-def create_opportunity_from_context(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+def create_order_from_context(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Creates an Opportunity record based on data collected in the flow context.
+    Creates an Order record based on data collected in the flow context.
 
     Params expected from flow config:
     - product_id_context_var (str): The name of the context variable holding the product ID.
-    - opportunity_name_template (str): A Jinja2 template for the opportunity name.
+    - order_name_template (str): A Jinja2 template for the order name.
     - amount_context_var (str): The name of the context variable holding the deal amount.
     - stage (str): The initial stage for the opportunity (e.g., 'qualification').
     """
     product_id_var = params.get('product_id_context_var', 'selected_product_id')
-    name_template = params.get('opportunity_name_template', 'New Opportunity for {{ contact.name }}')
+    name_template = params.get('order_name_template', 'New Order for {{ contact.name }}')
     amount_var = params.get('amount_context_var', 'selected_product_details.price')
-    initial_stage = params.get('stage', Opportunity.Stage.QUALIFICATION)
+    initial_stage = params.get('stage', Order.Stage.QUALIFICATION)
 
     # Import locally to prevent circular dependency issues
     from .services import _get_value_from_context_or_contact, _resolve_value
     
     product_id = _get_value_from_context_or_contact(product_id_var, context, contact)
-    opportunity_name = _resolve_value(name_template, context, contact)
+    order_name = _resolve_value(name_template, context, contact)
     amount = _get_value_from_context_or_contact(amount_var, context, contact)
 
     if not product_id:
-        logger.warning(f"Could not create opportunity for contact {contact.id}: Product ID not found in context variable '{product_id_var}'.")
+        logger.warning(f"Could not create order for contact {contact.id}: Product ID not found in context variable '{product_id_var}'.")
         return []
 
     try:
         # Use the new generic Product model
         product = Product.objects.get(pk=product_id)
     except Product.DoesNotExist:
-        logger.error(f"Could not create opportunity for contact {contact.id}: Product with ID {product_id} does not exist.")
+        logger.error(f"Could not create order for contact {contact.id}: Product with ID {product_id} does not exist.")
         return []
 
     customer_profile, created = CustomerProfile.objects.get_or_create(contact=contact)
     if created:
-        logger.info(f"Created CustomerProfile for contact {contact.id} while creating opportunity.")
+        logger.info(f"Created CustomerProfile for contact {contact.id} while creating order.")
 
-    opportunity, opp_created = Opportunity.objects.get_or_create(
+    order, order_created = Order.objects.get_or_create(
         customer=customer_profile,
-        name=opportunity_name, # Use the resolved name
+        name=order_name, # Use the resolved name
         defaults={
             'stage': initial_stage,
             'amount': amount or product.price, # Use product price as a fallback
@@ -88,52 +88,52 @@ def create_opportunity_from_context(contact: Contact, context: Dict[str, Any], p
         }
     )
 
-    if opp_created:
+    if order_created:
         OrderItem.objects.create(
-            opportunity=opportunity,
+            order=order,
             product=product,
             quantity=1, # Assume quantity is 1 for this simpler action
             unit_price=product.price
         )
-        logger.info(f"Created new opportunity '{opportunity.name}' (ID: {opportunity.id}) and OrderItem for contact {contact.id}.")
-        context['created_opportunity_id'] = str(opportunity.id) # Save ID back to context
+        logger.info(f"Created new order '{order.name}' (ID: {order.id}) and OrderItem for contact {contact.id}.")
+        context['created_order_id'] = str(order.id) # Save ID back to context
 
     return [] # This action does not return any messages to the user
 
-def create_opportunity(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Custom flow action to create or update an Opportunity in the CRM.
-    This action creates an Opportunity and a corresponding OrderItem.
+    Custom flow action to create or update an Order in the CRM.
+    This action creates an Order and a corresponding OrderItem.
 
     Expected params from the flow step's config:
-    - opportunity_name or opportunity_name_template (str): The resolved name for the opportunity.
-    - amount (str or float): The estimated value of the opportunity.
+    - order_name or order_name_template (str): The resolved name for the order.
+    - amount (str or float): The estimated value of the order.
     - product_sku (str): The SKU of the main product for this opportunity.
     - quantity (int, optional): The quantity of the product. Defaults to 1.
     - stage (str, optional): The initial stage for the opportunity (e.g., 'qualification'). Defaults to 'qualification'.
-    - save_opportunity_id_to (str, optional): Context variable to save the new opportunity's ID to.
+    - save_order_id_to (str, optional): Context variable to save the new order's ID to.
     """
     actions_to_perform = []
     try:
         customer_profile = getattr(contact, 'customer_profile', None)
         if not customer_profile:
-            logger.warning(f"Cannot create opportunity for contact {contact.id}: CustomerProfile does not exist.")
+            logger.warning(f"Cannot create order for contact {contact.id}: CustomerProfile does not exist.")
             return actions_to_perform
 
         # Get required parameters from the action config (already resolved by the flow service)
-        name = params.get('opportunity_name') or params.get('opportunity_name_template')
+        name = params.get('order_name') or params.get('order_name_template')
         amount_str = params.get('amount')
         quantity = int(params.get('quantity', 1))
         product_sku = params.get('product_sku')
-        stage = params.get('stage', Opportunity.Stage.QUALIFICATION)
+        stage = params.get('stage', Order.Stage.QUALIFICATION)
 
         if not all([name, product_sku]):
-            logger.error(f"Action 'create_opportunity' for contact {contact.id} is missing required params (opportunity_name, product_sku). Params received: {params}")
+            logger.error(f"Action 'create_order' for contact {contact.id} is missing required params (order_name, product_sku). Params received: {params}")
             return actions_to_perform
 
         product = Product.objects.filter(sku=product_sku).first()
         if not product:
-            logger.error(f"Could not create opportunity for contact {contact.id}: Product with SKU {product_sku} does not exist.")
+            logger.error(f"Could not create order for contact {contact.id}: Product with SKU {product_sku} does not exist.")
             return actions_to_perform
 
         # Calculate amount from product price and quantity if not provided directly
@@ -141,38 +141,38 @@ def create_opportunity(contact: Contact, context: Dict[str, Any], params: Dict[s
             try:
                 amount = Decimal(amount_str)
             except (InvalidOperation, TypeError):
-                logger.error(f"Action 'create_opportunity' for contact {contact.id} received an invalid amount: '{amount_str}'. Falling back to product price.")
+                logger.error(f"Action 'create_order' for contact {contact.id} received an invalid amount: '{amount_str}'. Falling back to product price.")
                 amount = product.price * quantity
         else:
             amount = product.price * quantity
 
         # Ensure the final name includes customer info for uniqueness if it's a generic name
-        final_opportunity_name = f"{name} - {customer_profile.company or contact.name or contact.whatsapp_id}"
+        final_order_name = f"{name} - {customer_profile.company or contact.name or contact.whatsapp_id}"
 
-        opportunity, created = Opportunity.objects.get_or_create(
-            customer=customer_profile, name=final_opportunity_name,
+        order, created = Order.objects.get_or_create(
+            customer=customer_profile, name=final_order_name,
             defaults={'stage': stage, 'amount': amount, 'assigned_agent': customer_profile.assigned_agent}
         )
 
         if created:
             OrderItem.objects.create(
-                opportunity=opportunity,
+                order=order,
                 product=product,
                 quantity=quantity,
                 unit_price=product.price
             )
-            logger.info(f"Created new Opportunity (ID: {opportunity.id}) for customer {customer_profile.pk} via 'create_opportunity' action.")
+            logger.info(f"Created new Order (ID: {order.id}) for customer {customer_profile.pk} via 'create_order' action.")
         else:
-            logger.info(f"Opportunity (ID: {opportunity.id}) with name '{final_opportunity_name}' already existed for customer {customer_profile.pk}. Not creating a new one.")
+            logger.info(f"Order (ID: {order.id}) with name '{final_order_name}' already existed for customer {customer_profile.pk}. Not creating a new one.")
 
-        if save_to_var := params.get('save_opportunity_id_to'):
-            context[save_to_var] = str(opportunity.id)
+        if save_to_var := params.get('save_order_id_to'):
+            context[save_to_var] = str(order.id)
     except Exception as e:
-        logger.error(f"Error in 'create_opportunity' action for contact {contact.id}: {e}", exc_info=True)
+        logger.error(f"Error in 'create_order' action for contact {contact.id}: {e}", exc_info=True)
     
     return actions_to_perform
 
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
-flow_action_registry.register('create_opportunity_from_context', create_opportunity_from_context)
-flow_action_registry.register('create_opportunity', create_opportunity)
+flow_action_registry.register('create_order_from_context', create_order_from_context)
+flow_action_registry.register('create_order', create_order)
