@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomerProfile, Interaction, Opportunity, OrderItem, InstallationRequest, SiteAssessmentRequest
+from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest
 
 class InteractionInline(admin.TabularInline):
     """
@@ -85,31 +85,33 @@ class InteractionAdmin(admin.ModelAdmin):
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
+    fk_name = "order"
     extra = 1  # Show 1 empty slot for a new OrderItem
     autocomplete_fields = ['product']
 
-@admin.register(Opportunity)
-class OpportunityAdmin(admin.ModelAdmin):
-    list_display = ('name', 'customer', 'stage', 'amount', 'currency', 'assigned_agent', 'expected_close_date')
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ('order_number', 'name', 'customer', 'stage', 'amount', 'currency', 'assigned_agent', 'created_at')
     list_filter = ('stage', 'assigned_agent', 'currency', 'expected_close_date')
-    search_fields = ('name', 'customer__first_name', 'customer__last_name', 'customer__company')
+    search_fields = ('order_number', 'name', 'customer__first_name', 'customer__last_name', 'customer__company')
     autocomplete_fields = ['customer', 'assigned_agent']
     list_editable = ('stage', 'amount')
     date_hierarchy = 'created_at'
     inlines = [OrderItemInline]
     fieldsets = (
-        (None, {'fields': ('name', 'customer', 'assigned_agent')}),
+        (None, {'fields': ('order_number', 'name', 'customer', 'assigned_agent')}),
         ('Deal Details', {'fields': ('stage', ('amount', 'currency'), 'expected_close_date')}),
+        ('Notes', {'fields': ('notes',)}),
     )
     list_select_related = ('customer', 'assigned_agent')
 
 @admin.register(InstallationRequest)
 class InstallationRequestAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'installation_type', 'status', 'preferred_datetime', 'created_at')
+    list_display = ('full_name', 'installation_type', 'status', 'associated_order', 'preferred_datetime', 'created_at')
     list_filter = ('status', 'installation_type', 'created_at')
-    search_fields = ('full_name', 'order_number', 'assessment_number', 'address', 'contact_phone')
+    search_fields = ('full_name', 'order_number', 'assessment_number', 'address', 'contact_phone', 'associated_order__name', 'associated_order__order_number')
     readonly_fields = ('created_at', 'updated_at')
-    autocomplete_fields = ['customer']
+    autocomplete_fields = ['customer', 'associated_order']
 
 @admin.register(SiteAssessmentRequest)
 class SiteAssessmentRequestAdmin(admin.ModelAdmin):

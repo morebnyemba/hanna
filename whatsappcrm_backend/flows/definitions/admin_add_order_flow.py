@@ -51,6 +51,17 @@ ADMIN_ADD_ORDER_FLOW = {
             ]
         },
         {
+            "name": "ask_order_number",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Customer found. What is the Order Number for this transaction?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "order_number_ref"},
+            },
+            "transitions": [
+                {"to_step": "ask_order_description", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "order_number_ref"}}
+            ]
+        },
+        {
             "name": "ask_order_description",
             "type": "question",
             "config": {
@@ -118,22 +129,23 @@ ADMIN_ADD_ORDER_FLOW = {
                     {
                         "action_type": "create_model_instance",
                         "app_label": "customer_data",
-                        "model_name": "Opportunity",
+                        "model_name": "Order",
                         "fields_template": {
                             "customer_id": "{{ target_customer_profile.0.pk }}",
+                            "order_number": "{{ order_number_ref }}",
                             "name": "{{ order_description }}",
                             "stage": "closed_won", # Assuming admin-added orders are already won
                             "amount": "{{ found_product.0.price * product_quantity }}",
                             "notes": "Order created by admin {{ contact.name }}."
                         },
-                        "save_to_variable": "created_opportunity"
+                        "save_to_variable": "created_order"
                     },
                     {
                         "action_type": "create_model_instance",
                         "app_label": "customer_data",
                         "model_name": "OrderItem",
                         "fields_template": {
-                            "opportunity_id": "{{ created_opportunity.id }}",
+                            "order_id": "{{ created_order.id }}",
                             "product_id": "{{ found_product.0.pk }}",
                             "quantity": "{{ product_quantity }}",
                             "unit_price": "{{ found_product.0.price }}"
@@ -142,7 +154,7 @@ ADMIN_ADD_ORDER_FLOW = {
                 ]
             },
             "transitions": [
-                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "created_opportunity.id"}}
+                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "created_order.id"}}
             ]
         },
         {

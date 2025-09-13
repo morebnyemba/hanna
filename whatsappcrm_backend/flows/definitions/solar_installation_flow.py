@@ -48,10 +48,30 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "verify_order_payment",
             "type": "action",
             "config": {
-                "actions_to_run": [{"action_type": "set_context_variable", "variable_name": "is_paid", "value_template": "yes"}]
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "customer_data",
+                    "model_name": "Order",
+                    "variable_name": "found_order",
+                    "filters_template": {
+                        "order_number__iexact": "{{ order_number }}",
+                        "customer__contact__whatsapp_id": "{{ contact.whatsapp_id }}"
+                    },
+                    "fields_to_return": ["id", "stage"],
+                    "limit": 1
+                }]
             },
             "transitions": [
-                {"to_step": "ask_branch", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "is_paid", "value": "yes"}},
+                {"to_step": "check_order_status", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_order.0"}},
+                {"to_step": "handle_payment_not_found", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "check_order_status",
+            "type": "action",
+            "config": {"actions_to_run": []},
+            "transitions": [
+                {"to_step": "ask_branch", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "found_order.0.stage", "value": "closed_won"}},
                 {"to_step": "handle_payment_not_found", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -336,6 +356,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "model_name": "InstallationRequest",
                         "fields_template": {
                             "customer": "current",
+                            "associated_order_id": "{{ found_order.0.id }}",
                             "installation_type": "{{ installation_type }}",
                             "order_number": "{{ order_number }}",
                             "assessment_number": "{{ assessment_number }}",

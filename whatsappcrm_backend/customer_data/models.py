@@ -204,10 +204,10 @@ class Interaction(models.Model):
         ordering = ['-created_at']
 
 
-class Opportunity(models.Model):
+class Order(models.Model):
     """
-    Represents a potential deal or sale with a customer, linking them to
-    specific products or services from the catalog.
+    Represents a sales order with a customer, linking them to
+    specific products or services via OrderItems.
     """
     class Stage(models.TextChoices):
         PROSPECTING = 'prospecting', _('Prospecting')
@@ -218,11 +218,12 @@ class Opportunity(models.Model):
         CLOSED_LOST = 'closed_lost', _('Closed Lost')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(_("Opportunity Name"), max_length=255, help_text=_("e.g., 'Q3 Website Redesign Project'"))
+    order_number = models.CharField(_("Order Number"), max_length=100, unique=True, blank=True, null=True, help_text=_("Unique order number or reference for this order."))
+    name = models.CharField(_("Order Name"), max_length=255, help_text=_("e.g., '5kVA Solar Kit for Mr. Smith'"))
     customer = models.ForeignKey(
         CustomerProfile,
         on_delete=models.CASCADE,
-        related_name='opportunities'
+        related_name='orders'
     )
     stage = models.CharField(
         _("Stage"),
@@ -240,7 +241,7 @@ class Opportunity(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='opportunities'
+        related_name='orders'
     )
     
     notes = models.TextField(_("Notes"), blank=True, null=True)
@@ -248,20 +249,20 @@ class Opportunity(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} for {self.customer}"
+        return f"Order #{self.order_number or self.id} for {self.customer}"
 
     class Meta:
-        verbose_name = _("Opportunity")
-        verbose_name_plural = _("Opportunities")
+        verbose_name = _("Order")
+        verbose_name_plural = _("Orders")
         ordering = ['-updated_at']
 
 
 class OrderItem(models.Model):
     """
-    Represents a line item within an Opportunity (an order), linking a specific
+    Represents a line item within an Order, linking a specific
     product with a quantity and price.
     """
-    opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE, related_name='items')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(
         'products_and_services.Product', 
         on_delete=models.PROTECT, # Don't allow deleting a product that's in an order
@@ -275,7 +276,7 @@ class OrderItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.quantity} x {self.product.name} for Opportunity {self.opportunity.id}"
+        return f"{self.quantity} x {self.product.name} for Order {self.order.id}"
 
 
 
@@ -302,13 +303,13 @@ class Payment(models.Model):
         related_name='payments',
         help_text=_("The customer who made the payment.")
     )
-    opportunity = models.ForeignKey(
-        'Opportunity',
+    order = models.ForeignKey(
+        'Order',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='payments',
-        help_text=_("The sales opportunity this payment is for.")
+        help_text=_("The sales order this payment is for.")
     )
     amount = models.DecimalField(_("Amount"), max_digits=12, decimal_places=2)
     currency = models.CharField(_("Currency"), max_length=3, default='USD')
@@ -354,6 +355,7 @@ class InstallationRequest(models.Model):
         ('commercial', 'Commercial'),
     ]
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='installation_requests')
+    associated_order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name='installation_requests')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     installation_type = models.CharField(max_length=20, choices=INSTALLATION_TYPES)
     
