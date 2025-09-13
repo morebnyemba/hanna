@@ -18,7 +18,57 @@ ADMIN_ADD_ORDER_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "get_customer_profile", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "customer_whatsapp_id"}}
+                {"to_step": "find_contact", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "customer_whatsapp_id"}}
+            ]
+        },
+        {
+            "name": "find_contact",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "conversations",
+                    "model_name": "Contact",
+                    "variable_name": "target_contact",
+                    "filters_template": {"whatsapp_id": "{{ customer_whatsapp_id }}"},
+                    "fields_to_return": ["pk", "name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "check_if_contact_exists", "priority": 0, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "check_if_contact_exists",
+            "type": "action",
+            "config": {"actions_to_run": []},
+            "transitions": [
+                {"to_step": "get_customer_profile", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "target_contact.0"}},
+                {"to_step": "create_contact", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "create_contact",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {
+                        "action_type": "create_model_instance",
+                        "app_label": "conversations",
+                        "model_name": "Contact",
+                        "fields_template": {"whatsapp_id": "{{ customer_whatsapp_id }}"},
+                        "save_to_variable": "created_contact_instance"
+                    },
+                    {
+                        "action_type": "set_context_variable",
+                        "variable_name": "target_contact",
+                        "value_template": "[{{ created_contact_instance }}]"
+                    }
+                ]
+            },
+            "transitions": [
+                {"to_step": "get_customer_profile", "priority": 0, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -31,7 +81,7 @@ ADMIN_ADD_ORDER_FLOW = {
                         "app_label": "customer_data",
                         "model_name": "CustomerProfile",
                         "variable_name": "target_customer_profile",
-                        "filters_template": {"contact__whatsapp_id": "{{ customer_whatsapp_id }}"},
+                        "filters_template": {"contact_id": "{{ target_contact.0.pk }}"},
                         "fields_to_return": ["pk"],
                         "limit": 1
                     }
@@ -47,14 +97,37 @@ ADMIN_ADD_ORDER_FLOW = {
             "config": {"actions_to_run": []},
             "transitions": [
                 {"to_step": "ask_order_number", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "target_customer_profile.0"}},
-                {"to_step": "handle_no_profile_found", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "create_customer_profile", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "create_customer_profile",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {
+                        "action_type": "create_model_instance",
+                        "app_label": "customer_data",
+                        "model_name": "CustomerProfile",
+                        "fields_template": {"contact_id": "{{ target_contact.0.pk }}"},
+                        "save_to_variable": "created_profile_instance"
+                    },
+                    {
+                        "action_type": "set_context_variable",
+                        "variable_name": "target_customer_profile",
+                        "value_template": "[{{ created_profile_instance }}]"
+                    }
+                ]
+            },
+            "transitions": [
+                {"to_step": "ask_order_number", "priority": 0, "condition_config": {"type": "always_true"}}
             ]
         },
         {
             "name": "ask_order_number",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Customer found. What is the Order Number for this transaction?"}},
+                "message_config": {"message_type": "text", "text": {"body": "Customer profile is ready. What is the Order Number for this transaction?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "order_number_ref"},
             },
             "transitions": [
@@ -65,7 +138,7 @@ ADMIN_ADD_ORDER_FLOW = {
             "name": "ask_order_description",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Customer found. Please provide a short description for this order (e.g., '5kVA Solar Kit for Mr. Smith'). This will be the opportunity name."}},
+                "message_config": {"message_type": "text", "text": {"body": "Please provide a short description for this order (e.g., '5kVA Solar Kit for Mr. Smith'). This will be the order name."}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "order_description"},
             },
             "transitions": [
@@ -164,17 +237,6 @@ ADMIN_ADD_ORDER_FLOW = {
                 "message_config": {
                     "message_type": "text",
                     "text": {"body": "Success! A new order for '{{ order_description }}' has been created for customer {{ customer_whatsapp_id }}."}
-                }
-            },
-            "transitions": []
-        },
-        {
-            "name": "handle_no_profile_found",
-            "type": "end_flow",
-            "config": {
-                "message_config": {
-                    "message_type": "text",
-                    "text": {"body": "Could not find a customer profile for {{ customer_whatsapp_id }}. Please ensure the customer has interacted with the system before, or create their profile manually in the admin panel."}
                 }
             },
             "transitions": []
