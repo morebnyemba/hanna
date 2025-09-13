@@ -203,16 +203,16 @@ ERP_QUOTE_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [{
-                    "action_type": "create_opportunity",
+                    "action_type": "create_order",
                     "params_template": {
-                        "name": "New HavanoERP Inquiry from {{ contact.name }}",
+                        "order_name_template": "New HavanoERP Inquiry from {{ contact.name }}",
                         "stage": "quoting",
                         "line_item_skus": "{{ selected_module_skus }}",
-                        "save_opportunity_id_to": "created_opportunity_id"
+                        "save_order_id_to": "created_order_id"
                     }
                 }, {
                     "action_type": "send_admin_notification",
-                    "message_template": "ACTION REQUIRED: HavanoERP Quote requested by {{ contact.name or contact.whatsapp_id }}.\n\nSelected Modules: {{ selected_module_skus }}\nOpportunity ID: {{ created_opportunity_id }}\n\nPlease prepare and send PDF quote to contact's email."
+                    "message_template": "ACTION REQUIRED: HavanoERP Quote requested by {{ contact.name or contact.whatsapp_id }}.\n\nSelected Modules: {{ selected_module_skus }}\nOrder ID: {{ created_order_id }}\n\nPlease prepare and send PDF quote to contact's email."
                 }]
             },
             "transitions": [{"to_step": "check_email_for_erp_quote", "condition_config": {"type": "always_true"}}]

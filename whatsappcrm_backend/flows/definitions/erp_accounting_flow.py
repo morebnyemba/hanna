@@ -220,21 +220,21 @@ ERP_ACCOUNTING_FLOW = {
                         }
                     },
                     {
-                        "action_type": "create_opportunity",
+                        "action_type": "create_order",
                         "params_template": {
-                            "opportunity_name_template": "ERP Accounting Software Lead",
+                            "order_name_template": "ERP Accounting Software Lead",
                             "amount": 2500.00,
                             "product_sku": "ERP-ACCT-01",
                             "stage": "{% if erp_next_step == 'erp_quote' %}quoting{% else %}qualification{% endif %}",
-                            "save_opportunity_id_to": "created_opportunity_id"
+                            "save_order_id_to": "created_order_id"
                         }
                     },
                     {
                         "action_type": "send_admin_notification",
                         "message_template": (
-                            "{% if erp_next_step == 'erp_quote' %}ACTION REQUIRED: ERP Quote requested by {{ contact.name or contact.whatsapp_id }}.{% else %}New ERP Lead & Opportunity for {{ contact.name or contact.whatsapp_id }}:{% endif %}\n\n"
+                            "{% if erp_next_step == 'erp_quote' %}ACTION REQUIRED: ERP Quote requested by {{ contact.name or contact.whatsapp_id }}.{% else %}New ERP Lead & Order for {{ contact.name or contact.whatsapp_id }}:{% endif %}\n\n"
                             "{{ final_notes }}\n"
-                            "Opportunity ID: {{ created_opportunity_id }}"
+                            "Order ID: {{ created_order_id }}"
                         )
                     }
                 ]

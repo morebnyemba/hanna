@@ -72,7 +72,7 @@ SOLAR_INSTALLATION_FLOW = {
             "config": {"actions_to_run": []},
             "transitions": [
                 {"to_step": "ask_branch", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "found_order.0.stage", "value": "closed_won"}},
-                {"to_step": "handle_payment_not_found", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "handle_order_not_paid", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -80,7 +80,15 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "question",
             "config": {
                 "message_config": {"message_type": "text", "text": {"body": "Understood. For commercial installations, please provide your site assessment number."}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "assessment_number"}
+                "reply_config": {
+                    "expected_type": "text",
+                    "save_to_variable": "assessment_number",
+                    "validation_regex": "^\\d+$"
+                },
+                "fallback_config": {
+                    "action": "re_prompt", "max_retries": 2,
+                    "re_prompt_message_text": "Please enter a valid numeric assessment number."
+                }
             },
             "transitions": [
                 {"to_step": "verify_assessment", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_number"}}
@@ -90,10 +98,21 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "verify_assessment",
             "type": "action",
             "config": {
-                "actions_to_run": [{"action_type": "set_context_variable", "variable_name": "is_assessed", "value_template": "yes"}]
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "customer_data",
+                    "model_name": "SiteAssessmentRequest",
+                    "variable_name": "found_assessment",
+                    "filters_template": {
+                        "id": "{{ assessment_number }}",
+                        "customer__contact__whatsapp_id": "{{ contact.whatsapp_id }}",
+                        "status": "completed"
+                    },
+                    "limit": 1
+                }]
             },
             "transitions": [
-                {"to_step": "ask_branch", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "is_assessed", "value": "yes"}},
+                {"to_step": "ask_branch", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_assessment.0"}},
                 {"to_step": "handle_assessment_not_found", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -419,6 +438,15 @@ SOLAR_INSTALLATION_FLOW = {
             "config": {
                 "pre_handover_message_text": "I couldn't verify the payment for order number '{{ order_number }}'. I'm connecting you with a support agent to assist you.",
                 "notification_details": "Installation Flow: Could not verify payment for order #{{ order_number }}."
+            },
+            "transitions": []
+        },
+        {
+            "name": "handle_order_not_paid",
+            "type": "human_handover",
+            "config": {
+                "pre_handover_message_text": "I found your order '{{ order_number }}', but it looks like the payment is still pending or the order is not yet finalized. I'm connecting you with a support agent who can help you complete it.",
+                "notification_details": "Installation Flow: Order #{{ order_number }} found, but stage is '{{ found_order.0.stage }}', not 'closed_won'."
             },
             "transitions": []
         },

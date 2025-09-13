@@ -247,21 +247,21 @@ PAYROLL_SOFTWARE_FLOW = {
                         }
                     },
                     {
-                        "action_type": "create_opportunity",
+                        "action_type": "create_order",
                         "params_template": {
-                            "opportunity_name_template": "Payroll Software Lead",
+                            "order_name_template": "Payroll Software Lead",
                             "amount": 500.00, # Consider making this dynamic based on the plan
                             "product_sku": "{{ product_sku or 'PAYROLL-SW-01' }}",
                             "stage": "{% if payroll_next_step == 'request_quote' %}quoting{% else %}qualification{% endif %}",
-                            "save_opportunity_id_to": "created_opportunity_id"
+                            "save_order_id_to": "created_order_id"
                         }
                     },
                     {
                         "action_type": "send_admin_notification",
                         "message_template": (
-                            "{% if payroll_next_step == 'request_quote' %}ACTION REQUIRED: Payroll Quote requested by {{ contact.name or contact.whatsapp_id }}.{% else %}New Payroll Lead & Opportunity created for {{ contact.name or contact.whatsapp_id }}:{% endif %}\n\n"
+                            "{% if payroll_next_step == 'request_quote' %}ACTION REQUIRED: Payroll Quote requested by {{ contact.name or contact.whatsapp_id }}.{% else %}New Payroll Lead & Order created for {{ contact.name or contact.whatsapp_id }}:{% endif %}\n\n"
                             "{{ final_notes }}\n"
-                            "Opportunity ID: {{ created_opportunity_id }}"
+                            "Order ID: {{ created_order_id }}"
                         )
                     }
                 ]

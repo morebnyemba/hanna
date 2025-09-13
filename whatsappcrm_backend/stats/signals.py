@@ -6,7 +6,7 @@ import logging
 
 from conversations.models import Contact, Message
 from flows.models import Flow
-from customer_data.models import Opportunity
+from customer_data.models import Order
 from .tasks import (
     update_dashboard_stats, 
     broadcast_activity_log, 
@@ -79,22 +79,22 @@ def on_flow_change(sender, instance, created, **kwargs):
         }
         broadcast_activity_log.delay(activity_payload)
 
-@receiver(post_save, sender=Opportunity)
-def on_opportunity_change(sender, instance, created, **kwargs):
+@receiver(post_save, sender=Order)
+def on_order_change(sender, instance, created, **kwargs):
     """
-    When an opportunity is created or its stage changes, update dashboard stats
+    When an order is created or its stage changes, update dashboard stats
     and broadcast an activity log entry.
     """
-    logger.debug(f"Opportunity changed {instance.id}, created={created}: Scheduling updates.")
+    logger.debug(f"Order changed {instance.id}, created={created}: Scheduling updates.")
     update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
 
     if created:
         activity_payload = {
-            "id": f"opportunity_new_{instance.id}",
-            "text": f"New Opportunity: '{instance.name}' for {instance.customer}",
+            "id": f"order_new_{instance.id}",
+            "text": f"New Order: '{instance.name}' for {instance.customer}",
             "timestamp": instance.created_at.isoformat(),
-            "iconName": "FiDollarSign",
-            "iconColor": "text-green-500"
+            "iconName": "FiShoppingCart",
+            "iconColor": "text-blue-500"
         }
         broadcast_activity_log.delay(activity_payload)
 

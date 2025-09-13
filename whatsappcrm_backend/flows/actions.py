@@ -109,7 +109,8 @@ def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, An
     - order_name or order_name_template (str): The resolved name for the order.
     - amount (str or float): The estimated value of the order.
     - product_sku (str): The SKU of the main product for this opportunity.
-    - quantity (int, optional): The quantity of the product. Defaults to 1.
+    - line_item_skus (list): A list of SKUs for order items. If provided, `product_sku` is added to this list.
+    - quantity (int, optional): The quantity of the product. Defaults to 1. (Used if only product_sku is provided)
     - stage (str, optional): The initial stage for the opportunity (e.g., 'qualification'). Defaults to 'qualification'.
     - save_order_id_to (str, optional): Context variable to save the new order's ID to.
     """
@@ -123,44 +124,52 @@ def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, An
         # Get required parameters from the action config (already resolved by the flow service)
         name = params.get('order_name') or params.get('order_name_template')
         amount_str = params.get('amount')
-        quantity = int(params.get('quantity', 1))
         product_sku = params.get('product_sku')
+        line_item_skus = params.get('line_item_skus', [])
         stage = params.get('stage', Order.Stage.QUALIFICATION)
 
-        if not all([name, product_sku]):
-            logger.error(f"Action 'create_order' for contact {contact.id} is missing required params (order_name, product_sku). Params received: {params}")
+        all_skus = []
+        if product_sku:
+            all_skus.append(product_sku)
+        if isinstance(line_item_skus, list):
+            all_skus.extend(line_item_skus)
+        
+        unique_skus = list(set(all_skus))
+
+        if not name or not unique_skus:
+            logger.error(f"Action 'create_order' for contact {contact.id} is missing required params (order_name, and at least one of product_sku/line_item_skus). Params: {params}")
             return actions_to_perform
 
-        product = Product.objects.filter(sku=product_sku).first()
-        if not product:
-            logger.error(f"Could not create order for contact {contact.id}: Product with SKU {product_sku} does not exist.")
-            return actions_to_perform
-
-        # Calculate amount from product price and quantity if not provided directly
-        if amount_str:
-            try:
-                amount = Decimal(amount_str)
-            except (InvalidOperation, TypeError):
-                logger.error(f"Action 'create_order' for contact {contact.id} received an invalid amount: '{amount_str}'. Falling back to product price.")
-                amount = product.price * quantity
+        # Fetch all products at once
+        products = Product.objects.filter(sku__in=unique_skus)
+        product_map = {p.sku: p for p in products}
+        
+        total_amount = Decimal('0.0')
+        if not amount_str: # Calculate amount from products if not provided
+            for sku in unique_skus:
+                if sku in product_map:
+                    total_amount += product_map[sku].price
         else:
-            amount = product.price * quantity
+            try:
+                total_amount = Decimal(amount_str)
+            except (InvalidOperation, TypeError):
+                logger.error(f"Action 'create_order' for contact {contact.id} received an invalid amount: '{amount_str}'. Defaulting to calculated amount.")
+                total_amount = sum(p.price for p in products)
 
         # Ensure the final name includes customer info for uniqueness if it's a generic name
         final_order_name = f"{name} - {customer_profile.company or contact.name or contact.whatsapp_id}"
 
         order, created = Order.objects.get_or_create(
             customer=customer_profile, name=final_order_name,
-            defaults={'stage': stage, 'amount': amount, 'assigned_agent': customer_profile.assigned_agent}
+            defaults={'stage': stage, 'amount': total_amount, 'assigned_agent': customer_profile.assigned_agent}
         )
 
         if created:
-            OrderItem.objects.create(
-                order=order,
-                product=product,
-                quantity=quantity,
-                unit_price=product.price
-            )
+            for sku in unique_skus:
+                if sku in product_map:
+                    OrderItem.objects.create(order=order, product=product_map[sku], quantity=1, unit_price=product_map[sku].price)
+                else:
+                    logger.warning(f"SKU {sku} not found while creating order items for order {order.id}")
             logger.info(f"Created new Order (ID: {order.id}) for customer {customer_profile.pk} via 'create_order' action.")
         else:
             logger.info(f"Order (ID: {order.id}) with name '{final_order_name}' already existed for customer {customer_profile.pk}. Not creating a new one.")
