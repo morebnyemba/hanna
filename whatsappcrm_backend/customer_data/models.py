@@ -374,6 +374,11 @@ class InstallationRequest(models.Model):
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     preferred_datetime = models.CharField(_("Preferred Date/Time"), max_length=255)
     contact_phone = models.CharField(_("Contact Phone"), max_length=20)
+    branch = models.CharField(_("Branch"), max_length=100, blank=True, null=True)
+    sales_person_name = models.CharField(_("Sales Person Name"), max_length=255, blank=True, null=True)
+    availability = models.CharField(_("Availability"), max_length=50, blank=True, null=True)
+    alternative_contact_name = models.CharField(_("Alternative Contact Name"), max_length=255, blank=True, null=True)
+    alternative_contact_number = models.CharField(_("Alternative Contact Number"), max_length=20, blank=True, null=True)
     notes = models.TextField(_("Installation Notes"), blank=True, null=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
