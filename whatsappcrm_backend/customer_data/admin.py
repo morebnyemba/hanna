@@ -92,10 +92,11 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ('order_number', 'name', 'customer', 'stage', 'amount', 'currency', 'assigned_agent', 'created_at')
-    list_filter = ('stage', 'assigned_agent', 'currency', 'expected_close_date')
+    list_filter = ('stage', 'assigned_agent', 'currency', 'created_at')
     search_fields = ('order_number', 'name', 'customer__first_name', 'customer__last_name', 'customer__company')
     autocomplete_fields = ['customer', 'assigned_agent']
-    list_editable = ('stage', 'amount')
+    list_editable = ('stage',)
+    readonly_fields = ('amount',)
     date_hierarchy = 'created_at'
     inlines = [OrderItemInline]
     fieldsets = (

@@ -45,11 +45,27 @@ ADMIN_ADD_ORDER_FLOW = {
             "config": {"actions_to_run": []},
             "transitions": [
                 {"to_step": "get_customer_profile", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "target_contact.0"}},
-                {"to_step": "create_contact", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_new_contact_name", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "create_contact",
+            "name": "ask_new_contact_name",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "This is a new customer. What is their full name?"}},
+                "reply_config": {
+                    "expected_type": "text",
+                    "save_to_variable": "new_customer_full_name",
+                    "validation_regex": "^.{3,}"
+                },
+                "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid name."}
+            },
+            "transitions": [
+                {"to_step": "create_contact_and_profile", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "new_customer_full_name"}}
+            ]
+        },
+        {
+            "name": "create_contact_and_profile",
             "type": "action",
             "config": {
                 "actions_to_run": [
@@ -57,18 +73,32 @@ ADMIN_ADD_ORDER_FLOW = {
                         "action_type": "create_model_instance",
                         "app_label": "conversations",
                         "model_name": "Contact",
-                        "fields_template": {"whatsapp_id": "{{ customer_whatsapp_id }}"},
+                        "fields_template": {
+                            "whatsapp_id": "{{ customer_whatsapp_id }}",
+                            "name": "{{ new_customer_full_name }}"
+                        },
                         "save_to_variable": "created_contact_instance"
                     },
                     {
+                        "action_type": "create_model_instance",
+                        "app_label": "customer_data",
+                        "model_name": "CustomerProfile",
+                        "fields_template": {
+                            "contact_id": "{{ created_contact_instance.pk }}",
+                            "first_name": "{{ new_customer_full_name.split(' ')[0] if ' ' in new_customer_full_name else new_customer_full_name }}",
+                            "last_name": "{{ ' '.join(new_customer_full_name.split(' ')[1:]) if ' ' in new_customer_full_name else '' }}"
+                        },
+                        "save_to_variable": "created_profile_instance"
+                    },
+                    {
                         "action_type": "set_context_variable",
-                        "variable_name": "target_contact",
-                        "value_template": "[{{ created_contact_instance }}]"
+                        "variable_name": "target_customer_profile",
+                        "value_template": "[{{ created_profile_instance }}]"
                     }
                 ]
             },
             "transitions": [
-                {"to_step": "get_customer_profile", "priority": 0, "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_order_number", "priority": 0, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -142,22 +172,46 @@ ADMIN_ADD_ORDER_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "order_description"},
             },
             "transitions": [
-                {"to_step": "ask_product_sku", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "order_description"}}
+                {"to_step": "create_initial_order", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "order_description"}}
             ]
         },
         {
-            "name": "ask_product_sku",
+            "name": "create_initial_order",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "create_model_instance",
+                    "app_label": "customer_data",
+                    "model_name": "Order",
+                    "fields_template": {
+                        "customer_id": "{{ target_customer_profile.0.pk }}",
+                        "order_number": "{{ order_number_ref }}",
+                        "name": "{{ order_description }}",
+                        "stage": "closed_won",
+                        "amount": "0.00",
+                        "notes": "Order created by admin {{ contact.name }}. Items added via flow."
+                    },
+                    "save_to_variable": "created_order"
+                }]
+            },
+            "transitions": [
+                {"to_step": "ask_product_sku_loop", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "created_order.id"}}
+            ]
+        },
+        {
+            "name": "ask_product_sku_loop",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the SKU of the main product for this order?"}},
+                "message_config": {"message_type": "text", "text": {"body": "Order '{{ order_description }}' created. Let's add products.\n\nEnter the SKU for the first product, or type 'done' to finish."}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "product_sku"},
             },
             "transitions": [
-                {"to_step": "query_product", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "product_sku"}}
+                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "query_product",
+            "name": "query_product_loop",
             "type": "action",
             "config": {
                 "actions_to_run": [{
@@ -166,68 +220,76 @@ ADMIN_ADD_ORDER_FLOW = {
                     "model_name": "Product",
                     "variable_name": "found_product",
                     "filters_template": {"sku__iexact": "{{ product_sku }}"},
-                    "fields_to_return": ["pk", "price"],
+                    "fields_to_return": ["pk", "price", "name"],
                     "limit": 1
                 }]
             },
             "transitions": [
-                {"to_step": "check_if_product_exists", "priority": 0, "condition_config": {"type": "always_true"}}
+                {"to_step": "check_if_product_exists_loop", "priority": 0, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "check_if_product_exists",
+            "name": "check_if_product_exists_loop",
             "type": "action",
             "config": {"actions_to_run": []},
             "transitions": [
-                {"to_step": "ask_quantity", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_product.0"}},
-                {"to_step": "handle_no_product_found", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_quantity_loop", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_product.0"}},
+                {"to_step": "handle_no_product_found_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "ask_quantity",
+            "name": "handle_no_product_found_loop",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Product found. How many units?"}},
+                "message_config": {"message_type": "text", "text": {"body": "Product with SKU '{{ product_sku }}' not found. Please enter another SKU, or type 'done' to finish."}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "product_sku"},
+            },
+            "transitions": [
+                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "ask_quantity_loop",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Product '{{ found_product.0.name }}' found. How many units?"}},
                 "reply_config": {"expected_type": "number", "save_to_variable": "product_quantity"},
             },
             "transitions": [
-                {"to_step": "create_opportunity_and_item", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "product_quantity"}}
+                {"to_step": "create_order_item_loop", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "product_quantity"}}
             ]
         },
         {
-            "name": "create_opportunity_and_item",
+            "name": "create_order_item_loop",
             "type": "action",
             "config": {
-                "actions_to_run": [
-                    {
-                        "action_type": "create_model_instance",
-                        "app_label": "customer_data",
-                        "model_name": "Order",
-                        "fields_template": {
-                            "customer_id": "{{ target_customer_profile.0.pk }}",
-                            "order_number": "{{ order_number_ref }}",
-                            "name": "{{ order_description }}",
-                            "stage": "closed_won", # Assuming admin-added orders are already won
-                            "amount": "{{ found_product.0.price * product_quantity }}",
-                            "notes": "Order created by admin {{ contact.name }}."
-                        },
-                        "save_to_variable": "created_order"
-                    },
-                    {
-                        "action_type": "create_model_instance",
-                        "app_label": "customer_data",
-                        "model_name": "OrderItem",
-                        "fields_template": {
-                            "order_id": "{{ created_order.id }}",
-                            "product_id": "{{ found_product.0.pk }}",
-                            "quantity": "{{ product_quantity }}",
-                            "unit_price": "{{ found_product.0.price }}"
-                        }
+                "actions_to_run": [{
+                    "action_type": "create_model_instance",
+                    "app_label": "customer_data",
+                    "model_name": "OrderItem",
+                    "fields_template": {
+                        "order_id": "{{ created_order.id }}",
+                        "product_id": "{{ found_product.0.pk }}",
+                        "quantity": "{{ product_quantity }}",
+                        "unit_price": "{{ found_product.0.price }}"
                     }
-                ]
+                }]
             },
             "transitions": [
-                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "created_order.id"}}
+                {"to_step": "ask_next_sku_loop", "priority": 0, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "ask_next_sku_loop",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Added {{ product_quantity }} x {{ found_product.0.name }}. Enter the next product SKU, or type 'done' to finish."}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "product_sku"},
+            },
+            "transitions": [
+                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -236,18 +298,7 @@ ADMIN_ADD_ORDER_FLOW = {
             "config": {
                 "message_config": {
                     "message_type": "text",
-                    "text": {"body": "Success! A new order for '{{ order_description }}' has been created for customer {{ customer_whatsapp_id }}."}
-                }
-            },
-            "transitions": []
-        },
-        {
-            "name": "handle_no_product_found",
-            "type": "end_flow",
-            "config": {
-                "message_config": {
-                    "message_type": "text",
-                    "text": {"body": "Could not find a product with SKU '{{ product_sku }}'. Please check the SKU and try again."}
+                    "text": {"body": "Success! Order '{{ order_description }}' has been created for customer {{ customer_whatsapp_id }}. You can view it in the admin panel."}
                 }
             },
             "transitions": []
