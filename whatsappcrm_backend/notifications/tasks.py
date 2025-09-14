@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from datetime import timedelta
+from django.conf import settings
 
 from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task
@@ -38,37 +39,54 @@ def dispatch_notification_task(self, notification_id: int):
         notification.save(update_fields=['status', 'error_message'])
         return
 
-    # --- Safety Check ---
-    # The main filtering happens in services.py before queuing. This is a final
-    # check in case the window closed between queuing and task execution.
+    # Check if the user's 24-hour interaction window is open
     twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
     is_window_open = (
         hasattr(recipient, 'whatsapp_contact') and
         recipient.whatsapp_contact and
         recipient.whatsapp_contact.last_seen >= twenty_four_hours_ago
     )
-    
-    if not is_window_open:
-        error_msg = f"User '{recipient.username}' 24-hour window closed between queuing and dispatch. Last seen: {recipient.whatsapp_contact.last_seen}."
-        logger.warning(f"Cannot send notification {notification.id}: {error_msg}")
-        notification.status = 'failed'
-        notification.error_message = error_msg
-        notification.save(update_fields=['status', 'error_message'])
-        return
 
     if notification.channel == 'whatsapp':
         try:
             active_config = MetaAppConfig.objects.get_active_config()
+            message_type = 'text'
+            content_payload = {}
+
+            if is_window_open:
+                logger.info(f"Dispatching notification {notification.id} as a regular text message (window is open).")
+                message_type = 'text'
+                content_payload = {'body': notification.content}
+            else:
+                # Window is closed, use template fallback
+                fallback_template_name = getattr(settings, 'ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME', None)
+                if not fallback_template_name:
+                    error_msg = f"User '{recipient.username}' 24-hour window is closed, and no ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME is set in settings."
+                    logger.error(f"Cannot send notification {notification.id}: {error_msg}")
+                    notification.status = 'failed'
+                    notification.error_message = error_msg
+                    notification.save(update_fields=['status', 'error_message'])
+                    return
+
+                logger.info(f"Dispatching notification {notification.id} as a template message (window is closed).")
+                message_type = 'template'
+                # Truncate content to fit template parameter limits. 512 is a safe bet for a body parameter.
+                truncated_content = (notification.content[:509] + '...') if len(notification.content) > 512 else notification.content
+
+                content_payload = {
+                    "name": fallback_template_name,
+                    "language": {"code": "en_US"},
+                    "components": [{"type": "body", "parameters": [{"type": "text", "text": truncated_content}]}]
+                }
+
             with transaction.atomic():
-                message_obj = Message(
+                message = Message.objects.create(
                     contact=recipient.whatsapp_contact, app_config=active_config, direction='out',
-                    message_type='text',
-                    content_payload={'body': notification.content},
+                    message_type=message_type,
+                    content_payload=content_payload,
                     status='pending_dispatch',
                     is_system_notification=True # Flag this as a system notification
                 )
-                created_messages = Message.objects.bulk_create([message_obj])
-                message = created_messages[0]
 
                 notification.status = 'sent'
                 notification.sent_at = timezone.now()

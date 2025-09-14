@@ -32,6 +32,8 @@ from .schemas import (
     MediaMessageContent, FallbackConfig, InteractiveMessagePayload # Added InteractiveMessagePayload
 )
 
+logger = logging.getLogger(__name__)
+
 # --- Dynamic Custom Action Registry ---
 class FlowActionRegistry:
     def __init__(self): self._actions = {}
@@ -77,7 +79,6 @@ try:
     MEDIA_ASSET_ENABLED = True
 except ImportError:
     MEDIA_ASSET_ENABLED = False
-logger = logging.getLogger(__name__)
 
 # Log MediaAsset status at module load time
 if not MEDIA_ASSET_ENABLED:
