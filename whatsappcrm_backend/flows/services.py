@@ -869,14 +869,23 @@ def _evaluate_transition_condition(transition: FlowTransition, contact: Contact,
         variable_name = config.get('variable_name')
         if variable_name is None: return False
         actual_value = _get_value_from_context_or_contact(variable_name, flow_context, contact)
-        # Compare as strings for simplicity and predictability in flow logic
-        result = str(actual_value) == str(value_for_condition)
+        
+        # --- NEW LOGIC ---
+        # If the expected value is an empty string, also treat None as a match.
+        # This makes the condition more intuitive for checking "is empty or not set".
+        if value_for_condition == "" and actual_value is None:
+            result = True
+        else:
+            # Original comparison logic
+            result = str(actual_value) == str(value_for_condition)
+        # --- END NEW LOGIC ---
+
         logger.debug(
             f"Contact {contact.id}, Flow {transition.current_step.flow.id}, Step {transition.current_step.id}: "
             f"Condition 'variable_equals' check for '{variable_name}'. "
             f"Actual: '{actual_value}' (type: {type(actual_value).__name__}), "
             f"Expected: '{value_for_condition}' (type: {type(value_for_condition).__name__}). "
-            f"Result (str comparison): {result}"
+            f"Result: {result}"
         )
         return result
         

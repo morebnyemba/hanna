@@ -84,7 +84,7 @@ ADMIN_ADD_ORDER_FLOW = {
                         "app_label": "customer_data",
                         "model_name": "CustomerProfile",
                         "fields_template": {
-                            "contact_id": "{{ created_contact_instance.pk }}",
+                            "contact_id": "{{ created_contact_instance.id }}",
                             "first_name": "{{ new_customer_full_name.split(' ')[0] if ' ' in new_customer_full_name else new_customer_full_name }}",
                             "last_name": "{{ ' '.join(new_customer_full_name.split(' ')[1:]) if ' ' in new_customer_full_name else '' }}"
                         },
@@ -106,7 +106,7 @@ ADMIN_ADD_ORDER_FLOW = {
                         "app_label": "customer_data",
                         "model_name": "CustomerProfile",
                         "variable_name": "target_customer_profile",
-                        "filters_template": {"contact_id": "{{ target_contact.0.pk }}"},
+                        "filters_template": {"contact_id": "{{ target_contact.0.id }}"},
                         "fields_to_return": ["pk"],
                         "limit": 1
                     }
@@ -134,7 +134,7 @@ ADMIN_ADD_ORDER_FLOW = {
                         "action_type": "create_model_instance",
                         "app_label": "customer_data",
                         "model_name": "CustomerProfile",
-                        "fields_template": {"contact_id": "{{ target_contact.0.pk }}"},
+                        "fields_template": {"contact_id": "{{ target_contact.0.id }}"},
                         "save_to_variable": "created_profile_instance"
                     },
                     {
@@ -179,7 +179,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "app_label": "customer_data",
                     "model_name": "Order",
                     "fields_template": {
-                        "customer_id": "{{ (target_customer_profile.0.pk or created_profile_instance.pk) }}",
+                        "customer_id": "{{ (target_customer_profile.0.pk or created_profile_instance.contact) }}",
                         "order_number": "{{ order_number_ref }}",
                         "name": "{{ order_description }}",
                         "stage": "closed_won",
