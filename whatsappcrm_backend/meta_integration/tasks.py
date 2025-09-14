@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from .utils import send_whatsapp_message, send_read_receipt_api
 from .models import MetaAppConfig
+from .signals import message_send_failed
 from conversations.models import Message, Contact # To update message status
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,8 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
             outgoing_msg.error_details = {'error': 'Max retries exceeded while waiting for preceding message.'}
             outgoing_msg.status_timestamp = timezone.now()
             outgoing_msg.save(update_fields=['status', 'error_details', 'status_timestamp'])
-            return # Explicitly return to prevent fall-through
+            message_send_failed.send(sender=self.__class__, message_instance=outgoing_msg)
+            return
 
     logger.info(f"Task send_whatsapp_message_task started for Message ID: {outgoing_message_id}, Contact: {outgoing_msg.contact.whatsapp_id}")
 
@@ -119,11 +121,7 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
             logger.error(f"Failed to send Message ID {outgoing_message_id} via Meta API. Response: {error_info}")
             outgoing_msg.status = 'failed'
             outgoing_msg.error_details = error_info
-            # Retry logic for certain types of failures could be added here
-            # For now, we rely on Celery's built-in retry for RequestException type errors.
-            # If Meta returns a specific error code that indicates a retryable issue, handle it.
-            # Example: if error_info.get('error', {}).get('code') == SOME_RETRYABLE_CODE:
-            #    raise self.retry(exc=ValueError("Meta API retryable error"))
+            raise ValueError("Meta API call failed or returned unexpected response.")
 
     except Exception as e:
         logger.error(f"Exception in send_whatsapp_message_task for Message ID {outgoing_message_id}: {e}", exc_info=True)
@@ -135,11 +133,15 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
             raise self.retry(exc=e) # Re-raise to trigger Celery's retry mechanism
         except self.MaxRetriesExceededError:
             logger.error(f"Max retries exceeded for sending Message ID {outgoing_message_id}.")
-            # Message is already marked as 'failed', so we just let the finally block save it.
-            pass
-    finally:
-        outgoing_msg.status_timestamp = timezone.now()
-        outgoing_msg.save(update_fields=['wamid', 'status', 'error_details', 'status_timestamp'])
+            # This is a permanent failure. Save the final state and send the notification signal.
+            outgoing_msg.status_timestamp = timezone.now()
+            outgoing_msg.save(update_fields=['status', 'error_details', 'status_timestamp'])
+            message_send_failed.send(sender=self.__class__, message_instance=outgoing_msg)
+            return # Exit after handling permanent failure
+
+    # This block is now only reached on success or during retries (before an exception is raised).
+    outgoing_msg.status_timestamp = timezone.now()
+    outgoing_msg.save(update_fields=['wamid', 'status', 'error_details', 'status_timestamp'])
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=10)

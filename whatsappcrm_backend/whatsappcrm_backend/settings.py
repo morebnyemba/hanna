@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import dotenv # For loading .env file
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -73,6 +74,7 @@ INSTALLED_APPS = [
     'conversations.apps.ConversationsConfig',
     'flows.apps.FlowsConfig',
     'products_and_services.apps.ProductsAndServicesConfig',
+    'notifications.apps.NotificationsConfig',
     'customer_data.apps.CustomerDataConfig',
     
 ]
@@ -252,9 +254,13 @@ CHANNEL_LAYERS = {
 # For Celery Beat (scheduled tasks)
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # Celery Beat schedule can be configured here. It is currently empty.
-# Example:
-# CELERY_BEAT_SCHEDULE = { 'sample-task': { 'task': 'myapp.tasks.sample', 'schedule': 30.0, }, }
-CELERY_BEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE = {
+    'check-24h-window-reminders': {
+        'task': 'notifications.tasks.check_and_send_24h_window_reminders',
+        # Runs every hour at the top of the hour.
+        'schedule': crontab(minute=0, hour='*'),
+    },
+}
 
 # --- Application-Specific Settings ---
 CONVERSATION_EXPIRY_DAYS = int(os.getenv('CONVERSATION_EXPIRY_DAYS', '60'))

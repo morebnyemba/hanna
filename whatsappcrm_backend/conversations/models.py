@@ -32,6 +32,14 @@ class Contact(models.Model):
         blank=True,
         help_text="The Meta App Configuration this contact is associated with."
     )
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='whatsapp_contact',
+        help_text="Link to a system user if this contact represents an admin/agent."
+    )
     
     needs_human_intervention = models.BooleanField(
         default=False,
@@ -176,6 +184,7 @@ class Message(models.Model):
 
     # For CRM internal notes or messages not directly from WhatsApp
     is_internal_note = models.BooleanField(default=False)
+    is_system_notification = models.BooleanField(default=False, help_text="True if this is a system-generated notification to an admin.")
 
 
     def __str__(self):
