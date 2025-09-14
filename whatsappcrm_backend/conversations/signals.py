@@ -36,3 +36,13 @@ def on_new_or_updated_message(sender, instance, created, **kwargs):
         logger.info(f"Broadcasted message {instance.id} to group {conversation_group_name}")
     except Exception as e:
         logger.error(f"Error in on_new_or_updated_message signal for message {instance.id}: {e}", exc_info=True)
+
+    # --- NEW: Clear human intervention flag on agent reply ---
+    # If an outgoing message is sent, it implies an agent has responded.
+    if instance.direction == 'out' and instance.contact.needs_human_intervention:
+        # This check ensures we only update when necessary.
+        contact = instance.contact
+        contact.needs_human_intervention = False
+        contact.intervention_requested_at = None
+        contact.save(update_fields=['needs_human_intervention', 'intervention_requested_at'])
+        logger.info(f"Contact {contact.id}: Cleared human intervention flag after agent sent message {instance.id}.")

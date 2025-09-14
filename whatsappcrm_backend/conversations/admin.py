@@ -3,23 +3,19 @@
 from django.contrib import admin
 from .models import Contact, Message, Broadcast, BroadcastRecipient
 
-@admin.register(Contact)
-class ContactAdmin(admin.ModelAdmin):
-    list_display = ('whatsapp_id', 'name', 'first_seen', 'last_seen', 'is_blocked', 'associated_app_config_name') # Add 'associated_app_config_name' if using the FK
-    search_fields = ('whatsapp_id', 'name')
-    list_filter = ('is_blocked', 'last_seen', 'first_seen', 'associated_app_config') # Add 'associated_app_config' if using the FK
-    readonly_fields = ('first_seen', 'last_seen')
-    fieldsets = (
-        (None, {'fields': ('whatsapp_id', 'name', 'is_blocked')}),
-        ('Association', {'fields': ('associated_app_config',)}), # If using the FK
-        # ('Details', {'fields': ('custom_fields',)}),
-        ('Timestamps', {'fields': ('first_seen', 'last_seen'), 'classes': ('collapse',)}),
+@admin.action(description='Clear human intervention flag for selected contacts')
+def clear_human_intervention(modeladmin, request, queryset):
+    """
+    Admin action to manually clear the 'needs_human_intervention' flag.
+    """
+    updated_count = queryset.update(
+        needs_human_intervention=False,
+        intervention_requested_at=None
     )
-
-    def associated_app_config_name(self, obj):
-        return obj.associated_app_config.name if obj.associated_app_config else "N/A"
-    associated_app_config_name.short_description = "App Config"
-
+    modeladmin.message_user(
+        request,
+        f"{updated_count} contact(s) were successfully updated. Human intervention flag cleared."
+    )
 
 class MessageInline(admin.TabularInline): # Or admin.StackedInline for a different layout
     model = Message
@@ -41,6 +37,23 @@ class MessageInline(admin.TabularInline): # Or admin.StackedInline for a differe
         return "N/A"
     text_content_preview.short_description = "Content Preview"
 
+@admin.register(Contact)
+class ContactAdmin(admin.ModelAdmin):
+    list_display = ('whatsapp_id', 'name', 'needs_human_intervention', 'last_seen', 'is_blocked', 'associated_app_config_name')
+    search_fields = ('whatsapp_id', 'name')
+    list_filter = ('needs_human_intervention', 'is_blocked', 'last_seen', 'first_seen', 'associated_app_config')
+    readonly_fields = ('first_seen', 'last_seen', 'intervention_requested_at')
+    actions = [clear_human_intervention]
+    inlines = [MessageInline]
+    fieldsets = (
+        (None, {'fields': ('whatsapp_id', 'name', 'is_blocked', 'needs_human_intervention')}),
+        ('Association', {'fields': ('associated_app_config',)}),
+        ('Timestamps', {'fields': ('first_seen', 'last_seen', 'intervention_requested_at'), 'classes': ('collapse',)}),
+    )
+
+    def associated_app_config_name(self, obj):
+        return obj.associated_app_config.name if obj.associated_app_config else "N/A"
+    associated_app_config_name.short_description = "App Config"
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
