@@ -394,21 +394,25 @@ SOLAR_INSTALLATION_FLOW = {
                         "save_to_variable": "created_installation_request"
                     },
                     {
-                        "action_type": "send_admin_notification",
-                        "message_template": (
-                            "NEW INSTALLATION REQUEST from {{ contact.name or contact.whatsapp_id }} (ID: {{ created_installation_request.id }}):\n\n"
-                            "Type: {{ installation_type }}\n"
-                            "{% if order_number %}Order #: {{ order_number }}{% endif %}"
-                            "{% if assessment_number %}Assessment #: {{ assessment_number }}{% endif %}\n"
-                            "Branch: {{ install_branch }}\n"
-                            "Sales Person: {{ install_sales_person }}\n"
-                            "Client Name: {{ install_full_name }}\n"
-                            "Client Contact: {{ install_phone }}\n"
-                            "Alt. Contact: {{ install_alt_name }} ({{ install_alt_phone }})\n"
-                            "Preferred Date: {{ install_datetime }} ({{ install_availability|title }})\n"
-                            "Address: {{ install_address }}\n"
-                            "\nPlease schedule and confirm with the customer."
-                        )
+                        "action_type": "send_group_notification",
+                        "params_template": {
+                            "group_names": ["Pfungwa Staff", "System Admins"],
+                            "message_template": (
+                                "✅ *New Installation Request* ✅\n\n"
+                                "A new request (ID: {{ created_installation_request.id }}) was submitted by *{{ contact.name or contact.whatsapp_id }}*.\n\n"
+                                "{% if order_number %}*Order #*: {{ order_number }} ({{ found_order.0.name }})\n{% endif %}"
+                                "{% if assessment_number %}*Assessment #*: {{ assessment_number }}\n{% endif %}"
+                                "• *Type*: {{ installation_type }}\n"
+                                "• *Branch*: {{ install_branch }}\n"
+                                "• *Sales Person*: {{ install_sales_person }}\n"
+                                "• *Client Name*: {{ install_full_name }}\n"
+                                "• *Client Contact*: {{ install_phone }}\n"
+                                "• *Alt. Contact*: {{ install_alt_name }} ({{ install_alt_phone }})\n"
+                                "• *Preferred Date*: {{ install_datetime }} ({{ install_availability|title }})\n"
+                                "• *Address*: {{ install_address }}\n\n"
+                                "Please schedule and confirm with the customer."
+                            )
+                        }
                     }
                 ]
             },
