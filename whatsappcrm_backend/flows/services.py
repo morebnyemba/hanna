@@ -572,6 +572,18 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
 
                         if save_to_variable:
                             instance_dict = model_to_dict(instance)
+                            # Post-process to ensure all values are JSON serializable before saving to context.
+                            for key, value in instance_dict.items():
+                                if isinstance(value, Decimal):
+                                    instance_dict[key] = str(value)
+                                elif isinstance(value, (datetime, date)):
+                                    instance_dict[key] = value.isoformat()
+                                elif isinstance(value, (ImageFieldFile, FileField)):
+                                    try:
+                                        instance_dict[key] = value.url if value else None
+                                    except ValueError:
+                                        instance_dict[key] = None
+                            
                             # Manually add the primary key because model_to_dict excludes non-editable fields by default.
                             # Also ensure UUIDs are converted to strings for JSON serialization.
                             if isinstance(instance.pk, uuid.UUID):
