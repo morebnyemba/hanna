@@ -10,7 +10,8 @@ from customer_data.models import Order
 from .tasks import (
     update_dashboard_stats, 
     broadcast_activity_log, 
-    broadcast_human_intervention_notification
+    broadcast_human_intervention_notification,
+    check_handover_timeout
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,10 @@ def on_contact_change(sender, instance, created, **kwargs):
             "message": f"Contact '{instance.name or instance.whatsapp_id}' requires human assistance."
         }
         broadcast_human_intervention_notification.delay(notification_payload)
+
+        # --- NEW: Schedule the timeout check task ---
+        logger.info(f"Scheduling handover timeout check for contact {instance.id} in 60 seconds.")
+        check_handover_timeout.apply_async(args=[instance.id], countdown=60)
 
 @receiver(post_save, sender=Flow)
 def on_flow_change(sender, instance, created, **kwargs):
