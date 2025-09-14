@@ -454,6 +454,12 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                 elif action_type == 'update_customer_profile' and action_item_conf.fields_to_update is not None:
                     resolved_fields_to_update = _resolve_value(action_item_conf.fields_to_update, current_step_context, contact) # type: ignore
                     _update_customer_profile_data(contact, resolved_fields_to_update, current_step_context)
+                    # --- NEW ---
+                    # After updating the profile, the contact object in memory is stale.
+                    # Refresh it from the DB to ensure subsequent template resolutions in the same
+                    # flow cycle get the latest data (e.g., the customer's name).
+                    contact.refresh_from_db()
+                    logger.debug(f"Refreshed contact {contact.id} from DB after profile update.")
                 elif action_type == 'send_admin_notification':
                     admin_number = settings.ADMIN_WHATSAPP_NUMBER
                     if not admin_number:

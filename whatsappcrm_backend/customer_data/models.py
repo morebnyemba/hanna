@@ -354,19 +354,27 @@ class InstallationRequest(models.Model):
         ('residential', 'Residential'),
         ('commercial', 'Commercial'),
     ]
-    customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='installation_requests')
-    associated_order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name='installation_requests')
+    customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='installation_requests', verbose_name=_("Customer Profile"))
+    associated_order = models.ForeignKey(
+        Order, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='installation_requests',
+        verbose_name=_("Associated Order") # More explicit name
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     installation_type = models.CharField(max_length=20, choices=INSTALLATION_TYPES)
     
     order_number = models.CharField(_("Order Number"), max_length=100, blank=True, null=True, db_index=True)
     assessment_number = models.CharField(_("Assessment Number"), max_length=100, blank=True, null=True, db_index=True)
-    full_name = models.CharField(_("Contact Full Name"), max_length=255)
+    full_name = models.CharField(_("Contact Full Name"), max_length=255, help_text=_("Full name of the contact requesting the installation"))
     address = models.TextField(_("Installation Address"))
     latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     preferred_datetime = models.CharField(_("Preferred Date/Time"), max_length=255)
     contact_phone = models.CharField(_("Contact Phone"), max_length=20)
+    notes = models.TextField(_("Installation Notes"), blank=True, null=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

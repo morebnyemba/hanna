@@ -57,7 +57,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "order_number__iexact": "{{ order_number }}",
                         "customer__contact__whatsapp_id": "{{ contact.whatsapp_id }}"
                     },
-                    "fields_to_return": ["id", "stage"],
+                    "fields_to_return": ["id", "stage", "name"],
                     "limit": 1
                 }]
             },
@@ -340,6 +340,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "type": "button",
                         "body": {"text": (
                             "Thank you. Please review your details and confirm to submit your installation request.\n\n"
+                            "{% if order_number %}*Order #*: {{ order_number }} ({{ found_order.0.name }})\n\n{% endif %}"
                             "Branch: {{ install_branch }}\n"
                             "Sales Person: {{ install_sales_person }}\n"
                             "Client Name: {{ install_full_name }}\n"
