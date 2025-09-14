@@ -565,7 +565,14 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                         logger.info(f"Contact {contact.id}: Created new {model_name} instance with ID {instance.pk}.")
 
                         if save_to_variable:
-                            current_step_context[save_to_variable] = model_to_dict(instance)
+                            instance_dict = model_to_dict(instance)
+                            # Manually add the primary key because model_to_dict excludes non-editable fields by default.
+                            # Also ensure UUIDs are converted to strings for JSON serialization.
+                            if isinstance(instance.pk, uuid.UUID):
+                                instance_dict['id'] = str(instance.pk)
+                            else:
+                                instance_dict['id'] = instance.pk
+                            current_step_context[save_to_variable] = instance_dict
                             logger.info(f"Contact {contact.id}: Saved created instance to context variable '{save_to_variable}'.")
                     except LookupError:
                         logger.error(f"Contact {contact.id}: 'create_model_instance' action failed. Model '{app_label}.{model_name}' not found.")

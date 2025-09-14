@@ -179,7 +179,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "app_label": "customer_data",
                     "model_name": "Order",
                     "fields_template": {
-                        "customer_id": "{{ (target_customer_profile.0.pk or created_profile_instance.contact) }}",
+                        "customer_id": "{{ (target_customer_profile.0.contact or created_profile_instance.contact) }}",
                         "order_number": "{{ order_number_ref }}",
                         "name": "{{ order_description }}",
                         "stage": "closed_won",
