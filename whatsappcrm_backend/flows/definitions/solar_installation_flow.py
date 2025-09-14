@@ -278,13 +278,12 @@ SOLAR_INSTALLATION_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "body": {"text": "Thank you. What is your preferred availability on that day?"},
+                        "body": {"text": "Thank you. What is your preferred availability on that day?\n\n(Type 'cancel' to exit)"},
                         "action": {
                             "buttons": [
                                 {"type": "reply", "reply": {"id": "morning", "title": "Morning"}},
                                 {"type": "reply", "reply": {"id": "afternoon", "title": "Afternoon"}},
-                                {"type": "reply", "reply": {"id": "go_back", "title": "Go Back"}},
-                                {"type": "reply", "reply": {"id": "cancel_install", "title": "Cancel"}}
+                                {"type": "reply", "reply": {"id": "go_back", "title": "Go Back"}}
                             ]
                         }
                     }
@@ -292,9 +291,9 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_availability"}
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "cancel_install"}},
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
                 {"to_step": "ask_install_date", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
-                {"to_step": "ask_install_address", "priority": 2, "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_install_address", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_availability"}}
             ]
         },
         {

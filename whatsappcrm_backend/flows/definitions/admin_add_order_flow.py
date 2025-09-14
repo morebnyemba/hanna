@@ -89,11 +89,6 @@ ADMIN_ADD_ORDER_FLOW = {
                             "last_name": "{{ ' '.join(new_customer_full_name.split(' ')[1:]) if ' ' in new_customer_full_name else '' }}"
                         },
                         "save_to_variable": "created_profile_instance"
-                    },
-                    {
-                        "action_type": "set_context_variable",
-                        "variable_name": "target_customer_profile",
-                        "value_template": "[{{ created_profile_instance }}]"
                     }
                 ]
             },
@@ -184,7 +179,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "app_label": "customer_data",
                     "model_name": "Order",
                     "fields_template": {
-                        "customer_id": "{{ target_customer_profile.0.pk }}",
+                        "customer_id": "{{ (target_customer_profile.0.pk or created_profile_instance.pk) }}",
                         "order_number": "{{ order_number_ref }}",
                         "name": "{{ order_description }}",
                         "stage": "closed_won",
