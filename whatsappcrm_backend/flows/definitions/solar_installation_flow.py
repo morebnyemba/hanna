@@ -17,11 +17,11 @@ SOLAR_INSTALLATION_FLOW = {
                     "interactive": {
                         "type": "button",
                         "header": {"type": "text", "text": "Request Installation"},
-                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %} I can help you schedule your solar installation.\n\nHave you already paid for your system, or would you like to get a quote first?"},
+                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %} I can help you schedule your solar installation.\n\nHave you already paid for your system, or would you like to ask for a price first?"},
                         "action": {
                             "buttons": [
                                 {"type": "reply", "reply": {"id": "paid", "title": "I've Already Paid"}},
-                                {"type": "reply", "reply": {"id": "get_quote", "title": "Get a Quote"}}
+                                {"type": "reply", "reply": {"id": "ask_for_price", "title": "Ask for Price"}}
                             ]
                         }
                     }
@@ -30,7 +30,7 @@ SOLAR_INSTALLATION_FLOW = {
             },
             "transitions": [
                 {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "paid"}},
-                {"to_step": "initialize_quote_context", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "get_quote"}}
+                {"to_step": "initialize_quote_context", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "ask_for_price"}}
             ]
         },
         {
@@ -90,7 +90,7 @@ SOLAR_INSTALLATION_FLOW = {
                     "variable_name": "available_products",
                     "filters_template": {
                         "is_active": True,
-                        "product_type": "solar_kit",
+                        "product_type": "service",
                         "sku__not_in": "{{ selected_product_skus }}"
                     },
                     "fields_to_return": ["sku", "name", "price"],
@@ -116,18 +116,18 @@ SOLAR_INSTALLATION_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "list",
-                        "header": {"type": "text", "text": "Select Products"},
-                        "body": {"text": "Please select a solar kit to add to your quote. You can add more after this selection."},
+                        "header": {"type": "text", "text": "Select Service"},
+                        "body": {"text": "Please select an installation service to add to your price request. You can add more after this selection."},
                         "action": {
-                            "button": "View Kits",
+                            "button": "View Services",
                             "sections": [
                                 {
-                                    "title": "Available Solar Kits",
+                                    "title": "Available Installation Services",
                                     "rows": "{{ available_products | to_interactive_rows(row_template={'id': '{{ item.sku }}', 'title': '{{ item.name }}', 'description': '${{ item.price }}'}) }}"
                                 },
                                 {
                                     "title": "Finish",
-                                    "rows": [{"id": "done_selecting", "title": "Done Selecting", "description": "Proceed to finalize your quote."}]
+                                    "rows": [{"id": "done_selecting", "title": "Done Selecting", "description": "Proceed to finalize your price request."}]
                                 }
                             ]
                         }
@@ -544,7 +544,7 @@ SOLAR_INSTALLATION_FLOW = {
                 "actions_to_run": [{
                     "action_type": "create_order_with_items",
                     "params_template": {
-                        "order_name_template": "Quote Request from {{ contact.name or contact.whatsapp_id }}",
+                        "order_name_template": "Price Request from {{ contact.name or contact.whatsapp_id }}",
                         "stage": "prospecting",
                         "order_number_context_var": "generated_order_number",
                         "line_item_skus_context_var": "selected_product_skus",
@@ -557,7 +557,7 @@ SOLAR_INSTALLATION_FLOW = {
         {
             "name": "end_flow_quote_created",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! We have created a quote request for you with Order #{{ generated_order_number }}. A sales agent will contact you shortly with the final details and payment options."}}},
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! We have created a price request for you with Order #{{ generated_order_number }}. A sales agent will contact you shortly with the final details and payment options."}}},
             "transitions": []
         },
         {
