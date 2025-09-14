@@ -22,6 +22,7 @@ import json
 
 from conversations.models import Contact, Message
 from .models import Flow, FlowStep, FlowTransition, ContactFlowState
+from notifications.services import queue_notifications_to_users
 from customer_data.models import CustomerProfile
 
 # Import Pydantic schemas from the new file
@@ -37,6 +38,38 @@ class FlowActionRegistry:
     def register(self, name, func): self._actions[name] = func; logger.info(f"Registered flow action: '{name}'")
     def get(self, name): return self._actions.get(name)
 flow_action_registry = FlowActionRegistry()
+
+def send_group_notification_action(contact: Contact, flow_context: dict, params: dict) -> list:
+    """
+    Custom flow action to queue notifications for admin user groups.
+    """
+    group_names = params.get('group_names')
+    message_template = params.get('message_template')
+
+    if not isinstance(group_names, list) or not message_template:
+        logger.error(f"Action 'send_group_notification' for contact {contact.id} is missing 'group_names' (list) or 'message_template' (string) in params.")
+        return []
+
+    # Resolve the message template using the current flow context
+    resolved_message = _resolve_value(message_template, flow_context, contact)
+    
+    if not resolved_message:
+        logger.warning(f"Action 'send_group_notification' for contact {contact.id} resulted in an empty message. Skipping.")
+        return []
+
+    # Get the current flow from the context if available
+    current_flow_id = flow_context.get('_flow_state', {}).get('current_flow_id')
+    related_flow = Flow.objects.filter(pk=current_flow_id).first() if current_flow_id else None
+
+    queue_notifications_to_users(
+        group_names=group_names, message_body=resolved_message,
+        related_contact=contact, related_flow=related_flow
+    )
+    
+    logger.info(f"Queued notification for groups {group_names} from flow action for contact {contact.id}.")
+    return [] # This action does not return any actions for the main loop
+
+flow_action_registry.register('send_group_notification', send_group_notification_action)
 
 from paynow_integration.services import PaynowService
 try:
@@ -455,28 +488,20 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                     resolved_fields_to_update = _resolve_value(action_item_conf.fields_to_update, current_step_context, contact) # type: ignore
                     _update_customer_profile_data(contact, resolved_fields_to_update, current_step_context)
                     # --- NEW ---
-                    # After updating the profile, the contact object in memory is stale.
-                    # Refresh it from the DB to ensure subsequent template resolutions in the same
-                    # flow cycle get the latest data (e.g., the customer's name).
                     contact.refresh_from_db()
                     logger.debug(f"Refreshed contact {contact.id} from DB after profile update.")
                 elif action_type == 'send_admin_notification':
-                    admin_number = settings.ADMIN_WHATSAPP_NUMBER
-                    if not admin_number:
-                        logger.warning(f"Contact {contact.id}: 'send_admin_notification' action used, but ADMIN_WHATSAPP_NUMBER is not set in settings. Skipping.")
-                        continue
-
+                    logger.warning("The 'send_admin_notification' action is deprecated. Please use the 'send_group_notification' custom action instead for more flexibility.")
                     message_body = _resolve_value(action_item_conf.message_template, current_step_context, contact)
                     if not message_body:
                         logger.warning(f"Contact {contact.id}: 'send_admin_notification' message_template resolved to an empty string. Skipping.")
                         continue
-                    
-                    notification_action = {
-                        'type': 'send_whatsapp_message', 'recipient_wa_id': admin_number,
-                        'message_type': 'text', 'data': {'body': message_body}
-                    }
-                    actions_to_perform.append(notification_action)
-                    logger.info(f"Contact {contact.id}: Queued admin notification to {admin_number}.")
+                    # For backward compatibility, send to the "Technical Admin" group.
+                    queue_notifications_to_users(
+                        group_names=["Technical Admin"],
+                        message_body=message_body,
+                        related_contact=contact
+                    )
                 elif action_type == 'query_model':
                     app_label = action_item_conf.app_label
                     model_name = action_item_conf.model_name
@@ -692,6 +717,18 @@ def _create_human_handover_actions(contact: Contact, message_text: str) -> List[
     contact.intervention_requested_at = timezone.now()
     contact.save(update_fields=['needs_human_intervention', 'intervention_requested_at'])
     
+    # Queue a WhatsApp notification to the admin team
+    whatsapp_message_body = (
+        f"⚠️ Human Intervention Required ⚠️\n\n"
+        f"Contact *{contact.name or contact.whatsapp_id}* was handed over by the bot.\n\n"
+        f"Reason/Last Bot Message: _{message_text}_"
+    )
+    queue_notifications_to_users(
+        group_names=["Technical Admin"],
+        message_body=whatsapp_message_body,
+        related_contact=contact
+    )
+
     actions.append({'type': '_internal_command_clear_flow_state'})
     return actions
 

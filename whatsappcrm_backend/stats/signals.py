@@ -59,12 +59,23 @@ def on_contact_change(sender, instance, created, **kwargs):
     update_fields = kwargs.get('update_fields') or set()
     if instance.needs_human_intervention and ('needs_human_intervention' in update_fields or created):
         logger.info(f"Human intervention needed for contact {instance.id}. Broadcasting notification.")
+        
+        # --- UI Notification (existing) ---
         notification_payload = {
             "contact_id": instance.id,
             "name": instance.name or instance.whatsapp_id,
             "message": f"Contact '{instance.name or instance.whatsapp_id}' requires human assistance."
         }
         broadcast_human_intervention_notification.delay(notification_payload)
+
+        # --- WhatsApp Notification (NEW) ---
+        from notifications.services import queue_notifications_to_users
+        whatsapp_message_body = (
+            f"⚠️ Human Intervention Required ⚠️\n\n"
+            f"Contact *{instance.name or instance.whatsapp_id}* requires assistance.\n\n"
+            f"Please open the chat to respond."
+        )
+        queue_notifications_to_users(group_names=["Technical Admin"], message_body=whatsapp_message_body, related_contact=instance)
 
         # --- NEW: Schedule the timeout check task ---
         logger.info(f"Scheduling handover timeout check for contact {instance.id} in 60 seconds.")
