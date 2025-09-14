@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Notification
+from .models import Notification, NotificationTemplate
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
@@ -9,3 +9,8 @@ class NotificationAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'sent_at', 'recipient', 'related_contact', 'related_flow', 'content', 'error_message')
     list_per_page = 30
     list_select_related = ('recipient',)
+
+@admin.register(NotificationTemplate)
+class NotificationTemplateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description', 'updated_at')
+    search_fields = ('name', 'message_body', 'description')

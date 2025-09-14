@@ -8,15 +8,19 @@ from datetime import timedelta
 from django.db.models import Q
 
 from .models import Notification
+from .models import NotificationTemplate # Import the new model
 from .tasks import dispatch_notification_task
 from conversations.models import Contact
 from flows.models import Flow
+from .utils import render_template_string # Import the new render utility
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
 def queue_notifications_to_users(
-    message_body: str,
+    message_body: Optional[str] = None,
+    template_name: Optional[str] = None,
+    template_context: Optional[dict] = None,
     user_ids: Optional[List[int]] = None,
     group_names: Optional[List[str]] = None,
     related_contact: Optional[Contact] = None,
@@ -24,11 +28,31 @@ def queue_notifications_to_users(
     channel: str = 'whatsapp'
 ):
     """
-    Finds users by ID or group, filters them to only include those who have
-    interacted within the last 24 hours, and creates a Notification record for each.
+    Finds users by ID or group and creates a Notification record for each.
+    The message body can be provided directly or rendered from a NotificationTemplate.
     """
-    if not message_body:
-        logger.warning("queue_notifications_to_users called with an empty message_body. Skipping.")
+    final_message_body = ""
+    if template_name:
+        try:
+            template = NotificationTemplate.objects.get(name=template_name)
+            # Build the context for rendering
+            render_context = template_context or {}
+            if related_contact:
+                render_context['contact'] = related_contact
+                if hasattr(related_contact, 'customer_profile'):
+                    render_context['customer_profile'] = related_contact.customer_profile
+            if related_flow:
+                render_context['flow'] = related_flow
+            
+            final_message_body = render_template_string(template.message_body, render_context)
+        except NotificationTemplate.DoesNotExist:
+            logger.error(f"Notification template '{template_name}' not found. Cannot queue notification.")
+            return
+    elif message_body:
+        final_message_body = message_body
+
+    if not final_message_body or not final_message_body.strip():
+        logger.warning("queue_notifications_to_users called but resulted in an empty message body. Skipping.")
         return
 
     if not user_ids and not group_names:
@@ -41,11 +65,10 @@ def queue_notifications_to_users(
     if group_names:
         query |= Q(groups__name__in=group_names)
 
-    # Find all potential users. The decision to use a template or text is made at dispatch time.
     all_potential_users = User.objects.filter(query, is_active=True).distinct()
 
     notifications_to_create = [
-        Notification(recipient=user, channel=channel, status='pending', content=message_body, related_contact=related_contact, related_flow=related_flow)
+        Notification(recipient=user, channel=channel, status='pending', content=final_message_body, related_contact=related_contact, related_flow=related_flow)
         for user in all_potential_users
     ]
 

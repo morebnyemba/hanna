@@ -123,19 +123,13 @@ def check_and_send_24h_window_reminders():
         logger.info("No admin users found with expiring 24-hour windows.")
         return "No users to remind."
 
-    reminder_message_content = (
-        "Friendly Reminder 🤖\n\n"
-        "Your 24-hour interaction window with the CRM bot is about to close. "
-        "To continue receiving real-time alerts, please send any message (e.g., 'status' or 'ok') to this chat now."
-    )
-    
     from .services import queue_notifications_to_users # Local import to avoid circular dependency issues at module level
     
     user_ids_to_remind = list(potential_users_to_remind.values_list('id', flat=True))
     if user_ids_to_remind:
         queue_notifications_to_users(
-            user_ids=user_ids_to_remind,
-            message_body=reminder_message_content
+            template_name='admin_24h_window_reminder',
+            user_ids=user_ids_to_remind
         )
         dispatched_count = len(user_ids_to_remind)
         for user_id in user_ids_to_remind:

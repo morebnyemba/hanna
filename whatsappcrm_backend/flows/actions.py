@@ -1,6 +1,7 @@
 # whatsappcrm_backend/flows/actions.py
 
 import logging
+import random
 from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, List
 from .services import flow_action_registry
@@ -181,7 +182,99 @@ def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, An
     
     return actions_to_perform
 
+def generate_unique_order_number_action(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Generates a unique 5-digit order number and saves it to the context.
+
+    Params expected from flow config:
+    - save_to_variable (str): The context variable name to save the number to.
+    """
+    save_to_variable = params.get('save_to_variable')
+    if not save_to_variable:
+        logger.error(f"Action 'generate_unique_order_number' for contact {contact.id} is missing 'save_to_variable' in params.")
+        return []
+
+    while True:
+        order_num = str(random.randint(10000, 99999))
+        if not Order.objects.filter(order_number=order_num).exists():
+            break
+    
+    context[save_to_variable] = order_num
+    logger.info(f"Generated unique order number {order_num} for contact {contact.id} and saved to '{save_to_variable}'.")
+    
+    return [] # This action does not return any messages
+
+def create_order_with_items(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Creates a new Order and associated OrderItems from a list of SKUs.
+    This action is designed to always create a new order.
+
+    Expected params from the flow step's config:
+    - order_name_template (str): Jinja2 template for the order name.
+    - order_number_context_var (str): Context variable holding the unique order number.
+    - line_item_skus_context_var (str): Context variable holding a list of product SKUs.
+    - stage (str, optional): The initial stage for the order. Defaults to 'prospecting'.
+    - save_order_id_to (str, optional): Context variable to save the new order's ID to.
+    """
+    from .services import _resolve_value
+    from django.db import transaction
+
+    order_name_template = params.get('order_name_template')
+    order_number_var = params.get('order_number_context_var')
+    line_item_skus_var = params.get('line_item_skus_context_var')
+    stage = params.get('stage', Order.Stage.PROSPECTING)
+    save_to_var = params.get('save_order_id_to')
+
+    if not all([order_name_template, order_number_var, line_item_skus_var]):
+        logger.error(f"Action 'create_order_with_items' for contact {contact.id} is missing required params. Skipping.")
+        return []
+
+    order_name = _resolve_value(order_name_template, context, contact)
+    order_number = context.get(order_number_var)
+    line_item_skus = context.get(line_item_skus_var)
+
+    if not order_number or not isinstance(line_item_skus, list):
+        logger.error(f"Action 'create_order_with_items' for contact {contact.id}: context variables are missing or have wrong type. Skipping.")
+        return []
+
+    customer_profile, _ = CustomerProfile.objects.get_or_create(contact=contact)
+    
+    products = Product.objects.filter(sku__in=line_item_skus)
+    if not products.exists():
+        logger.warning(f"No valid products found for SKUs {line_item_skus} in 'create_order_with_items'. Order will be created without items.")
+
+    total_amount = sum(p.price for p in products)
+
+    try:
+        with transaction.atomic():
+            order = Order.objects.create(
+                customer=customer_profile,
+                name=order_name,
+                order_number=order_number,
+                stage=stage,
+                amount=total_amount,
+                assigned_agent=customer_profile.assigned_agent
+            )
+
+            order_items = [
+                OrderItem(order=order, product=p, quantity=1, unit_price=p.price)
+                for p in products
+            ]
+            OrderItem.objects.bulk_create(order_items)
+
+            logger.info(f"Created new Order (ID: {order.id}) with {len(order_items)} items for customer {customer_profile.pk} via 'create_order_with_items'.")
+            
+            if save_to_var:
+                context[save_to_var] = str(order.id)
+
+    except Exception as e:
+        logger.error(f"Error in 'create_order_with_items' action for contact {contact.id}: {e}", exc_info=True)
+
+    return []
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
 flow_action_registry.register('create_order', create_order)
+flow_action_registry.register('generate_unique_order_number', generate_unique_order_number_action)
+flow_action_registry.register('create_order_with_items', create_order_with_items)

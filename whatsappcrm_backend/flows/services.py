@@ -46,17 +46,10 @@ def send_group_notification_action(contact: Contact, flow_context: dict, params:
     Custom flow action to queue notifications for admin user groups.
     """
     group_names = params.get('group_names')
-    message_template = params.get('message_template')
+    template_name = params.get('template_name')
 
-    if not isinstance(group_names, list) or not message_template:
-        logger.error(f"Action 'send_group_notification' for contact {contact.id} is missing 'group_names' (list) or 'message_template' (string) in params.")
-        return []
-
-    # Resolve the message template using the current flow context
-    resolved_message = _resolve_value(message_template, flow_context, contact)
-    
-    if not resolved_message:
-        logger.warning(f"Action 'send_group_notification' for contact {contact.id} resulted in an empty message. Skipping.")
+    if not isinstance(group_names, list) or not template_name:
+        logger.error(f"Action 'send_group_notification' for contact {contact.id} is missing 'group_names' (list) or 'template_name' (string) in params.")
         return []
 
     # Get the current flow from the context if available
@@ -64,8 +57,11 @@ def send_group_notification_action(contact: Contact, flow_context: dict, params:
     related_flow = Flow.objects.filter(pk=current_flow_id).first() if current_flow_id else None
 
     queue_notifications_to_users(
-        group_names=group_names, message_body=resolved_message,
-        related_contact=contact, related_flow=related_flow
+        template_name=template_name,
+        template_context=flow_context,
+        group_names=group_names,
+        related_contact=contact,
+        related_flow=related_flow
     )
     
     logger.info(f"Queued notification for groups {group_names} from flow action for contact {contact.id}.")
@@ -492,15 +488,12 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                     contact.refresh_from_db()
                     logger.debug(f"Refreshed contact {contact.id} from DB after profile update.")
                 elif action_type == 'send_admin_notification':
-                    logger.warning("The 'send_admin_notification' action is deprecated. Please use the 'send_group_notification' custom action instead for more flexibility.")
-                    message_body = _resolve_value(action_item_conf.message_template, current_step_context, contact)
-                    if not message_body:
-                        logger.warning(f"Contact {contact.id}: 'send_admin_notification' message_template resolved to an empty string. Skipping.")
-                        continue
-                    # For backward compatibility, send to the "Technical Admin" group.
+                    # This action is deprecated. We now use 'send_group_notification'.
+                    # For backward compatibility, we'll map it to the new system.
+                    logger.warning("The 'send_admin_notification' action is deprecated. Please use 'send_group_notification' with a 'template_name' instead.")
                     queue_notifications_to_users(
                         group_names=["Technical Admin"],
-                        message_body=message_body,
+                        message_body=_resolve_value(action_item_conf.message_template, current_step_context, contact),
                         related_contact=contact
                     )
                 elif action_type == 'query_model':
@@ -719,15 +712,11 @@ def _create_human_handover_actions(contact: Contact, message_text: str) -> List[
     contact.save(update_fields=['needs_human_intervention', 'intervention_requested_at'])
     
     # Queue a WhatsApp notification to the admin team
-    whatsapp_message_body = (
-        f"⚠️ Human Intervention Required ⚠️\n\n"
-        f"Contact *{contact.name or contact.whatsapp_id}* was handed over by the bot.\n\n"
-        f"Reason/Last Bot Message: _{message_text}_"
-    )
     queue_notifications_to_users(
+        template_name='human_handover_flow',
         group_names=["Technical Admin"],
-        message_body=whatsapp_message_body,
-        related_contact=contact
+        related_contact=contact,
+        template_context={'last_bot_message': message_text}
     )
 
     actions.append({'type': '_internal_command_clear_flow_state'})

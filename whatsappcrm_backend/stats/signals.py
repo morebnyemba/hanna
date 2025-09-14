@@ -70,12 +70,11 @@ def on_contact_change(sender, instance, created, **kwargs):
 
         # --- WhatsApp Notification (NEW) ---
         from notifications.services import queue_notifications_to_users
-        whatsapp_message_body = (
-            f"⚠️ Human Intervention Required ⚠️\n\n"
-            f"Contact *{instance.name or instance.whatsapp_id}* requires assistance.\n\n"
-            f"Please open the chat to respond."
+        queue_notifications_to_users(
+            template_name='human_handover_required',
+            group_names=["Technical Admin"],
+            related_contact=instance
         )
-        queue_notifications_to_users(group_names=["Technical Admin"], message_body=whatsapp_message_body, related_contact=instance)
 
         # --- NEW: Schedule the timeout check task ---
         logger.info(f"Scheduling handover timeout check for contact {instance.id} in 60 seconds.")

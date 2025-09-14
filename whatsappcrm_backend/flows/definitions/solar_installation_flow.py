@@ -17,7 +17,32 @@ SOLAR_INSTALLATION_FLOW = {
                     "interactive": {
                         "type": "button",
                         "header": {"type": "text", "text": "Request Installation"},
-                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %} I can help you schedule your solar installation. Is this for a Residential or Commercial property?"},
+                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %} I can help you schedule your solar installation.\n\nHave you already paid for your system, or would you like to get a quote first?"},
+                        "action": {
+                            "buttons": [
+                                {"type": "reply", "reply": {"id": "paid", "title": "I've Already Paid"}},
+                                {"type": "reply", "reply": {"id": "get_quote", "title": "Get a Quote"}}
+                            ]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "payment_status_choice"}
+            },
+            "transitions": [
+                {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "paid"}},
+                {"to_step": "initialize_quote_context", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "get_quote"}}
+            ]
+        },
+        {
+            "name": "ask_installation_type",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "header": {"type": "text", "text": "Installation Type"},
+                        "body": {"text": "Great! Is this for a Residential or Commercial property?"},
                         "action": {
                             "buttons": [
                                 {"type": "reply", "reply": {"id": "install_residential", "title": "Residential"}},
@@ -43,6 +68,111 @@ SOLAR_INSTALLATION_FLOW = {
             "transitions": [
                 {"to_step": "verify_order_payment", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "order_number"}}
             ]
+        },
+        {
+            "name": "initialize_quote_context",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {"action_type": "set_context_variable", "variable_name": "selected_product_skus", "value_template": "[]"}
+                ]
+            },
+            "transitions": [{"to_step": "query_quote_products", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "query_quote_products",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "products_and_services",
+                    "model_name": "Product",
+                    "variable_name": "available_products",
+                    "filters_template": {
+                        "is_active": True,
+                        "product_type": "solar_kit",
+                        "sku__not_in": "{{ selected_product_skus }}"
+                    },
+                    "fields_to_return": ["sku", "name", "price"],
+                    "order_by": ["name"]
+                }]
+            },
+            "transitions": [{"to_step": "check_if_products_exist", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "check_if_products_exist",
+            "type": "action",
+            "config": {"actions_to_run": []},
+            "transitions": [
+                {"to_step": "ask_product_selection", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "available_products.0"}},
+                {"to_step": "check_if_any_product_selected", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "ask_product_selection",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "list",
+                        "header": {"type": "text", "text": "Select Products"},
+                        "body": {"text": "Please select a solar kit to add to your quote. You can add more after this selection."},
+                        "action": {
+                            "button": "View Kits",
+                            "sections": [
+                                {
+                                    "title": "Available Solar Kits",
+                                    "rows": "{{ available_products | to_interactive_rows(row_template={'id': '{{ item.sku }}', 'title': '{{ item.name }}', 'description': '${{ item.price }}'}) }}"
+                                },
+                                {
+                                    "title": "Finish",
+                                    "rows": [{"id": "done_selecting", "title": "Done Selecting", "description": "Proceed to finalize your quote."}]
+                                }
+                            ]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "chosen_product_sku"}
+            },
+            "transitions": [
+                {"to_step": "check_if_any_product_selected", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "done_selecting"}},
+                {"to_step": "add_product_to_context", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "add_product_to_context",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "set_context_variable",
+                    "variable_name": "selected_product_skus",
+                    "value_template": "{{ selected_product_skus + [chosen_product_sku] }}"
+                }]
+            },
+            "transitions": [{"to_step": "query_quote_products", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "check_if_any_product_selected",
+            "type": "action",
+            "config": {"actions_to_run": []},
+            "transitions": [
+                {"to_step": "generate_quote_order_number", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "selected_product_skus.0"}},
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "generate_quote_order_number",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "generate_unique_order_number",
+                    "params_template": {
+                        "save_to_variable": "generated_order_number"
+                    }
+                }]
+            },
+            "transitions": [{"to_step": "create_quote_order", "condition_config": {"type": "always_true"}}]
         },
         {
             "name": "verify_order_payment",
@@ -394,24 +524,11 @@ SOLAR_INSTALLATION_FLOW = {
                         "save_to_variable": "created_installation_request"
                     },
                     {
-                        "action_type": "send_group_notification",
+                        "action_type": "send_group_notification", # This is the new, preferred action
                         "params_template": {
                             "group_names": ["Pfungwa Staff", "System Admins"],
-                            "message_template": (
-                                "✅ *New Installation Request* ✅\n\n"
-                                "A new request (ID: {{ created_installation_request.id }}) was submitted by *{{ contact.name or contact.whatsapp_id }}*.\n\n"
-                                "{% if order_number %}*Order #*: {{ order_number }} ({{ found_order.0.name }})\n{% endif %}"
-                                "{% if assessment_number %}*Assessment #*: {{ assessment_number }}\n{% endif %}"
-                                "• *Type*: {{ installation_type }}\n"
-                                "• *Branch*: {{ install_branch }}\n"
-                                "• *Sales Person*: {{ install_sales_person }}\n"
-                                "• *Client Name*: {{ install_full_name }}\n"
-                                "• *Client Contact*: {{ install_phone }}\n"
-                                "• *Alt. Contact*: {{ install_alt_name }} ({{ install_alt_phone }})\n"
-                                "• *Preferred Date*: {{ install_datetime }} ({{ install_availability|title }})\n"
-                                "• *Address*: {{ install_address }}\n\n"
-                                "Please schedule and confirm with the customer."
-                            )
+                            # This name must match a NotificationTemplate in the database
+                            "template_name": "new_installation_request"
                         }
                     }
                 ]
@@ -419,6 +536,29 @@ SOLAR_INSTALLATION_FLOW = {
             "transitions": [
                 {"to_step": "end_flow_success", "priority": 0, "condition_config": {"type": "always_true"}}
             ]
+        },
+        {
+            "name": "create_quote_order",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "create_order_with_items",
+                    "params_template": {
+                        "order_name_template": "Quote Request from {{ contact.name or contact.whatsapp_id }}",
+                        "stage": "prospecting",
+                        "order_number_context_var": "generated_order_number",
+                        "line_item_skus_context_var": "selected_product_skus",
+                        "save_order_id_to": "created_order_id"
+                    }
+                }]
+            },
+            "transitions": [{"to_step": "end_flow_quote_created", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "end_flow_quote_created",
+            "type": "end_flow",
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! We have created a quote request for you with Order #{{ generated_order_number }}. A sales agent will contact you shortly with the final details and payment options."}}},
+            "transitions": []
         },
         {
             "name": "end_flow_success",
