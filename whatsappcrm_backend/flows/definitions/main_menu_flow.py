@@ -8,44 +8,8 @@ MAIN_MENU_FLOW = {
     "is_active": True,
     "steps": [
         {
-            "name": "check_if_new_user",
-            "is_entry_point": True,
-            "type": "action",
-            "config": {"actions_to_run": []},
-            "transitions": [
-                {"to_step": "ask_name", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "customer_profile.first_name", "value": ""}},
-                {"to_step": "show_main_menu", "priority": 1, "condition_config": {"type": "always_true"}}
-            ]
-        },
-        {
-            "name": "ask_name",
-            "type": "question",
-            "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Welcome to Pfungwa! To get started, could I please have your name?"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "user_full_name", "validation_regex": "^.{3,}"},
-                "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid name."}
-            },
-            "transitions": [
-                {"to_step": "process_name_and_show_menu", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "user_full_name"}}
-            ]
-        },
-        {
-            "name": "process_name_and_show_menu",
-            "type": "action",
-            "config": {
-                "actions_to_run": [
-                    {"action_type": "update_customer_profile", "fields_to_update": {
-                        "first_name": "{{ user_full_name.split(' ')[0] if ' ' in user_full_name else user_full_name }}",
-                        "last_name": "{{ ' '.join(user_full_name.split(' ')[1:]) if ' ' in user_full_name else '' }}"
-                    }}
-                ]
-            },
-            "transitions": [
-                {"to_step": "show_main_menu", "priority": 0, "condition_config": {"type": "always_true"}}
-            ]
-        },
-        {
             "name": "show_main_menu",
+            "is_entry_point": True,
             "type": "question",
             "config": {
                 "message_config": {
@@ -53,7 +17,7 @@ MAIN_MENU_FLOW = {
                     "interactive": {
                         "type": "list",
                         "header": {"type": "text", "text": "Pfungwa Main Menu"},
-                        "body": {"text": "Welcome, {{ customer_profile.first_name }}! I'm Hanna, your virtual assistant. How can I help you today?"},
+                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome to Pfungwa!{% endif %} I'm Hanna, your virtual assistant. How can I help you today?"},
                         "footer": {"text": "Select an option to continue"},
                         "action": {
                             "button": "Select an Option",

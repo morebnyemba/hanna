@@ -29,8 +29,8 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "payment_status_choice"}
             },
             "transitions": [
-                {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "paid"}},
-                {"to_step": "initialize_quote_context", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "ask_for_price"}}
+                {"to_step": "ask_installation_type", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "paid"}},
+                {"to_step": "initialize_quote_context", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "ask_for_price"}}
             ]
         },
         {
@@ -54,8 +54,8 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "installation_type"}
             },
             "transitions": [
-                {"to_step": "ask_residential_order_number", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_residential"}},
-                {"to_step": "ask_commercial_assessment_number", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_commercial"}}
+                {"to_step": "ask_residential_order_number", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_residential"}},
+                {"to_step": "ask_commercial_assessment_number", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_commercial"}}
             ]
         },
         {
@@ -66,7 +66,7 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "order_number"}
             },
             "transitions": [
-                {"to_step": "verify_order_payment", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "order_number"}}
+                {"to_step": "verify_order_payment", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "order_number"}}
             ]
         },
         {
@@ -100,8 +100,8 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "action",
             "config": {"actions_to_run": []},
             "transitions": [
-                {"to_step": "display_services_and_ask_sku", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "all_service_products.0"}},
-                {"to_step": "handle_no_services_available", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "display_services_and_ask_sku", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "all_service_products.0"}},
+                {"to_step": "handle_no_services_available", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -123,8 +123,8 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
             },
             "transitions": [
-                {"to_step": "check_if_any_product_selected", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "verify_sku_and_add_to_context", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "check_if_any_product_selected", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "verify_sku_and_add_to_context", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -145,8 +145,8 @@ SOLAR_INSTALLATION_FLOW = {
                 }]
             },
             "transitions": [
-                {"to_step": "add_sku_to_context", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_product_for_quote.0"}},
-                {"to_step": "handle_invalid_sku", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "add_sku_to_context", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "found_product_for_quote.0"}},
+                {"to_step": "handle_invalid_sku", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -159,6 +159,23 @@ SOLAR_INSTALLATION_FLOW = {
                     "value_template": "{{ selected_product_skus + [found_product_for_quote.0.sku] }}"
                 }]
             },
+            "transitions": [{"to_step": "query_selected_products", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "query_selected_products",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "products_and_services",
+                    "model_name": "Product",
+                    "variable_name": "selected_products_details",
+                    "filters_template": {
+                        "sku__in": "{{ selected_product_skus }}"
+                    },
+                    "fields_to_return": ["name", "price"]
+                }]
+            },
             "transitions": [{"to_step": "ask_for_next_sku", "condition_config": {"type": "always_true"}}]
         },
         {
@@ -169,8 +186,8 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
             },
             "transitions": [
-                {"to_step": "check_if_any_product_selected", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "verify_sku_and_add_to_context", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "check_if_any_product_selected", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "verify_sku_and_add_to_context", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -183,7 +200,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "body": (
                             "Added '{{ found_product_for_quote.0.name }}' to your quote.\n\n"
                             "Your current selections:\n"
-                            "{% for sku in selected_product_skus %}- {{ sku }}\n{% endfor %}\n"
+                            "{% for product in selected_products_details %}- {{ product.name }} (${{ product.price }})\n{% endfor %}\n"
                             "Enter another SKU to add, or type 'done' to finalize your quote."
                         )
                     }
@@ -191,8 +208,8 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
             },
             "transitions": [
-                {"to_step": "check_if_any_product_selected", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "verify_sku_and_add_to_context", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "check_if_any_product_selected", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "verify_sku_and_add_to_context", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -200,8 +217,8 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "action",
             "config": {"actions_to_run": []},
             "transitions": [
-                {"to_step": "generate_quote_order_number", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "selected_product_skus.0"}},
-                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "generate_quote_order_number", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "selected_product_skus.0"}},
+                {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -247,8 +264,8 @@ SOLAR_INSTALLATION_FLOW = {
                 }]
             },
             "transitions": [
-                {"to_step": "check_order_status", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_order.0"}},
-                {"to_step": "handle_payment_not_found", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "check_order_status", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "found_order.0"}},
+                {"to_step": "handle_payment_not_found", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -256,8 +273,8 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "action",
             "config": {"actions_to_run": []},
             "transitions": [
-                {"to_step": "ask_branch", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "found_order.0.stage", "value": "closed_won"}},
-                {"to_step": "handle_order_not_paid", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_branch", "priority": 1, "condition_config": {"type": "variable_equals", "variable_name": "found_order.0.stage", "value": "closed_won"}},
+                {"to_step": "handle_order_not_paid", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -276,7 +293,7 @@ SOLAR_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "verify_assessment", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_number"}}
+                {"to_step": "verify_assessment", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "assessment_number"}}
             ]
         },
         {
@@ -297,8 +314,8 @@ SOLAR_INSTALLATION_FLOW = {
                 }]
             },
             "transitions": [
-                {"to_step": "ask_branch", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_assessment.0"}},
-                {"to_step": "handle_assessment_not_found", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_branch", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "found_assessment.0"}},
+                {"to_step": "handle_assessment_not_found", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -333,8 +350,8 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_branch"}
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "cancel_install"}},
-                {"to_step": "ask_sales_person", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "cancel_install"}},
+                {"to_step": "ask_sales_person", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -353,9 +370,9 @@ SOLAR_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_branch", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_client_name", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_sales_person"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_branch", "priority": 2, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_client_name", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_sales_person"}}
             ]
         },
         {
@@ -374,9 +391,9 @@ SOLAR_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_sales_person", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_client_phone", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_sales_person", "priority": 2, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_client_phone", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}
             ]
         },
         {
@@ -395,9 +412,9 @@ SOLAR_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_client_name", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_alt_contact_name", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_phone"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_client_name", "priority": 2, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_alt_contact_name", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_phone"}}
             ]
         },
         {
@@ -408,9 +425,9 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "install_alt_name"}
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_client_phone", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_alt_contact_phone", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_alt_name"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_client_phone", "priority": 2, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_alt_contact_phone", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_alt_name"}}
             ]
         },
         {
@@ -429,9 +446,9 @@ SOLAR_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_alt_contact_name", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_install_date", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_alt_phone"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_alt_contact_name", "priority": 2, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_install_date", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_alt_phone"}}
             ]
         },
         {
@@ -450,9 +467,9 @@ SOLAR_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_alt_contact_phone", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_availability", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_datetime"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_alt_contact_phone", "priority": 2, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_availability", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_datetime"}}
             ]
         },
         {
@@ -476,9 +493,9 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_availability"}
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_install_date", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
-                {"to_step": "ask_install_address", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_availability"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_install_date", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
+                {"to_step": "ask_install_address", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_availability"}}
             ]
         },
         {
@@ -497,9 +514,9 @@ SOLAR_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_availability", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_location_pin", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_address"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_availability", "priority": 2, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "ask_location_pin", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_address"}}
             ]
         },
         {
@@ -510,9 +527,9 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "location", "save_to_variable": "install_location_pin"}
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
-                {"to_step": "ask_install_address", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "confirm_installation_request", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
+                {"to_step": "ask_install_address", "priority": 2, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
+                {"to_step": "confirm_installation_request", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
             ]
         },
         {
@@ -545,8 +562,8 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_confirmation"}
             },
             "transitions": [
-                {"to_step": "save_installation_request", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_install"}},
-                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "save_installation_request", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_install"}},
+                {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
