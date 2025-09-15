@@ -74,7 +74,7 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [
-                    {"action_type": "set_context_variable", "variable_name": "selected_product_skus", "value_template": "[]"}
+                    {"action_type": "set_context_variable", "variable_name": "selected_product_skus", "value_template": []}
                 ]
             },
             "transitions": [{"to_step": "query_quote_products", "condition_config": {"type": "always_true"}}]

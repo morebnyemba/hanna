@@ -1,5 +1,6 @@
 # whatsappcrm_backend/flows/services.py
 from django.db import models
+import ast
 import logging
 import re
 from typing import List, Dict, Any, Optional, Union, Literal
@@ -508,13 +509,33 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                     try:
                         Model = apps.get_model(app_label, model_name)
 
-                        filters = _resolve_value(action_item_conf.filters_template, current_step_context, contact)
+                        filters_template = action_item_conf.filters_template or {}
+                        filters = _resolve_value(filters_template, current_step_context, contact)
                         if not isinstance(filters, dict):
                             logger.warning(f"Contact {contact.id}: 'filters_template' for query_model did not resolve to a dictionary. Using empty filters. Resolved value: {filters}")
                             filters = {}
-                            
-                        queryset = Model.objects.filter(**filters)
                         
+                        # --- NEW LOGIC TO SUPPORT __not_in ---
+                        exclude_filters = {}
+                        final_filters = {}
+                        for key, value in filters.items():
+                            if key.endswith('__not_in'):
+                                new_key = key[:-7] + '__in'
+                                try:
+                                    # ast.literal_eval is a safe way to evaluate a string containing a Python literal.
+                                    parsed_value = ast.literal_eval(value) if isinstance(value, str) else value
+                                    if not isinstance(parsed_value, list):
+                                        raise TypeError("Value for __not_in did not evaluate to a list.")
+                                    exclude_filters[new_key] = parsed_value
+                                except (ValueError, SyntaxError, TypeError) as e:
+                                    logger.warning(f"Could not parse value for '{key}' in query_model: {value}. Error: {e}. Skipping this filter.")
+                            else:
+                                final_filters[key] = value
+                        
+                        queryset = Model.objects.filter(**final_filters)
+                        if exclude_filters:
+                            queryset = queryset.exclude(**exclude_filters)
+                            
                         order_by_fields = action_item_conf.order_by
                         if order_by_fields and isinstance(order_by_fields, list):
                             queryset = queryset.order_by(*order_by_fields)
