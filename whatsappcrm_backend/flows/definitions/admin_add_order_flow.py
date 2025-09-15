@@ -201,7 +201,7 @@ ADMIN_ADD_ORDER_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "product_sku"},
             },
             "transitions": [
-                {"to_step": "save_installation_request", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -240,7 +240,7 @@ ADMIN_ADD_ORDER_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "product_sku"},
             },
             "transitions": [
-                {"to_step": "save_installation_request", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -411,9 +411,8 @@ ADMIN_ADD_ORDER_FLOW = {
                 "reply_config": {"expected_type": "location", "save_to_variable": "install_location_pin"}
             },
             "transitions": [
-                {"to_step": "set_skipped_location", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "skip"}},
-                {"to_step": "set_skipped_location", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "n/a"}},
-                {"to_step": "save_installation_request", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
+                {"to_step": "set_skipped_location", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "skip"}},                {"to_step": "set_skipped_location", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "n/a"}},
+                {"to_step": "confirm_installation_request", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
             ]
         },
         {
@@ -422,7 +421,37 @@ ADMIN_ADD_ORDER_FLOW = {
             "config": {
                 "actions_to_run": [{"action_type": "set_context_variable", "variable_name": "install_location_pin", "value_template": {}}]
             },
-            "transitions": [{"to_step": "save_installation_request", "condition_config": {"type": "always_true"}}]
+            "transitions": [{"to_step": "confirm_installation_request", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "confirm_installation_request",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "body": {"text": (
+                            "Please review the details for this order and installation before submitting:\n\n"
+                            "*Order #*: PO-{{ order_number_ref }}\n"
+                            "*Order Name*: {{ order_description }}\n"
+                            "*Branch*: {{ install_branch }}\n"
+                            "*Sales Person*: {{ install_sales_person }}\n"
+                            "*Client Name*: {{ install_full_name }}\n"
+                            "*Client Contact*: {{ install_phone }}\n"
+                            "*Alt. Contact*: {{ install_alt_name }} ({{ install_alt_phone }})\n"
+                            "*Install Date*: {{ install_datetime }} ({{ install_availability|title }})\n"
+                            "*Address*: {{ install_address }}"
+                        )},
+                        "action": {"buttons": [{"type": "reply", "reply": {"id": "confirm_install", "title": "Confirm & Submit"}}, {"type": "reply", "reply": {"id": "cancel_install", "title": "Cancel"}}]}
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_confirmation"}
+            },
+            "transitions": [
+                {"to_step": "save_installation_request", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_install"}},
+                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
         },
         {
             "name": "save_installation_request",
