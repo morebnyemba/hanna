@@ -113,6 +113,25 @@ def on_order_change(sender, instance, created, **kwargs):
         }
         broadcast_activity_log.delay(activity_payload)
 
+        # --- NEW: Send WhatsApp notification to admins ---
+        from notifications.services import queue_notifications_to_users
+        
+        # The context that will be available in the Jinja2 template.
+        # The 'contact' object is automatically added by the notification service.
+        template_context = {
+            'order': instance,
+            'customer': instance.customer,
+        }
+
+        queue_notifications_to_users(
+            template_name='new_order_created',
+            group_names=["System Admins", "Sales Team"], # Adjust groups as needed
+            related_contact=instance.customer.contact,
+            template_context=template_context
+        )
+        logger.info(f"Queued 'new_order_created' notification for Order ID {instance.id}.")
+
+
 # The on_payment_change signal handler has been removed as the Payment model
 # appears to be part of a legacy data model and the handler was a placeholder.
 # If financial stats are needed, a new signal for the relevant model should be created.

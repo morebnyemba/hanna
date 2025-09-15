@@ -179,7 +179,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "app_label": "customer_data",
                     "model_name": "Order",
                     "fields_template": {
-                        "customer_id": "{{ target_customer_profile.0.contact or created_profile_instance.id }}",
+                        "customer_id": "{{ (target_customer_profile[0].contact if target_customer_profile) or created_profile_instance.id }}",
                         "order_number": "PO-{{ order_number_ref }}",
                         "name": "{{ order_description }}",
                         "stage": "closed_won",
@@ -407,17 +407,29 @@ ADMIN_ADD_ORDER_FLOW = {
             "name": "ask_location_pin",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Please provide the customer's location pin for accurate directions."}},
-                "reply_config": {"expected_type": "location", "save_to_variable": "install_location_pin", "validation_regex": "^(?i)(N/A|skip)$"}
+                "message_config": {"message_type": "text", "text": {"body": "Please provide the customer's location pin for accurate directions.\n(You can type 'skip' to skip this step.)"}},
+                "reply_config": {"expected_type": "location", "save_to_variable": "install_location_pin"}
             },
-            "transitions": [{"to_step": "save_installation_request", "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}]
+            "transitions": [
+                {"to_step": "set_skipped_location", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "skip"}},
+                {"to_step": "set_skipped_location", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "n/a"}},
+                {"to_step": "save_installation_request", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
+            ]
+        },
+        {
+            "name": "set_skipped_location",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{"action_type": "set_context_variable", "variable_name": "install_location_pin", "value_template": {}}]
+            },
+            "transitions": [{"to_step": "save_installation_request", "condition_config": {"type": "always_true"}}]
         },
         {
             "name": "save_installation_request",
             "type": "action",
             "config": {
                 "actions_to_run": [
-                    {"action_type": "create_model_instance", "app_label": "customer_data", "model_name": "InstallationRequest", "fields_template": {"customer_id": "{{ target_customer_profile.0.contact or created_profile_instance.id }}", "associated_order_id": "{{ created_order.id }}", "installation_type": "{{ installation_type }}", "order_number": "{{ order_number_ref }}", "branch": "{{ install_branch }}", "sales_person_name": "{{ install_sales_person }}", "full_name": "{{ install_full_name }}", "address": "{{ install_address }}", "latitude": "{{ install_location_pin.latitude }}", "longitude": "{{ install_location_pin.longitude }}", "preferred_datetime": "{{ install_datetime }}", "availability": "{{ install_availability }}", "contact_phone": "{{ install_phone }}", "alternative_contact_name": "{{ install_alt_name }}", "alternative_contact_number": "{{ install_alt_phone }}"}, "save_to_variable": "created_installation_request"},
+                    {"action_type": "create_model_instance", "app_label": "customer_data", "model_name": "InstallationRequest", "fields_template": {"customer_id": "{{ (target_customer_profile[0].contact if target_customer_profile) or created_profile_instance.id }}", "associated_order_id": "{{ created_order.id }}", "installation_type": "{{ installation_type }}", "order_number": "{{ order_number_ref }}", "branch": "{{ install_branch }}", "sales_person_name": "{{ install_sales_person }}", "full_name": "{{ install_full_name }}", "address": "{{ install_address }}", "latitude": "{{ install_location_pin.latitude }}", "longitude": "{{ install_location_pin.longitude }}", "preferred_datetime": "{{ install_datetime }}", "availability": "{{ install_availability }}", "contact_phone": "{{ install_phone }}", "alternative_contact_name": "{{ install_alt_name }}", "alternative_contact_number": "{{ install_alt_phone }}"}, "save_to_variable": "created_installation_request"},
                     {"action_type": "send_group_notification", "params_template": {"group_names": ["Pfungwa Staff", "System Admins"], "template_name": "admin_order_and_install_created"}}
                 ]
             },
