@@ -211,8 +211,20 @@ SOLAR_INSTALLATION_FLOW = {
                 "actions_to_run": [{
                     "action_type": "generate_unique_order_number",
                     "params_template": {
-                        "save_to_variable": "generated_order_number"
+                        "save_to_variable": "generated_order_number_raw"
                     }
+                }]
+            },
+            "transitions": [{"to_step": "prefix_order_number", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "prefix_order_number",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "set_context_variable",
+                    "variable_name": "generated_order_number",
+                    "value_template": "HAN-{{ generated_order_number_raw }}"
                 }]
             },
             "transitions": [{"to_step": "create_quote_order", "condition_config": {"type": "always_true"}}]
@@ -595,12 +607,30 @@ SOLAR_INSTALLATION_FLOW = {
                     }
                 }]
             },
+            "transitions": [{"to_step": "query_new_order_details", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "query_new_order_details",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "customer_data",
+                    "model_name": "Order",
+                    "variable_name": "newly_created_order",
+                    "filters_template": {"id": "{{ created_order_id }}"},
+                    "fields_to_return": ["amount", "currency"],
+                    "limit": 1
+                }]
+            },
             "transitions": [{"to_step": "end_flow_quote_created", "condition_config": {"type": "always_true"}}]
         },
         {
             "name": "end_flow_quote_created",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! We have created a price request for you with Order #{{ generated_order_number }}. A sales agent will contact you shortly with the final details and payment options."}}},
+            "config": {"message_config": {"message_type": "text", "text": {
+                "body": "Thank you! We have created a price request for you with Order #{{ generated_order_number }}.\n\n*Total Amount: ${{ newly_created_order.0.amount }} {{ newly_created_order.0.currency }}*\n\nA sales agent will contact you shortly with payment options."
+            }}},
             "transitions": []
         },
         {
