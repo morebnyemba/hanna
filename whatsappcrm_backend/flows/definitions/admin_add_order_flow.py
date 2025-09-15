@@ -2,8 +2,8 @@
 
 ADMIN_ADD_ORDER_FLOW = {
     "name": "admin_add_order",
-    "friendly_name": "Admin: Add New Order",
-    "description": "An internal flow for admins to create a new order/opportunity for a customer.",
+    "friendly_name": "Admin: Add New Order & Installation",
+    "description": "An internal flow for admins to create a new order, add items, and book the installation for a customer.",
     "trigger_keywords": ["add order", "new order", "create order"],
     "is_active": True,
     "steps": [
@@ -31,7 +31,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "model_name": "Contact",
                     "variable_name": "target_contact",
                     "filters_template": {"whatsapp_id": "{{ customer_whatsapp_id }}"},
-                    "fields_to_return": ["pk", "name"],
+                    "fields_to_return": ["id", "name"],
                     "limit": 1
                 }]
             },
@@ -107,7 +107,7 @@ ADMIN_ADD_ORDER_FLOW = {
                         "model_name": "CustomerProfile",
                         "variable_name": "target_customer_profile",
                         "filters_template": {"contact_id": "{{ target_contact.0.id }}"},
-                        "fields_to_return": ["pk"],
+                        "fields_to_return": ["contact"],
                         "limit": 1
                     }
                 ]
@@ -179,12 +179,12 @@ ADMIN_ADD_ORDER_FLOW = {
                     "app_label": "customer_data",
                     "model_name": "Order",
                     "fields_template": {
-                        "customer_id": "{{ (target_customer_profile.0.contact or created_profile_instance.contact) }}",
+                        "customer_id": "{{ target_customer_profile.0.contact or created_profile_instance.id }}",
                         "order_number": "{{ order_number_ref }}",
                         "name": "{{ order_description }}",
                         "stage": "closed_won",
                         "amount": "0.00",
-                        "notes": "Order created by admin {{ contact.name }}. Items added via flow."
+                        "notes": "Order created by admin {{ contact.name or contact.username }}. Items added via flow."
                     },
                     "save_to_variable": "created_order"
                 }]
@@ -201,7 +201,7 @@ ADMIN_ADD_ORDER_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "product_sku"},
             },
             "transitions": [
-                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -215,7 +215,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "model_name": "Product",
                     "variable_name": "found_product",
                     "filters_template": {"sku__iexact": "{{ product_sku }}"},
-                    "fields_to_return": ["pk", "price", "name"],
+                    "fields_to_return": ["id", "price", "name"],
                     "limit": 1
                 }]
             },
@@ -240,7 +240,7 @@ ADMIN_ADD_ORDER_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "product_sku"},
             },
             "transitions": [
-                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -265,7 +265,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "model_name": "OrderItem",
                     "fields_template": {
                         "order_id": "{{ created_order.id }}",
-                        "product_id": "{{ found_product.0.pk }}",
+                        "product_id": "{{ found_product.0.id }}",
                         "quantity": "{{ product_quantity }}",
                         "unit_price": "{{ found_product.0.price }}"
                     }
@@ -283,20 +283,160 @@ ADMIN_ADD_ORDER_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "product_sku"},
             },
             "transitions": [
-                {"to_step": "end_flow_order_created", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "end_flow_order_created",
+            "name": "calculate_and_update_order_total",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {"action_type": "calculate_order_total", "params_template": {"order_id_context_var": "created_order.id", "save_to_variable": "final_order_amount"}},
+                    {"action_type": "update_order_fields", "params_template": {"order_id_context_var": "created_order.id", "fields_to_update_template": {"amount": "{{ final_order_amount }}"}}}
+                ]
+            },
+            "transitions": [{"to_step": "ask_installation_type", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "ask_installation_type",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {"type": "button", "header": {"type": "text", "text": "Installation Details"}, "body": {"text": "Order details complete. Now, let's book the installation. Is this for a Residential or Commercial property?"}, "action": {"buttons": [{"type": "reply", "reply": {"id": "install_residential", "title": "Residential"}}, {"type": "reply", "reply": {"id": "install_commercial", "title": "Commercial"}}]}}
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "installation_type"}
+            },
+            "transitions": [{"to_step": "ask_branch", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "ask_branch",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {"type": "list", "header": {"type": "text", "text": "Select Branch"}, "body": {"text": "Please select the branch handling this installation."}, "action": {"button": "Select Branch", "sections": [{"title": "Our Branches", "rows": [{"id": "Harare", "title": "Harare"}, {"id": "Bulawayo", "title": "Bulawayo"}, {"id": "Mutare", "title": "Mutare"}, {"id": "Other", "title": "Other"}]}, {"title": "Exit", "rows": [{"id": "cancel_install", "title": "Cancel Request"}]}]}}
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_branch"}
+            },
+            "transitions": [
+                {"to_step": "end_flow_cancelled", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "cancel_install"}},
+                {"to_step": "ask_sales_person", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "ask_sales_person",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Who is the TV Sales Sales Person for this order?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_sales_person"}
+            },
+            "transitions": [{"to_step": "ask_client_name", "condition_config": {"type": "variable_exists", "variable_name": "install_sales_person"}}]
+        },
+        {
+            "name": "ask_client_name",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "What is the Client Name as it appears on the invoice?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_full_name"}
+            },
+            "transitions": [{"to_step": "ask_client_phone", "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}]
+        },
+        {
+            "name": "ask_client_phone",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "What is the Client's contact number?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_phone", "validation_regex": "^\\+?[1-9]\\d{8,14}$"},
+                "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid phone number (e.g., +263...)"}
+            },
+            "transitions": [{"to_step": "ask_alt_contact_name", "condition_config": {"type": "variable_exists", "variable_name": "install_phone"}}]
+        },
+        {
+            "name": "ask_alt_contact_name",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "What is the Alternative Contact's Name? (Type 'N/A' if not applicable)"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_alt_name"}
+            },
+            "transitions": [{"to_step": "ask_alt_contact_phone", "condition_config": {"type": "variable_exists", "variable_name": "install_alt_name"}}]
+        },
+        {
+            "name": "ask_alt_contact_phone",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "What is the Alternative Contact's Number? (Type 'N/A' if not applicable)"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_alt_phone", "validation_regex": "^(?i)(N/A|\\+?[1-9]\\d{8,14})$"},
+                "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid phone number or 'N/A'."}
+            },
+            "transitions": [{"to_step": "ask_install_date", "condition_config": {"type": "variable_exists", "variable_name": "install_alt_phone"}}]
+        },
+        {
+            "name": "ask_install_date",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "What is the customer's preferred installation date?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_datetime"}
+            },
+            "transitions": [{"to_step": "ask_availability", "condition_config": {"type": "variable_exists", "variable_name": "install_datetime"}}]
+        },
+        {
+            "name": "ask_availability",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {"type": "button", "body": {"text": "What is the customer's preferred availability on that day?"}, "action": {"buttons": [{"type": "reply", "reply": {"id": "morning", "title": "Morning"}}, {"type": "reply", "reply": {"id": "afternoon", "title": "Afternoon"}}]}}
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_availability"}
+            },
+            "transitions": [{"to_step": "ask_install_address", "condition_config": {"type": "variable_exists", "variable_name": "install_availability"}}]
+        },
+        {
+            "name": "ask_install_address",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "What is the full installation address?"}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "install_address", "validation_regex": "^.{10,}"},
+                "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please provide a more detailed address."}
+            },
+            "transitions": [{"to_step": "ask_location_pin", "condition_config": {"type": "variable_exists", "variable_name": "install_address"}}]
+        },
+        {
+            "name": "ask_location_pin",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "Please provide the customer's location pin for accurate directions."}},
+                "reply_config": {"expected_type": "location", "save_to_variable": "install_location_pin"}
+            },
+            "transitions": [{"to_step": "save_installation_request", "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}]
+        },
+        {
+            "name": "save_installation_request",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {"action_type": "create_model_instance", "app_label": "customer_data", "model_name": "InstallationRequest", "fields_template": {"customer_id": "{{ target_customer_profile.0.contact or created_profile_instance.id }}", "associated_order_id": "{{ created_order.id }}", "installation_type": "{{ installation_type }}", "order_number": "{{ order_number_ref }}", "branch": "{{ install_branch }}", "sales_person_name": "{{ install_sales_person }}", "full_name": "{{ install_full_name }}", "address": "{{ install_address }}", "latitude": "{{ install_location_pin.latitude }}", "longitude": "{{ install_location_pin.longitude }}", "preferred_datetime": "{{ install_datetime }}", "availability": "{{ install_availability }}", "contact_phone": "{{ install_phone }}", "alternative_contact_name": "{{ install_alt_name }}", "alternative_contact_number": "{{ install_alt_phone }}"}, "save_to_variable": "created_installation_request"},
+                    {"action_type": "send_group_notification", "params_template": {"group_names": ["Pfungwa Staff", "System Admins"], "template_name": "admin_order_and_install_created"}}
+                ]
+            },
+            "transitions": [{"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "end_flow_success",
             "type": "end_flow",
             "config": {
                 "message_config": {
                     "message_type": "text",
-                    "text": {"body": "Success! Order '{{ order_description }}' has been created for customer {{ customer_whatsapp_id }}. You can view it in the admin panel."}
+                    "text": {"body": "Success! Order '{{ order_description }}' and its installation request have been created for customer {{ customer_whatsapp_id }}. You can view the details in the admin panel."}
                 }
-            },
-            "transitions": []
+            }
+        },
+        {
+            "name": "end_flow_cancelled",
+            "type": "end_flow",
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Request cancelled."}}}
         }
     ]
 }

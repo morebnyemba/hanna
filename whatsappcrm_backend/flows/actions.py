@@ -2,6 +2,7 @@
 
 import logging
 import random
+from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, List
 from .services import flow_action_registry
@@ -272,9 +273,77 @@ def create_order_with_items(contact: Contact, context: Dict[str, Any], params: D
 
     return []
 
+def calculate_order_total(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Calculates the total amount of an order from its items and saves it to context.
+    """
+    order_id_var = params.get('order_id_context_var')
+    save_to_variable = params.get('save_to_variable')
+
+    if not order_id_var or not save_to_variable:
+        logger.error(f"Action 'calculate_order_total' for contact {contact.id} is missing required params. Skipping.")
+        return []
+
+    order_id = context.get(order_id_var)
+    if not order_id:
+        logger.error(f"Action 'calculate_order_total': Order ID not found in context variable '{order_id_var}'.")
+        return []
+
+    try:
+        total = OrderItem.objects.filter(order_id=order_id).aggregate(
+            total=Sum(ExpressionWrapper(F('quantity') * F('unit_price'), output_field=DecimalField()))
+        )['total'] or Decimal('0.00')
+        
+        context[save_to_variable] = total
+        logger.info(f"Calculated total for order {order_id} as {total}. Saved to '{save_to_variable}'.")
+
+    except Exception as e:
+        logger.error(f"Error in 'calculate_order_total' for order {order_id}: {e}", exc_info=True)
+
+    return []
+
+def update_order_fields(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Updates fields on an existing Order instance.
+    """
+    from .services import _resolve_value
+
+    order_id_var = params.get('order_id_context_var')
+    fields_template = params.get('fields_to_update_template')
+
+    if not order_id_var or not fields_template:
+        logger.error(f"Action 'update_order_fields' for contact {contact.id} is missing required params. Skipping.")
+        return []
+
+    order_id = context.get(order_id_var)
+    if not order_id:
+        logger.error(f"Action 'update_order_fields': Order ID not found in context variable '{order_id_var}'.")
+        return []
+
+    try:
+        order = Order.objects.get(id=order_id)
+        resolved_fields = _resolve_value(fields_template, context, contact)
+        
+        update_fields = [field for field in resolved_fields if hasattr(order, field)]
+        for field in update_fields:
+            setattr(order, field, resolved_fields[field])
+        
+        if update_fields:
+            order.save(update_fields=update_fields)
+            logger.info(f"Updated fields {update_fields} for Order {order.id}.")
+
+    except Order.DoesNotExist:
+        logger.error(f"Action 'update_order_fields': Order with ID {order_id} not found.")
+    except Exception as e:
+        logger.error(f"Error in 'update_order_fields' for order {order_id}: {e}", exc_info=True)
+
+    return []
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
 flow_action_registry.register('create_order', create_order)
 flow_action_registry.register('generate_unique_order_number', generate_unique_order_number_action)
 flow_action_registry.register('create_order_with_items', create_order_with_items)
+flow_action_registry.register('calculate_order_total', calculate_order_total)
+flow_action_registry.register('update_order_fields', update_order_fields)
