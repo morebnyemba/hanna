@@ -70,8 +70,11 @@ SITE_INSPECTION_FLOW = {
                         "save_to_variable": "created_assessment_request"
                     },
                     {
-                        "action_type": "send_admin_notification",
-                        "message_template": "NEW SITE ASSESSMENT REQUEST from {{ contact.name or contact.whatsapp_id }} (ID: {{ created_assessment_request.id }}):\n\nName: {{ assessment_full_name }}\nCompany: {{ assessment_company_name }}\nAddress: {{ assessment_address }}\nContact: {{ assessment_contact_info }}\nPreferred Day: {{ assessment_preferred_day }}\n\nPlease schedule and confirm."
+                        "action_type": "send_group_notification",
+                        "params_template": {
+                            "group_names": ["Technical Admin", "Sales Team"],
+                            "template_name": "new_site_assessment_request"
+                        }
                     }
                 ]
             },
