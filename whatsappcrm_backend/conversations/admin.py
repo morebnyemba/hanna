@@ -39,15 +39,16 @@ class MessageInline(admin.TabularInline): # Or admin.StackedInline for a differe
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    list_display = ('whatsapp_id', 'name', 'needs_human_intervention', 'last_seen', 'is_blocked', 'associated_app_config_name')
-    search_fields = ('whatsapp_id', 'name')
+    list_display = ('whatsapp_id', 'name', 'user', 'needs_human_intervention', 'last_seen', 'is_blocked', 'associated_app_config_name')
+    search_fields = ('whatsapp_id', 'name', 'user__username', 'user__email')
     list_filter = ('needs_human_intervention', 'is_blocked', 'last_seen', 'first_seen', 'associated_app_config')
     readonly_fields = ('first_seen', 'last_seen', 'intervention_requested_at')
     actions = [clear_human_intervention]
     inlines = [MessageInline]
+    autocomplete_fields = ('user',)
     fieldsets = (
         (None, {'fields': ('whatsapp_id', 'name', 'is_blocked', 'needs_human_intervention')}),
-        ('Association', {'fields': ('associated_app_config',)}),
+        ('Association', {'fields': ('user', 'associated_app_config',)}),
         ('Timestamps', {'fields': ('first_seen', 'last_seen', 'intervention_requested_at'), 'classes': ('collapse',)}),
     )
 
