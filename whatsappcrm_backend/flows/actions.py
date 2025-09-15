@@ -339,6 +339,125 @@ def update_order_fields(contact: Contact, context: Dict[str, Any], params: Dict[
 
     return []
 
+def update_model_instance(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Updates fields on an existing model instance. A more generic version of update_order_fields.
+    """
+    from .services import _resolve_value
+    from django.apps import apps
+
+    app_label = params.get('app_label')
+    model_name = params.get('model_name')
+    instance_id_template = params.get('instance_id_template')
+    fields_to_update_template = params.get('fields_to_update_template')
+
+    if not all([app_label, model_name, fields_to_update_template, instance_id_template]):
+        logger.error(f"Action 'update_model_instance' for contact {contact.id} is missing required params. Skipping.")
+        return []
+
+    try:
+        Model = apps.get_model(app_label, model_name)
+        instance_id = _resolve_value(instance_id_template, context, contact)
+        
+        resolved_fields = _resolve_value(fields_to_update_template, context, contact)
+        
+        # Validate that fields exist on the model before trying to update
+        valid_fields = {f.name for f in Model._meta.get_fields()}
+        update_data = {k: v for k, v in resolved_fields.items() if k in valid_fields}
+        
+        if not update_data:
+            logger.warning(f"Action 'update_model_instance': No valid fields to update for {model_name}.")
+            return []
+
+        updated_count = Model.objects.filter(pk=instance_id).update(**update_data)
+        logger.info(f"Updated {updated_count} instance(s) of {model_name} (PK: {instance_id}) with data: {update_data}.")
+
+    except LookupError:
+        logger.error(f"Action 'update_model_instance': Model '{app_label}.{model_name}' not found.")
+    except Exception as e:
+        logger.error(f"Error in 'update_model_instance' for {model_name}: {e}", exc_info=True)
+
+    return []
+
+def create_order_from_cart(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Creates a new Order and associated OrderItems from a cart stored in the context.
+    The cart is expected to be a list of dictionaries, each with 'sku' and 'quantity'.
+
+    Expected params:
+    - cart_context_var (str): Context variable holding the cart list.
+    - order_name_template (str): Jinja2 template for the order name.
+    - order_number_context_var (str): Context variable holding the unique order number.
+    - notes_template (str, optional): Jinja2 template for the order notes.
+    - stage (str, optional): The initial stage for the order. Defaults to 'closed_won'.
+    - payment_status (str, optional): The initial payment status. Defaults to 'pending'.
+    - save_order_to (str, optional): Context variable to save the created order object to.
+    """
+    from .services import _resolve_value
+    from django.db import transaction
+    from django.forms.models import model_to_dict
+
+    cart_var = params.get('cart_context_var')
+    name_template = params.get('order_name_template')
+    order_number_var = params.get('order_number_context_var')
+    notes_template = params.get('notes_template')
+    stage = params.get('stage', Order.Stage.CLOSED_WON)
+    payment_status = params.get('payment_status', Order.PaymentStatus.PENDING)
+    save_to_var = params.get('save_order_to')
+
+    if not all([cart_var, name_template, order_number_var]):
+        logger.error(f"Action 'create_order_from_cart' for contact {contact.id} is missing required params. Skipping.")
+        return []
+
+    cart_items = context.get(cart_var)
+    order_name = _resolve_value(name_template, context, contact)
+    order_number = context.get(order_number_var)
+
+    if not order_number or not isinstance(cart_items, list) or not cart_items:
+        logger.error(f"Action 'create_order_from_cart' for contact {contact.id}: context variables invalid or cart is empty. Skipping.")
+        return []
+
+    customer_profile, _ = CustomerProfile.objects.get_or_create(contact=contact)
+    
+    skus_in_cart = [item.get('sku') for item in cart_items if item.get('sku')]
+    products = Product.objects.filter(sku__in=skus_in_cart)
+    product_map = {p.sku: p for p in products}
+
+    if not products.exists():
+        logger.warning(f"No valid products found for SKUs in cart for 'create_order_from_cart'. Order will not be created.")
+        return []
+
+    order_notes = _resolve_value(notes_template, context, contact) if notes_template else ""
+
+    try:
+        with transaction.atomic():
+            # The 'amount' will be calculated automatically by the signal handler
+            # after OrderItems are created. We initialize it to 0.
+            order = Order.objects.create(
+                customer=customer_profile, name=order_name, order_number=order_number,
+                stage=stage, payment_status=payment_status, amount=Decimal('0.00'),
+                notes=order_notes, assigned_agent=customer_profile.assigned_agent
+            )
+
+            order_items_to_create = []
+            for item in cart_items:
+                sku, quantity = item.get('sku'), item.get('quantity', 1)
+                if sku in product_map:
+                    product = product_map[sku]
+                    order_items_to_create.append(OrderItem(order=order, product=product, quantity=quantity, unit_price=product.price))
+            
+            OrderItem.objects.bulk_create(order_items_to_create)
+            logger.info(f"Created new Order (ID: {order.id}) with {len(order_items_to_create)} items for customer {customer_profile.pk} via 'create_order_from_cart'.")
+            
+            if save_to_var:
+                order.refresh_from_db() # The signal updates the amount, so we need to get the latest value.
+                context[save_to_var] = model_to_dict(order, fields=['id', 'order_number', 'name', 'amount'])
+
+    except Exception as e:
+        logger.error(f"Error in 'create_order_from_cart' action for contact {contact.id}: {e}", exc_info=True)
+
+    return []
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
@@ -347,3 +466,5 @@ flow_action_registry.register('generate_unique_order_number', generate_unique_or
 flow_action_registry.register('create_order_with_items', create_order_with_items)
 flow_action_registry.register('calculate_order_total', calculate_order_total)
 flow_action_registry.register('update_order_fields', update_order_fields)
+flow_action_registry.register('update_model_instance', update_model_instance)
+flow_action_registry.register('create_order_from_cart', create_order_from_cart)

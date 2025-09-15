@@ -203,7 +203,6 @@ ADMIN_ADD_ORDER_FLOW = {
             },
             "transitions": [
                 {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -243,7 +242,6 @@ ADMIN_ADD_ORDER_FLOW = {
             },
             "transitions": [
                 {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -287,7 +285,6 @@ ADMIN_ADD_ORDER_FLOW = {
             },
             "transitions": [
                 {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },

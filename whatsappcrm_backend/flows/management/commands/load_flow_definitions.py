@@ -4,7 +4,6 @@ from django.core.management.base import BaseCommand, CommandError
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from flows.models import Flow, FlowStep, FlowTransition
-from flows.definitions.lead_gen_flow import LEAD_GENERATION_FLOW
 from flows.definitions.erp_quote_flow import ERP_QUOTE_FLOW
 from flows.definitions.payroll_flow import PAYROLL_SOFTWARE_FLOW
 from flows.definitions.fiscalisation_flow import FISCALISATION_FLOW
@@ -12,6 +11,10 @@ from flows.definitions.company_details_form_flow import COMPANY_DETAILS_FORM_FLO
 from flows.definitions.solar_installation_flow import SOLAR_INSTALLATION_FLOW
 from flows.definitions.site_inspection_flow import SITE_INSPECTION_FLOW
 from flows.definitions.main_menu_flow import MAIN_MENU_FLOW
+from flows.definitions.admin_update_order_status_flow import ADMIN_UPDATE_ORDER_STATUS_FLOW
+# The import for LEAD_GENERATION_FLOW was already here, but the file was missing.
+# Now that we've created lead_gen_flow.py, this will work correctly.
+from flows.definitions.lead_gen_flow import LEAD_GENERATION_FLOW
 
 class Command(BaseCommand):
     help = 'Loads or updates predefined conversational flows from definition files into the database.'
@@ -30,6 +33,7 @@ class Command(BaseCommand):
             COMPANY_DETAILS_FORM_FLOW,
             SOLAR_INSTALLATION_FLOW,
             SITE_INSPECTION_FLOW,
+            ADMIN_UPDATE_ORDER_STATUS_FLOW,
         ]
 
         for flow_def in flow_definitions:

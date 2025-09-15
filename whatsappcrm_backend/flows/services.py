@@ -47,10 +47,11 @@ def send_group_notification_action(contact: Contact, flow_context: dict, params:
     Custom flow action to queue notifications for admin user groups.
     """
     group_names = params.get('group_names')
+    contact_ids = params.get('contact_ids')
     template_name = params.get('template_name')
 
-    if not isinstance(group_names, list) or not template_name:
-        logger.error(f"Action 'send_group_notification' for contact {contact.id} is missing 'group_names' (list) or 'template_name' (string) in params.")
+    if (not isinstance(group_names, list) and not isinstance(contact_ids, list)) or not template_name:
+        logger.error(f"Action 'send_group_notification' for contact {contact.id} is missing 'template_name' and at least one of 'group_names' (list) or 'contact_ids' (list) in params.")
         return []
 
     # Get the current flow from the context if available
@@ -61,6 +62,7 @@ def send_group_notification_action(contact: Contact, flow_context: dict, params:
         template_name=template_name,
         template_context=flow_context,
         group_names=group_names,
+        contact_ids=contact_ids,
         related_contact=contact,
         related_flow=related_flow
     )
