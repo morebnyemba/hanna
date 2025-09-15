@@ -58,8 +58,10 @@ A new installation request has been submitted by *{{ contact.name or contact.wha
 - Branch: {{ install_branch }}
 - Sales Person: {{ install_sales_person }}
 - Client Name: {{ install_full_name }}
-- Client Phone: {{ install_phone }}
-- Address: {{ install_address }}
+- Client Phone: {{ install_phone }}{% if install_alt_name and install_alt_name|lower != 'n/a' %}
+- Alt. Contact: {{ install_alt_name }} ({{ install_alt_phone }}){% endif %}
+- Address: {{ install_address }}{% if install_location_pin and install_location_pin.latitude %}
+- Location Pin: https://www.google.com/maps/search/?api=1&query={{ install_location_pin.latitude }},{{ install_location_pin.longitude }}{% endif %}
 - Preferred Date: {{ install_datetime }} ({{ install_availability|title }})
 
 Please review and schedule the installation."""
