@@ -77,80 +77,123 @@ SOLAR_INSTALLATION_FLOW = {
                     {"action_type": "set_context_variable", "variable_name": "selected_product_skus", "value_template": []}
                 ]
             },
-            "transitions": [{"to_step": "query_quote_products", "condition_config": {"type": "always_true"}}]
+            "transitions": [{"to_step": "query_all_services_for_display", "condition_config": {"type": "always_true"}}]
         },
         {
-            "name": "query_quote_products",
+            "name": "query_all_services_for_display",
             "type": "action",
             "config": {
                 "actions_to_run": [{
                     "action_type": "query_model",
                     "app_label": "products_and_services",
                     "model_name": "Product",
-                    "variable_name": "available_products",
-                    "filters_template": {
-                        "is_active": True,
-                        "product_type": "service",
-                        "sku__not_in": "{{ selected_product_skus }}"
-                    },
+                    "variable_name": "all_service_products",
+                    "filters_template": {"is_active": True, "product_type": "service"},
                     "fields_to_return": ["sku", "name", "price"],
                     "order_by": ["name"]
                 }]
             },
-            "transitions": [{"to_step": "check_if_products_exist", "condition_config": {"type": "always_true"}}]
+            "transitions": [{"to_step": "check_if_services_exist_for_display", "condition_config": {"type": "always_true"}}]
         },
         {
-            "name": "check_if_products_exist",
+            "name": "check_if_services_exist_for_display",
             "type": "action",
             "config": {"actions_to_run": []},
             "transitions": [
-                {"to_step": "ask_product_selection", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "available_products.0"}},
+                {"to_step": "display_services_and_ask_sku", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "all_service_products.0"}},
                 {"to_step": "handle_no_services_available", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "ask_product_selection",
+            "name": "display_services_and_ask_sku",
             "type": "question",
             "config": {
                 "message_config": {
-                    "message_type": "interactive",
-                    "interactive": {
-                        "type": "list",
-                        "header": {"type": "text", "text": "Select Service"},
-                        "body": {"text": "Please select an installation service to add to your price request. You can add more after this selection."},
-                        "action": {
-                            "button": "View Services",
-                            "sections": [
-                                {
-                                    "title": "Available Installation Services",
-                                    "rows": "{{ available_products | to_interactive_rows(row_template={'id': '{{ item.sku }}', 'title': '{{ item.name }}', 'description': '${{ item.price }}'}) }}"
-                                },
-                                {
-                                    "title": "Finish",
-                                    "rows": [{"id": "done_selecting", "title": "Done Selecting", "description": "Proceed to finalize your price request."}]
-                                }
-                            ]
-                        }
+                    "message_type": "text",
+                    "text": {
+                        "body": (
+                            "Here are our available installation services:\n\n"
+                            "{% for product in all_service_products %}"
+                            "- *{{ product.name }}*\n  SKU: `{{ product.sku }}` | Price: ${{ product.price }}\n"
+                            "{% endfor %}\n"
+                            "Please enter the SKU of the service you would like to add to your quote. Type 'done' when you are finished."
+                        )
                     }
                 },
-                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "chosen_product_sku"}
+                "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
             },
             "transitions": [
-                {"to_step": "check_if_any_product_selected", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "done_selecting"}},
-                {"to_step": "add_product_to_context", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "check_if_any_product_selected", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "verify_sku_and_add_to_context", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "add_product_to_context",
+            "name": "verify_sku_and_add_to_context",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "products_and_services",
+                    "model_name": "Product",
+                    "variable_name": "found_product_for_quote",
+                    "filters_template": {
+                        "sku__iexact": "{{ input_sku }}",
+                        "product_type": "service"
+                    },
+                    "fields_to_return": ["sku", "name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "add_sku_to_context", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_product_for_quote.0"}},
+                {"to_step": "handle_invalid_sku", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "add_sku_to_context",
             "type": "action",
             "config": {
                 "actions_to_run": [{
                     "action_type": "set_context_variable",
                     "variable_name": "selected_product_skus",
-                    "value_template": "{{ selected_product_skus + [chosen_product_sku] }}"
+                    "value_template": "{{ selected_product_skus + [found_product_for_quote.0.sku] }}"
                 }]
             },
-            "transitions": [{"to_step": "query_quote_products", "condition_config": {"type": "always_true"}}]
+            "transitions": [{"to_step": "ask_for_next_sku", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "handle_invalid_sku",
+            "type": "question",
+            "config": {
+                "message_config": {"message_type": "text", "text": {"body": "The SKU '{{ input_sku }}' is not valid. Please check the list and enter a valid SKU, or type 'done' to finish."}},
+                "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
+            },
+            "transitions": [
+                {"to_step": "check_if_any_product_selected", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "verify_sku_and_add_to_context", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "ask_for_next_sku",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": (
+                            "Added '{{ found_product_for_quote.0.name }}' to your quote.\n\n"
+                            "Your current selections:\n"
+                            "{% for sku in selected_product_skus %}- {{ sku }}\n{% endfor %}\n"
+                            "Enter another SKU to add, or type 'done' to finalize your quote."
+                        )
+                    }
+                },
+                "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
+            },
+            "transitions": [
+                {"to_step": "check_if_any_product_selected", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "verify_sku_and_add_to_context", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
         },
         {
             "name": "check_if_any_product_selected",
