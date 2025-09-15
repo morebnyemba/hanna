@@ -105,7 +105,7 @@ SOLAR_INSTALLATION_FLOW = {
             "config": {"actions_to_run": []},
             "transitions": [
                 {"to_step": "ask_product_selection", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "available_products.0"}},
-                {"to_step": "check_if_any_product_selected", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "handle_no_services_available", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -573,6 +573,15 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "end_flow",
             "config": {
                 "message_config": {"message_type": "text", "text": {"body": "Your installation request has been cancelled. Type 'menu' to start over."}}
+            },
+            "transitions": []
+        },
+        {
+            "name": "handle_no_services_available",
+            "type": "human_handover",
+            "config": {
+                "pre_handover_message_text": "I'm sorry, it seems there are no installation services available for quoting at the moment. I'm connecting you with a support agent who can assist you further.",
+                "notification_details": "Installation Flow: User asked for a price, but no 'service' type products were found in the database to offer."
             },
             "transitions": []
         },
