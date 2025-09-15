@@ -17,7 +17,7 @@ MAIN_MENU_FLOW = {
                     "interactive": {
                         "type": "list",
                         "header": {"type": "text", "text": "Pfungwa Main Menu"},
-                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome to Pfungwa!{% endif %} I'm Hanna, your virtual assistant. How can I help you today?"},
+                        "body": {"text": "Welcome to Pfungwa! I'm Hanna, your virtual assistant. Please select an option from the menu below to get started."},
                         "footer": {"text": "Select an option to continue"},
                         "action": {
                             "button": "Select an Option",
