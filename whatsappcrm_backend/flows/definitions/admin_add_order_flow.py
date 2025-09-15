@@ -179,7 +179,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "app_label": "customer_data",
                     "model_name": "Order",
                     "fields_template": {
-                        "customer_id": "{{ (target_customer_profile[0].contact if target_customer_profile) or created_profile_instance.id }}",
+                        "customer_id": "{{ target_contact.0.id if target_contact else created_contact_instance.contact_id }}",
                         "order_number": "PO-{{ order_number_ref }}",
                         "name": "{{ order_description }}",
                         "stage": "closed_won",
@@ -458,7 +458,7 @@ ADMIN_ADD_ORDER_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [
-                    {"action_type": "create_model_instance", "app_label": "customer_data", "model_name": "InstallationRequest", "fields_template": {"customer_id": "{{ (target_customer_profile[0].contact if target_customer_profile) or created_profile_instance.id }}", "associated_order_id": "{{ created_order.id }}", "installation_type": "{{ installation_type }}", "order_number": "{{ order_number_ref }}", "branch": "{{ install_branch }}", "sales_person_name": "{{ install_sales_person }}", "full_name": "{{ install_full_name }}", "address": "{{ install_address }}", "latitude": "{{ install_location_pin.latitude }}", "longitude": "{{ install_location_pin.longitude }}", "preferred_datetime": "{{ install_datetime }}", "availability": "{{ install_availability }}", "contact_phone": "{{ install_phone }}", "alternative_contact_name": "{{ install_alt_name }}", "alternative_contact_number": "{{ install_alt_phone }}"}, "save_to_variable": "created_installation_request"},
+                    {"action_type": "create_model_instance", "app_label": "customer_data", "model_name": "InstallationRequest", "fields_template": {"customer_id": "{{ target_contact.0.id if target_contact else created_contact_instance.contact_id }}", "associated_order_id": "{{ created_order.id }}", "installation_type": "{{ installation_type }}", "order_number": "{{ order_number_ref }}", "branch": "{{ install_branch }}", "sales_person_name": "{{ install_sales_person }}", "full_name": "{{ install_full_name }}", "address": "{{ install_address }}", "latitude": "{{ install_location_pin.latitude }}", "longitude": "{{ install_location_pin.longitude }}", "preferred_datetime": "{{ install_datetime }}", "availability": "{{ install_availability }}", "contact_phone": "{{ install_phone }}", "alternative_contact_name": "{{ install_alt_name }}", "alternative_contact_number": "{{ install_alt_phone }}"}, "save_to_variable": "created_installation_request"},
                     {"action_type": "send_group_notification", "params_template": {"group_names": ["Pfungwa Staff", "System Admins"], "template_name": "admin_order_and_install_created"}}
                 ]
             },
