@@ -183,6 +183,7 @@ ADMIN_ADD_ORDER_FLOW = {
                         "order_number": "PO-{{ order_number_ref }}",
                         "name": "{{ order_description }}",
                         "stage": "closed_won",
+                        "payment_status": "paid",
                         "amount": "0.00",
                         "notes": "Order created by admin {{ contact.name or contact.username }}. Items added via flow."
                     },
@@ -202,6 +203,7 @@ ADMIN_ADD_ORDER_FLOW = {
             },
             "transitions": [
                 {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -241,6 +243,7 @@ ADMIN_ADD_ORDER_FLOW = {
             },
             "transitions": [
                 {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -284,6 +287,7 @@ ADMIN_ADD_ORDER_FLOW = {
             },
             "transitions": [
                 {"to_step": "calculate_and_update_order_total", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
+                {"to_step": "ask_installation_type", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
                 {"to_step": "query_product_loop", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },

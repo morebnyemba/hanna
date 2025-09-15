@@ -217,6 +217,13 @@ class Order(models.Model):
         CLOSED_WON = 'closed_won', _('Closed Won')
         CLOSED_LOST = 'closed_lost', _('Closed Lost')
 
+    class PaymentStatus(models.TextChoices):
+        PENDING = 'pending', _('Pending Payment')
+        PAID = 'paid', _('Paid')
+        PARTIALLY_PAID = 'partially_paid', _('Partially Paid')
+        REFUNDED = 'refunded', _('Refunded')
+        NOT_APPLICABLE = 'not_applicable', _('Not Applicable')
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order_number = models.CharField(_("Order Number"), max_length=100, unique=True, blank=True, null=True, help_text=_("Unique order number or reference for this order."))
     name = models.CharField(_("Order Name"), max_length=255, help_text=_("e.g., '5kVA Solar Kit for Mr. Smith'"))
@@ -230,6 +237,13 @@ class Order(models.Model):
         max_length=50,
         choices=Stage.choices,
         default=Stage.PROSPECTING,
+        db_index=True
+    )
+    payment_status = models.CharField(
+        _("Payment Status"),
+        max_length=50,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
         db_index=True
     )
     amount = models.DecimalField(_("Amount"), max_digits=12, decimal_places=2, help_text=_("The estimated or actual value of the deal."))

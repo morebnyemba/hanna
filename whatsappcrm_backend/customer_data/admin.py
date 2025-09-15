@@ -91,17 +91,17 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('order_number', 'name', 'customer', 'stage', 'amount', 'currency', 'assigned_agent', 'created_at')
-    list_filter = ('stage', 'assigned_agent', 'currency', 'created_at')
+    list_display = ('order_number', 'name', 'customer', 'stage', 'payment_status', 'amount', 'currency', 'assigned_agent', 'created_at')
+    list_filter = ('stage', 'payment_status', 'assigned_agent', 'currency', 'created_at')
     search_fields = ('order_number', 'name', 'customer__first_name', 'customer__last_name', 'customer__company')
     autocomplete_fields = ['customer', 'assigned_agent']
-    list_editable = ('stage',)
+    list_editable = ('stage', 'payment_status',)
     readonly_fields = ('amount',)
     date_hierarchy = 'created_at'
     inlines = [OrderItemInline]
     fieldsets = (
         (None, {'fields': ('order_number', 'name', 'customer', 'assigned_agent')}),
-        ('Deal Details', {'fields': ('stage', ('amount', 'currency'), 'expected_close_date')}),
+        ('Deal Details', {'fields': ('stage', 'payment_status', ('amount', 'currency'), 'expected_close_date')}),
         ('Notes', {'fields': ('notes',)}),
     )
     list_select_related = ('customer', 'assigned_agent')

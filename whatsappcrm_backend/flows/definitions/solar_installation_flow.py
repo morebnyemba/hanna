@@ -259,7 +259,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "order_number__iexact": "{{ order_number }}",
                         "customer__contact__whatsapp_id": "{{ contact.whatsapp_id }}"
                     },
-                    "fields_to_return": ["id", "stage", "name"],
+                    "fields_to_return": ["id", "stage", "name", "payment_status"],
                     "limit": 1
                 }]
             },
@@ -273,7 +273,7 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "action",
             "config": {"actions_to_run": []},
             "transitions": [
-                {"to_step": "ask_branch", "priority": 1, "condition_config": {"type": "variable_equals", "variable_name": "found_order.0.stage", "value": "closed_won"}},
+                {"to_step": "ask_branch", "priority": 1, "condition_config": {"type": "variable_equals", "variable_name": "found_order.0.payment_status", "value": "paid"}},
                 {"to_step": "handle_order_not_paid", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -689,7 +689,7 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "human_handover",
             "config": {
                 "pre_handover_message_text": "I found your order '{{ order_number }}', but it looks like the payment is still pending or the order is not yet finalized. I'm connecting you with a support agent who can help you complete it.",
-                "notification_details": "Installation Flow: Order #{{ order_number }} found, but stage is '{{ found_order.0.stage }}', not 'closed_won'."
+                "notification_details": "Installation Flow: Order #{{ order_number }} found, but payment_status is '{{ found_order.0.payment_status }}', not 'paid'."
             },
             "transitions": []
         },
