@@ -116,8 +116,9 @@ class InstallationRequestAdmin(admin.ModelAdmin):
 
 @admin.register(SiteAssessmentRequest)
 class SiteAssessmentRequestAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'company_name', 'status', 'preferred_day', 'created_at')
+    list_display = ('assessment_id', 'full_name', 'company_name', 'status', 'preferred_day', 'created_at')
     list_filter = ('status', 'created_at')
-    search_fields = ('full_name', 'company_name', 'address', 'contact_info')
+    search_fields = ('assessment_id', 'full_name', 'company_name', 'address', 'contact_info')
     readonly_fields = ('created_at', 'updated_at')
     autocomplete_fields = ['customer']
+    list_editable = ('status',)

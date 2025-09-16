@@ -12,6 +12,8 @@ from flows.definitions.solar_installation_flow import SOLAR_INSTALLATION_FLOW
 from flows.definitions.site_inspection_flow import SITE_INSPECTION_FLOW
 from flows.definitions.main_menu_flow import MAIN_MENU_FLOW
 from flows.definitions.admin_update_order_status_flow import ADMIN_UPDATE_ORDER_STATUS_FLOW
+from flows.definitions.admin_update_assessment_status_flow import ADMIN_UPDATE_ASSESSMENT_STATUS_FLOW
+from flows.definitions.admin_main_menu_flow import ADMIN_MAIN_MENU_FLOW
 # The import for LEAD_GENERATION_FLOW was already here, but the file was missing.
 # Now that we've created lead_gen_flow.py, this will work correctly.
 from flows.definitions.lead_gen_flow import LEAD_GENERATION_FLOW
@@ -34,6 +36,8 @@ class Command(BaseCommand):
             SOLAR_INSTALLATION_FLOW,
             SITE_INSPECTION_FLOW,
             ADMIN_UPDATE_ORDER_STATUS_FLOW,
+            ADMIN_UPDATE_ASSESSMENT_STATUS_FLOW,
+            ADMIN_MAIN_MENU_FLOW,
         ]
 
         for flow_def in flow_definitions:

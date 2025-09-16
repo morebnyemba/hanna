@@ -405,9 +405,10 @@ class SiteAssessmentRequest(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('scheduled', 'Scheduled'),
-        ('completed', 'Completed'),
+        ('assessed', 'Assessed'),
         ('cancelled', 'Cancelled'),
     ]
+    assessment_id = models.CharField(_("Assessment ID"), max_length=100, unique=True, blank=True, null=True, db_index=True)
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='assessment_requests')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     
@@ -421,4 +422,4 @@ class SiteAssessmentRequest(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Assessment for {self.full_name} ({self.status})"
+        return f"Assessment #{self.assessment_id or self.id} for {self.full_name} ({self.status})"

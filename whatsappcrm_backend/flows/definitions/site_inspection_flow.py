@@ -51,7 +51,23 @@ SITE_INSPECTION_FLOW = {
                 "message_config": {"message_type": "text", "text": {"body": "Finally, what is the best contact number for our team to use?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "assessment_contact_info"}
             },
-            "transitions": [{"to_step": "save_assessment_request", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_contact_info"}}]
+            "transitions": [{"to_step": "generate_assessment_id", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_contact_info"}}]
+        },
+        {
+            "name": "generate_assessment_id",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{"action_type": "generate_unique_assessment_id", "params_template": {"save_to_variable": "generated_assessment_id_raw"}}]
+            },
+            "transitions": [{"to_step": "prefix_assessment_id", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "prefix_assessment_id",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{"action_type": "set_context_variable", "variable_name": "generated_assessment_id", "value_template": "SA-{{ generated_assessment_id_raw }}"}]
+            },
+            "transitions": [{"to_step": "save_assessment_request", "condition_config": {"type": "always_true"}}]
         },
         {
             "name": "save_assessment_request",
@@ -63,7 +79,7 @@ SITE_INSPECTION_FLOW = {
                         "app_label": "customer_data",
                         "model_name": "SiteAssessmentRequest",
                         "fields_template": {
-                            "customer": "current", "full_name": "{{ assessment_full_name }}",
+                            "customer": "current", "assessment_id": "{{ generated_assessment_id }}", "full_name": "{{ assessment_full_name }}",
                             "company_name": "{{ assessment_company_name }}", "address": "{{ assessment_address }}",
                             "contact_info": "{{ assessment_contact_info }}", "preferred_day": "{{ assessment_preferred_day }}"
                         },
@@ -83,7 +99,7 @@ SITE_INSPECTION_FLOW = {
         {
             "name": "end_flow_assessment_success",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Your site assessment request has been submitted. Our team will contact you shortly to confirm the schedule."}}},
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Your site assessment request (#{{ generated_assessment_id }}) has been submitted. Our team will contact you shortly to confirm the schedule."}}},
             "transitions": []
         }
     ]

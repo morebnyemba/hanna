@@ -458,6 +458,26 @@ def create_order_from_cart(contact: Contact, context: Dict[str, Any], params: Di
 
     return []
 
+def generate_unique_assessment_id_action(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Generates a unique 6-digit assessment ID and saves it to the context.
+    """
+    from customer_data.models import SiteAssessmentRequest
+    save_to_variable = params.get('save_to_variable')
+    if not save_to_variable:
+        logger.error(f"Action 'generate_unique_assessment_id' for contact {contact.id} is missing 'save_to_variable' in params.")
+        return []
+
+    while True:
+        assessment_num = str(random.randint(100000, 999999))
+        if not SiteAssessmentRequest.objects.filter(assessment_id=assessment_num).exists():
+            break
+    
+    context[save_to_variable] = assessment_num
+    logger.info(f"Generated unique assessment ID {assessment_num} for contact {contact.id} and saved to '{save_to_variable}'.")
+    
+    return []
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
@@ -468,3 +488,4 @@ flow_action_registry.register('calculate_order_total', calculate_order_total)
 flow_action_registry.register('update_order_fields', update_order_fields)
 flow_action_registry.register('update_model_instance', update_model_instance)
 flow_action_registry.register('create_order_from_cart', create_order_from_cart)
+flow_action_registry.register('generate_unique_assessment_id', generate_unique_assessment_id_action)

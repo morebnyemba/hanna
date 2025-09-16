@@ -1032,6 +1032,20 @@ def _evaluate_transition_condition(transition: FlowTransition, contact: Contact,
                     return True
         return False
 
+    elif condition_type == 'contact_is_admin':
+        # This is a custom security check for admin flows.
+        # It checks if the contact is linked to a user OR if they are the super admin.
+        # The SUPER_ADMIN_WHATSAPP_ID should be configured in settings.py
+        super_admin_wa_id = getattr(settings, 'SUPER_ADMIN_WHATSAPP_ID', None)
+        
+        # The Contact model should have a OneToOneField to the User model named 'user'.
+        is_linked_user = hasattr(contact, 'user') and contact.user is not None
+        is_super_admin = super_admin_wa_id and contact.whatsapp_id == super_admin_wa_id
+        
+        result = is_linked_user or is_super_admin
+        logger.info(f"Condition 'contact_is_admin' check for contact {contact.id}. Linked user: {is_linked_user}, Super admin: {is_super_admin}. Result: {result}")
+        return result
+
     logger.warning(f"Unknown or unhandled condition type: '{condition_type}' for transition {transition.id} or condition logic not met.")
     return False
 
