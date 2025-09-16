@@ -43,6 +43,16 @@ The status for your order '{{ order_name }}' (#{{ order_number }}) has been upda
 Thank you for choosing us!"""
     },
     {
+        "name": "assessment_status_updated",
+        "description": "Sent to a customer when an admin updates their site assessment status.",
+        "template_type": "whatsapp",
+        "body": """Hello! 👋
+
+The status for your Site Assessment Request (#{{ assessment_id }}) has been updated to: *{{ new_status }}*.
+
+Our team will be in touch with the next steps. Thank you!"""
+    },
+    {
         "name": "new_installation_request",
         "description": "Sent to admins when a customer submits a new solar installation request.",
         "template_type": "whatsapp",
@@ -98,6 +108,19 @@ A new site assessment has been requested by *{{ contact.name or contact.whatsapp
 
 Please follow up to schedule the assessment."""
     },
+    {
+        "name": "human_handover_flow",
+        "description": "Sent to admins when a user is handed over to a human agent by the flow engine.",
+        "template_type": "whatsapp",
+        "body": """Human Intervention Required ⚠️
+
+Contact *{{ related_contact.name or related_contact.whatsapp_id }}* requires assistance.
+
+*Reason:*
+{{ template_context.last_bot_message or 'User requested help or an error occurred.' }}
+
+Please respond to them in the main inbox."""
+    },
 ]
 
 
@@ -115,7 +138,8 @@ class Command(BaseCommand):
                 name=template_name,
                 defaults={
                     'description': template_def.get('description', ''),
-                    'message_body': template_def.get('body', ''),
+                    'template_type': template_def.get('template_type', 'whatsapp'),
+                    'body': template_def.get('body', ''),
                 }
             )
 
