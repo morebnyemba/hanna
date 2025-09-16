@@ -11,7 +11,6 @@ NOTIFICATION_TEMPLATES = [
     {
         "name": "new_online_order_placed",
         "description": "Sent to admins when a customer places a new order through the 'Purchase Product' flow.",
-        "template_type": "whatsapp",
         "body": """New Online Order Placed! 🛍️
 
 A new order has been placed via WhatsApp by *{{ contact.name or contact.whatsapp_id }}*.
@@ -35,7 +34,6 @@ Please follow up with the customer to arrange payment."""
     {
         "name": "order_payment_status_updated",
         "description": "Sent to a customer when an admin updates their order's payment status.",
-        "template_type": "whatsapp",
         "body": """Hello! 👋
 
 The status for your order '{{ order_name }}' (#{{ order_number }}) has been updated to: *{{ new_status }}*.
@@ -45,7 +43,6 @@ Thank you for choosing us!"""
     {
         "name": "assessment_status_updated",
         "description": "Sent to a customer when an admin updates their site assessment status.",
-        "template_type": "whatsapp",
         "body": """Hello! 👋
 
 The status for your Site Assessment Request (#{{ assessment_id }}) has been updated to: *{{ new_status }}*.
@@ -55,7 +52,6 @@ Our team will be in touch with the next steps. Thank you!"""
     {
         "name": "new_installation_request",
         "description": "Sent to admins when a customer submits a new solar installation request.",
-        "template_type": "whatsapp",
         "body": """New Installation Request 🛠️
 
 A new installation request has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
@@ -80,7 +76,6 @@ Please review and schedule the installation."""
     {
         "name": "admin_order_and_install_created",
         "description": "Sent to admins when another admin creates a new order and installation request via the admin flow.",
-        "template_type": "whatsapp",
         "body": """Admin Action: New Order & Install Created 📝
 
 Admin *{{ contact.name or contact.username }}* has created a new order and installation request.
@@ -94,7 +89,6 @@ Please see the admin panel for full details."""
     {
         "name": "new_site_assessment_request",
         "description": "Sent to admins when a customer books a new site assessment.",
-        "template_type": "whatsapp",
         "body": """New Site Assessment Request 📋
 
 A new site assessment has been requested by *{{ contact.name or contact.whatsapp_id }}*.
@@ -111,7 +105,6 @@ Please follow up to schedule the assessment."""
     {
         "name": "human_handover_flow",
         "description": "Sent to admins when a user is handed over to a human agent by the flow engine.",
-        "template_type": "whatsapp",
         "body": """Human Intervention Required ⚠️
 
 Contact *{{ related_contact.name or related_contact.whatsapp_id }}* requires assistance.
@@ -138,8 +131,7 @@ class Command(BaseCommand):
                 name=template_name,
                 defaults={
                     'description': template_def.get('description', ''),
-                    'template_type': template_def.get('template_type', 'whatsapp'),
-                    'body': template_def.get('body', ''),
+                    'message_body': template_def.get('body', ''),
                 }
             )
 
