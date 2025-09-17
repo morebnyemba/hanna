@@ -23,11 +23,6 @@ class MetaAppConfigAdmin(admin.ModelAdmin):
         }),
     )
 
-    def save_model(self, request, obj, form, change):
-        if obj.is_active:
-            MetaAppConfig.objects.filter(is_active=True).exclude(pk=obj.pk).update(is_active=False)
-        super().save_model(request, obj, form, change)
-
 @admin.register(WebhookEventLog)
 class WebhookEventLogAdmin(admin.ModelAdmin):
     list_display = ('id', 'event_type', 'event_identifier', 'message_link', 'app_config_name', 'received_at', 'processing_status')

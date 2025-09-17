@@ -42,45 +42,6 @@ class MetaAppConfigSerializer(serializers.ModelSerializer):
             },
         }
 
-    def validate(self, data):
-        """
-        Custom validation to ensure only one config is active.
-        This duplicates the model's clean() method logic for the serializer context.
-        """
-        instance = self.instance # Existing instance during updates
-
-        is_activating = data.get('is_active', instance.is_active if instance else False)
-
-        if is_activating:
-            active_configs_query = MetaAppConfig.objects.filter(is_active=True)
-            if instance: # If updating an existing instance
-                active_configs_query = active_configs_query.exclude(pk=instance.pk)
-            
-            if active_configs_query.exists():
-                raise serializers.ValidationError({
-                    "is_active": "Another configuration is already active. Please deactivate it before activating this one."
-                })
-        return data
-
-    def update(self, instance, validated_data):
-        """
-        Handle the case where if one config is set to active, others are deactivated.
-        """
-        if validated_data.get('is_active', False) and not instance.is_active:
-            MetaAppConfig.objects.filter(is_active=True).exclude(pk=instance.pk).update(is_active=False)
-        
-        # If is_active is being set to False, no special handling needed for other instances.
-        
-        return super().update(instance, validated_data)
-
-    def create(self, validated_data):
-        """
-        Handle the case where if a new config is created as active, others are deactivated.
-        """
-        if validated_data.get('is_active', False):
-            MetaAppConfig.objects.filter(is_active=True).update(is_active=False)
-        return super().create(validated_data)
-
 
 class WebhookEventLogSerializer(serializers.ModelSerializer):
     """

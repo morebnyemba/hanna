@@ -65,16 +65,23 @@ class MetaAppConfig(models.Model):
         return f"{self.name} ({'Active' if self.is_active else 'Inactive'})"
 
     def clean(self):
-        if self.is_active:
-            active_configs = MetaAppConfig.objects.filter(is_active=True).exclude(pk=self.pk)
-            if active_configs.exists():
-                raise ValidationError(
-                    "Another configuration is already active. Please deactivate it before activating this one."
-                )
+        # The strict validation check is removed from clean() to allow the save()
+        # method to handle the logic in a more user-friendly way by auto-deactivating
+        # other configs instead of raising an error.
         super().clean()
 
     def save(self, *args, **kwargs):
+        # First, run model validation.
         self.full_clean()
+        
+        # If this instance is being set to active, deactivate all others.
+        # This logic is placed in save() to ensure it runs regardless of how
+        # the model is saved (admin, API, shell, etc.), providing consistent behavior.
+        if self.is_active:
+            # Use .exclude(pk=self.pk) to avoid deactivating the instance we are currently saving.
+            # Use .update() for an efficient single database query.
+            MetaAppConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+            
         super().save(*args, **kwargs)
 
     class Meta:
