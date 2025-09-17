@@ -96,7 +96,7 @@ class OrderAdmin(admin.ModelAdmin):
     search_fields = ('order_number', 'name', 'customer__first_name', 'customer__last_name', 'customer__company')
     autocomplete_fields = ['customer', 'assigned_agent']
     list_editable = ('stage', 'payment_status',)
-    readonly_fields = ('amount',)
+    readonly_fields = ()
     date_hierarchy = 'created_at'
     inlines = [OrderItemInline]
     fieldsets = (

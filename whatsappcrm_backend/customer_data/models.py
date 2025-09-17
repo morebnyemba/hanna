@@ -226,11 +226,16 @@ class Order(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order_number = models.CharField(_("Order Number"), max_length=100, unique=True, blank=True, null=True, help_text=_("Unique order number or reference for this order."))
-    name = models.CharField(_("Order Name"), max_length=255, help_text=_("e.g., '5kVA Solar Kit for Mr. Smith'"))
+    name = models.CharField(
+        _("Order Name"), max_length=255, help_text=_("e.g., '5kVA Solar Kit for Mr. Smith'"),
+        blank=True, null=True
+    )
     customer = models.ForeignKey(
         CustomerProfile,
-        on_delete=models.CASCADE,
-        related_name='orders'
+        on_delete=models.SET_NULL,
+        related_name='orders',
+        null=True,
+        blank=True
     )
     stage = models.CharField(
         _("Stage"),
@@ -246,7 +251,10 @@ class Order(models.Model):
         default=PaymentStatus.PENDING,
         db_index=True
     )
-    amount = models.DecimalField(_("Amount"), max_digits=12, decimal_places=2, help_text=_("The estimated or actual value of the deal."))
+    amount = models.DecimalField(
+        _("Amount"), max_digits=12, decimal_places=2, help_text=_("The estimated or actual value of the deal."),
+        null=True, blank=True
+    )
     currency = models.CharField(_("Currency"), max_length=3, default='USD')
     expected_close_date = models.DateField(_("Expected Close Date"), null=True, blank=True)
     

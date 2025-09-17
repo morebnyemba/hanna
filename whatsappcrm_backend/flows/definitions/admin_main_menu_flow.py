@@ -37,7 +37,6 @@ ADMIN_MAIN_MENU_FLOW = {
                         "body": {"text": "Welcome, {{ contact.name }}. Please select an administrative task:"},
                         "action": {
                             "buttons": [
-                                {"type": "reply", "reply": {"id": "add_order", "title": "📝 Add New Order"}},
                                 {"type": "reply", "reply": {"id": "update_order", "title": "🔄 Update Order Status"}},
                                 {"type": "reply", "reply": {"id": "update_assessment", "title": "📋 Update Assessment"}},
                                 {"type": "reply", "reply": {"id": "exit", "title": "Exit"}}
@@ -48,16 +47,10 @@ ADMIN_MAIN_MENU_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "admin_choice"}
             },
             "transitions": [
-                {"to_step": "switch_to_add_order", "condition_config": {"type": "interactive_reply_id_equals", "value": "add_order"}},
                 {"to_step": "switch_to_update_order", "condition_config": {"type": "interactive_reply_id_equals", "value": "update_order"}},
                 {"to_step": "switch_to_update_assessment", "condition_config": {"type": "interactive_reply_id_equals", "value": "update_assessment"}},
                 {"to_step": "end_admin_menu", "condition_config": {"type": "interactive_reply_id_equals", "value": "exit"}}
             ]
-        },
-        {
-            "name": "switch_to_add_order",
-            "type": "switch_flow",
-            "config": {"target_flow_name": "admin_add_order"}
         },
         {
             "name": "switch_to_update_order",

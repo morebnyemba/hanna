@@ -478,6 +478,38 @@ def generate_unique_assessment_id_action(contact: Contact, context: Dict[str, An
     
     return []
 
+def create_placeholder_order(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Creates a placeholder Order with just an order number.
+    Used by the super-admin simple order creation flow.
+    """
+    order_number = params.get('order_number')
+
+    if not order_number:
+        logger.error(f"Action 'create_placeholder_order' by admin {contact.whatsapp_id} is missing order_number. Skipping.")
+        return []
+
+    try:
+        # Use get_or_create to avoid creating duplicates if the same number is sent twice.
+        order, created = Order.objects.get_or_create(
+            order_number=order_number,
+            defaults={
+                'name': f"Placeholder for Order #{order_number}",
+                'stage': Order.Stage.PROSPECTING,
+                'payment_status': Order.PaymentStatus.PENDING,
+                # customer and amount are allowed to be null now
+            }
+        )
+        if created:
+            logger.info(f"Admin {contact.whatsapp_id} created placeholder order #{order_number}.")
+        else:
+            logger.info(f"Admin {contact.whatsapp_id} attempted to create order #{order_number}, but it already exists.")
+
+    except Exception as e:
+        logger.error(f"Error in 'create_placeholder_order': {e}", exc_info=True)
+
+    return []
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
@@ -489,3 +521,4 @@ flow_action_registry.register('update_order_fields', update_order_fields)
 flow_action_registry.register('update_model_instance', update_model_instance)
 flow_action_registry.register('create_order_from_cart', create_order_from_cart)
 flow_action_registry.register('generate_unique_assessment_id', generate_unique_assessment_id_action)
+flow_action_registry.register('create_placeholder_order', create_placeholder_order)
