@@ -398,4 +398,4 @@ CONTENT_SECURITY_POLICY = {
     }
 }
 # In your settings.py
-SUPER_ADMIN_WHATSAPP_ID = '263787361077' # Replace with the actual super admin WhatsApp number
+SUPER_ADMIN_WHATSAPP_ID = '263774635389' # Replace with the actual super admin WhatsApp number
