@@ -824,32 +824,6 @@ def _trigger_new_flow(contact: Contact, message_data: dict, incoming_message_obj
     message_text_body = message_data.get('text', {}).get('body', '').strip() # Keep original case for extraction
     message_text_lower = message_text_body.lower()
 
-    # --- SPECIAL CASE: Super Admin Order Creation ---
-    # Per client request, if the message is from the designated SUPER_ADMIN_WHATSAPP_ID,
-    # and it's a text message, immediately trigger the 'simple_add_order' flow.
-    # This bypasses the normal keyword trigger for this specific user.
-    super_admin_wa_id = getattr(settings, 'SUPER_ADMIN_WHATSAPP_ID', None)
-    if super_admin_wa_id and contact.whatsapp_id == super_admin_wa_id and message_data.get('type') == 'text':
-        try:
-            super_admin_flow = Flow.objects.get(name='simple_add_order', is_active=True)
-            entry_point_step = super_admin_flow.steps.filter(is_entry_point=True).first()
-            if entry_point_step:
-                logger.info(f"Super admin '{contact.whatsapp_id}' detected. Triggering 'simple_add_order' flow.")
-                _clear_contact_flow_state(contact)
-                ContactFlowState.objects.create(
-                    contact=contact,
-                    current_flow=super_admin_flow,
-                    current_step=entry_point_step,
-                    flow_context_data={}, # No initial context needed
-                    started_at=timezone.now()
-                )
-                return True # Flow was triggered
-            else:
-                logger.error("The 'simple_add_order' flow is active but has no entry point. Cannot trigger for super admin.")
-        except Flow.DoesNotExist:
-            logger.warning("A message was received from the SUPER_ADMIN_WHATSAPP_ID, but the 'simple_add_order' flow was not found or is not active.")
-    # --- END SPECIAL CASE ---
-
     triggered_flow = None
     initial_context = {} # To hold any data extracted from the trigger
     
@@ -1060,24 +1034,12 @@ def _evaluate_transition_condition(transition: FlowTransition, contact: Contact,
 
     elif condition_type == 'contact_is_admin':
         # This is a custom security check for admin flows.
-        # It checks if the contact is linked to a user OR if they are the super admin.
-        # The SUPER_ADMIN_WHATSAPP_ID should be configured in settings.py
-        super_admin_wa_id = getattr(settings, 'SUPER_ADMIN_WHATSAPP_ID', None)
-        
+        # It checks if the contact is linked to an active staff user.
         # The Contact model should have a OneToOneField to the User model named 'user'.
-        is_linked_user = hasattr(contact, 'user') and contact.user is not None
-        is_super_admin = super_admin_wa_id and contact.whatsapp_id == super_admin_wa_id
-        
-        result = is_linked_user or is_super_admin
-        logger.info(f"Condition 'contact_is_admin' check for contact {contact.id}. Linked user: {is_linked_user}, Super admin: {is_super_admin}. Result: {result}")
+        is_linked_staff_user = hasattr(contact, 'user') and contact.user is not None and contact.user.is_staff and contact.user.is_active
+        result = is_linked_staff_user
+        logger.info(f"Condition 'contact_is_admin' check for contact {contact.id}. Linked staff user: {is_linked_staff_user}. Result: {result}")
         return result
-
-    elif condition_type == 'contact_is_super_admin':
-        # This is a more restrictive check for a single, designated admin number.
-        super_admin_wa_id = getattr(settings, 'SUPER_ADMIN_WHATSAPP_ID', None)
-        is_super_admin = super_admin_wa_id and contact.whatsapp_id == super_admin_wa_id
-        logger.info(f"Condition 'contact_is_super_admin' check for contact {contact.id}. Result: {is_super_admin}")
-        return is_super_admin
 
     logger.warning(f"Unknown or unhandled condition type: '{condition_type}' for transition {transition.id} or condition logic not met.")
     return False
@@ -1256,6 +1218,43 @@ def _update_customer_profile_data(contact: Contact, fields_to_update_config: Dic
 
 @transaction.atomic
 def process_message_for_flow(contact: Contact, message_data: dict, incoming_message_obj: Message) -> List[Dict[str, Any]]:
+    """
+    Main entry point to process an incoming message for a contact against flows.
+    Determines if the contact is in an active flow or if a new flow should be triggered.
+    """
+    # --- SPECIAL CASE: Order Receiver Number ---
+    # If the message was sent TO the dedicated order receiver number, bypass all normal
+    # flow logic and immediately trigger the simple_add_order flow for the sender.
+    order_receiver_phone_id = getattr(settings, 'ORDER_RECEIVER_PHONE_ID', None)
+    message_app_config = incoming_message_obj.app_config
+
+    if order_receiver_phone_id and message_app_config and message_app_config.phone_number_id == order_receiver_phone_id:
+        logger.info(f"Message received on Order Receiver Number from {contact.whatsapp_id}. Triggering 'simple_add_order' flow.")
+        
+        # Force this contact into the simple_add_order flow, overwriting any existing state.
+        _clear_contact_flow_state(contact)
+        
+        try:
+            simple_add_order_flow = Flow.objects.get(name='simple_add_order', is_active=True)
+            entry_point_step = simple_add_order_flow.steps.filter(is_entry_point=True).first()
+            if not entry_point_step:
+                raise Flow.DoesNotExist("Flow has no entry point.")
+
+            order_number_from_message = message_data.get('text', {}).get('body', '').strip()
+            if not order_number_from_message:
+                logger.warning("Received empty message on order receiver number. Ignoring.")
+                return []
+
+            # Create a temporary flow state for this one-time execution. The main loop will process it.
+            ContactFlowState.objects.create(
+                contact=contact, current_flow=simple_add_order_flow, current_step=entry_point_step,
+                flow_context_data={'order_number_from_message': order_number_from_message}
+            )
+        except Flow.DoesNotExist:
+            logger.error("The 'simple_add_order' flow is required for the Order Receiver Number but is not found or is inactive.")
+            return []
+    # --- END SPECIAL CASE ---
+
     """
     Main entry point to process an incoming message for a contact against flows.
     Determines if the contact is in an active flow or if a new flow should be triggered.

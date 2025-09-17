@@ -397,5 +397,7 @@ CONTENT_SECURITY_POLICY = {
         'frame-ancestors': ("'none'",),
     }
 }
-# In your settings.py
-SUPER_ADMIN_WHATSAPP_ID = '263774635389' # Replace with the actual super admin WhatsApp number
+
+# Obsolete setting, replaced by user roles and the ORDER_RECEIVER_PHONE_ID logic.
+# SUPER_ADMIN_WHATSAPP_ID = os.getenv('SUPER_ADMIN_WHATSAPP_ID', None)
+ORDER_RECEIVER_PHONE_ID = os.getenv('ORDER_RECEIVER_PHONE_ID', None)

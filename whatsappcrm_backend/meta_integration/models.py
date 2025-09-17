@@ -39,7 +39,8 @@ class MetaAppConfig(models.Model):
     )
     phone_number_id = models.CharField(
         max_length=50,
-        help_text="The Phone Number ID from which messages will be sent."
+        unique=True,
+        help_text="The Phone Number ID from which messages will be sent. Must be unique, as this is used to identify the configuration for incoming webhooks."
     )
     waba_id = models.CharField(
         max_length=50,
