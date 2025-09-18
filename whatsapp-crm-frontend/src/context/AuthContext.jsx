@@ -66,6 +66,16 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     const result = await authService.login(username, password);
     if (result.success) {
+      // Defensive check: Ensure a refresh token was stored. If not, the session
+      // is not truly established and will fail on the first token expiry.
+      if (!authService.getRefreshToken()) {
+        console.error("Login succeeded but no refresh token was provided or stored. Automatic session refresh will fail.");
+        // Clear any partial login state to be safe.
+        logout({ showInfoToast: false });
+        // Return a clear error to the login page.
+        return { success: false, error: "Login failed due to a server configuration issue. Please contact support." };
+      }
+
       // Update jotai atoms after successful login
       setAccessToken(authService.getAccessToken());
       setRefreshToken(authService.getRefreshToken());
@@ -100,12 +110,18 @@ export const AuthProvider = ({ children }) => {
 
   // Listen for unrecoverable auth errors from the API interceptor
   useEffect(() => {
-    const handleAuthError = () => {
+    const handleAuthError = async () => {
       // Check if a token exists. This prevents running logout if the user is already logged out
       // and some background process fails.
       if (authService.getAccessToken()) {
         toast.error("Your session has expired. Please log in again.");
-        logout({ showInfoToast: false });
+        try {
+          // Await the logout promise to handle any potential rejections gracefully.
+          await logout({ showInfoToast: false });
+        } catch (e) {
+          // This safeguard prevents an "uncaught promise rejection" in the console.
+          console.error("A non-critical error occurred during the automated logout process:", e);
+        }
       }
     };
 

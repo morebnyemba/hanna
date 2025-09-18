@@ -103,7 +103,7 @@ apiClient.interceptors.response.use(
         : error.message) ||
       'An unknown error occurred.';
 
-    if (error.response?.status !== 401) {
+    if (error.response?.status !== 401 && !originalRequest.suppressErrorToast) {
       toast.error(`API Error: ${message}`);
     }
 

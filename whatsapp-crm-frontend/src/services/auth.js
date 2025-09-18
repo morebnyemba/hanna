@@ -41,7 +41,8 @@ export const authService = {
     if (notifyBackend && refreshToken) {
       try {
         // Use apiClient for consistency.
-        await apiClient.post('/crm-api/auth/token/blacklist/', { refresh: refreshToken });
+        // Suppress the generic error toast since we handle this failure case gracefully.
+        await apiClient.post('/crm-api/auth/token/blacklist/', { refresh: refreshToken }, { suppressErrorToast: true });
       } catch (error) {
         if (error.response?.status === 404) {
           // This is a common case if the backend URL isn't configured. Log as info, not a warning.
