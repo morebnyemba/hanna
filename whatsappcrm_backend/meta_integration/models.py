@@ -9,13 +9,21 @@ logger = logging.getLogger(__name__)
 
 class MetaAppConfigManager(models.Manager):
     def get_active_config(self):
+        """
+        Retrieves the single, globally active MetaAppConfig.
+
+        This is used as the default configuration for sending proactive messages
+        (e.g., from admin actions or scheduled tasks) where the "from" number
+        is not otherwise specified. The webhook receiver identifies configs by
+        phone_number_id and does not rely on this method.
+        """
         try:
             return self.get(is_active=True)
         except MetaAppConfig.DoesNotExist:
-            logger.error("No active Meta App Configuration found in the database.")
+            logger.critical("CRITICAL: No active Meta App Configuration found. Proactive message sending will fail.")
             raise
         except MetaAppConfig.MultipleObjectsReturned:
-            logger.error("Multiple Meta App Configurations are marked as active. Please ensure only one is active.")
+            logger.critical("CRITICAL: Multiple Meta App Configurations are marked as active. Please fix in Django Admin to ensure predictable sending behavior.")
             raise
 
 class MetaAppConfig(models.Model):
