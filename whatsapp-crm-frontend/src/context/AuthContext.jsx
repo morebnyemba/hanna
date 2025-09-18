@@ -79,14 +79,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async (options = {}) => {
     const { showInfoToast = true } = options;
-    try {
-      // Attempt to blacklist the token on the server.
-      // This might fail if the refresh token is already expired (causing a 401)
-      // or if the endpoint doesn't exist (causing a 404). This is okay.
-      await authService.logout(true); // true to notify backend
-    } catch (error) {
-      console.warn("Could not blacklist token on the server. This is expected if the session has already expired.", error);
-    }
+    // The authService.logout function internally handles potential server errors
+    // (like 404 or 401) and does not throw, so a try/catch here is not needed.
+    await authService.logout(true); // true to notify backend
 
     // Clear jotai atoms
     setAccessToken(null); // This will trigger isAuthenticatedAtom to be false

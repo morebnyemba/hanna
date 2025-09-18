@@ -43,8 +43,13 @@ export const authService = {
         // Use apiClient for consistency.
         await apiClient.post('/crm-api/auth/token/blacklist/', { refresh: refreshToken });
       } catch (error) {
-        // Don't block client-side logout if the backend call fails.
-        console.warn("Failed to blacklist token on server.", error);
+        if (error.response?.status === 404) {
+          // This is a common case if the backend URL isn't configured. Log as info, not a warning.
+          console.info("Token blacklist endpoint not found on server. Skipping server-side logout. This is safe, but the endpoint should be configured for enhanced security.");
+        } else {
+          // For other errors (e.g., 401 if refresh token is already invalid), log a warning. This is expected.
+          console.warn("Could not blacklist token on server. This is expected if the session has already expired.", error);
+        }
       }
     }
     this.clearTokens();
