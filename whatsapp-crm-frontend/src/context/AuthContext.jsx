@@ -27,7 +27,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useAtom(userAtom);
-  const [accessToken, setAccessToken] = useAtom(accessTokenAtom);
+  const [, setAccessToken] = useAtom(accessTokenAtom); // We only need the setter here, which resolves the ESLint warning.
   const [, setRefreshToken] = useAtom(refreshTokenAtom);
   const [isAuthenticated] = useAtom(isAuthenticatedAtom);
   const [isLoading, setIsLoading] = useAtom(isLoadingAuthAtom);
@@ -43,6 +43,8 @@ export const AuthProvider = ({ children }) => {
           setAccessToken(token);
           setRefreshToken(authService.getRefreshToken());
           setUser(decodedUser);
+          // Explicitly set the header on the client for any subsequent requests on this session.
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         } else {
           // Token is expired. Clear state.
           authService.logout(false);
