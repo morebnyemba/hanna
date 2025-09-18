@@ -1,10 +1,32 @@
 # whatsappcrm_backend/customer_data/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import CustomerProfile, Interaction
 from conversations.models import Contact
 
 User = get_user_model()
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Customizes the JWT response to include user details, which the frontend expects.
+    """
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims to the token payload itself
+        token['username'] = user.username
+        token['is_staff'] = user.is_staff
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Add the user object to the response dictionary for the frontend.
+        data['user'] = {
+            'id': self.user.id, 'username': self.user.username,
+            'email': self.user.email, 'is_staff': self.user.is_staff,
+        }
+        return data
 
 # A simple serializer for providing context on related models
 class SimpleContactSerializer(serializers.ModelSerializer):

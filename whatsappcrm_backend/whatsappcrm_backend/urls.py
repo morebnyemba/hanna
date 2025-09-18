@@ -2,13 +2,12 @@
 
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,  # For users to get their access and refresh tokens
-    TokenRefreshView,     # For users to refresh their access tokens
-    TokenVerifyView,      # Optional: for users/clients to verify a token
-)
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView, TokenBlacklistView
 from django.conf import settings
 from django.conf.urls.static import static
+
+# Import the custom view to replace the default one
+from customer_data.views import MyTokenObtainPairView
 
 urlpatterns = [
     # Django Admin interface - useful for backend management via Jazzmin
@@ -37,12 +36,14 @@ path('crm-api/stats/', include('stats.urls', namespace='stats_api')),
 
 
     # JWT Token Endpoints for authentication from your React Vite frontend
-    # Your frontend will POST to 'token_obtain_pair' with username/password
-    path('crm-api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # Use our custom view to ensure refresh token and user data are returned
+    path('crm-api/auth/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     # Your frontend will POST to 'token_refresh' with a valid refresh token
     path('crm-api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # Optional: Your frontend can POST to 'token_verify' with a token to check its validity
     path('crm-api/auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    # Add the blacklist endpoint to fix 404 on logout
+    path('crm-api/auth/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
 
     # DRF's built-in login/logout views for the browsable API.
     # These are helpful for testing your APIs directly in the browser during development.

@@ -68,10 +68,12 @@ export const AuthProvider = ({ children }) => {
     if (result.success) {
       // Defensive check: Ensure a refresh token was stored. If not, the session
       // is not truly established and will fail on the first token expiry.
-      if (!authService.getRefreshToken()) {
-        console.error("Login succeeded but no refresh token was provided or stored. Automatic session refresh will fail.");
+      const refreshToken = authService.getRefreshToken();
+      // A more robust check to handle cases where localStorage might store the string "undefined"
+      if (!refreshToken || refreshToken === 'undefined') {
+        console.error("Login succeeded but no valid refresh token was provided or stored. Automatic session refresh will fail.");
         // Clear any partial login state to be safe.
-        logout({ showInfoToast: false });
+        await logout({ showInfoToast: false });
         // Return a clear error to the login page.
         return { success: false, error: "Login failed due to a server configuration issue. Please contact support." };
       }

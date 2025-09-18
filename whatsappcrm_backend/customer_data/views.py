@@ -1,19 +1,26 @@
 # whatsappcrm_backend/customer_data/views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 
 
 # New models and serializers
 from .models import CustomerProfile, Interaction
-from .serializers import CustomerProfileSerializer, InteractionSerializer
+from .serializers import CustomerProfileSerializer, InteractionSerializer, MyTokenObtainPairSerializer
 
 # Still need Contact for get_or_create logic
 from conversations.models import Contact
 
 import logging
 logger = logging.getLogger(__name__)
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    """
+    Uses the custom serializer to add user details to the JWT response.
+    """
+    serializer_class = MyTokenObtainPairSerializer
 
 class IsStaffOrReadOnly(permissions.BasePermission):
     """
