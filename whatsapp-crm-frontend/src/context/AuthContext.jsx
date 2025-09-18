@@ -1,4 +1,4 @@
-// Filename: src/context/AuthContext.jsx
+// c:\Users\Administrator\Desktop\HANNA\whatsapp-crm-frontend\src\context\AuthContext.jsx
 import React, { createContext, useContext, useEffect, useCallback } from 'react';
 import { useAtom } from 'jotai';
 import { toast } from 'sonner';
@@ -77,18 +77,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (options = {}) => {
+    const { showInfoToast = true } = options;
     await authService.logout(true); // true to notify backend
 
     // Clear jotai atoms
     setAccessToken(null); // This will trigger isAuthenticatedAtom to be false
     setRefreshToken(null); // This will clear the refresh token
     setUser(null); // This will clear user data
+
     // Also remove the default header from the client
     delete apiClient.defaults.headers.common['Authorization'];
 
-    toast.info("You have been logged out.");
+    if (showInfoToast) {
+      toast.info("You have been logged out.");
+    }
   }, [setAccessToken, setRefreshToken, setUser]);
+
+  // Listen for unrecoverable auth errors from the API interceptor
+  useEffect(() => {
+    const handleAuthError = () => {
+      // Check if a token exists. This prevents running logout if the user is already logged out
+      // and some background process fails.
+      if (authService.getAccessToken()) {
+        toast.error("Your session has expired. Please log in again.");
+        logout({ showInfoToast: false });
+      }
+    };
+
+    window.addEventListener('auth-error', handleAuthError);
+    return () => window.removeEventListener('auth-error', handleAuthError);
+  }, [logout]);
 
   const value = {
     user,

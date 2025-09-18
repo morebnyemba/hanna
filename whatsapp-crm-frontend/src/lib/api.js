@@ -41,11 +41,11 @@ const refreshToken = async () => {
     }
     return access;
   } catch (err) {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-    return Promise.reject(err);
+
+    // Instead of forcing a redirect, dispatch an event that the AuthProvider can listen to.
+    // This decouples the API layer from the UI/routing layer.
+    window.dispatchEvent(new Event('auth-error'));
+    return Promise.reject(new Error("Session expired. Please log in again."));
   }
 };
 
@@ -88,7 +88,6 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        toast.error(refreshError.message || "Your session has expired. Please log in again.");
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
