@@ -1,9 +1,9 @@
 // Filename: src/pages/Dashboard.jsx
 // Main dashboard page - Enhanced with dynamic data fetching, chart integration, and robustness improvements
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
+import { 
   FiUsers, FiMessageCircle, FiBarChart2, FiActivity, FiAlertCircle,
   FiCheckCircle, FiSettings, FiZap, FiHardDrive, FiTrendingUp, FiCpu, FiList, FiLoader
 } from 'react-icons/fi';
@@ -14,7 +14,6 @@ import useWebSocket, { ReadyState } from 'react-use-websocket';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Label } from '@/components/ui/label'; // Imported Label as it might be used by sub-components
 
 // --- Import your chart components ---
 // Ensure these files exist and export components correctly
@@ -49,6 +48,70 @@ const getCardStyles = (colorScheme) => {
   }
 };
 
+const StatCard = ({ linkTo, title, value, trend, trendType, icon, colorScheme, isLoading, valueSuffix = "" }) => {
+  const styles = getCardStyles(colorScheme);
+  const content = (
+    <div className={`p-4 sm:p-5 rounded-xl shadow-lg border-l-4 ${styles.borderColor} ${styles.bgColor} flex flex-col justify-between min-h-[140px] md:min-h-[150px] h-full transition-transform hover:scale-[1.02] ${linkTo ? 'cursor-pointer' : ''}`}>
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 truncate" title={title}>{title}</h3>
+          {React.cloneElement(icon, { className: `h-6 w-6 opacity-70 ${styles.iconColor}` })}
+        </div>
+        <p className={`text-2xl sm:text-3xl md:text-4xl font-bold ${styles.textColor}`}>
+          {isLoading ? <FiLoader className="animate-spin h-8 w-8 inline-block opacity-70" /> : `${value}${valueSuffix}`}
+        </p>
+      </div>
+      {trend && (
+        <div className={`text-xs mt-1.5 ${trendType === 'positive' ? 'text-green-600 dark:text-green-400' : trendType === 'negative' ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
+          {isLoading ? <Skeleton className="h-3 w-20 inline-block dark:bg-slate-700 rounded" /> : trend}
+        </div>
+      )}
+    </div>
+  );
+
+  return linkTo ? <Link to={linkTo} className="block h-full hover:shadow-2xl transition-shadow duration-300">{content}</Link> : <div className="block h-full">{content}</div>;
+};
+
+const FlowInsightsCard = ({ insights, isLoading, onNavigate }) => (
+  <Card className="lg:col-span-1 dark:bg-slate-800 dark:border-slate-700 shadow-lg">
+    <CardHeader><CardTitle className="text-lg font-semibold dark:text-slate-100 flex items-center"><FiZap className="mr-2 text-purple-500"/>Flow Insights</CardTitle></CardHeader>
+    <CardContent className="space-y-3">
+      {[
+        { label: "Active Flows", value: insights.activeFlows, icon: <FiZap className="text-purple-500"/>, link: "/flows" },
+        { label: "Completions Today", value: insights.completedToday, icon: <FiCheckCircle className="text-emerald-500"/>, link: null },
+        { label: "Avg. Steps/Flow", value: insights.avgSteps, icon: <FiList className="text-teal-500"/>, link: null },
+      ].map(item => (
+        <div key={item.label} className={`flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 ${item.link ? 'hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer' : ''} transition-colors`}
+             onClick={item.link && !isLoading ? () => onNavigate(item.link) : undefined}
+        >
+          <div className="flex items-center">
+            {React.cloneElement(item.icon, {className: "h-5 w-5 mr-3 opacity-90"})}
+            <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{item.label}</p>
+          </div>
+          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{isLoading && item.value === "..." ? <FiLoader className="animate-spin h-5 w-5 inline text-slate-500"/> : item.value}</p>
+        </div>
+      ))}
+    </CardContent>
+  </Card>
+);
+
+const RecentActivityCard = ({ activities, isLoading }) => (
+  <Card className="lg:col-span-2 dark:bg-slate-800 dark:border-slate-700 shadow-lg">
+    <CardHeader><CardTitle className="text-lg font-semibold dark:text-slate-100 flex items-center"><FiActivity className="mr-2 text-blue-500"/>Recent Activity</CardTitle></CardHeader>
+    <CardContent>
+      <div className="space-y-2 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
+        {isLoading && activities.length === 0 ? ([...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full dark:bg-slate-700 rounded-lg mb-2" />))
+         : activities.length === 0 ? (<p className="text-sm text-slate-500 dark:text-slate-400 italic p-3 text-center">No recent activity.</p>)
+         : (activities.map((activity) => (
+            <div key={activity.id} className="flex items-start space-x-3 p-2.5 bg-slate-50 dark:bg-slate-700/60 rounded-lg">
+              <span className="flex-shrink-0 mt-1 text-slate-500 dark:text-slate-400">{React.isValidElement(activity.icon) ? activity.icon : <FiActivity className="text-gray-500"/>}</span>
+              <div><p className="text-sm text-slate-700 dark:text-slate-300 leading-snug">{activity.text}</p><p className="text-xs text-slate-400 dark:text-slate-500">{activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'N/A'}</p></div>
+            </div>)))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
 export default function Dashboard() {
   const [statsCardsData, setStatsCardsData] = useState(
     initialStatCardsDefinition.map(card => ({...card, value: "...", trend: "..."}))
@@ -72,8 +135,21 @@ export default function Dashboard() {
     return null; // Don't connect if no token
   }, [accessToken]);
 
-  const { lastJsonMessage, readyState } = useWebSocket(getSocketUrl, { shouldReconnect: (closeEvent) => true });
-  
+  const { lastJsonMessage, readyState } = useWebSocket(getSocketUrl, { shouldReconnect: () => true });
+
+  const handleApiError = useCallback((error) => {
+    console.error("API Error:", error);
+    if (error.response && error.response.status === 401) {
+      // Unauthorized: Redirect to login
+      toast.error("Your session has expired. Please log in again.");
+      navigate('/login');
+    } else {
+      // Other errors: Display a generic error message
+      toast.error(`An error occurred: ${error.message}`);
+    }
+    return `Failed to load data. ${error.message}`;
+  }, [navigate]); 
+
   const fetchData = useCallback(async () => {
     setIsLoadingData(true); setLoadingError('');
     try {
@@ -103,13 +179,13 @@ export default function Dashboard() {
             newStats[metaConfigStatIdx].trend = activeOne ? `1 Active` : `${configCount} Total`;
         }
       } else if (configsResult.status === "rejected") {
+        const errorMessage = handleApiError(configsResult.reason);
         const idx = newStats.findIndex(s => s.id === "meta_configs_total"); // Matched ID
         if(idx !== -1) { newStats[idx].value = "N/A"; newStats[idx].trend = "Error"; }
-        setLoadingError(prev => `${prev} Meta Configs: ${configsResult.reason.message}; `.trimStart());
+        setLoadingError(prev => `${prev} Meta Configs: ${errorMessage}; `.trimStart());
       }
       
       newStats = newStats.map(card => {
-          if (card.id === "meta_configs_total") return card; 
           const summaryValue = statsFromSummary[card.id]?.toString();
           if (summaryValue !== undefined) {
               let trendText = card.trendKey && statsFromSummary[card.trendKey] ? (statsFromSummary[card.trendKey] || "") : (card.trend || "...");
@@ -146,24 +222,21 @@ export default function Dashboard() {
       }
 
     } catch (error) { 
-      const currentErrorMessages = loadingError.trim();
-      if (!currentErrorMessages) setLoadingError(`Failed to load dashboard data. ${error.message}`);
-      else if (!currentErrorMessages.includes(error.message)) setLoadingError(`${currentErrorMessages}; ${error.message}`);
+      const errorMessage = handleApiError(error);
+      setLoadingError(errorMessage);
       
       setSystemStatus({ status: "System Error", color: "text-red-500 dark:text-red-400", icon: <FiAlertCircle /> });
       setStatsCardsData(initialStatCardsDefinition.map(card => ({...card, value: "N/A", trend: "Error"})));
       setFlowInsights({ activeFlows: "N/A", completedToday: "N/A", avgSteps: "N/A" });
       setRecentActivities([{id: 'err-fetch', text: 'Failed to load activities.', time:'', icon: <FiAlertCircle className="text-red-500"/>}]);
-    } finally {
+    } finally { 
       setIsLoadingData(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadingError]);
 
   useEffect(() => {
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, [fetchData]); 
 
   // --- WebSocket Message Handling ---
   useEffect(() => {
@@ -171,46 +244,49 @@ export default function Dashboard() {
       const { type, payload } = lastJsonMessage;
       console.log("WebSocket message received:", type, payload);
 
-      if (type === 'stats_update' && payload) {
-        setStatsCardsData(prevData =>
-          prevData.map(card =>
-            payload[card.id] !== undefined ? { ...card, value: payload[card.id].toString() } : card
-          )
-        );
-      }
-
-      if (type === 'activity_log_add' && payload) {
-        // Recreate the icon component for the new activity
-        const IconComponent = activityIcons[payload.iconName] || activityIcons.default;
-        const newActivity = {
-            ...payload,
-            icon: <IconComponent className={`${payload.iconColor || "text-gray-500"} h-5 w-5`} />
-        };
-        // Add the new activity to the start of the list and cap the length
-        setRecentActivities(prevActivities => [newActivity, ...prevActivities].slice(0, 10));
-      }
-
-      if (type === 'chart_update_conversation_trends' && payload) {
-        setConversationTrendsData(payload);
-      }
-
-      if (type === 'chart_update_bot_performance' && payload) {
-        // Merge new data with existing data, as the payload might be partial
-        setBotPerformanceData(prevData => ({ ...prevData, ...payload }));
-      }
-
-      if (type === 'human_intervention_needed' && payload) {
-        toast.warning(payload.message, {
-          description: `Click to view conversation with ${payload.name}.`,
-          duration: 20000, // 20 seconds
-          icon: <FiAlertTriangle className="h-5 w-5" />,
-          action: {
-            label: 'View Conversation',
-            onClick: () => navigate(`/conversation/${payload.contact_id}`),
-          },
-          // Prevents duplicate toasts for the same contact if signal fires rapidly
-          id: `intervention-${payload.contact_id}` 
-        });
+      switch (type) {
+        case 'stats_update':
+          if (payload) {
+            setStatsCardsData(prevData =>
+              prevData.map(card =>
+                payload[card.id] !== undefined ? { ...card, value: payload[card.id].toString() } : card
+              )
+            );
+          }
+          break;
+        case 'activity_log_add':
+          if (payload) {
+            const IconComponent = activityIcons[payload.iconName] || activityIcons.default;
+            const newActivity = {
+              ...payload,
+              icon: <IconComponent className={`${payload.iconColor || "text-gray-500"} h-5 w-5`} />
+            };
+            setRecentActivities(prev => [newActivity, ...prev].slice(0, 10));
+          }
+          break;
+        case 'chart_update_conversation_trends':
+          if (payload) setConversationTrendsData(payload);
+          break;
+        case 'chart_update_bot_performance':
+          if (payload) setBotPerformanceData(prev => ({ ...prev, ...payload }));
+          break;
+        case 'human_intervention_needed':
+          if (payload) {
+            toast.warning(payload.message, {
+              description: `Click to view conversation with ${payload.name}.`,
+              duration: 20000,
+              icon: <FiAlertTriangle className="h-5 w-5" />,
+              action: {
+                label: 'View Conversation',
+                onClick: () => navigate(`/conversation/${payload.contact_id}`),
+              },
+              id: `intervention-${payload.contact_id}`
+            });
+          }
+          break;
+        default:
+          console.warn(`Unhandled WebSocket message type: ${type}`);
+          break;
       }
     }
   }, [lastJsonMessage, navigate]);
@@ -222,19 +298,6 @@ export default function Dashboard() {
     [ReadyState.CLOSED]: { text: 'Disconnected', color: 'text-red-500', icon: <FiAlertCircle /> },
     [ReadyState.UNINSTANTIATED]: { text: 'Uninstantiated', color: 'text-gray-500', icon: <FiAlertCircle /> },
   }[readyState];
-
-  const CardLinkWrapper = ({ linkTo, children, className }) => {
-    const baseClasses = "block h-full";
-    if (linkTo) { return <Link to={linkTo} className={`${baseClasses} hover:shadow-2xl transition-shadow duration-300 ${className || ''}`}>{children}</Link>; }
-    return <div className={`${baseClasses} ${className || ''}`}>{children}</div>;
-  };
-
-  const renderStatCardValue = (value) => {
-    if (isLoadingData && value === "...") {
-        return <FiLoader className="animate-spin h-8 w-8 inline-block opacity-70"/>;
-    }
-    return value;
-  };
 
   return (
     <div className="space-y-6 md:space-y-8 pb-12">
@@ -270,73 +333,32 @@ export default function Dashboard() {
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 gap-4 md:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {statsCardsData.map((stat) => {
-          const cardStyleInfo = getCardStyles(stat.colorScheme);
-          const styles = cardStyleInfo || getCardStyles('default'); // Defensive: Ensure styles is an object
-
           // Defensive: Ensure defaultIcon is a valid React element
           const defaultIconElement = React.isValidElement(stat.defaultIcon) 
             ? stat.defaultIcon 
-            : <FiActivity className={`h-6 w-6 opacity-70 ${styles.iconColor || 'text-gray-600 dark:text-gray-400'}`}/>;
+            : <FiActivity />;
 
           return (
-            <CardLinkWrapper linkTo={stat.linkTo} key={stat.id}>
-              <div className={`p-4 sm:p-5 rounded-xl shadow-lg border-l-4 ${styles.borderColor} ${styles.bgColor} flex flex-col justify-between min-h-[140px] md:min-h-[150px] h-full transition-transform hover:scale-[1.02] ${stat.linkTo ? 'cursor-pointer' : ''}`}>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 truncate" title={stat.title}>{stat.title}</h3>
-                    {React.cloneElement(defaultIconElement, {className: `h-6 w-6 opacity-70 ${styles.iconColor}`})}
-                  </div>
-                  <p className={`text-2xl sm:text-3xl md:text-4xl font-bold ${styles.textColor}`}>{renderStatCardValue(stat.value)}{stat.valueSuffix}</p>
-                </div>
-                {stat.trend && (
-                  <div className={`text-xs mt-1.5 ${stat.trendType === 'positive' ? 'text-green-600 dark:text-green-400' : stat.trendType === 'negative' ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                    {isLoadingData && stat.trend === "..." ? 
-                      <Skeleton className="h-3 w-20 inline-block dark:bg-slate-700 rounded"/> 
-                      : stat.trend
-                    }
-                  </div>
-                )}
-              </div>
-            </CardLinkWrapper>
+            <StatCard
+              key={stat.id}
+              linkTo={stat.linkTo}
+              title={stat.title}
+              value={stat.value}
+              trend={stat.trend}
+              trendType={stat.trendType}
+              icon={defaultIconElement}
+              colorScheme={stat.colorScheme}
+              isLoading={isLoadingData && stat.value === "..."}
+              valueSuffix={stat.valueSuffix}
+            />
           );
         })}
       </div>
 
       {/* Flow Insights & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        <Card className="lg:col-span-1 dark:bg-slate-800 dark:border-slate-700 shadow-lg">
-          <CardHeader><CardTitle className="text-lg font-semibold dark:text-slate-100 flex items-center"><FiZap className="mr-2 text-purple-500"/>Flow Insights</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              { label: "Active Flows", value: flowInsights.activeFlows, icon: <FiZap className="text-purple-500"/>, link: "/flows" },
-              { label: "Completions Today", value: flowInsights.completedToday, icon: <FiCheckCircle className="text-emerald-500"/>, link: null },
-              { label: "Avg. Steps/Flow", value: flowInsights.avgSteps, icon: <FiList className="text-teal-500"/>, link: null },
-            ].map(item => (
-              <div key={item.label} className={`flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 ${item.link ? 'hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer' : ''} transition-colors`}
-                   onClick={item.link && !isLoadingData ? () => navigate(item.link) : undefined}
-              >
-                <div className="flex items-center">
-                  {React.isValidElement(item.icon) ? React.cloneElement(item.icon, {className: "h-5 w-5 mr-3 opacity-90"}) : <FiActivity className="h-5 w-5 mr-3 opacity-90"/>}
-                  <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{item.label}</p>
-                </div>
-                <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{isLoadingData && item.value === "..." ? <FiLoader className="animate-spin h-5 w-5 inline text-slate-500"/> : item.value}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-        
-        <Card className="lg:col-span-2 dark:bg-slate-800 dark:border-slate-700 shadow-lg">
-          <CardHeader><CardTitle className="text-lg font-semibold dark:text-slate-100 flex items-center"><FiActivity className="mr-2 text-blue-500"/>Recent Activity</CardTitle></CardHeader>
-          <CardContent><div className="space-y-2 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
-            {isLoadingData && recentActivities.length === 0 ? ([...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full dark:bg-slate-700 rounded-lg mb-2" />))
-             : recentActivities.length === 0 ? (<p className="text-sm text-slate-500 dark:text-slate-400 italic p-3 text-center">No recent activity.</p>)
-             : (recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3 p-2.5 bg-slate-50 dark:bg-slate-700/60 rounded-lg">
-                  <span className="flex-shrink-0 mt-1 text-slate-500 dark:text-slate-400">{React.isValidElement(activity.icon) ? activity.icon : <FiActivity className="text-gray-500"/>}</span>
-                  <div><p className="text-sm text-slate-700 dark:text-slate-300 leading-snug">{activity.text}</p><p className="text-xs text-slate-400 dark:text-slate-500">{activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'N/A'}</p></div>
-                </div>)))}
-          </div></CardContent>
-        </Card>
+        <FlowInsightsCard insights={flowInsights} isLoading={isLoadingData} onNavigate={navigate} />
+        <RecentActivityCard activities={recentActivities} isLoading={isLoadingData} />
       </div>
       
       {/* Chart Sections - Using imported components */}
