@@ -151,24 +151,14 @@ export default function Dashboard() {
   }, []); 
 
   const fetchData = useCallback(async () => {
-    // If we don't have a token yet, or if auth is still loading, don't fetch.
-    // This prevents race conditions on initial load.
-    if (!accessToken) {
-      return;
-    }
     setIsLoadingData(true); 
     setLoadingError('');
 
-    // Create a config object with the Authorization header, similar to how the WebSocket token is passed.
-    // This ensures every API call is explicitly authenticated.
-    const authConfig = {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    };
-
     try {
+      // Relying on the global axios client to have the Authorization header set by the interceptor.
       const [summaryResult, configsResult] = await Promise.allSettled([
-        dashboardApi.getSummary(authConfig),
-        metaApi.getConfigs(authConfig),
+        dashboardApi.getSummary(),
+        metaApi.getConfigs(),
       ]);
 
       const summary = (summaryResult.status === "fulfilled" && summaryResult.value.data) ? summaryResult.value.data : {};
@@ -245,7 +235,7 @@ export default function Dashboard() {
     } finally { 
       setIsLoadingData(false);
     }
-  }, [accessToken, handleApiError]);
+  }, [handleApiError]);
 
   useEffect(() => {
     if (!isLoadingAuth) {
