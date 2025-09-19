@@ -125,7 +125,7 @@ export default function Dashboard() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [loadingError, setLoadingError] = useState('');
   const navigate = useNavigate();
-  const { accessToken } = useAuth();
+  const { accessToken, isLoadingAuth } = useAuth();
 
   // --- WebSocket Setup ---
   const getSocketUrl = useCallback(() => {
@@ -235,8 +235,10 @@ export default function Dashboard() {
   }, [loadingError, handleApiError]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]); 
+    if (!isLoadingAuth) {
+      fetchData();
+    }
+  }, [fetchData, isLoadingAuth]);
 
   // --- WebSocket Message Handling ---
   useEffect(() => {
