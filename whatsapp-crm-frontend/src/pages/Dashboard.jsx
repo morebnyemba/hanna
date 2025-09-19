@@ -1,7 +1,7 @@
 // Filename: src/pages/Dashboard.jsx
 // Main dashboard page - Enhanced with dynamic data fetching, chart integration, and robustness improvements
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   FiUsers, FiMessageCircle, FiBarChart2, FiActivity, FiAlertCircle,
@@ -22,7 +22,7 @@ import BotPerformanceDisplay from '@/components/charts/BotPerfomanceDisplay';
 
 
 // --- API Configuration & Helper ---
-import { dashboardApi, metaApi } from '@/lib/api';
+import { dashboardApi, metaApi, API_BASE_URL } from '@/lib/api';
 
 // Initial structure for stats cards
 const initialStatCardsDefinition = [
@@ -232,7 +232,7 @@ export default function Dashboard() {
     } finally { 
       setIsLoadingData(false);
     }
-  }, [loadingError]);
+  }, [loadingError, handleApiError]);
 
   useEffect(() => {
     fetchData();

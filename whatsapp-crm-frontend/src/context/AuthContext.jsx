@@ -27,7 +27,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useAtom(userAtom);
-  const [, setAccessToken] = useAtom(accessTokenAtom); // We only need the setter here, which resolves the ESLint warning.
+  const [accessToken, setAccessToken] = useAtom(accessTokenAtom);
   const [, setRefreshToken] = useAtom(refreshTokenAtom);
   const [isAuthenticated] = useAtom(isAuthenticatedAtom);
   const [isLoading, setIsLoading] = useAtom(isLoadingAuthAtom);
@@ -133,6 +133,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    accessToken,
     isAuthenticated,
     isLoadingAuth: isLoading,
     login,
