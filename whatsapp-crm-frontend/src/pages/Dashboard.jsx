@@ -151,11 +151,24 @@ export default function Dashboard() {
   }, [navigate]); 
 
   const fetchData = useCallback(async () => {
-    setIsLoadingData(true); setLoadingError('');
+    // If we don't have a token yet, or if auth is still loading, don't fetch.
+    // This prevents race conditions on initial load.
+    if (!accessToken) {
+      return;
+    }
+    setIsLoadingData(true); 
+    setLoadingError('');
+
+    // Create a config object with the Authorization header, similar to how the WebSocket token is passed.
+    // This ensures every API call is explicitly authenticated.
+    const authConfig = {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    };
+
     try {
       const [summaryResult, configsResult] = await Promise.allSettled([
-        dashboardApi.getSummary(),
-        metaApi.getConfigs(),
+        dashboardApi.getSummary(authConfig),
+        metaApi.getConfigs(authConfig),
       ]);
 
       const summary = (summaryResult.status === "fulfilled" && summaryResult.value.data) ? summaryResult.value.data : {};
@@ -232,7 +245,7 @@ export default function Dashboard() {
     } finally { 
       setIsLoadingData(false);
     }
-  }, [loadingError, handleApiError]);
+  }, [accessToken, handleApiError]);
 
   useEffect(() => {
     if (!isLoadingAuth) {
