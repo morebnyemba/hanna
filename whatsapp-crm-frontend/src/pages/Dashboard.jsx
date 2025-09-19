@@ -139,16 +139,16 @@ export default function Dashboard() {
 
   const handleApiError = useCallback((error) => {
     console.error("API Error:", error);
+    // The global 'auth-error' event listener in AuthContext handles 401 errors,
+    // which includes showing a toast and logging the user out. We avoid duplicating that logic here.
     if (error.response && error.response.status === 401) {
-      // Unauthorized: Redirect to login
-      toast.error("Your session has expired. Please log in again.");
-      navigate('/login');
+      // Don't show a toast here, as the global handler will.
     } else {
       // Other errors: Display a generic error message
       toast.error(`An error occurred: ${error.message}`);
     }
     return `Failed to load data. ${error.message}`;
-  }, [navigate]); 
+  }, []); 
 
   const fetchData = useCallback(async () => {
     // If we don't have a token yet, or if auth is still loading, don't fetch.
