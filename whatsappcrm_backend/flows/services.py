@@ -555,6 +555,8 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                                 for key, value in item.items():
                                     if isinstance(value, (date, datetime)):
                                         item[key] = value.isoformat()
+                                    elif isinstance(value, uuid.UUID):
+                                        item[key] = str(value)
                         else:
                             # BACKWARD COMPATIBILITY PATH: Use model_to_dict (slower)
                             logger.warning(f"Contact {contact.id}: 'query_model' in step {step.id} is not using 'fields_to_return'. "

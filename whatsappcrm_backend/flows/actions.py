@@ -510,6 +510,50 @@ def create_placeholder_order(contact: Contact, context: Dict[str, Any], params: 
 
     return []
 
+def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Normalizes an order number from various formats (e.g., 12345/PO, PO/12345, 12345)
+    to a consistent format (e.g., 12345/PO).
+
+    Expected params:
+    - input_variable (str): The context variable holding the raw order number.
+    - output_variable (str): The context variable to save the normalized number to.
+    - default_suffix (str, optional): The suffix to add if none is present. Defaults to 'PO'.
+    """
+    import re
+    input_var = params.get('input_variable')
+    output_var = params.get('output_variable')
+    default_suffix = params.get('default_suffix', 'PO')
+
+    if not input_var or not output_var:
+        logger.error(f"Action 'normalize_order_number' for contact {contact.id} is missing required params. Skipping.")
+        return []
+
+    raw_order_number = context.get(input_var)
+    if not isinstance(raw_order_number, str):
+        logger.warning(f"Input for 'normalize_order_number' is not a string: {raw_order_number}. Skipping.")
+        context[output_var] = raw_order_number
+        return []
+
+    # Extract all numbers and all letters
+    numbers = "".join(re.findall(r'\d+', raw_order_number))
+    letters = "".join(re.findall(r'[a-zA-Z]+', raw_order_number)).upper()
+
+    if not numbers:
+        logger.warning(f"Could not extract numeric part from order number '{raw_order_number}'. Passing it through.")
+        context[output_var] = raw_order_number
+        return []
+
+    # Use extracted letters if present, otherwise use the default suffix
+    suffix = letters if letters else default_suffix
+    
+    normalized_order_number = f"{numbers}/{suffix}"
+    
+    context[output_var] = normalized_order_number
+    logger.info(f"Normalized order number '{raw_order_number}' to '{normalized_order_number}' and saved to '{output_var}'.")
+
+    return []
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
@@ -522,3 +566,4 @@ flow_action_registry.register('update_model_instance', update_model_instance)
 flow_action_registry.register('create_order_from_cart', create_order_from_cart)
 flow_action_registry.register('generate_unique_assessment_id', generate_unique_assessment_id_action)
 flow_action_registry.register('create_placeholder_order', create_placeholder_order)
+flow_action_registry.register('normalize_order_number', normalize_order_number)

@@ -66,7 +66,24 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "text", "save_to_variable": "order_number"}
             },
             "transitions": [
-                {"to_step": "verify_order_payment", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "order_number"}}
+                {"to_step": "normalize_the_order_number", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "order_number"}}
+            ]
+        },
+        {
+            "name": "normalize_the_order_number",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "normalize_order_number",
+                    "params_template": {
+                        "input_variable": "order_number",
+                        "output_variable": "order_number",
+                        "default_suffix": "PO"
+                    }
+                }]
+            },
+            "transitions": [
+                {"to_step": "verify_order_payment", "condition_config": {"type": "always_true"}}
             ]
         },
         {
