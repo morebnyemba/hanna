@@ -12,10 +12,27 @@ ADMIN_UPDATE_ORDER_STATUS_FLOW = {
             "is_entry_point": True,
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Let's update an order's payment status. Please enter the Order Number (e.g., PO-12345)."}},
+                "message_config": {"message_type": "text", "text": {"body": "Let's update an order's payment status. Please enter the Order Number (e.g., 12345/PO)."}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "target_order_number"}
             },
-            "transitions": [{"to_step": "find_order", "condition_config": {"type": "variable_exists", "variable_name": "target_order_number"}}]
+            "transitions": [{"to_step": "normalize_the_order_number", "condition_config": {"type": "variable_exists", "variable_name": "target_order_number"}}]
+        },
+        {
+            "name": "normalize_the_order_number",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "normalize_order_number",
+                    "params_template": {
+                        "input_variable": "target_order_number",
+                        "output_variable": "target_order_number",
+                        "default_suffix": "PO"
+                    }
+                }]
+            },
+            "transitions": [
+                {"to_step": "find_order", "condition_config": {"type": "always_true"}}
+            ]
         },
         {
             "name": "find_order",

@@ -62,7 +62,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_residential_order_number",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Great. To proceed with your residential installation, please provide your order number (e.g., PO-12345). This helps us verify your purchase and payment."}},
+                "message_config": {"message_type": "text", "text": {"body": "Great. To proceed with your residential installation, please provide your order number (e.g., 12345/PO). This helps us verify your purchase and payment."}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "order_number"}
             },
             "transitions": [

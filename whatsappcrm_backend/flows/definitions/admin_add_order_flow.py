@@ -180,7 +180,7 @@ ADMIN_ADD_ORDER_FLOW = {
                     "model_name": "Order",
                     "fields_template": {
                         "customer_id": "{{ target_contact.0.id if target_contact else created_contact_instance.id }}",
-                        "order_number": "PO-{{ order_number_ref }}",
+                        "order_number": "{{ order_number_ref }}/PO",
                         "name": "{{ order_description }}",
                         "stage": "closed_won",
                         "payment_status": "paid",
@@ -434,7 +434,7 @@ ADMIN_ADD_ORDER_FLOW = {
                         "type": "button",
                         "body": {"text": (
                             "Please review the details for this order and installation before submitting:\n\n"
-                            "*Order #*: PO-{{ order_number_ref }}\n"
+                            "*Order #*: {{ order_number_ref }}/PO\n"
                             "*Order Name*: {{ order_description }}\n"
                             "*Branch*: {{ install_branch }}\n"
                             "*Sales Person*: {{ install_sales_person }}\n"

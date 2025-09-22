@@ -87,6 +87,7 @@ Admin *{{ contact.name or contact.username }}* has created a new order and insta
 
 *Customer:* {{ target_contact.0.name or customer_whatsapp_id }}
 *Order #:* PO-{{ order_number_ref }}
+*Order #:* {{ order_number_ref }}/PO
 *Order Name:* {{ order_description }}
 
 Please see the admin panel for full details."""

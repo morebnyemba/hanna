@@ -496,7 +496,7 @@ def create_placeholder_order(contact: Contact, context: Dict[str, Any], params: 
             defaults={
                 'name': f"Placeholder for Order #{order_number}",
                 'stage': Order.Stage.PROSPECTING,
-                'payment_status': Order.PaymentStatus.PENDING,
+                'payment_status': Order.PaymentStatus.PAID,
                 # customer and amount are allowed to be null now
             }
         )
