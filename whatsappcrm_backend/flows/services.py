@@ -60,7 +60,7 @@ def send_group_notification_action(contact: Contact, flow_context: dict, params:
 
     queue_notifications_to_users(
         template_name=template_name,
-        template_context=flow_context,
+        template_context=flow_context.copy(), # Pass a copy to prevent modification of the original context
         group_names=group_names,
         contact_ids=contact_ids,
         related_contact=contact,
