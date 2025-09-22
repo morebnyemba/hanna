@@ -8,8 +8,21 @@ SOLAR_INSTALLATION_FLOW = {
     "is_active": True,
     "steps": [
         {
-            "name": "start_installation_request",
+            "name": "ensure_customer_profile",
             "is_entry_point": True,
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "update_customer_profile",
+                    "fields_to_update": {}
+                }]
+            },
+            "transitions": [
+                {"to_step": "start_installation_request", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "start_installation_request",
             "type": "question",
             "config": {
                 "message_config": {

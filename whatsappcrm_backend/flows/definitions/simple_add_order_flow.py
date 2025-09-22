@@ -13,12 +13,37 @@ SIMPLE_ADD_ORDER_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [{
+                    "action_type": "normalize_order_number",
+                    "params_template": {
+                        "input_variable": "order_number_from_message",
+                        "output_variable": "normalized_order_number"
+                    }
+                }]
+            },
+            "transitions": [
+                {"to_step": "check_if_valid_number", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "check_if_valid_number",
+            "type": "action",
+            "config": {"actions_to_run": []},
+            "transitions": [
+                {"to_step": "query_for_existing_order", "priority": 0, "condition_config": {"type": "variable_contains", "variable_name": "normalized_order_number", "value": "/"}},
+                {"to_step": "handle_invalid_input", "priority": 1, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "query_for_existing_order",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
                     "action_type": "query_model",
                     "app_label": "customer_data",
                     "model_name": "Order",
                     "variable_name": "existing_order",
                     "filters_template": {
-                        "order_number__iexact": "{{ order_number_from_message }}"
+                        "order_number__iexact": "{{ normalized_order_number }}"
                     },
                     "limit": 1
                 }]
@@ -42,7 +67,7 @@ SIMPLE_ADD_ORDER_FLOW = {
             "config": {
                 "message_config": {
                     "message_type": "text",
-                    "text": {"body": "⚠️ Order #{{ order_number_from_message }} already exists in the system. No action was taken."}
+                    "text": {"body": "⚠️ Order #{{ normalized_order_number }} already exists in the system. No action was taken."}
                 }
             }
         },
@@ -53,7 +78,7 @@ SIMPLE_ADD_ORDER_FLOW = {
                 "actions_to_run": [{
                     "action_type": "create_placeholder_order",
                     "params_template": {
-                        "order_number": "{{ order_number_from_message }}"
+                        "order_number": "{{ normalized_order_number }}"
                     }
                 }]
             },
@@ -83,7 +108,17 @@ SIMPLE_ADD_ORDER_FLOW = {
             "config": {
                 "message_config": {
                     "message_type": "text",
-                    "text": {"body": "✅ Success! Order #{{ order_number_from_message }} has been created."}
+                    "text": {"body": "✅ Success! Order #{{ normalized_order_number }} has been created."}
+                }
+            }
+        },
+        {
+            "name": "handle_invalid_input",
+            "type": "end_flow",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {"body": "Invalid order number format. Please send a message containing only the order number (e.g., 12345 or 12345/PO)."}
                 }
             }
         }
