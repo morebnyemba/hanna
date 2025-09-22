@@ -71,7 +71,7 @@ def on_contact_change(sender, instance, created, **kwargs):
         # --- WhatsApp Notification (NEW) ---
         from notifications.services import queue_notifications_to_users
         queue_notifications_to_users(
-            template_name='human_handover_required',
+            template_name='human_handover_flow',
             group_names=["Technical Admin"],
             related_contact=instance
         )

@@ -179,6 +179,8 @@ class ActionItem(BaseModel):
     model_name: Optional[str] = None
     filters_template: Optional[Dict[str, Any]] = None
     order_by: Optional[List[str]] = None
+    # Used by 'query_model' for optimization
+    fields_to_return: Optional[List[str]] = None
     limit: Optional[int] = None
     # Used by 'create_model_instance'
     fields_template: Optional[Dict[str, Any]] = None
