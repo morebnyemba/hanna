@@ -121,6 +121,18 @@ Contact *{{ related_contact.name or related_contact.whatsapp_id }}* requires ass
 
 Please respond to them in the main inbox."""
     },
+    {
+        "name": "new_placeholder_order_created",
+        "description": "Sent to admins when a placeholder order is created via the order receiver number.",
+        "template_type": "whatsapp",
+        "body": """New Placeholder Order Created 📦
+
+A new placeholder order has been created by *{{ contact.name or contact.whatsapp_id }}*.
+
+*Order #:* {{ order_number_from_message }}
+
+Please update the order details in the admin panel as soon as possible."""
+    },
 ]
 
 

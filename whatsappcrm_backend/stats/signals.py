@@ -104,32 +104,44 @@ def on_order_change(sender, instance, created, **kwargs):
     update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
 
     if created:
-        activity_payload = {
-            "id": f"order_new_{instance.id}",
-            "text": f"New Order: '{instance.name}' for {instance.customer}",
-            "timestamp": instance.created_at.isoformat(),
-            "iconName": "FiShoppingCart",
-            "iconColor": "text-blue-500"
-        }
-        broadcast_activity_log.delay(activity_payload)
+        # Check if the order has a customer. Placeholder orders might not.
+        if instance.customer and hasattr(instance.customer, 'contact'):
+            # This is a standard order linked to a customer.
+            activity_payload = {
+                "id": f"order_new_{instance.id}",
+                "text": f"New Order: '{instance.name}' for {instance.customer}",
+                "timestamp": instance.created_at.isoformat(),
+                "iconName": "FiShoppingCart",
+                "iconColor": "text-blue-500"
+            }
+            broadcast_activity_log.delay(activity_payload)
 
-        # --- NEW: Send WhatsApp notification to admins ---
-        from notifications.services import queue_notifications_to_users
-        
-        # The context that will be available in the Jinja2 template.
-        # The 'contact' object is automatically added by the notification service.
-        template_context = {
-            'order': instance,
-            'customer': instance.customer,
-        }
+            # --- NEW: Send WhatsApp notification to admins ---
+            from notifications.services import queue_notifications_to_users
+            
+            template_context = {
+                'order': instance,
+                'customer': instance.customer,
+            }
 
-        queue_notifications_to_users(
-            template_name='new_order_created',
-            group_names=["System Admins", "Sales Team"], # Adjust groups as needed
-            related_contact=instance.customer.contact,
-            template_context=template_context
-        )
-        logger.info(f"Queued 'new_order_created' notification for Order ID {instance.id}.")
+            queue_notifications_to_users(
+                template_name='new_order_created',
+                group_names=["System Admins", "Sales Team"], # Adjust groups as needed
+                related_contact=instance.customer.contact,
+                template_context=template_context
+            )
+            logger.info(f"Queued 'new_order_created' notification for Order ID {instance.id}.")
+        else:
+            # This is likely a placeholder order created without a customer.
+            activity_payload = {
+                "id": f"order_new_{instance.id}",
+                "text": f"New Placeholder Order: '{instance.name or instance.order_number}' created.",
+                "timestamp": instance.created_at.isoformat(),
+                "iconName": "FiShoppingCart",
+                "iconColor": "text-gray-500"
+            }
+            broadcast_activity_log.delay(activity_payload)
+            logger.info(f"Logged creation of placeholder order ID {instance.id} (no customer attached).")
 
 
 # The on_payment_change signal handler has been removed as the Payment model
