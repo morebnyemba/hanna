@@ -1224,6 +1224,9 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
     Main entry point to process an incoming message for a contact against flows.
     Determines if the contact is in an active flow or if a new flow should be triggered.
     """
+    # Initialize the list of actions to be performed at the very beginning.
+    actions_to_perform = []
+
     # --- SPECIAL CASE: Order Receiver Number ---
     # If the message was sent TO the dedicated order receiver number, bypass all normal
     # flow logic and immediately trigger the simple_add_order flow for the sender.
@@ -1276,7 +1279,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
         # By returning an empty list, we stop any further flow logic from executing.
         return []
 
-    actions_to_perform = []
+    # actions_to_perform = [] # This is now initialized at the top of the function.
     try:
         contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').filter(contact=contact).first()
 
