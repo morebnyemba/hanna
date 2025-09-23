@@ -1248,10 +1248,17 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 return []
 
             # Create a temporary flow state for this one-time execution. The main loop will process it.
-            ContactFlowState.objects.create(
+            contact_flow_state = ContactFlowState.objects.create(
                 contact=contact, current_flow=simple_add_order_flow, current_step=entry_point_step,
                 flow_context_data={'order_number_from_message': order_number_from_message}
             )
+
+            # FIX: Manually execute the entry step actions, just like a normal flow trigger,
+            # to ensure the context is populated before the main loop evaluates transitions.
+            entry_actions, updated_context = _execute_step_actions(entry_point_step, contact, contact_flow_state.flow_context_data.copy())
+            actions_to_perform.extend(entry_actions)
+            contact_flow_state.flow_context_data = updated_context
+            contact_flow_state.save(update_fields=['flow_context_data'])
         except Flow.DoesNotExist:
             logger.error("The 'simple_add_order' flow is required for the Order Receiver Number but is not found or is inactive.")
             return []
