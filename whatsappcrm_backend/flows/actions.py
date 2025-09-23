@@ -542,6 +542,7 @@ def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Di
     if not numbers:
         logger.warning(f"Could not extract numeric part from order number '{raw_order_number}'. Passing it through.")
         context[output_var] = raw_order_number
+        context['is_order_number_valid'] = False
         return []
 
     # Use extracted letters if present, otherwise use the default suffix
@@ -550,6 +551,7 @@ def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Di
     normalized_order_number = f"{numbers}/{suffix}"
     
     context[output_var] = normalized_order_number
+    context['is_order_number_valid'] = True
     logger.info(f"Normalized order number '{raw_order_number}' to '{normalized_order_number}' and saved to '{output_var}'.")
 
     return []

@@ -29,7 +29,7 @@ SIMPLE_ADD_ORDER_FLOW = {
             "type": "action",
             "config": {"actions_to_run": []},
             "transitions": [
-                {"to_step": "query_for_existing_order", "priority": 0, "condition_config": {"type": "variable_contains", "variable_name": "normalized_order_number", "value": "/"}},
+                {"to_step": "query_for_existing_order", "priority": 0, "condition_config": {"type": "variable_equals", "variable_name": "is_order_number_valid", "value": True}},
                 {"to_step": "handle_invalid_input", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
