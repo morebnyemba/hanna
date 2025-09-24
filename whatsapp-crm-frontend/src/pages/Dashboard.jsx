@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   FiUsers, FiMessageCircle, FiBarChart2, FiActivity, FiAlertCircle,
-  FiCheckCircle, FiSettings, FiZap, FiHardDrive, FiTrendingUp, FiCpu, FiList, FiLoader
+  FiCheckCircle, FiSettings, FiZap, FiHardDrive, FiTrendingUp, FiCpu, FiList, FiLoader, FiAlertTriangle
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';

@@ -15,6 +15,10 @@ import SavedData from './pages/SavedData';
 import Conversation from './pages/Conversation';
 import LoginPage from './pages/LoginPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+
+import InstallationRequestsPage from './pages/InstallationRequestsPage';
+import OrdersPage from './pages/OrdersPage';
+import SiteAssessmentsPage from './pages/SiteAssessmentsPage';
 import SermonsPage from './pages/SermonsPage';
 import SermonFormPage from './pages/SermonFormPage';
 import EventsPage from './pages/EventsPage';
@@ -57,29 +61,32 @@ const router = createBrowserRouter([
       { path: 'flows/new', element: <FlowEditorPage /> }, // <--- ADDED: Route to create a new flow
       { path: 'flows/edit/:flowId', element: <FlowEditorPage /> }, // <--- ADDED: Route to edit an existing flow
       
-      // Other sections
-      { path: 'media-library', element: <MediaLibraryPage /> },
-      { path: 'contacts', element: <ContactsPage /> },
-      { path: 'analytics', element: <AnalyticsPage />}, // Added Analytics Page
-      
-      // Sermon Management
-      { path: 'sermons', element: <SermonsPage /> },
-      { path: 'sermons/new', element: <SermonFormPage /> },
-      { path: 'sermons/edit/:sermonId', element: <SermonFormPage /> },
+  // Other sections
+  { path: 'media-library', element: <MediaLibraryPage /> },
+  { path: 'contacts', element: <ContactsPage /> },
+  { path: 'analytics', element: <AnalyticsPage />},
+  { path: 'installation-requests', element: <InstallationRequestsPage /> },
+  { path: 'orders', element: <OrdersPage /> },
+  { path: 'site-assessments', element: <SiteAssessmentsPage /> },
 
-      // Event Management
-      { path: 'events', element: <EventsPage /> },
-      { path: 'events/new', element: <EventFormPage /> },
-      { path: 'events/edit/:eventId', element: <EventFormPage /> },
+  // Sermon Management
+  { path: 'sermons', element: <SermonsPage /> },
+  { path: 'sermons/new', element: <SermonFormPage /> },
+  { path: 'sermons/edit/:sermonId', element: <SermonFormPage /> },
 
-      // Ministry Management
-      { path: 'ministries', element: <MinistriesPage /> },
-      { path: 'ministries/new', element: <MinistryFormPage /> },
-      { path: 'ministries/edit/:ministryId', element: <MinistryFormPage /> },
+  // Event Management
+  { path: 'events', element: <EventsPage /> },
+  { path: 'events/new', element: <EventFormPage /> },
+  { path: 'events/edit/:eventId', element: <EventFormPage /> },
 
-      { path: 'saved-data', element: <SavedData /> },
-      { path: 'conversation', element: <Conversation /> },
-      { path: '*', element: <NotFoundPage /> } // Catch-all for paths under DashboardLayout
+  // Ministry Management
+  { path: 'ministries', element: <MinistriesPage /> },
+  { path: 'ministries/new', element: <MinistryFormPage /> },
+  { path: 'ministries/edit/:ministryId', element: <MinistryFormPage /> },
+
+  { path: 'saved-data', element: <SavedData /> },
+  { path: 'conversation', element: <Conversation /> },
+  { path: '*', element: <NotFoundPage /> } // Catch-all for paths under DashboardLayout
     ]
   },
   { path: '*', element: <Navigate to="/" replace /> } // General catch-all for any other path
