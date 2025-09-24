@@ -1146,9 +1146,10 @@ def _update_customer_profile_data(contact: Contact, fields_to_update_config: Dic
     profile, created = CustomerProfile.objects.get_or_create(contact=contact)
     if created: 
         logger.info(f"Created new CustomerProfile for contact {contact.whatsapp_id}")
-        profile.notes = "This is a placeholder profile created automatically. Details will be updated as the customer interacts with the system."
-        profile.save(update_fields=['notes'])
-        logger.info(f"Added placeholder note to new profile for contact {contact.whatsapp_id}")
+        # When a profile is created, the in-memory contact object is stale.
+        # We must reload it to ensure the 'customer_profile' relation is available to subsequent steps.
+        contact.refresh_from_db()
+        logger.info(f"Refreshed contact {contact.whatsapp_id} to load new customer profile.")
 
     if not fields_to_update_config or not isinstance(fields_to_update_config, dict):
         logger.debug("_update_customer_profile_data called with no fields to update. Profile ensured to exist.")
