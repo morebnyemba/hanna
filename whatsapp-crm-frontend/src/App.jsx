@@ -1,3 +1,4 @@
+import AnalyticsPage from './pages/AnalyticsPage';
 // Filename: src/App.jsx
 import React from 'react';
 import { RouterProvider, createBrowserRouter, Navigate, Link } from 'react-router-dom';
