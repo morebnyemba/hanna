@@ -1,7 +1,7 @@
 // src/pages/AnalyticsPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { addDays, format } from 'date-fns';
-import { analyticsApi } from '@/lib/api'; // Use the new centralized API
+import { dashboardApi } from '@/lib/api';
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,15 +22,11 @@ export default function AnalyticsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const params = {
-        start_date: format(dateRange.from, 'yyyy-MM-dd'),
-        end_date: format(dateRange.to, 'yyyy-MM-dd'),
-      };
-      const response = await analyticsApi.getReports(params);
+      // Date range picker is UI only; backend does not filter by date
+      const response = await dashboardApi.getSummary();
       setData(response.data);
     } catch (err) {
       setError(err.message);
-      // Toast is now handled by the apiClient interceptor
     } finally {
       setIsLoading(false);
     }
