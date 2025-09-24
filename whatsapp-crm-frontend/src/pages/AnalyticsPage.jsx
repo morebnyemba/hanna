@@ -79,178 +79,136 @@ export default function AnalyticsPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
-                <FaChartLine className="text-blue-500 text-xl" />
-                <CardTitle>Messages Sent</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{data.summary?.total_messages_sent ?? 'N/A'}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center gap-2">
-                <FaChartLine className="text-green-500 text-xl" />
-                <CardTitle>Messages Received</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{data.summary?.total_messages_received ?? 'N/A'}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center gap-2">
                 <FaUserFriends className="text-purple-500 text-xl" />
-                <CardTitle>Active Contacts</CardTitle>
+                <CardTitle>Active Conversations</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary?.active_contacts ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.active_conversations_count ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <FaUserFriends className="text-pink-500 text-xl" />
-                <CardTitle>New Contacts</CardTitle>
+                <CardTitle>New Contacts Today</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary?.new_contacts ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.new_contacts_today ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
-                <FaMoneyBillWave className="text-yellow-500 text-xl" />
-                <CardTitle>Orders Created</CardTitle>
+                <FaUserFriends className="text-blue-500 text-xl" />
+                <CardTitle>Total Contacts</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary?.orders_created ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.total_contacts ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
-                <FaMoneyBillWave className="text-green-600 text-xl" />
-                <CardTitle>Revenue</CardTitle>
+                <FaChartLine className="text-green-500 text-xl" />
+                <CardTitle>Messages Sent (24h)</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">${data.summary?.revenue ?? '0.00'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.messages_sent_24h ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
-                <FaMoneyBillWave className="text-blue-600 text-xl" />
-                <CardTitle>Open Orders Value</CardTitle>
+                <FaChartLine className="text-blue-500 text-xl" />
+                <CardTitle>Messages Received (24h)</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">${data.summary?.open_orders_value ?? '0.00'}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center gap-2">
-                <FaClock className="text-orange-500 text-xl" />
-                <CardTitle>Avg. Response Time</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">
-                  {data.summary?.avg_response_time_seconds !== null && data.summary?.avg_response_time_seconds !== undefined
-                    ? `${Math.round(data.summary.avg_response_time_seconds)}s`
-                    : 'N/A'}
-                </p>
+                <p className="text-3xl font-bold">{data.stats_cards?.messages_received_24h ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <FaChartLine className="text-indigo-500 text-xl" />
-                <CardTitle>Pending Installations</CardTitle>
+                <CardTitle>Meta Configs Total</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary?.pending_installations ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.meta_configs_total ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <FaChartLine className="text-indigo-700 text-xl" />
-                <CardTitle>Pending Assessments</CardTitle>
+                <CardTitle>Active Meta Config</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary?.pending_assessments ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.meta_config_active_name ?? 'N/A'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <FaClock className="text-orange-500 text-xl" />
+                <CardTitle>Pending Human Handovers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{data.stats_cards?.pending_human_handovers ?? 'N/A'}</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Charts Section */}
           <div className="grid gap-8 md:grid-cols-2 mt-8">
-            {/* Message Volume Over Time */}
+            {/* Conversation Trends Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Message Volume Over Time</CardTitle>
+                <CardTitle>Conversation Trends</CardTitle>
               </CardHeader>
               <CardContent style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data.message_volume} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <LineChart data={data.charts_data?.conversation_trends ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="sent" stroke="#2563eb" name="Sent" strokeWidth={2} />
-                    <Line type="monotone" dataKey="received" stroke="#22c55e" name="Received" strokeWidth={2} />
+                    <Line type="monotone" dataKey="incoming_messages" stroke="#2563eb" name="Incoming" strokeWidth={2} />
+                    <Line type="monotone" dataKey="outgoing_messages" stroke="#22c55e" name="Outgoing" strokeWidth={2} />
+                    <Line type="monotone" dataKey="total_messages" stroke="#f59e42" name="Total" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Orders Trend */}
+            {/* Bot Performance */}
             <Card>
               <CardHeader>
-                <CardTitle>Orders Created Over Time</CardTitle>
-              </CardHeader>
-              <CardContent style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.order_trend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="orders" fill="#6366f1" name="Orders" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Top Contacts by Message Volume */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Contacts by Message Volume</CardTitle>
+                <CardTitle>Bot Performance</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="divide-y divide-slate-200">
-                  {Array.isArray(data.top_contacts) && data.top_contacts.length > 0 ? (
-                    data.top_contacts.map((c, i) => (
-                      <li key={c.whatsapp_id} className="flex justify-between py-2">
-                        <span className="font-medium">{c.name}</span>
-                        <span className="text-slate-500">{c.message_count} messages</span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="text-slate-400">No data</li>
-                  )}
+                <ul className="space-y-2">
+                  <li>Automated Resolution Rate: <span className="font-bold">{data.charts_data?.bot_performance?.automated_resolution_rate ?? 'N/A'}</span></li>
+                  <li>Avg. Bot Response Time (s): <span className="font-bold">{data.charts_data?.bot_performance?.avg_bot_response_time_seconds ?? 'N/A'}</span></li>
+                  <li>Total Incoming Messages Processed: <span className="font-bold">{data.charts_data?.bot_performance?.total_incoming_messages_processed ?? 'N/A'}</span></li>
                 </ul>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Most Active Hours */}
+          {/* Recent Activity Log */}
+          <div className="mt-8">
             <Card>
               <CardHeader>
-                <CardTitle>Most Active Hours</CardTitle>
+                <CardTitle>Recent Activity</CardTitle>
               </CardHeader>
-              <CardContent style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.most_active_hours} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" tickFormatter={h => `${h}:00`} />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="count" fill="#f59e42" name="Messages" />
-                  </BarChart>
-                </ResponsiveContainer>
+              <CardContent>
+                <ul className="divide-y divide-slate-200">
+                  {Array.isArray(data.recent_activity_log) && data.recent_activity_log.length > 0 ? (
+                    data.recent_activity_log.map((item) => (
+                      <li key={item.id} className="flex items-center gap-2 py-2">
+                        <span className={item.iconColor}><i className={item.iconName} /></span>
+                        <span>{item.text}</span>
+                        <span className="ml-auto text-xs text-slate-400">{new Date(item.timestamp).toLocaleString()}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-slate-400">No recent activity</li>
+                  )}
+                </ul>
               </CardContent>
             </Card>
           </div>
