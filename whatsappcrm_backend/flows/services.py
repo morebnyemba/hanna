@@ -1143,13 +1143,16 @@ def _update_contact_data(contact: Contact, field_path: str, value_to_set: Any):
 
 
 def _update_customer_profile_data(contact: Contact, fields_to_update_config: Dict[str, Any], flow_context: dict):
-    if not fields_to_update_config or not isinstance(fields_to_update_config, dict): 
-        logger.warning("_update_customer_profile_data called with invalid fields_to_update_config.")
-        return
-
     profile, created = CustomerProfile.objects.get_or_create(contact=contact)
     if created: 
-        logger.info(f"Created CustomerProfile for contact {contact.whatsapp_id}")
+        logger.info(f"Created new CustomerProfile for contact {contact.whatsapp_id}")
+        profile.notes = "This is a placeholder profile created automatically. Details will be updated as the customer interacts with the system."
+        profile.save(update_fields=['notes'])
+        logger.info(f"Added placeholder note to new profile for contact {contact.whatsapp_id}")
+
+    if not fields_to_update_config or not isinstance(fields_to_update_config, dict):
+        logger.debug("_update_customer_profile_data called with no fields to update. Profile ensured to exist.")
+        return
 
     changed_fields = []
     for field_path, value_template in fields_to_update_config.items():

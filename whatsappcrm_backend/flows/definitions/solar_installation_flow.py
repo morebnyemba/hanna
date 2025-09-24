@@ -596,6 +596,20 @@ SOLAR_INSTALLATION_FLOW = {
             "config": {
                 "actions_to_run": [
                     {
+                        "action_type": "update_contact_field",
+                        "field_path": "name",
+                        "value_template": "{{ install_full_name }}"
+                    },
+                    {
+                        "action_type": "update_customer_profile",
+                        "fields_to_update": {
+                            "first_name": "{{ install_full_name.split(' ')[0] if ' ' in install_full_name else install_full_name }}",
+                            "last_name": "{{ ' '.join(install_full_name.split(' ')[1:]) if ' ' in install_full_name else '' }}",
+                            "address_line_1": "{{ install_address }}",
+                            "notes": "Profile updated from Solar Installation Request flow."
+                        }
+                    },
+                    {
                         "action_type": "create_model_instance",
                         "app_label": "customer_data",
                         "model_name": "InstallationRequest",
