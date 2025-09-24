@@ -80,17 +80,22 @@ export const AuthProvider = ({ children }) => {
     const result = await authService.login(username, password);
     if (result.success) {
       // Defensive check: Ensure both tokens are present and valid
-      const accessToken = authService.getAccessToken();
+      const accessToken = result.user ? authService.getAccessToken() : null;
       const refreshToken = authService.getRefreshToken();
       if (!accessToken || !refreshToken || accessToken === 'undefined' || refreshToken === 'undefined') {
         console.error("Login succeeded but no valid access or refresh token was provided or stored. Automatic session refresh will fail.");
         await logout({ showInfoToast: false });
         return { success: false, error: "Login failed due to a server configuration issue. Please contact support." };
       }
-      // Update jotai atoms and localStorage after successful login
+      // Defensive sync: update both atoms and localStorage
       setAccessToken(accessToken);
       setRefreshToken(refreshToken);
       setUser(result.user);
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      if (result.user) {
+        localStorage.setItem('user', JSON.stringify(result.user));
+      }
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
       return { success: true, user: result.user };
     } else {
@@ -101,10 +106,13 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async (options = {}) => {
     const { showInfoToast = true } = options;
     await authService.logout(true); // true to notify backend
-    // Clear jotai atoms and localStorage
+    // Defensive sync: clear both atoms and localStorage
     setAccessToken(null);
     setRefreshToken(null);
     setUser(null);
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
     // Remove the default header from the client
     delete apiClient.defaults.headers.common['Authorization'];
     if (showInfoToast) {
