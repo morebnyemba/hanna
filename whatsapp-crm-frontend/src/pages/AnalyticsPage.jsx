@@ -75,8 +75,8 @@ export default function AnalyticsPage() {
 
       {data && !isLoading && !error && (
         <>
-          {/* Summary Cards */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Summary Cards (Backend) */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <FaUserFriends className="text-purple-500 text-xl" />
@@ -147,6 +147,46 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{data.stats_cards?.pending_human_handovers ?? 'N/A'}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Custom Analytics Cards (Not shown on dashboard) */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <FaMoneyBillWave className="text-yellow-500 text-xl" />
+                <CardTitle>Orders Created (Custom)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{data.flow_insights?.flow_completions_today ?? 'N/A'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <FaMoneyBillWave className="text-green-600 text-xl" />
+                <CardTitle>Avg. Steps per Flow</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{data.flow_insights?.avg_steps_per_flow ?? 'N/A'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <FaChartLine className="text-blue-600 text-xl" />
+                <CardTitle>Active Flows</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{data.flow_insights?.active_flows_count ?? 'N/A'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <FaChartLine className="text-indigo-600 text-xl" />
+                <CardTitle>Total Flows</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{data.flow_insights?.total_flows_count ?? 'N/A'}</p>
               </CardContent>
             </Card>
           </div>
