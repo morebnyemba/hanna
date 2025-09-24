@@ -1,6 +1,8 @@
 // src/pages/AnalyticsPage.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { addDays } from 'date-fns';
 import { dashboardApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +15,8 @@ import {
 import { FaUserFriends, FaMoneyBillWave, FaClock, FaChartLine } from 'react-icons/fa';
 
 export default function AnalyticsPage() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,9 +46,16 @@ export default function AnalyticsPage() {
 
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setError('Session expired. Please log in again.');
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);
+      return;
+    }
     fetchData();
     // eslint-disable-next-line
-  }, [fetchData]);
+  }, [fetchData, isAuthenticated, navigate]);
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-8">
