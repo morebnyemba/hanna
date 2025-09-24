@@ -75,78 +75,70 @@ export default function AnalyticsPage() {
 
       {data && !isLoading && !error && (
         <>
-          {/* Summary Cards (Backend) */}
+          {/* Orders, Installation Requests, Site Assessments */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
-                <FaUserFriends className="text-purple-500 text-xl" />
-                <CardTitle>Active Conversations</CardTitle>
+                <FaMoneyBillWave className="text-yellow-500 text-xl" />
+                <CardTitle>Total Orders Created</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.stats_cards?.active_conversations_count ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.orders_created ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
-                <FaUserFriends className="text-pink-500 text-xl" />
-                <CardTitle>New Contacts Today</CardTitle>
+                <FaMoneyBillWave className="text-green-600 text-xl" />
+                <CardTitle>Pending Installation Requests</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.stats_cards?.new_contacts_today ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.pending_installations ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
-                <FaUserFriends className="text-blue-500 text-xl" />
-                <CardTitle>Total Contacts</CardTitle>
+                <FaChartLine className="text-blue-600 text-xl" />
+                <CardTitle>Pending Site Assessments</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.stats_cards?.total_contacts ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.stats_cards?.pending_assessments ?? 'N/A'}</p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Orders Trend Chart */}
+          <div className="grid gap-8 md:grid-cols-2 mt-8">
             <Card>
-              <CardHeader className="flex flex-row items-center gap-2">
-                <FaChartLine className="text-green-500 text-xl" />
-                <CardTitle>Messages Sent (24h)</CardTitle>
+              <CardHeader>
+                <CardTitle>Orders Created Over Time</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{data.stats_cards?.messages_sent_24h ?? 'N/A'}</p>
+              <CardContent style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.charts_data?.order_trend ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="orders" fill="#6366f1" name="Orders" />
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
+            {/* Revenue and Open Orders Value */}
             <Card>
-              <CardHeader className="flex flex-row items-center gap-2">
-                <FaChartLine className="text-blue-500 text-xl" />
-                <CardTitle>Messages Received (24h)</CardTitle>
+              <CardHeader>
+                <CardTitle>Revenue & Open Orders Value</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.stats_cards?.messages_received_24h ?? 'N/A'}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center gap-2">
-                <FaChartLine className="text-indigo-500 text-xl" />
-                <CardTitle>Meta Configs Total</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{data.stats_cards?.meta_configs_total ?? 'N/A'}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center gap-2">
-                <FaChartLine className="text-indigo-700 text-xl" />
-                <CardTitle>Active Meta Config</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{data.stats_cards?.meta_config_active_name ?? 'N/A'}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center gap-2">
-                <FaClock className="text-orange-500 text-xl" />
-                <CardTitle>Pending Human Handovers</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{data.stats_cards?.pending_human_handovers ?? 'N/A'}</p>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <span className="font-semibold">Revenue:</span> <span className="text-2xl font-bold">${data.stats_cards?.revenue ?? '0.00'}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold">Open Orders Value:</span> <span className="text-2xl font-bold">${data.stats_cards?.open_orders_value ?? '0.00'}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
