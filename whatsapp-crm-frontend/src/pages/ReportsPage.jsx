@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { FiLoader, FiDownload, FiFilter, FiFileText } from 'react-icons/fi';
-import { Table } from '@/components/ui/Table.js';
+import { Table } from '@/components/ui/Table.jsx';
 
 
 export default function ReportsPage() {
