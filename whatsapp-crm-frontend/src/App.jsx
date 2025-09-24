@@ -14,7 +14,8 @@ import ContactsPage from './pages/ContactsPage';
 import SavedData from './pages/SavedData';
 import Conversation from './pages/Conversation';
 import LoginPage from './pages/LoginPage';
-import AnalyticsPage from './pages/AnalyticsPage';
+
+import ReportsPage from './pages/ReportsPage';
 
 import InstallationRequestsPage from './pages/InstallationRequestsPage';
 import OrdersPage from './pages/OrdersPage';
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
   { path: 'media-library', element: <MediaLibraryPage /> },
   { path: 'contacts', element: <ContactsPage /> },
   { path: 'analytics', element: <AnalyticsPage />},
+  { path: 'reports', element: <ReportsPage /> },
   { path: 'installation-requests', element: <InstallationRequestsPage /> },
   { path: 'orders', element: <OrdersPage /> },
   { path: 'site-assessments', element: <SiteAssessmentsPage /> },

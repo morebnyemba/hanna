@@ -72,7 +72,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Messages Sent</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary.total_messages_sent ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.summary?.total_messages_sent ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -81,7 +81,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Messages Received</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary.total_messages_received ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.summary?.total_messages_received ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -90,7 +90,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Active Contacts</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary.active_contacts ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.summary?.active_contacts ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -99,7 +99,7 @@ export default function AnalyticsPage() {
                 <CardTitle>New Contacts</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary.new_contacts ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.summary?.new_contacts ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Orders Created</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary.orders_created ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.summary?.orders_created ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Revenue</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">${data.summary.revenue ?? '0.00'}</p>
+                <p className="text-3xl font-bold">${data.summary?.revenue ?? '0.00'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -126,7 +126,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Open Orders Value</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">${data.summary.open_orders_value ?? '0.00'}</p>
+                <p className="text-3xl font-bold">${data.summary?.open_orders_value ?? '0.00'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">
-                  {data.summary.avg_response_time_seconds !== null
+                  {data.summary?.avg_response_time_seconds !== null && data.summary?.avg_response_time_seconds !== undefined
                     ? `${Math.round(data.summary.avg_response_time_seconds)}s`
                     : 'N/A'}
                 </p>
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Pending Installations</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary.pending_installations ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.summary?.pending_installations ?? 'N/A'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -157,7 +157,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Pending Assessments</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{data.summary.pending_assessments ?? 'N/A'}</p>
+                <p className="text-3xl font-bold">{data.summary?.pending_assessments ?? 'N/A'}</p>
               </CardContent>
             </Card>
           </div>
