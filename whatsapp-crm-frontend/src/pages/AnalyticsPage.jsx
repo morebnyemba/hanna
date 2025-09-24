@@ -26,12 +26,12 @@ export default function AnalyticsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      // Pass date range to backend
+      // Pass date range to backend as query params
       const params = {
         start_date: dateRange.from.toISOString().slice(0, 10),
         end_date: dateRange.to.toISOString().slice(0, 10),
       };
-      const response = await dashboardApi.getSummary({ params });
+      const response = await dashboardApi.getSummary(params);
       setData(response.data);
     } catch (err) {
       setError(err.message);

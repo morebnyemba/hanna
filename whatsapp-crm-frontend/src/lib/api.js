@@ -115,7 +115,7 @@ apiClient.interceptors.response.use(
 
 // --- Dashboard Stats API ---
 export const dashboardApi = {
-  getSummary: () => apiClient.get('/crm-api/stats/summary/'),
+  getSummary: (params) => apiClient.get('/crm-api/stats/summary/', { params }),
 };
 
 // --- Contacts API ---
