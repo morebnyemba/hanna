@@ -1,3 +1,22 @@
+# --- IsStaffOrReadOnly Permission ---
+from rest_framework import viewsets, permissions, status
+from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.shortcuts import get_object_or_404
+from django.http import Http404
+
+class IsStaffOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to only allow read access to any authenticated user,
+    but full write access (create, update, delete) only to admin/staff users.
+    """
+    def has_permission(self, request, view):
+        # Allow read-only access for any request.
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # Allow write access only for staff users.
+        return request.user and request.user.is_staff
+
 from .models import Order, InstallationRequest, SiteAssessmentRequest
 from .serializers import OrderSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer
 # --- Order ViewSet ---

@@ -1,4 +1,30 @@
-from .models import Order, InstallationRequest, SiteAssessmentRequest
+# whatsappcrm_backend/customer_data/serializers.py
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from .models import Order, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction
+
+User = get_user_model()
+
+# whatsappcrm_backend/customer_data/serializers.py
+# --- SimpleUserSerializer ---
+class SimpleUserSerializer(serializers.ModelSerializer):
+    """A lightweight serializer for basic User (agent) information."""
+    full_name = serializers.CharField(source='get_full_name', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'full_name', 'first_name', 'last_name']
+
+# --- SimpleCustomerProfileSerializer ---
+class SimpleCustomerProfileSerializer(serializers.ModelSerializer):
+    """A lightweight serializer for basic CustomerProfile information, ideal for nesting."""
+    full_name = serializers.CharField(source='get_full_name', read_only=True)
+    contact_id = serializers.IntegerField(source='contact.id', read_only=True)
+
+    class Meta:
+        model = CustomerProfile
+        fields = ['contact_id', 'full_name', 'company']
+
 # --- Order Serializer ---
 class OrderSerializer(serializers.ModelSerializer):
     customer = SimpleCustomerProfileSerializer(read_only=True)
