@@ -37,21 +37,31 @@ export const AuthProvider = ({ children }) => {
     const token = authService.getAccessToken();
     const refreshToken = authService.getRefreshToken();
     if (token && refreshToken && token !== 'undefined' && refreshToken !== 'undefined') {
-      try {
-        const decodedUser = jwtDecode(token);
-        if (decodedUser.exp * 1000 > Date.now()) {
-          setAccessToken(token);
-          setRefreshToken(refreshToken);
-          setUser(decodedUser);
-          apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        } else {
+      // Defensive: Check if token is a valid JWT (should have two dots)
+      if (typeof token === 'string' && token.split('.').length === 3) {
+        try {
+          const decodedUser = jwtDecode(token);
+          if (decodedUser.exp * 1000 > Date.now()) {
+            setAccessToken(token);
+            setRefreshToken(refreshToken);
+            setUser(decodedUser);
+            apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          } else {
+            authService.logout(false);
+            setAccessToken(null);
+            setRefreshToken(null);
+            setUser(null);
+          }
+        } catch (e) {
+          console.error("Invalid token on app load.", e);
           authService.logout(false);
           setAccessToken(null);
           setRefreshToken(null);
           setUser(null);
         }
-      } catch (e) {
-        console.error("Invalid token on app load.", e);
+      } else {
+        // Token is not a valid JWT, clear state
+        console.error("Invalid token format on app load.");
         authService.logout(false);
         setAccessToken(null);
         setRefreshToken(null);
