@@ -8,8 +8,21 @@ MAIN_MENU_FLOW = {
     "is_active": True,
     "steps": [
         {
-            "name": "show_main_menu",
+            "name": "ensure_customer_profile_exists",
             "is_entry_point": True,
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "update_customer_profile",
+                    "fields_to_update": {}
+                }]
+            },
+            "transitions": [
+                {"to_step": "show_main_menu", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "show_main_menu",
             "type": "question",
             "config": {
                 "message_config": {
