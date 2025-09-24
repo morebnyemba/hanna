@@ -30,23 +30,21 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useAtom(accessTokenAtom);
   const [, setRefreshToken] = useAtom(refreshTokenAtom);
   const [isAuthenticated] = useAtom(isAuthenticatedAtom);
-  const [isLoading, setIsLoading] = useAtom(isLoadingAuthAtom);
+  const [isLoading, setIsLoading] = useAtom(isLoadingAuthAtom); // Use 'isLoading' everywhere for consistency
 
   // Sync jotai state with localStorage on initial load
   useEffect(() => {
     const token = authService.getAccessToken();
-    if (token) {
+    const refreshToken = authService.getRefreshToken();
+    if (token && refreshToken && token !== 'undefined' && refreshToken !== 'undefined') {
       try {
         const decodedUser = jwtDecode(token);
         if (decodedUser.exp * 1000 > Date.now()) {
-          // atomWithStorage should handle this, but we can be explicit
           setAccessToken(token);
-          setRefreshToken(authService.getRefreshToken());
+          setRefreshToken(refreshToken);
           setUser(decodedUser);
-          // Explicitly set the header on the client for any subsequent requests on this session.
           apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         } else {
-          // Token is expired. Clear state.
           authService.logout(false);
           setAccessToken(null);
           setRefreshToken(null);
@@ -59,6 +57,11 @@ export const AuthProvider = ({ children }) => {
         setRefreshToken(null);
         setUser(null);
       }
+    } else {
+      // If either token is missing, clear all state
+      setAccessToken(null);
+      setRefreshToken(null);
+      setUser(null);
     }
     setIsLoading(false);
   }, [setAccessToken, setRefreshToken, setUser, setIsLoading]);
@@ -66,45 +69,34 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     const result = await authService.login(username, password);
     if (result.success) {
-      // Defensive check: Ensure a refresh token was stored. If not, the session
-      // is not truly established and will fail on the first token expiry.
+      // Defensive check: Ensure both tokens are present and valid
+      const accessToken = authService.getAccessToken();
       const refreshToken = authService.getRefreshToken();
-      // A more robust check to handle cases where localStorage might store the string "undefined"
-      if (!refreshToken || refreshToken === 'undefined') {
-        console.error("Login succeeded but no valid refresh token was provided or stored. Automatic session refresh will fail.");
-        // Clear any partial login state to be safe.
+      if (!accessToken || !refreshToken || accessToken === 'undefined' || refreshToken === 'undefined') {
+        console.error("Login succeeded but no valid access or refresh token was provided or stored. Automatic session refresh will fail.");
         await logout({ showInfoToast: false });
-        // Return a clear error to the login page.
         return { success: false, error: "Login failed due to a server configuration issue. Please contact support." };
       }
-
-      // Update jotai atoms after successful login
-      setAccessToken(authService.getAccessToken());
-      setRefreshToken(authService.getRefreshToken());
+      // Update jotai atoms and localStorage after successful login
+      setAccessToken(accessToken);
+      setRefreshToken(refreshToken);
       setUser(result.user);
-      // Explicitly set the header on the client for immediate use
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${authService.getAccessToken()}`;
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
       return { success: true, user: result.user };
     } else {
-      // The LoginPage will handle showing the error message.
       return { success: false, error: result.error };
     }
   };
 
   const logout = useCallback(async (options = {}) => {
     const { showInfoToast = true } = options;
-    // The authService.logout function internally handles potential server errors
-    // (like 404 or 401) and does not throw, so a try/catch here is not needed.
     await authService.logout(true); // true to notify backend
-
-    // Clear jotai atoms
-    setAccessToken(null); // This will trigger isAuthenticatedAtom to be false
-    setRefreshToken(null); // This will clear the refresh token
-    setUser(null); // This will clear user data
-
-    // Also remove the default header from the client
+    // Clear jotai atoms and localStorage
+    setAccessToken(null);
+    setRefreshToken(null);
+    setUser(null);
+    // Remove the default header from the client
     delete apiClient.defaults.headers.common['Authorization'];
-
     if (showInfoToast) {
       toast.info("You have been logged out.");
     }
@@ -135,7 +127,7 @@ export const AuthProvider = ({ children }) => {
     user,
     accessToken,
     isAuthenticated,
-    isLoadingAuth: isLoading,
+    isLoading,
     login,
     logout,
   };
