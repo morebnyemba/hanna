@@ -114,7 +114,7 @@ export default function OrdersPage() {
               {Array.isArray(orders) && orders.map(order => (
                 <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition">
                   <td className="border px-2 py-1">{order.order_number}</td>
-                  <td className="border px-2 py-1">{order.name}</td>
+                  <td className="border px-2 py-1">{order.customer?.full_name || order.customer?.company || '-'}</td>
                   <td className="border px-2 py-1">{order.stage_display || order.stage}</td>
                   <td className="border px-2 py-1">{order.payment_status_display || order.payment_status}</td>
                   <td className="border px-2 py-1">{order.amount} {order.currency}</td>

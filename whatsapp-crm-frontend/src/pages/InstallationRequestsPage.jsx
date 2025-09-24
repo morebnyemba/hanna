@@ -38,7 +38,7 @@ export default function InstallationRequestsPage() {
             {Array.isArray(requests) && requests.map(req => (
               <tr key={req.id}>
                 <td className="border px-2 py-1">{req.id}</td>
-                <td className="border px-2 py-1">{req.full_name}</td>
+                <td className="border px-2 py-1">{req.customer?.full_name || req.full_name || '-'}</td>
                 <td className="border px-2 py-1">{req.status}</td>
                 <td className="border px-2 py-1">{req.installation_type}</td>
                 <td className="border px-2 py-1">{req.order_number}</td>

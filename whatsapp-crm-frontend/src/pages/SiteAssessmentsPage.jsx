@@ -37,7 +37,7 @@ export default function SiteAssessmentsPage() {
             {Array.isArray(assessments) && assessments.map(a => (
               <tr key={a.id}>
                 <td className="border px-2 py-1">{a.id}</td>
-                <td className="border px-2 py-1">{a.customer_name || a.customer}</td>
+                <td className="border px-2 py-1">{a.customer?.full_name || a.customer_name || '-'}</td>
                 <td className="border px-2 py-1">{a.status_display || a.status}</td>
                 <td className="border px-2 py-1">{a.scheduled_date || '-'}</td>
                 <td className="border px-2 py-1">{a.created_at?.slice(0,10)}</td>
