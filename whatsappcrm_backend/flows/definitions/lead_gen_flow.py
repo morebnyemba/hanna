@@ -30,8 +30,8 @@ LEAD_GENERATION_FLOW = {
                     "model_name": "Product",
                     "variable_name": "available_products",
                     "filters_template": {"is_active": True, "product_type__in": ["hardware", "software", "module"]},
-                    "fields_to_return": ["sku", "name", "price"],
-                    "order_by": ["name"]
+                    "fields_to_return": ["sku", "name", "price", "category__name"],
+                    "order_by": ["category__name", "name"]
                 }]
             },
             "transitions": [{"to_step": "check_if_products_exist", "condition_config": {"type": "always_true"}}]
@@ -55,9 +55,12 @@ LEAD_GENERATION_FLOW = {
                     "message_type": "text",
                     "text": {
                         "body": (
-                            "Welcome to our shop! Here are our available products:\n\n"
-                            "{% for product in available_products %}"
+                            "Welcome to our shop! Here are our available products:\n"
+                            "{% for category in available_products | groupby('category__name') %}\n"
+                            "*_{{ category.grouper }}:_*\n"
+                            "{% for product in category.list %}"
                             "- *{{ product.name }}*\n  SKU: `{{ product.sku }}` | Price: ${{ product.price }}\n"
+                            "{% endfor %}"
                             "{% endfor %}\n"
                             "Please enter the SKU of the product you'd like to add to your cart. Type *done* when you are finished."
                         )
