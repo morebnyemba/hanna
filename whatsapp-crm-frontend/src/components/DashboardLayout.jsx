@@ -63,7 +63,6 @@ export default function DashboardLayout() {
     { to: '/orders', label: 'Orders', icon: <FiCreditCard className="h-5 w-5" /> },
     { to: '/site-assessments', label: 'Site Assessments', icon: <FiBarChart2 className="h-5 w-5" /> },
     { to: '/analytics', label: 'Analytics', icon: <FiBarChart2 className="h-5 w-5" /> },
-    { to: '/reports', label: 'Reports', icon: <FiActivity className="h-5 w-5" /> },
     { to: '/billing', label: 'Billing', icon: <FiCreditCard className="h-5 w-5" /> },
     { to: '/media-library', label: 'Media Library', icon: <FiImage className="h-5 w-5" /> },
     { to: '/api-settings', label: 'API Settings', icon: <FiSettings className="h-5 w-5" /> },
