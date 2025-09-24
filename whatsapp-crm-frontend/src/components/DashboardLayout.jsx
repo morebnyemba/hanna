@@ -362,10 +362,10 @@ export default function DashboardLayout() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="text-sm text-gray-600 dark:text-gray-400">
               © {new Date().getFullYear()} <a 
-                href="https://slykertech.co.zw" 
+                href="https://pfungwa.tech" 
                 target="_blank" rel="noopener noreferrer" 
                 className="font-medium text-purple-600 hover:underline dark:text-purple-400"
-              >Slyker Tech Web Services</a>. All rights reserved.
+              >Pfungwa Technologies</a>. All rights reserved.
             </div>
             <div className="flex items-center gap-4">
               <a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Terms</a>
