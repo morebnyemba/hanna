@@ -210,13 +210,16 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <ul className="divide-y divide-slate-200">
-                  {data.top_contacts.map((c, i) => (
-                    <li key={c.whatsapp_id} className="flex justify-between py-2">
-                      <span className="font-medium">{c.name}</span>
-                      <span className="text-slate-500">{c.message_count} messages</span>
-                    </li>
-                  ))}
-                  {data.top_contacts.length === 0 && <li className="text-slate-400">No data</li>}
+                  {Array.isArray(data.top_contacts) && data.top_contacts.length > 0 ? (
+                    data.top_contacts.map((c, i) => (
+                      <li key={c.whatsapp_id} className="flex justify-between py-2">
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-slate-500">{c.message_count} messages</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-slate-400">No data</li>
+                  )}
                 </ul>
               </CardContent>
             </Card>
