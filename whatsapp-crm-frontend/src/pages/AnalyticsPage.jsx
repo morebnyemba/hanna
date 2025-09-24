@@ -1,6 +1,6 @@
 // src/pages/AnalyticsPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { addDays, format } from 'date-fns';
+import { addDays } from 'date-fns';
 import { dashboardApi } from '@/lib/api';
 
 // UI Components
@@ -30,7 +30,7 @@ export default function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [dateRange]);
+  }, []);
 
   useEffect(() => {
     fetchData();

@@ -3,8 +3,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from datetime import timedelta
+from django.db import models
 from customer_data.models import Order, InstallationRequest, SiteAssessmentRequest
-from conversations.models import Conversation, Message
+from conversations.models import Message
 from customer_data.models import CustomerProfile
 
 class AnalyticsReportsView(APIView):
@@ -27,9 +28,7 @@ class AnalyticsReportsView(APIView):
             return Response({'detail': 'Invalid date format.'}, status=400)
 
         # Example metrics (customize as needed)
-        active_conversations_count = Conversation.objects.filter(
-            updated_at__gte=timezone.now() - timedelta(hours=4)
-        ).count()
+        # No Conversation model, so we skip active_conversations_count
         messages_sent = Message.objects.filter(
             created_at__gte=timezone.now() - timedelta(hours=24)
         ).count()
@@ -50,7 +49,7 @@ class AnalyticsReportsView(APIView):
         ).count()
 
         return Response({
-            'active_conversations_count': active_conversations_count,
+            # 'active_conversations_count': active_conversations_count,  # Removed, no Conversation model
             'messages_sent': messages_sent,
             'new_contacts': new_contacts,
             'new_orders_today': new_orders_today,
