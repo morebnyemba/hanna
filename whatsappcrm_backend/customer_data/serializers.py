@@ -1,3 +1,41 @@
+from .models import Order, InstallationRequest, SiteAssessmentRequest
+# --- Order Serializer ---
+class OrderSerializer(serializers.ModelSerializer):
+    customer = SimpleCustomerProfileSerializer(read_only=True)
+    assigned_agent = SimpleUserSerializer(read_only=True)
+    assigned_agent_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_staff=True),
+        source='assigned_agent', write_only=True, allow_null=True, required=False
+    )
+    stage_display = serializers.CharField(source='get_stage_display', read_only=True)
+    payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'order_number', 'name', 'customer', 'stage', 'stage_display', 'payment_status', 'payment_status_display',
+            'amount', 'currency', 'expected_close_date', 'assigned_agent', 'assigned_agent_id', 'notes', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+# --- InstallationRequest Serializer ---
+class InstallationRequestSerializer(serializers.ModelSerializer):
+    customer = SimpleCustomerProfileSerializer(read_only=True)
+    associated_order = OrderSerializer(read_only=True)
+
+    class Meta:
+        model = InstallationRequest
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+# --- SiteAssessmentRequest Serializer ---
+class SiteAssessmentRequestSerializer(serializers.ModelSerializer):
+    customer = SimpleCustomerProfileSerializer(read_only=True)
+
+    class Meta:
+        model = SiteAssessmentRequest
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at')
 # whatsappcrm_backend/customer_data/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model

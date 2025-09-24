@@ -1,3 +1,28 @@
+from .models import Order, InstallationRequest, SiteAssessmentRequest
+from .serializers import OrderSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer
+# --- Order ViewSet ---
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.select_related('customer', 'assigned_agent').all()
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
+    filterset_fields = ['stage', 'payment_status', 'customer']
+    search_fields = ['order_number', 'name', 'notes']
+
+# --- InstallationRequest ViewSet ---
+class InstallationRequestViewSet(viewsets.ModelViewSet):
+    queryset = InstallationRequest.objects.select_related('customer', 'associated_order').all()
+    serializer_class = InstallationRequestSerializer
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
+    filterset_fields = ['status', 'installation_type', 'customer']
+    search_fields = ['order_number', 'full_name', 'address', 'contact_phone']
+
+# --- SiteAssessmentRequest ViewSet ---
+class SiteAssessmentRequestViewSet(viewsets.ModelViewSet):
+    queryset = SiteAssessmentRequest.objects.select_related('customer').all()
+    serializer_class = SiteAssessmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
+    filterset_fields = ['status', 'customer']
+    search_fields = ['assessment_id', 'full_name', 'address', 'contact_info']
 # whatsappcrm_backend/customer_data/views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
