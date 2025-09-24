@@ -34,7 +34,7 @@ export default function InstallationRequestsPage() {
             </tr>
           </thead>
           <tbody>
-            {requests.map(req => (
+            {Array.isArray(requests) && requests.map(req => (
               <tr key={req.id}>
                 <td className="border px-2 py-1">{req.id}</td>
                 <td className="border px-2 py-1">{req.full_name}</td>

@@ -33,7 +33,7 @@ export default function SiteAssessmentsPage() {
             </tr>
           </thead>
           <tbody>
-            {assessments.map(a => (
+            {Array.isArray(assessments) && assessments.map(a => (
               <tr key={a.id}>
                 <td className="border px-2 py-1">{a.id}</td>
                 <td className="border px-2 py-1">{a.customer_name || a.customer}</td>

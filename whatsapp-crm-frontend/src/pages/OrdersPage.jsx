@@ -34,7 +34,7 @@ export default function OrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {orders.map(order => (
+            {Array.isArray(orders) && orders.map(order => (
               <tr key={order.id}>
                 <td className="border px-2 py-1">{order.order_number}</td>
                 <td className="border px-2 py-1">{order.name}</td>
