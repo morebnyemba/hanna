@@ -57,18 +57,18 @@ export default function AnalyticsPage() {
       {error && <p className="text-red-500 text-center p-8">Failed to load analytics data: {error}</p>}
       
       {data && !isLoading && !error && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader>
-              <CardTitle>Total Conversations</CardTitle>
+              <CardTitle>Active Conversations (4h)</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{data.total_conversations ?? 'N/A'}</p>
+              <p className="text-3xl font-bold">{data.active_conversations_count ?? 'N/A'}</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Messages Sent</CardTitle>
+              <CardTitle>Messages Sent (24h)</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{data.messages_sent ?? 'N/A'}</p>
@@ -76,13 +76,44 @@ export default function AnalyticsPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>New Contacts</CardTitle>
+              <CardTitle>New Contacts (Today)</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{data.new_contacts ?? 'N/A'}</p>
             </CardContent>
           </Card>
-          {/* Add more cards for other analytics data as needed */}
+          <Card>
+            <CardHeader>
+              <CardTitle>New Orders (Today)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{data.new_orders_today ?? 'N/A'}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Open Orders Value</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">${data.open_orders_value ?? '0.00'}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Installations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{data.pending_installations ?? 'N/A'}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Assessments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{data.pending_assessments ?? 'N/A'}</p>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

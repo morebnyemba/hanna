@@ -6,7 +6,7 @@ from django.db.models import Sum
 from django.db.models.functions import TruncDate
 
 from conversations.models import Contact, Message
-from customer_data.models import Order
+from customer_data.models import Order, InstallationRequest, SiteAssessmentRequest
 
 def get_stats_card_data():
     """Calculates and returns data for the main stats cards."""
@@ -20,6 +20,9 @@ def get_stats_card_data():
         stage__in=['prospecting', 'qualification', 'proposal', 'negotiation']
     ).aggregate(total_value=Sum('amount'))['total_value'] or 0
 
+    total_revenue = Order.objects.filter(stage='closed_won').aggregate(total=Sum('amount'))['total'] or 0
+    revenue_today = Order.objects.filter(stage='closed_won', updated_at__gte=today_start).aggregate(total=Sum('amount'))['total'] or 0
+
     return {
         'messages_sent_24h': Message.objects.filter(direction='out', timestamp__gte=twenty_four_hours_ago).count(),
         'messages_received_24h': Message.objects.filter(direction='in', timestamp__gte=twenty_four_hours_ago).count(),
@@ -27,8 +30,18 @@ def get_stats_card_data():
         'new_contacts_today': Contact.objects.filter(first_seen__gte=today_start).count(),
         'total_contacts': Contact.objects.count(),
         'pending_human_handovers': Contact.objects.filter(needs_human_intervention=True).count(),
+        
+        # Order & Revenue Stats
         'open_orders_value': f"{open_orders_value:,.2f}",
         'new_orders_today': Order.objects.filter(created_at__gte=today_start).count(),
+        'total_open_orders': Order.objects.filter(stage__in=['prospecting', 'qualification', 'proposal', 'negotiation']).count(),
+        'total_revenue': f"{total_revenue:,.2f}",
+        'revenue_today': f"{revenue_today:,.2f}",
+
+        # Installation & Assessment Stats
+        'pending_installations': InstallationRequest.objects.filter(status='pending').count(),
+        'completed_installations': InstallationRequest.objects.filter(status='completed').count(),
+        'pending_assessments': SiteAssessmentRequest.objects.filter(status='pending').count(),
     }
 
 def get_conversation_trends_chart_data():

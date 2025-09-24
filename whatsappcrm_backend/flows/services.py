@@ -487,9 +487,6 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                 elif action_type == 'update_customer_profile' and action_item_conf.fields_to_update is not None:
                     resolved_fields_to_update = _resolve_value(action_item_conf.fields_to_update, current_step_context, contact) # type: ignore
                     _update_customer_profile_data(contact, resolved_fields_to_update, current_step_context)
-                    # --- NEW ---
-                    contact.refresh_from_db()
-                    logger.debug(f"Refreshed contact {contact.id} from DB after profile update.")
                 elif action_type == 'send_admin_notification':
                     # This action is deprecated. We now use 'send_group_notification'.
                     # For backward compatibility, we'll map it to the new system.
@@ -1149,6 +1146,9 @@ def _update_customer_profile_data(contact: Contact, fields_to_update_config: Dic
         profile.notes = "This is a placeholder profile created automatically. Details will be updated as the customer interacts with the system."
         profile.save(update_fields=['notes'])
         logger.info(f"Added placeholder note to new profile for contact {contact.whatsapp_id}")
+        # Manually attach the newly created profile to the in-memory contact object
+        # to make it available to subsequent steps in the same flow execution.
+        contact.customer_profile = profile
 
     if not fields_to_update_config or not isinstance(fields_to_update_config, dict):
         logger.debug("_update_customer_profile_data called with no fields to update. Profile ensured to exist.")
