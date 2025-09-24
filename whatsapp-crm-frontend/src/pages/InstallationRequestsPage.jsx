@@ -31,6 +31,7 @@ export default function InstallationRequestsPage() {
               <th className="border px-2 py-1">Type</th>
               <th className="border px-2 py-1">Order #</th>
               <th className="border px-2 py-1">Created</th>
+              <th className="border px-2 py-1">WhatsApp</th>
             </tr>
           </thead>
           <tbody>
@@ -42,6 +43,20 @@ export default function InstallationRequestsPage() {
                 <td className="border px-2 py-1">{req.installation_type}</td>
                 <td className="border px-2 py-1">{req.order_number}</td>
                 <td className="border px-2 py-1">{req.created_at?.slice(0,10)}</td>
+                <td className="border px-2 py-1">
+                  {req.contact_phone ? (
+                    <a
+                      href={`https://wa.me/${req.contact_phone.replace(/[^\d]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 transition"
+                    >
+                      WhatsApp
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">N/A</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
