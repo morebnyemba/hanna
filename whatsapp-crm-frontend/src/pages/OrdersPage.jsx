@@ -27,7 +27,7 @@ export default function OrdersPage() {
     setLoading(true);
     setError(null);
     ordersApi.list()
-      .then(res => setOrders(res.data))
+      .then(res => setOrders(res.data.results || res.data))
       .catch(() => setError('Failed to load orders.'))
       .finally(() => setLoading(false));
   };

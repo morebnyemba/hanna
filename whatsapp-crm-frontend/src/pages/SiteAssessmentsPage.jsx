@@ -11,7 +11,7 @@ export default function SiteAssessmentsPage() {
   useEffect(() => {
     setLoading(true);
     siteAssessmentsApi.list()
-      .then(res => setAssessments(res.data))
+      .then(res => setAssessments(res.data.results || res.data))
       .catch(() => setError('Failed to load site assessments.'))
       .finally(() => setLoading(false));
   }, []);
