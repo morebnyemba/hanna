@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { FiLoader, FiDownload, FiFilter, FiFileText } from 'react-icons/fi';
-import { Table } from '@/components/ui/Table.jsx';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table.jsx';
 
 
 export default function ReportsPage() {
@@ -115,11 +115,25 @@ export default function ReportsPage() {
             <CardContent>
               <p className="mb-2 text-slate-600">{report.description}</p>
               {report.data && Array.isArray(report.data) && report.data.length > 0 && (
-                <div className="mb-4">
-                  <Table
-                    columns={Object.keys(report.data[0]).map(k => ({ key: k, title: k.replace(/_/g, ' ').toUpperCase() }))}
-                    data={report.data}
-                  />
+                <div className="mb-4 overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {Object.keys(report.data[0]).map((k) => (
+                          <TableHead key={k}>{k.replace(/_/g, ' ').toUpperCase()}</TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {report.data.map((row, i) => (
+                        <TableRow key={i}>
+                          {Object.keys(report.data[0]).map((k) => (
+                            <TableCell key={k}>{row[k]}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
               <div className="flex gap-2">
