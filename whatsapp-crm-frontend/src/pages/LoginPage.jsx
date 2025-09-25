@@ -53,7 +53,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-400 via-teal-500 to-blue-600 dark:from-gray-800 dark:via-gray-900 dark:to-black p-4">
       <Card className="w-full max-w-md shadow-2xl dark:bg-gray-800">
         <CardHeader className="text-center">
-          <img src="/img/logo.png" alt="CRM Logo" className="h-16 w-16 mx-auto mb-4" />
+          {/* Logo removed as requested */}
           <CardTitle className="text-3xl font-bold text-gray-800 dark:text-gray-100">Welcome Back!</CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-400">
             Log in to your WhatsApp CRM dashboard.

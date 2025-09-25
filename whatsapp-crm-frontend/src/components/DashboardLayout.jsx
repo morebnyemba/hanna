@@ -148,7 +148,7 @@ export default function DashboardLayout() {
             {isMobileMenuOpen ? <FiX className="h-6 w-6" /> : <FiMenu className="h-6 w-6" />}
           </Button>
           <Link to="/dashboard" className="flex items-center">
-            <img src="/img/logo.png" alt="CRM Logo" className="h-8 w-8" />
+            {/* Logo removed as requested */}
           </Link>
         </div>
         
@@ -189,7 +189,7 @@ export default function DashboardLayout() {
               className={`flex items-center overflow-hidden transition-opacity duration-300 ${collapsed ? 'w-auto' : 'w-full'}`}
               onClick={() => isMobile && setIsMobileMenuOpen(false)}
             >
-              <img src="/img/logo.png" alt="CRM Logo" className="h-9 w-9 flex-shrink-0" />
+              {/* Logo removed as requested */}
               {!collapsed && (
                 <span className="ml-3 text-lg font-semibold whitespace-nowrap">CRM Dashboard</span>
               )}
