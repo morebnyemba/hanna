@@ -24,6 +24,45 @@ services:
       - "6379:6379"
     restart: unless-stopped # Ensure redis restarts unless explicitly stopped
 
+  # --- Mailu Mail Server Services ---
+  mailu_front:
+    image: mailu/nginx:1.9
+    restart: always
+    env_file: .env.mailu
+    ports:
+      - "8025:80"   # Webmail/admin UI (change as needed)
+      - "1143:143"  # IMAP
+      - "1025:25"   # SMTP
+    volumes:
+      - ./mailu/certs:/certs
+      - ./mailu/overrides:/overrides
+    depends_on:
+      - mailu_admin
+      - mailu_imap
+      - mailu_smtp
+
+  mailu_admin:
+    image: mailu/admin:1.9
+    restart: always
+    env_file: .env.mailu
+    volumes:
+      - ./mailu/data:/data
+
+  mailu_imap:
+    image: mailu/dovecot:1.9
+    restart: always
+    env_file: .env.mailu
+    volumes:
+      - ./mailu/mail:/mail
+      - ./mailu/overrides:/overrides
+
+  mailu_smtp:
+    image: mailu/postfix:1.9
+    restart: always
+    env_file: .env.mailu
+    volumes:
+      - ./mailu/overrides:/overrides
+
   backend:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_backend_app
@@ -113,3 +152,7 @@ volumes:
   postgres_data:
   redis_data:
   staticfiles_volume:
+  # Mailu volumes
+  mailu_data:
+  mailu_mail:
+  mailu_certs:

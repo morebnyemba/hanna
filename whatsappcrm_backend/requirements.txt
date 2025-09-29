@@ -47,3 +47,7 @@ channels_redis
 openpyxl
 reportlab
 django-csp
+imapclient
+pdfminer.six
+pytesseract
+pdf2image
