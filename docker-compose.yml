@@ -27,7 +27,7 @@ services:
 
   # --- Mailu Mail Server Services (2.x) ---
   mailu_front:
-    image: mailu/traefik:2.0
+    image: mailu/traefik:master
     restart: always
     env_file: .env.mailu
     ports:
@@ -42,14 +42,14 @@ services:
       - mailu_smtp
 
   mailu_admin:
-    image: mailu/admin:2.0
+    image: mailu/admin:master
     restart: always
     env_file: .env.mailu
     volumes:
       - ./mailu/data:/data
 
   mailu_imap:
-    image: mailu/dovecot:2.0
+    image: mailu/dovecot:master
     restart: always
     env_file: .env.mailu
     volumes:
@@ -57,7 +57,7 @@ services:
       - ./mailu/overrides:/overrides
 
   mailu_smtp:
-    image: mailu/postfix:2.0
+    image: mailu/postfix:master
     restart: always
     env_file: .env.mailu
     volumes:
