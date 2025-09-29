@@ -24,15 +24,15 @@ services:
       - "6379:6379"
     restart: unless-stopped # Ensure redis restarts unless explicitly stopped
 
-  # --- Mailu Mail Server Services ---
+
+  # --- Mailu Mail Server Services (2.x) ---
   mailu_front:
-    image: mailu/nginx:1.9
+    image: mailu/traefik:2.0
     restart: always
     env_file: .env.mailu
     ports:
-      - "8025:80"   # Webmail/admin UI (change as needed)
-      - "1143:143"  # IMAP
-      - "1025:25"   # SMTP
+      - "80:80"
+      - "443:443"
     volumes:
       - ./mailu/certs:/certs
       - ./mailu/overrides:/overrides
@@ -42,14 +42,14 @@ services:
       - mailu_smtp
 
   mailu_admin:
-    image: mailu/admin:1.9
+    image: mailu/admin:2.0
     restart: always
     env_file: .env.mailu
     volumes:
       - ./mailu/data:/data
 
   mailu_imap:
-    image: mailu/dovecot:1.9
+    image: mailu/dovecot:2.0
     restart: always
     env_file: .env.mailu
     volumes:
@@ -57,7 +57,7 @@ services:
       - ./mailu/overrides:/overrides
 
   mailu_smtp:
-    image: mailu/postfix:1.9
+    image: mailu/postfix:2.0
     restart: always
     env_file: .env.mailu
     volumes:
