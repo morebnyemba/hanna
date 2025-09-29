@@ -209,9 +209,9 @@ services:
           - imap
           - resolver
 
-      webmail:
-        image: ghcr.io/mailu/webmail:2024.06
-        restart: always
+              volumes:
+                - /mailu/mailqueue:/queue
+                - /mailu/overrides/postfix:/overrides:ro
         env_file: mailu.env
         volumes:
           - /mailu/webmail:/data
