@@ -208,8 +208,6 @@ services:
           - smtp
           - imap
           - resolver
-        depends_on:
-          - front
 
       # App stack
       db:
