@@ -208,16 +208,6 @@ services:
           - smtp
           - imap
           - resolver
-
-              volumes:
-                - /mailu/mailqueue:/queue
-                - /mailu/overrides/postfix:/overrides:ro
-        env_file: mailu.env
-        volumes:
-          - /mailu/webmail:/data
-          - /mailu/overrides/roundcube:/overrides:ro
-        networks:
-          - webmail
         depends_on:
           - front
 
