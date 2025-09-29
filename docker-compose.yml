@@ -61,7 +61,4 @@ services:
     image: mailu/postfix:1.9
     restart: always
     env_file: .env.mailu
-
-    volumes:
-      postgres_data:
-      staticfiles_volume:
+    # No volumes needed for mailu_smtp by default
