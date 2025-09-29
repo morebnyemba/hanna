@@ -27,7 +27,7 @@ services:
 
   # --- Mailu Mail Server Services (2.x) ---
   mailu_front:
-    image: mailu/traefik:master
+    image: traefik:latest
     restart: always
     env_file: .env.mailu
     ports:
@@ -36,6 +36,7 @@ services:
     volumes:
       - ./mailu/certs:/certs
       - ./mailu/overrides:/overrides
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - mailu_admin
       - mailu_imap
