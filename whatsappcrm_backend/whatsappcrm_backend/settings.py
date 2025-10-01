@@ -233,7 +233,7 @@ CELERY_TASK_ROUTES = {
     # 'reports.tasks.generate_monthly_report': {'queue': 'cpu_heavy'},
     'media_manager.tasks.trigger_media_asset_sync_task': {'queue': 'cpu_heavy'},
     # Route ALL email integration tasks to the CPU-heavy queue
-    'email_integration.tasks.fetch_email_attachments_task': {'queue': 'cpu_heavy'},
+    'email_integration.fetch_email_attachments_task': {'queue': 'cpu_heavy'},
     'email_integration.tasks.process_attachment_ocr': {'queue': 'cpu_heavy'},
     'email_integration.tasks.parse_ocr_text': {'queue': 'cpu_heavy'},
 }
