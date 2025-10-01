@@ -23,8 +23,15 @@ class Command(BaseCommand):
         user = os.getenv("MAILU_IMAP_USER")
         password = os.getenv("MAILU_IMAP_PASS")
 
-        self.stdout.write(self.style.SUCCESS(f"Connecting to IMAP server at {host}..."))
-        
+        self.stdout.write(self.style.SUCCESS(f"Preparing to connect to IMAP server..."))
+        self.stdout.write(f"  Host: {host}")
+        self.stdout.write(f"  User: {user}")
+
+        # Mask the password for security before logging
+        masked_password = f"{password[:2]}...{password[-2:]}" if password and len(password) > 4 else "(password is short or not set)"
+        self.stdout.write(f"  Password: {masked_password}")
+        self.stdout.write(f"Connecting...")
+
         while True: # Main loop to handle reconnects
             try:
                 with IMAPClient(host, ssl=False, timeout=300) as server: # Try connecting without SSL
