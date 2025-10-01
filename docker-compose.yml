@@ -102,7 +102,6 @@ services:
       - "443:443"
     volumes:
       - ./nginx_proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx_proxy/ssl:/etc/nginx/ssl_custom:ro
       - staticfiles_volume:/srv/www/static/:ro
       - ./whatsappcrm_backend/mediafiles:/srv/www/media/:ro
       - /var/www/letsencrypt:/var/www/letsencrypt:ro

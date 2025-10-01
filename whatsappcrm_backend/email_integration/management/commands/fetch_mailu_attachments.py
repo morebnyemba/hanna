@@ -23,7 +23,7 @@ class Command(BaseCommand):
         user = os.getenv("MAILU_IMAP_USER")
         password = os.getenv("MAILU_IMAP_PASS")
         try:
-            with IMAPClient(host, timeout=60) as server: # Set a 60-second timeout
+            with IMAPClient(host, ssl=True, timeout=60) as server: # Set a 60-second timeout
                 server.login(user, password)
                 server.select_folder('INBOX')
                 messages = server.search(['UNSEEN'])

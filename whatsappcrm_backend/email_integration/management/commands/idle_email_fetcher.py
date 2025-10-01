@@ -27,7 +27,7 @@ class Command(BaseCommand):
         
         while True: # Main loop to handle reconnects
             try:
-                with IMAPClient(host, timeout=300) as server: # Use a long timeout for IDLE
+                with IMAPClient(host, ssl=True, timeout=300) as server: # Use a long timeout for IDLE
                     server.login(user, password)
                     server.select_folder('INBOX')
                     self.stdout.write(self.style.SUCCESS("Connection successful. Listening for new emails via IDLE..."))
