@@ -94,13 +94,12 @@ services:
       - staticfiles_volume:/srv/www/static/:ro
       - ./whatsappcrm_backend/mediafiles:/srv/www/media/:ro
       - /var/www/letsencrypt:/var/www/letsencrypt:ro
-      # <-- CORRECTED: This line now correctly maps the letsencrypt directory.
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /etc/letsencrypt:/etc/nginx/ssl:ro
     depends_on:
       - backend
       - frontend
     restart: unless-stopped
-    networks:
+    networks: # <-- ADDED
       - default
       - shared_network
 
@@ -109,7 +108,7 @@ volumes:
   redis_data:
   staticfiles_volume:
 
-networks:
+networks: # <-- ADDED
   default:
   shared_network:
     external: true
