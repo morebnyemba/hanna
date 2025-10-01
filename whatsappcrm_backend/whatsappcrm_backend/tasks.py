@@ -1,7 +1,7 @@
 import os
 from celery import shared_task
 from django.conf import settings
-from .email_attachment import EmailAttachment
+from .models import EmailAttachment
 import pytesseract
 from pdf2image import convert_from_path
 from PIL import Image
