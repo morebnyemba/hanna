@@ -93,6 +93,8 @@ services:
     depends_on:
       - db
     restart: unless-stopped
+    networks:
+      - shared_network
 
   nginx_proxy:
     image: nginx:1.25-alpine
