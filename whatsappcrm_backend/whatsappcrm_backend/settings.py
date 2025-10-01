@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'customer_data.apps.CustomerDataConfig',
     
 ]
+INSTALLED_APPS.insert(0, 'email_integration.apps.EmailIntegrationConfig') # Add our new app
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -230,6 +231,9 @@ CELERY_TASK_ROUTES = {
     # Example: Route a hypothetical report generation task to the CPU-heavy queue.
     # 'reports.tasks.generate_monthly_report': {'queue': 'cpu_heavy'},
     'media_manager.tasks.trigger_media_asset_sync_task': {'queue': 'cpu_heavy'},
+    # Route OCR and parsing tasks to the CPU-heavy queue
+    'email_integration.tasks.process_attachment_ocr': {'queue': 'cpu_heavy'},
+    'email_integration.tasks.parse_ocr_text': {'queue': 'cpu_heavy'},
 }
 
 
@@ -259,6 +263,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'notifications.tasks.check_and_send_24h_window_reminders',
         # Runs every hour at the top of the hour.
         'schedule': crontab(minute=0, hour='*'),
+    },
+    'fetch-mailu-attachments-periodically': {
+        'task': 'email_integration.fetch_email_attachments_task',
+        'schedule': 5.0,  # Run every 5 seconds
     },
 }
 
