@@ -1,10 +1,3 @@
-from celery.schedules import schedule
-app.conf.beat_schedule = {
-    'fetch-mailu-attachments-every-20s': {
-        'task': 'whatsappcrm_backend.periodic_tasks.run_fetch_mailu_attachments',
-        'schedule': 20.0,
-    },
-}
 import os
 from celery import Celery
 
