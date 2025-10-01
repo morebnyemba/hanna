@@ -10,6 +10,7 @@ from pdf2image import convert_from_path
 from PIL import Image
 from decimal import Decimal, InvalidOperation
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.management import call_command
 
 logger = logging.getLogger(__name__)
 
@@ -173,3 +174,16 @@ def parse_ocr_text(self, attachment_id):
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred during parsing: {e}", exc_info=True)
         raise
+
+@shared_task(name="email_integration.fetch_email_attachments_task")
+def fetch_email_attachments_task():
+    """
+    Celery task to run the fetch_mailu_attachments management command.
+    """
+    log_prefix = "[Fetch Email Task]"
+    logger.info(f"{log_prefix} Starting scheduled task to fetch email attachments.")
+    try:
+        call_command('fetch_mailu_attachments')
+        logger.info(f"{log_prefix} Successfully finished fetch_mailu_attachments command.")
+    except Exception as e:
+        logger.error(f"{log_prefix} An error occurred while running fetch_mailu_attachments: {e}", exc_info=True)

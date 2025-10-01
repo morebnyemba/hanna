@@ -218,6 +218,7 @@ CELERY_CACHE_BACKEND = 'django-cache'
 # --- NEW: Celery Task Queues and Routing ---
 # Define queues for different types of workloads.
 from kombu import Queue
+CELERY_TASK_DEFAULT_QUEUE = 'celery'
 
 CELERY_TASK_QUEUES = (
     Queue('celery', routing_key='celery'), # Default queue for I/O-bound tasks

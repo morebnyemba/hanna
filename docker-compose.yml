@@ -46,7 +46,7 @@ services:
   celery_io_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_io_worker
-    command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=4
+    command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=4 --without-gossip
     volumes:
       - ./whatsappcrm_backend:/app
     env_file:
@@ -59,7 +59,7 @@ services:
   celery_cpu_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_cpu_worker
-    command: celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=1
+    command: celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=1 --without-gossip --pool=solo
     volumes:
       - ./whatsappcrm_backend:/app
     env_file:
@@ -72,7 +72,7 @@ services:
   celery_beat:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_beat
-    command: celery -A whatsappcrm_backend beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A whatsappcrm_backend beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler --without-gossip
     volumes:
       - ./whatsappcrm_backend:/app
     env_file:
