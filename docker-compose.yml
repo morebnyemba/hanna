@@ -10,27 +10,25 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
-    restart: unless-stopped # Ensure that the DB restarts unless explicitly stopped
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: whatsappcrm_redis
-    command: redis-server /usr/local/etc/redis/redis.conf # Use config file for redis
-    # redis-server --requirepass your_strong_password
+    command: redis-server /usr/local/etc/redis/redis.conf
     volumes:
       - redis_data:/data
       - ./redis.conf:/usr/local/etc/redis/redis.conf
-    ports: # Ensure the ports are accessible to the host if needed
+    ports:
       - "6379:6379"
-    restart: unless-stopped # Ensure redis restarts unless explicitly stopped
+    restart: unless-stopped
 
   backend:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_backend_app
     volumes:
-      - ./whatsappcrm_backend:/app          # Mount the application code
-      - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
-      # Media files are now served from the 'mediafiles' subdirectory of the main app bind mount.
+      - ./whatsappcrm_backend:/app
+      - staticfiles_volume:/app/staticfiles
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
@@ -48,8 +46,6 @@ services:
   celery_io_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_io_worker
-    # This worker handles I/O-bound tasks from the default 'celery' queue.
-    # Concurrency is set higher than CPU cores as these tasks are often waiting.
     command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=4
     volumes:
       - ./whatsappcrm_backend:/app
@@ -63,8 +59,6 @@ services:
   celery_cpu_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_cpu_worker
-    # This worker handles CPU-intensive tasks from the 'cpu_heavy' queue.
-    # Concurrency is set to 1 to dedicate one CPU core to these tasks.
     command: celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=1
     volumes:
       - ./whatsappcrm_backend:/app
@@ -92,24 +86,29 @@ services:
     image: nginx:1.25-alpine
     container_name: whatsappcrm_nginx_proxy
     ports:
-      - "80:80"    # For HTTP and Let's Encrypt challenge
-      - "443:443"  # For HTTPS later
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx_proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx_proxy/ssl:/etc/nginx/ssl_custom:ro # Mount custom SSL configs
-      - staticfiles_volume:/srv/www/static/:ro # Use the named volume for static files
-      - ./whatsappcrm_backend/mediafiles:/srv/www/media/:ro # Bind mount the host's media directory for Nginx to serve
-      # Mounts for Let's Encrypt:
-      # Map the standard host directory for Certbot challenges into the container.
+      - ./nginx_proxy/ssl:/etc/nginx/ssl_custom:ro
+      - staticfiles_volume:/srv/www/static/:ro
+      - ./whatsappcrm_backend/mediafiles:/srv/www/media/:ro
       - /var/www/letsencrypt:/var/www/letsencrypt:ro
-      # Map the standard host directory where Certbot stores certificates into the container.
       - /etc/letsencrypt:/etc/nginx/ssl:ro
     depends_on:
       - backend
       - frontend
     restart: unless-stopped
+    networks: # <-- ADDED
+      - default
+      - shared_network
 
 volumes:
   postgres_data:
   redis_data:
   staticfiles_volume:
+
+networks: # <-- ADDED
+  default:
+  shared_network:
+    external: true
