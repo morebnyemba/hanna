@@ -82,6 +82,18 @@ services:
       - db
     restart: unless-stopped
 
+  email_idle_fetcher:
+    build: ./whatsappcrm_backend
+    container_name: whatsappcrm_email_idle_fetcher
+    command: python manage.py idle_email_fetcher
+    volumes:
+      - ./whatsappcrm_backend:/app
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
+    depends_on:
+      - db
+    restart: unless-stopped
+
   nginx_proxy:
     image: nginx:1.25-alpine
     container_name: whatsappcrm_nginx_proxy
