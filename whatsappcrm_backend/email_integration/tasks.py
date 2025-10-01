@@ -186,4 +186,5 @@ def fetch_email_attachments_task():
         call_command('fetch_mailu_attachments')
         logger.info(f"{log_prefix} Successfully finished fetch_mailu_attachments command.")
     except Exception as e:
-        logger.error(f"{log_prefix} An error occurred while running fetch_mailu_attachments: {e}", exc_info=True)
+        logger.error(f"{log_prefix} The 'fetch_mailu_attachments' command failed: {e}", exc_info=True)
+        raise # Re-raise the exception to mark the task as FAILED

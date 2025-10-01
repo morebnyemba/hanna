@@ -3,7 +3,7 @@ import uuid
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 import email
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
@@ -23,7 +23,7 @@ class Command(BaseCommand):
         user = os.getenv("MAILU_IMAP_USER")
         password = os.getenv("MAILU_IMAP_PASS")
         try:
-            with IMAPClient(host) as server:
+            with IMAPClient(host, timeout=60) as server: # Set a 60-second timeout
                 server.login(user, password)
                 server.select_folder('INBOX')
                 messages = server.search(['UNSEEN'])
@@ -63,6 +63,7 @@ class Command(BaseCommand):
                             process_attachment_ocr.delay(attachment.id)
                             self.stdout.write(self.style.WARNING(f"Triggered OCR processing for attachment id: {attachment.id}"))
         except IMAPClientError as e:
-            self.stderr.write(self.style.ERROR(f"IMAP connection failed: {e}"))
+            raise CommandError(f"IMAP connection failed: {e}")
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f"An unexpected error occurred: {e}"))
+            # This will cause the Celery task to fail correctly
+            raise CommandError(f"An unexpected error occurred during email fetch: {e}")
