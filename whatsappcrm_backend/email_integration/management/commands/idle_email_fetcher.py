@@ -34,7 +34,7 @@ class Command(BaseCommand):
 
         while True: # Main loop to handle reconnects
             try:
-                with IMAPClient(host, ssl=False, timeout=300) as server: # Try connecting without SSL
+                with IMAPClient(host, ssl=False, timeout=300) as server: # Use ssl=False because TLS_FLAVOR=notls
                     server.login(user, password)
                     server.select_folder('INBOX')
                     self.stdout.write(self.style.SUCCESS("Connection successful. Listening for new emails via IDLE..."))
