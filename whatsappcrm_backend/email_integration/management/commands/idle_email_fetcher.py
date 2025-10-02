@@ -2,6 +2,7 @@ import os
 import uuid
 import email
 import logging
+import ssl
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 from django.core.management.base import BaseCommand
@@ -34,7 +35,8 @@ class Command(BaseCommand):
                 # When connecting to an internal service name ('imap'), we use SSL but disable
                 # hostname verification because the internal certificate is for 'mail.hanna.co.zw'.
                 # This is secure as the connection is contained within the private Docker network.
-                ssl_context = IMAPClient.create_default_context(check_hostname=False)
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
                 with IMAPClient(host, ssl=True, ssl_context=ssl_context, timeout=300) as server:
                     server.login(user, password)
                     server.select_folder('INBOX')
