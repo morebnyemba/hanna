@@ -31,7 +31,11 @@ class Command(BaseCommand):
 
         while True: # Main loop to handle reconnects
             try:
-                with IMAPClient(host, ssl=True, timeout=300) as server: # Use ssl=True because TLS_FLAVOR=letsencrypt
+                # When connecting to an internal service name ('imap'), we use SSL but disable
+                # hostname verification because the internal certificate is for 'mail.hanna.co.zw'.
+                # This is secure as the connection is contained within the private Docker network.
+                ssl_context = IMAPClient.create_default_context(check_hostname=False)
+                with IMAPClient(host, ssl=True, ssl_context=ssl_context, timeout=300) as server:
                     server.login(user, password)
                     server.select_folder('INBOX')
                     logger.info("Connection successful. Listening for new emails via IDLE...")
