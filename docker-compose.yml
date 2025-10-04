@@ -64,6 +64,7 @@ services:
     command: celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=1
     volumes:
       - ./whatsappcrm_backend:/app
+      - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
@@ -108,7 +109,8 @@ services:
       # Mounts the directory containing your web-only 'default.conf'
       - ./nginx_proxy/conf.d:/etc/nginx/conf.d:ro
       - ./nginx_proxy/ssl:/etc/nginx/ssl_custom:ro
-      - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
+      - staticfiles_volume:/srv/www/static/:ro # Use the named volume for static files
+      - ./whatsappcrm_backend/mediafiles:/srv/www/media/:ro # Bind mount the host's media directory for Nginx to serve
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
