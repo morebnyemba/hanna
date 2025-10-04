@@ -109,8 +109,6 @@ services:
       - ./nginx_proxy/conf.d:/etc/nginx/conf.d:ro
       - ./nginx_proxy/ssl:/etc/nginx/ssl_custom:ro
       - staticfiles_volume:/srv/www/static/:ro
-      - ./whatsappcrm_backend/mediafiles:/srv/www/media/:ro
-      - /var/www/letsencrypt:/var/www/letsencrypt:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
