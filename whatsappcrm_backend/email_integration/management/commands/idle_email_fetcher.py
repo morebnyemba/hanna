@@ -24,6 +24,7 @@ class Command(BaseCommand):
         user = os.getenv("MAILU_IMAP_USER")
         password = os.getenv("MAILU_IMAP_PASS")
 
+        logger.info("Starting IMAP IDLE worker...")
         self.stdout.write(self.style.SUCCESS(f"Preparing to connect to IMAP server..."))
         self.stdout.write(f"  Host: {host}")
         self.stdout.write(f"  User: {user}")
@@ -39,12 +40,14 @@ class Command(BaseCommand):
                 server.starttls()  # Upgrade to TLS
 
                 server.login(user, password)
-                    server.select_folder('INBOX')
-                    self.stdout.write(self.style.SUCCESS("Connection successful. Listening for new emails via IDLE..."))
 
-                    while True: # IDLE loop
+                server.select_folder('INBOX')
+                self.stdout.write(self.style.SUCCESS("Connection successful. Listening for new emails via IDLE..."))
+
+                while True: # IDLE loop
+                    try:
                         server.idle()
-                        responses = server.idle_check(timeout=290) # Check for activity or timeout
+                        responses = server.idle_check(timeout=29) # Check for activity or timeout
                         server.idle_done()
 
                         if responses:
@@ -52,19 +55,22 @@ class Command(BaseCommand):
                             messages = server.search(['UNSEEN'])
                             for uid, message_data in server.fetch(messages, 'RFC822').items():
                                 self.process_message(message_data)
+                    except (IMAPClientError, OSError, imaplib.error) as idle_error:
+                        logger.error(f"Error during IDLE: {idle_error}")
+                        break # Exit inner loop to reconnect
 
-                    server.close_folder()
-                    server.logout()
+                server.close_folder()
+                server.logout()
             except (IMAPClientError, OSError, imaplib.error) as e:
                 self.stderr.write(self.style.ERROR(f"IMAP connection error: {e}. Reconnecting in 30 seconds..."))
+                logger.exception("Connection error occurred:")
                 time.sleep(30)
             except KeyboardInterrupt:
-                self.stdout.write(self.style.WARNING("IDLE worker stopped by user."))
-                break
+                pass
 
     def process_message(self, message_data):
         msg = email.message_from_bytes(message_data[b'RFC822'])
-        sender = msg.get('From', '')
+        sender = msg.get('From', '')  
         subject = msg.get('Subject', '')
         date_str = msg.get('Date', '')
         email_date_obj = parsedate_to_datetime(date_str) if date_str else None
