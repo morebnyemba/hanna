@@ -36,8 +36,12 @@ class Command(BaseCommand):
 
         while True: # Main loop to handle reconnects
             try:
-                server = IMAPClient(host, ssl=False, timeout=300) # Connect without SSL initially
-                server.starttls()  # Upgrade to TLS
+                # --- FIX STARTS HERE ---
+                # CORRECTED: Set ssl=True to connect securely from the start using port 993.
+                server = IMAPClient(host, ssl=True, timeout=300)
+
+                # REMOVED: The server.starttls() line is no longer needed and has been removed.
+                # --- FIX ENDS HERE ---
 
                 server.login(user, password)
 
@@ -47,7 +51,8 @@ class Command(BaseCommand):
                 while True: # IDLE loop
                     try:
                         server.idle()
-                        responses = server.idle_check(timeout=29) # Check for activity or timeout
+                        # Check for activity or timeout every 29 minutes (a common keepalive duration)
+                        responses = server.idle_check(timeout=29 * 60) 
                         server.idle_done()
 
                         if responses:
@@ -66,7 +71,8 @@ class Command(BaseCommand):
                 logger.exception("Connection error occurred:")
                 time.sleep(30)
             except KeyboardInterrupt:
-                pass
+                self.stdout.write(self.style.WARNING("IMAP worker stopped by user."))
+                break # Exit the main loop on Ctrl+C
 
     def process_message(self, message_data):
         msg = email.message_from_bytes(message_data[b'RFC822'])
@@ -81,15 +87,21 @@ class Command(BaseCommand):
             
             filename = part.get_filename()
             if filename:
+                # Generate a unique filename to prevent overwrites
                 unique_name = f"mailu_{uuid.uuid4().hex}_{filename}"
-                media_path = os.path.join('attachments', unique_name)
+                
                 file_content = part.get_payload(decode=True)
                 
+                # Create the EmailAttachment record in the database
                 attachment = EmailAttachment.objects.create(
                     file=ContentFile(file_content, name=unique_name),
-                    filename=filename, sender=sender, subject=subject, email_date=email_date_obj
+                    filename=filename, 
+                    sender=sender, 
+                    subject=subject, 
+                    email_date=email_date_obj
                 )
                 self.stdout.write(self.style.SUCCESS(f"Saved attachment: {filename} (DB id: {attachment.id})"))
                 
+                # Trigger the background OCR task
                 process_attachment_ocr.delay(attachment.id)
                 self.stdout.write(self.style.WARNING(f"Triggered OCR processing for attachment id: {attachment.id}"))
