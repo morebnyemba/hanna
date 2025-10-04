@@ -95,7 +95,6 @@ services:
     depends_on:
       - db
     restart: unless-stopped
-    networks:
 
   nginx_proxy:
     image: nginx:1.25-alpine
@@ -117,13 +116,8 @@ services:
       - backend
       - frontend
     restart: unless-stopped
-    networks:
 
 volumes:
   postgres_data:
   redis_data:
   staticfiles_volume:
-
-networks:
-  shared_network:
-    external: true
