@@ -108,7 +108,7 @@ services:
       # Mounts the directory containing your web-only 'default.conf'
       - ./nginx_proxy/conf.d:/etc/nginx/conf.d:ro
       - ./nginx_proxy/ssl:/etc/nginx/ssl_custom:ro
-      - staticfiles_volume:/srv/www/static/:ro
+      - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
