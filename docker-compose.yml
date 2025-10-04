@@ -96,8 +96,6 @@ services:
       - db
     restart: unless-stopped
     networks:
-      - default
-      - shared_network
 
   nginx_proxy:
     image: nginx:1.25-alpine
@@ -106,14 +104,6 @@ services:
       # --- WEB PORTS ---
       - "80:80"
       - "443:443"
-      # <-- ADDED: All mail ports are now handled by this proxy -->
-      - "25:25"      # SMTP
-      - "143:143"    # IMAP
-      - "465:465"    # SMTPS
-      - "587:587"    # SMTP Submission
-      - "993:993"    # IMAPS
-      - "995:995"    # POP3S
-      - "4190:4190"  # Sieve
     volumes:
       - ./nginx_proxy/nginx.conf:/etc/nginx/nginx.conf:ro
       # Mounts the directory containing your web-only 'default.conf'
@@ -128,8 +118,6 @@ services:
       - frontend
     restart: unless-stopped
     networks:
-      - default
-      - shared_network
 
 volumes:
   postgres_data:
@@ -137,7 +125,5 @@ volumes:
   staticfiles_volume:
 
 networks:
-  default:
   shared_network:
     external: true
-#done
