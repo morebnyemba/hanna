@@ -3,6 +3,7 @@ import uuid
 import email
 import time
 import logging
+import imaplib
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 from django.core.management.base import BaseCommand
@@ -34,7 +35,9 @@ class Command(BaseCommand):
 
         while True: # Main loop to handle reconnects
             try:
-                with IMAPClient(host, ssl=False, timeout=300) as server: # Try connecting without SSL
+                server = IMAPClient(host, ssl=False, timeout=300) # Connect without SSL initially
+                server.starttls()  # Upgrade to TLS
+
                     server.login(user, password)
                     server.select_folder('INBOX')
                     self.stdout.write(self.style.SUCCESS("Connection successful. Listening for new emails via IDLE..."))
@@ -50,7 +53,9 @@ class Command(BaseCommand):
                             for uid, message_data in server.fetch(messages, 'RFC822').items():
                                 self.process_message(message_data)
 
-            except (IMAPClientError, OSError) as e:
+                    server.close_folder()
+                    server.logout()
+            except (IMAPClientError, OSError, imaplib.error) as e:
                 self.stderr.write(self.style.ERROR(f"IMAP connection error: {e}. Reconnecting in 30 seconds..."))
                 time.sleep(30)
             except KeyboardInterrupt:
