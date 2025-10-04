@@ -98,7 +98,7 @@ class Command(BaseCommand):
                 
                 # Create the EmailAttachment record in the database
                 attachment = EmailAttachment.objects.create(
-                    file=ContentFile(file_content, name=unique_name),
+                    file=ContentFile(file_content, name="attachments/"+unique_name),
                     filename=filename, 
                     sender=sender, 
                     subject=subject, 
