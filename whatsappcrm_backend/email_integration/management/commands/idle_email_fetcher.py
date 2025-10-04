@@ -38,7 +38,7 @@ class Command(BaseCommand):
                 server = IMAPClient(host, ssl=False, timeout=300) # Connect without SSL initially
                 server.starttls()  # Upgrade to TLS
 
-                    server.login(user, password)
+                server.login(user, password)
                     server.select_folder('INBOX')
                     self.stdout.write(self.style.SUCCESS("Connection successful. Listening for new emails via IDLE..."))
 
