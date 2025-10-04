@@ -30,7 +30,7 @@ services:
     container_name: whatsappcrm_backend_app
     volumes:
       - ./whatsappcrm_backend:/app
-      - staticfiles_volume:/app/staticfiles
+      - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
