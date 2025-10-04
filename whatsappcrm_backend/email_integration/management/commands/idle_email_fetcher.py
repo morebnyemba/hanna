@@ -4,6 +4,7 @@ import email
 import time
 import logging
 import imaplib
+import socket # <-- IMPORT SOCKET MODULE
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 from django.core.management.base import BaseCommand
@@ -37,10 +38,17 @@ class Command(BaseCommand):
         while True: # Main loop to handle reconnects
             try:
                 # --- FIX STARTS HERE ---
-                # CORRECTED: Set ssl=True to connect securely from the start using port 993.
-                server = IMAPClient(host, ssl=True, timeout=300)
+                # 1. Resolve hostname to an IPv4 address to bypass container IPv6 issues.
+                try:
+                    ipv4_host = socket.gethostbyname(host)
+                    self.stdout.write(f"  Resolved {host} to IPv4: {ipv4_host}")
+                except socket.gaierror as e:
+                    self.stderr.write(self.style.ERROR(f"DNS resolution failed for {host}: {e}. Retrying..."))
+                    time.sleep(30)
+                    continue # Restart the main while loop
 
-                # REMOVED: The server.starttls() line is no longer needed and has been removed.
+                # 2. Use the resolved IPv4 address for the connection.
+                server = IMAPClient(ipv4_host, ssl=True, timeout=300)
                 # --- FIX ENDS HERE ---
 
                 server.login(user, password)
@@ -60,13 +68,13 @@ class Command(BaseCommand):
                             messages = server.search(['UNSEEN'])
                             for uid, message_data in server.fetch(messages, 'RFC822').items():
                                 self.process_message(message_data)
-                    except (IMAPClientError, OSError, imaplib.error) as idle_error:
+                    except (IMAPClientError, OSError) as idle_error: # Corrected this line
                         logger.error(f"Error during IDLE: {idle_error}")
                         break # Exit inner loop to reconnect
 
                 server.close_folder()
                 server.logout()
-            except (IMAPClientError, OSError, imaplib.error) as e:
+            except (IMAPClientError, OSError) as e:
                 self.stderr.write(self.style.ERROR(f"IMAP connection error: {e}. Reconnecting in 30 seconds..."))
                 logger.exception("Connection error occurred:")
                 time.sleep(30)
@@ -105,3 +113,4 @@ class Command(BaseCommand):
                 # Trigger the background OCR task
                 process_attachment_ocr.delay(attachment.id)
                 self.stdout.write(self.style.WARNING(f"Triggered OCR processing for attachment id: {attachment.id}"))
+
