@@ -148,12 +148,14 @@ USE_I18N = True
 USE_TZ = True 
 
 # Static files
+# Static files
 STATIC_URL = '/static/' 
 STATIC_ROOT = BASE_DIR / 'staticfiles' # For production `collectstatic`
 
 # Media files (user-uploaded content)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'mediafiles' # Path where user-uploaded files will be stored.
+
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
