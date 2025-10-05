@@ -108,26 +108,29 @@ def process_attachment_ocr(self, attachment_id):
         logger.error(f"{log_prefix} An unexpected error occurred: {e}", exc_info=True)
         raise  # Re-raise the exception to mark the task as FAILED in Celery
 
-def _parse_sales_invoice(text: str, attachment: EmailAttachment, log_prefix: str):
+def _parse_sales_invoice(text: str, attachment: 'EmailAttachment', log_prefix: str):
     """
-    A dedicated parser for sales invoices based on the provided examples.
+    A dedicated parser for sales invoices, updated to handle the specific format
+    of the provided TV Sales & Home invoice.
     """
     logger.info(f"{log_prefix} Identified document as Sales Invoice. Parsing...")
 
-    # --- Define more robust Regex Patterns for Invoices ---
-    # Invoice Number: More flexible keywords and allows hyphens.
-    invoice_num_pattern = re.compile(r'(?:Invoice\s*No|Invoice\s*#|Customer\s*Reference\s*No|Ref\s*No)[:\s#]*([A-Z0-9/ -]+)', re.IGNORECASE)
-    
-    # Date: Flexible date patterns (DD-MM-YYYY, YYYY-MM-DD, DD/MM/YYYY, etc.)
-    date_pattern = re.compile(r'(?:Date|Invoice\s*Date)[:\s]*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})', re.IGNORECASE)
-    
-    # Total Amount: More robust labels and optional currency symbols.
-    total_pattern = re.compile(r'(?:Total\s*Amount|Invoice\s*Total|Amount\s*Due|Balance\s*Due|Grand\s*Total)[:\s$]*[A-Z]{0,3}\s*([\d,]+\.\d{2})', re.IGNORECASE)
+    # --- Regex Patterns (Refined for the sample invoice) ---
 
-    # Customer Name: More flexible, looking for common labels like "Bill To" and capturing the line below it.
-    customer_name_pattern = re.compile(r'(?:Bill\s*To|Customer\s*Name|Client\s*Name)[:\s]*\n?([^\n]+)', re.IGNORECASE)
+    # Looks for 'Customer Reference No:' specifically, as 'Invoice No' is '0' in the sample.
+    invoice_num_pattern = re.compile(r'Customer\s*Reference\s*No[:\s]*([A-Z0-9/ -]+)', re.IGNORECASE)
+    
+    # Matches dates like '18-09-2025'.
+    date_pattern = re.compile(r'Date[:\s]*(\d{2}-\d{2}-\d{4})', re.IGNORECASE)
+    
+    # Looks for 'Invoice Total, USD' and captures the final amount.
+    total_pattern = re.compile(r'Invoice\s*Total,\s*USD\s*([\d,]+\.\d{2})', re.IGNORECASE)
 
-    # --- Extract Data ---
+    # Finds the customer name, which appears to be a line of 2-4 consecutive capitalized words.
+    # This is more robust than looking for a specific label like "Bill To:".
+    customer_name_pattern = re.compile(r'^\s*([A-Z]+\s+[A-Z]+\s+[A-Z]+(?:\s+[A-Z]+)?)\s*$', re.MULTILINE)
+
+    # --- Extract Header Data ---
     extracted_data = {
         "document_type": "invoice",
         "invoice_number": None,
@@ -137,88 +140,100 @@ def _parse_sales_invoice(text: str, attachment: EmailAttachment, log_prefix: str
         "line_items": [],
     }
 
+    # Find Invoice Number
     match = invoice_num_pattern.search(text)
     if match:
         extracted_data["invoice_number"] = match.group(1).strip()
         logger.info(f"{log_prefix} Found Invoice Number: {extracted_data['invoice_number']}")
 
+    # Find Invoice Date
     match = date_pattern.search(text)
     if match:
         try:
             date_str = match.group(1)
-            # Attempt to parse common date formats
-            for fmt in ('%d-%m-%Y', '%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%y', '%d/%m/%y'):
-                try:
-                    extracted_data["invoice_date"] = datetime.strptime(date_str, fmt).date().isoformat() # Store as ISO string
-                    logger.info(f"{log_prefix} Found and parsed Invoice Date: {extracted_data['invoice_date']}")
-                    break
-                except ValueError:
-                    continue
-            if not extracted_data["invoice_date"]:
-                logger.warning(f"{log_prefix} Found a date-like string '{date_str}' but could not parse it into a known format.")
-        except Exception as e:
-            logger.error(f"{log_prefix} Error processing date string '{match.group(1)}': {e}")
+            extracted_data["invoice_date"] = datetime.strptime(date_str, '%d-%m-%Y').date().isoformat()
+            logger.info(f"{log_prefix} Found and parsed Invoice Date: {extracted_data['invoice_date']}")
+        except ValueError:
+            logger.warning(f"{log_prefix} Found date string '{date_str}' but could not parse it.")
 
+    # Find Total Amount
     match = total_pattern.search(text)
     if match:
         try:
-            amount_str = match.group(1).replace(',', '')  # Remove commas
-            extracted_data["total_amount"] = float(Decimal(amount_str)) # Store as float for JSON
+            amount_str = match.group(1).replace(',', '')
+            extracted_data["total_amount"] = float(Decimal(amount_str))
             logger.info(f"{log_prefix} Found Total Amount: {extracted_data['total_amount']}")
         except InvalidOperation:
-            logger.warning(f"{log_prefix} Found a total-like string '{match.group(1)}' but could not convert to Decimal.")
+            logger.warning(f"{log_prefix} Could not convert total amount '{match.group(1)}' to Decimal.")
 
+    # Find Customer Name
     match = customer_name_pattern.search(text)
     if match:
-        # Clean up potential leading/trailing junk characters
-        extracted_data["customer_name"] = re.sub(r'[^a-zA-Z0-9\s]', '', match.group(1)).strip()
-        logger.info(f"{log_prefix} Found Customer Name: {extracted_data['customer_name']}")
+        # We take the first match that is not the seller's name (heuristic)
+        potential_name = match.group(1).strip()
+        if "BORROWDALE" not in potential_name: # Avoid matching the seller's branch name
+             extracted_data["customer_name"] = potential_name
+             logger.info(f"{log_prefix} Found Customer Name: {extracted_data['customer_name']}")
 
-    # --- Extract Line Items ---
-    # This is more complex and requires identifying the table-like structure.
-    # We'll look for a block of text between a header and a subtotal/total line.
+    # --- Extract Line Items (New Robust Logic) ---
     try:
-        # Find the start of the line items section (e.g., after a header like "Description")
-        # and the end (e.g., before "Subtotal").
-        line_items_header_pattern = re.compile(r'(?:Description|Item|Product|Details)', re.IGNORECASE)
-        line_items_footer_pattern = re.compile(r'(?:Subtotal|Sub-total|Total|Amount\s*Due)', re.IGNORECASE)
+        # Isolate the text block containing the line items.
+        # It starts after the table header and ends before the VAT total line.
+        header = 'Description\s+Qty\s+Price\s+VAT\s+Total Amount'
+        footer = 'Total 15% VAT'
         
-        header_match = line_items_header_pattern.search(text)
-        footer_match = line_items_footer_pattern.search(text, pos=header_match.end() if header_match else 0)
+        start_match = re.search(header, text, re.IGNORECASE)
+        end_match = re.search(footer, text, re.IGNORECASE)
+        
+        start_index = start_match.end() if start_match else 0
+        end_index = end_match.start() if end_match else len(text)
 
-        start_index = header_match.end() if header_match else 0
-        end_index = footer_match.start() if footer_match else len(text)
-
-        line_items_block = text[start_index:end_index]
-
-        # Regex to capture a typical line item: (optional qty) (description) (unit price) (line total)
-        # This pattern is flexible: it looks for a line ending in two decimal numbers.
+        line_items_block = text[start_index:end_index].strip()
+        
+        # Regex for a line item row. It captures Description, Qty, Price, VAT, and Total.
+        # It handles prices with 3 decimal places.
         line_item_pattern = re.compile(
-            r'^(?P<description>.+?)\s+(?P<unit_price>[\d,]+\.\d{2})\s+(?P<line_total>[\d,]+\.\d{2})\s*$',
-            re.MULTILINE
+            r'^(?P<description>.+?)\s+'
+            r'(?P<quantity>\d+)\s+'
+            r'(?P<price>[\d,.]+\.\d{3})\s+'  # Matches numbers like 129.565
+            r'(?P<vat>[\d,.]+\.\d{2})\s+'
+            r'(?P<total>[\d,.]+\.\d{2})$'
         )
 
-        for item_match in line_item_pattern.finditer(line_items_block):
-            description_part = item_match.group('description').strip()
+        processed_lines = []
+        # Combine multi-line descriptions before parsing
+        for line in line_items_block.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # A line is a continuation of a description if it does NOT end with the number pattern
+            if processed_lines and not re.search(r'\d+\s+[\d,.]+\s+[\d,.]+\s+[\d,.]+$', line):
+                processed_lines[-1] = f"{processed_lines[-1]} {line}" # Append to previous line
+            else:
+                processed_lines.append(line)
+        
+        # Now, parse the combined lines
+        for line in processed_lines:
+            # Clean up product codes (e.g., "GB- ") from the start of the description
+            cleaned_line = re.sub(r'^[A-Z]{2}-\s+', '', line).strip()
+            item_match = line_item_pattern.search(cleaned_line)
             
-            # Try to extract a quantity from the beginning of the description
-            qty_match = re.match(r'^(?P<quantity>\d+)\s+(?P<desc_text>.+)', description_part)
-            quantity = int(qty_match.group('quantity')) if qty_match else 1
-            description = qty_match.group('desc_text').strip() if qty_match else description_part
+            if item_match:
+                extracted_data["line_items"].append({
+                    "quantity": int(item_match.group('quantity')),
+                    "description": item_match.group('description').strip(),
+                    "unit_price": float(Decimal(item_match.group('price').replace(',', ''))),
+                    "vat_amount": float(Decimal(item_match.group('vat').replace(',', ''))),
+                    "line_total": float(Decimal(item_match.group('total').replace(',', ''))),
+                })
 
-            extracted_data["line_items"].append({
-                "quantity": quantity,
-                "description": description,
-                "unit_price": float(Decimal(item_match.group('unit_price').replace(',', ''))),
-                "line_total": float(Decimal(item_match.group('line_total').replace(',', ''))),
-            })
         logger.info(f"{log_prefix} Found {len(extracted_data['line_items'])} line items.")
     except Exception as e:
         logger.error(f"{log_prefix} Failed to parse line items: {e}", exc_info=True)
 
     return extracted_data
 
-def _parse_job_card(text: str, attachment: EmailAttachment, log_prefix: str):
+def _parse_job_card(text: str, attachment: 'EmailAttachment', log_prefix: str):
     """
     A placeholder parser for job cards.
     This can be built out with regex specific to the job card format.
