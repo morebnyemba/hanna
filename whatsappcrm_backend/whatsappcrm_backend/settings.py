@@ -82,6 +82,7 @@ INSTALLED_APPS.insert(0, 'email_integration.apps.EmailIntegrationConfig') # Add 
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # WhiteNoise middleware
     'django.contrib.sessions.middleware.SessionMiddleware', 
     'corsheaders.middleware.CorsMiddleware', # Should be placed high
     'csp.middleware.CSPMiddleware', # Should be placed after security/cors middleware
