@@ -157,6 +157,11 @@ STATIC_ROOT = BASE_DIR / 'staticfiles' # For production `collectstatic`
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'mediafiles' # Path where user-uploaded files will be stored.
 
+# --- Email Settings ---
+# For sending emails (e.g., confirmations, notifications).
+# These should be configured in your .env file for production.
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@hanna.co.zw')
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

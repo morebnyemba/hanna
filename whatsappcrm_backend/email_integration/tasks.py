@@ -11,8 +11,51 @@ from PIL import Image
 from decimal import Decimal, InvalidOperation
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
+from django.core.mail import send_mail
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+@shared_task(name="email_integration.send_receipt_confirmation_email")
+def send_receipt_confirmation_email(attachment_id):
+    """
+    Sends an email to the original sender confirming receipt of their attachment.
+    """
+    log_prefix = "[Email Confirmation Task]"
+    logger.info(f"{log_prefix} Preparing to send receipt confirmation for attachment ID: {attachment_id}")
+    try:
+        attachment = EmailAttachment.objects.get(pk=attachment_id)
+        
+        if not attachment.sender:
+            logger.warning(f"{log_prefix} Attachment {attachment_id} has no sender email. Cannot send confirmation.")
+            return "Skipped: No sender email."
+
+        subject = f"Confirmation: We've received your document '{attachment.filename}'"
+        message = (
+            f"Dear Sender,\n\n"
+            f"This is an automated message to confirm that we have successfully received your attachment named '{attachment.filename}'.\n\n"
+            f"Our system is now processing it. You will be notified if any further action is required.\n\n"
+            f"Thank you,\n"
+            f"Hanna Installations"
+        )
+        
+        # Use the email address of the monitored inbox as the sender.
+        from_email = os.getenv("MAILU_IMAP_USER")
+        if not from_email:
+            logger.warning(f"{log_prefix} MAILU_IMAP_USER environment variable not set. Falling back to default from_email.")
+            from_email = settings.DEFAULT_FROM_EMAIL
+
+        recipient_list = [attachment.sender]
+
+        send_mail(subject, message, from_email, recipient_list)
+        
+        logger.info(f"{log_prefix} Successfully sent confirmation email to {attachment.sender} for attachment {attachment_id}.")
+        return f"Confirmation sent to {attachment.sender}."
+    except EmailAttachment.DoesNotExist:
+        logger.error(f"{log_prefix} Could not find EmailAttachment with ID {attachment_id} to send confirmation.")
+    except Exception as e:
+        logger.error(f"{log_prefix} Failed to send confirmation email for attachment {attachment_id}: {e}", exc_info=True)
+        # We don't re-raise here because failing to send a confirmation should not stop the main OCR process.
 
 @shared_task(bind=True)
 def process_attachment_ocr(self, attachment_id):
@@ -22,6 +65,10 @@ def process_attachment_ocr(self, attachment_id):
     """
     log_prefix = f"[OCR Task ID: {self.request.id}]"
     logger.info(f"{log_prefix} Starting OCR processing for EmailAttachment ID: {attachment_id}")
+
+    # Send a confirmation email to the sender as the first step.
+    send_receipt_confirmation_email.delay(attachment_id)
+
     try:
         attachment = EmailAttachment.objects.get(pk=attachment_id)
         file_path = attachment.file.path
