@@ -162,8 +162,9 @@ def _parse_sales_invoice(text: str, attachment: 'EmailAttachment', log_prefix: s
 
     # --- Extract Line Items (New Robust Logic) ---
     try:
-        # Correct the header to match the invoice text
-        header = r'Description\s+Qty\s+Price\s+VAT\s+Total Amount\s+\(Incl Tax\)'
+        # Make the header regex more flexible to handle OCR variations and different layouts.
+        # This pattern looks for the key columns, allowing other text or newlines between them.
+        header = r'Description\s+Qty\s+Price.*?Total\s+Amount'
         footer = 'Total 15% VAT'
         
         start_match = re.search(header, text, re.IGNORECASE)
