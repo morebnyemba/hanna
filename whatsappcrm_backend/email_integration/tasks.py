@@ -40,7 +40,6 @@ def send_receipt_confirmation_email(attachment_id):
             f"Hanna Installations"
         )
         
-        # Use the email address of the monitored inbox as the sender.
         from_email = os.getenv("MAILU_IMAP_USER")
         if not from_email:
             logger.warning(f"{log_prefix} MAILU_IMAP_USER environment variable not set. Falling back to default from_email.")
@@ -56,7 +55,6 @@ def send_receipt_confirmation_email(attachment_id):
         logger.error(f"{log_prefix} Could not find EmailAttachment with ID {attachment_id} to send confirmation.")
     except Exception as e:
         logger.error(f"{log_prefix} Failed to send confirmation email for attachment {attachment_id}: {e}", exc_info=True)
-        # We don't re-raise here because failing to send a confirmation should not stop the main OCR process.
 
 @shared_task(bind=True)
 def process_attachment_ocr(self, attachment_id):
@@ -91,8 +89,6 @@ def process_attachment_ocr(self, attachment_id):
             extracted_text = pytesseract.image_to_string(image)
             logger.info(f"{log_prefix} Successfully performed OCR on image.")
 
-        # Send a confirmation email to the sender now that we've confirmed the attachment exists.
-        # This ensures the sender gets a prompt notification.
         send_receipt_confirmation_email.delay(attachment_id)
 
         attachment.ocr_text = extracted_text
@@ -100,13 +96,12 @@ def process_attachment_ocr(self, attachment_id):
         attachment.save(update_fields=['ocr_text', 'processed', 'updated_at'])
         logger.info(f"{log_prefix} Successfully processed and saved text for attachment {attachment_id}.")
         
-        # Chain the parsing task to run immediately after this one succeeds
         parse_ocr_text.delay(attachment_id)
         
         return f"Successfully processed attachment {attachment_id}. Chaining parsing task."
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred: {e}", exc_info=True)
-        raise  # Re-raise the exception to mark the task as FAILED in Celery
+        raise
 
 def _parse_sales_invoice(text: str, attachment: 'EmailAttachment', log_prefix: str):
     """
@@ -116,18 +111,9 @@ def _parse_sales_invoice(text: str, attachment: 'EmailAttachment', log_prefix: s
     logger.info(f"{log_prefix} Identified document as Sales Invoice. Parsing...")
 
     # --- Regex Patterns (Refined for the sample invoice) ---
-
-    # Looks for 'Customer Reference No:' specifically, as 'Invoice No' is '0' in the sample.
     invoice_num_pattern = re.compile(r'Customer\s*Reference\s*No[:\s]*([A-Z0-9/ -]+)', re.IGNORECASE)
-    
-    # Matches dates like '18-09-2025'.
     date_pattern = re.compile(r'Date[:\s]*(\d{2}-\d{2}-\d{4})', re.IGNORECASE)
-    
-    # Looks for 'Invoice Total, USD' and captures the final amount.
-    total_pattern = re.compile(r'Invoice\s*Total,\s*USD\s*([\d,]+\.\d{2})', re.IGNORECASE)
-
-    # Finds the customer name, which appears to be a line of 2-4 consecutive capitalized words.
-    # This is more robust than looking for a specific label like "Bill To:".
+    total_pattern = re.compile(r'Invoice\s*Total,\s*USD.*?([\d,]+\.\d{2})', re.IGNORECASE)
     customer_name_pattern = re.compile(r'^\s*([A-Z]+\s+[A-Z]+\s+[A-Z]+(?:\s+[A-Z]+)?)\s*$', re.MULTILINE)
 
     # --- Extract Header Data ---
@@ -169,52 +155,48 @@ def _parse_sales_invoice(text: str, attachment: 'EmailAttachment', log_prefix: s
     # Find Customer Name
     match = customer_name_pattern.search(text)
     if match:
-        # We take the first match that is not the seller's name (heuristic)
         potential_name = match.group(1).strip()
-        if "BORROWDALE" not in potential_name: # Avoid matching the seller's branch name
+        if "BORROWDALE" not in potential_name:
              extracted_data["customer_name"] = potential_name
              logger.info(f"{log_prefix} Found Customer Name: {extracted_data['customer_name']}")
 
     # --- Extract Line Items (New Robust Logic) ---
     try:
-        # Isolate the text block containing the line items.
-        # It starts after the table header and ends before the VAT total line.
-        header = 'Description\s+Qty\s+Price\s+VAT\s+Total Amount'
+        # Correct the header to match the invoice text
+        header = r'Description\s+Qty\s+Price\s+VAT\s+Total Amount\s+\(Incl Tax\)'
         footer = 'Total 15% VAT'
         
         start_match = re.search(header, text, re.IGNORECASE)
         end_match = re.search(footer, text, re.IGNORECASE)
         
-        start_index = start_match.end() if start_match else 0
+        if not start_match:
+            logger.error(f"{log_prefix} COULD NOT FIND LINE ITEM HEADER. Parsing of line items will fail.")
+            return extracted_data
+
+        start_index = start_match.end()
         end_index = end_match.start() if end_match else len(text)
 
         line_items_block = text[start_index:end_index].strip()
         
-        # Regex for a line item row. It captures Description, Qty, Price, VAT, and Total.
-        # It handles prices with 3 decimal places.
         line_item_pattern = re.compile(
             r'^(?P<description>.+?)\s+'
             r'(?P<quantity>\d+)\s+'
-            r'(?P<price>[\d,.]+\.\d{3})\s+'  # Matches numbers like 129.565
+            r'(?P<price>[\d,.]+\.\d{3})\s+'
             r'(?P<vat>[\d,.]+\.\d{2})\s+'
             r'(?P<total>[\d,.]+\.\d{2})$'
         )
 
         processed_lines = []
-        # Combine multi-line descriptions before parsing
         for line in line_items_block.splitlines():
             line = line.strip()
             if not line:
                 continue
-            # A line is a continuation of a description if it does NOT end with the number pattern
             if processed_lines and not re.search(r'\d+\s+[\d,.]+\s+[\d,.]+\s+[\d,.]+$', line):
-                processed_lines[-1] = f"{processed_lines[-1]} {line}" # Append to previous line
+                processed_lines[-1] = f"{processed_lines[-1]} {line}"
             else:
                 processed_lines.append(line)
         
-        # Now, parse the combined lines
         for line in processed_lines:
-            # Clean up product codes (e.g., "GB- ") from the start of the description
             cleaned_line = re.sub(r'^[A-Z]{2}-\s+', '', line).strip()
             item_match = line_item_pattern.search(cleaned_line)
             
@@ -236,11 +218,8 @@ def _parse_sales_invoice(text: str, attachment: 'EmailAttachment', log_prefix: s
 def _parse_job_card(text: str, attachment: 'EmailAttachment', log_prefix: str):
     """
     A placeholder parser for job cards.
-    This can be built out with regex specific to the job card format.
     """
     logger.info(f"{log_prefix} Identified document as Job Card. Parsing...")
-    # TODO: Add regex and logic to parse job card details (Document Number, Customer, Fault, etc.)
-    # TODO: Create a `ParsedJobCard` model to store this data.
     pass
 
 @shared_task(bind=True)
@@ -259,12 +238,10 @@ def parse_ocr_text(self, attachment_id):
         text = attachment.ocr_text
         extracted_structured_data = {"document_type": "unknown", "raw_text_length": len(text)}
         
-        # --- Document Classification and Dispatch ---
         text_lower = text.lower()
         if 'fiscal tax invoice' in text_lower and 'customer reference no' in text_lower:
             extracted_structured_data = _parse_sales_invoice(text, attachment, log_prefix)
             
-            # Save to ParsedInvoice model
             invoice_date_obj = None
             if extracted_structured_data.get("invoice_date"):
                 try:
@@ -287,21 +264,16 @@ def parse_ocr_text(self, attachment_id):
 
         elif 'customer care job card' in text_lower and 'description of fault' in text_lower:
             extracted_structured_data = _parse_job_card(text, attachment, log_prefix)
-            # TODO: If you create a ParsedJobCard model, save data here.
-            # For now, it will just be saved to attachment.ocr_text as JSON.
         else:
             logger.warning(f"{log_prefix} Could not classify document type for attachment {attachment_id}. Skipping detailed parsing.")
-            # If unclassified, we can still save a basic JSON structure
             extracted_structured_data["document_type"] = "unclassified"
 
-        # Save the structured data as JSON to the attachment's ocr_text field
         attachment.ocr_text = json.dumps(extracted_structured_data, indent=2)
         attachment.save(update_fields=['ocr_text', 'updated_at'])
 
         return f"Successfully parsed data for attachment {attachment_id}."
     except ObjectDoesNotExist:
         logger.error(f"{log_prefix} Could not find EmailAttachment with ID {attachment_id}.")
-        # Do not re-raise, as the task cannot be retried if the object is gone.
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred during parsing: {e}", exc_info=True)
         raise
@@ -318,4 +290,4 @@ def fetch_email_attachments_task():
         logger.info(f"{log_prefix} Successfully finished fetch_mailu_attachments command.")
     except Exception as e:
         logger.error(f"{log_prefix} The 'fetch_mailu_attachments' command failed: {e}", exc_info=True)
-        raise # Re-raise the exception to mark the task as FAILED
+        raise
