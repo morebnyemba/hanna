@@ -402,6 +402,10 @@ CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {
         'default-src': ("'self'",),
         'connect-src': tuple(connect_src_list),
+        'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'"), # 'unsafe-eval' is needed by some libraries, but be cautious.
+        'style-src': ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com"), # Allow Google Fonts stylesheets
+        'img-src': ("'self'", "data:", "blob:"),
+        'font-src': ("'self'", "https://fonts.gstatic.com"), # Allow font files from Google Fonts
         'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'", "*"), # WARNING: Allows scripts from any source.
         'style-src': ("'self'", "'unsafe-inline'", "*"), # WARNING: Allows stylesheets from any source.
         'img-src': ("'self'", "data:", "blob:", "*"), # WARNING: Allows images from any source.
