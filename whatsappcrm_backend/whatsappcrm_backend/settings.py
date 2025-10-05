@@ -402,10 +402,10 @@ CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {
         'default-src': ("'self'",),
         'connect-src': tuple(connect_src_list),
-        'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'"),
-        'style-src': ("'self'", "'unsafe-inline'"),
-        'img-src': ("'self'", "data:", "blob:"),
-        'font-src': ("'self'",),
+        'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'", "*"), # WARNING: Allows scripts from any source.
+        'style-src': ("'self'", "'unsafe-inline'", "*"), # WARNING: Allows stylesheets from any source.
+        'img-src': ("'self'", "data:", "blob:", "*"), # WARNING: Allows images from any source.
+        'font-src': ("'self'", "*"), # WARNING: Allows fonts from any source.
         'object-src': ("'none'",),
         'frame-ancestors': ("'none'",),
     }
