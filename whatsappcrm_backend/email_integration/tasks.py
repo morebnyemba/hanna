@@ -1,6 +1,7 @@
 import os
 import logging
 import re
+import json
 from datetime import datetime
 from celery import shared_task, chain
 from .models import EmailAttachment, ParsedInvoice
