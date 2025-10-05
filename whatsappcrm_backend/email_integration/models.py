@@ -29,5 +29,4 @@ class ParsedInvoice(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.filename
         return f"Invoice {self.invoice_number or 'N/A'} from {self.attachment.filename}"
