@@ -1,54 +1,43 @@
-# Django Core
-django
-drf-nested-routers
-# Environment variable management
-python-dotenv
+# --- Core Django & Server ---
+django~=5.1
+gunicorn~=22.0
+psycopg2-binary~=2.9
+python-dotenv~=1.0
+whitenoise~=6.6
 
-# Admin interface theme
-django-jazzmin
+# --- Django REST Framework & Auth ---
+djangorestframework~=3.15
+djangorestframework-simplejwt~=5.3
+django-cors-headers~=4.3
+drf-nested-routers~=0.93
 
-# REST API framework
-djangorestframework
-djangorestframework-simplejwt
+# --- Celery for Background Tasks ---
+celery~=5.4
+redis~=5.0
+django-celery-beat~=2.6
+django-celery-results~=2.5
 
-# CORS handling
-django-cors-headers
+# --- Channels for WebSockets ---
+channels~=4.0
+channels-redis~=4.2
+daphne~=4.1
 
-# Celery and related packages
-celery
-django-celery-results
-django-celery-beat
-redis # For Celery broker if using Redis
+# --- AI, Document & Image Processing ---
+google-genai~=0.7
+pdf2image~=1.17
+pdfminer.six~=20221105
+Pillow~=10.3
+pytesseract~=0.3
 
-# Database connector (PostgreSQL)
-psycopg2-binary # Or psycopg2 if you manage build dependencies
+# --- Admin & Utilities ---
+django-jazzmin~=2.6
+django-extensions~=3.2
 
-# WSGI server for production
-gunicorn
-whitenoise
-
-# ASGI server (since ASGI_APPLICATION is defined)
-daphne
-requests
-pydantic
-# WebSocket support
- # For Redis channel layer
-# For handling file uploads
-django-storages
-# For Additional Functionality
-django-filter # For filtering in DRF
-django-extensions # For additional management commands
-drf-spectacular # For OpenAPI schema generation
-django-prometheus # For monitoring
-Pillow
-jinja2
-paynow
-channels
-channels_redis
-openpyxl
-reportlab
-django-csp
-imapclient
-pdfminer.six
-pytesseract
-pdf2image
+# --- API, Monitoring & Other ---
+drf-spectacular~=0.27
+django-prometheus~=2.3
+django-csp~=3.7
+imapclient~=3.1
+jinja2~=3.1
+pydantic~=2.7
+requests~=2.31

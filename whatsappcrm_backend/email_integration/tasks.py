@@ -146,8 +146,8 @@ def process_attachment_with_gemini(self, attachment_id):
 
         # 8. Update the EmailAttachment status
         attachment.processed = True
-        attachment.ocr_text = json.dumps(extracted_data, indent=2) # Save the JSON for review
-        attachment.save(update_fields=['processed', 'ocr_text', 'updated_at'])
+        attachment.extracted_data = extracted_data  # Save the JSON for review
+        attachment.save(update_fields=['processed', 'extracted_data', 'updated_at'])
 
         logger.info(f"{log_prefix} Successfully created/updated ParsedInvoice for attachment ID: {attachment_id}")
         send_receipt_confirmation_email.delay(attachment_id)
@@ -163,8 +163,8 @@ def process_attachment_with_gemini(self, attachment_id):
         logger.error(f"{log_prefix} An unexpected error occurred during Gemini processing for attachment {attachment_id}: {e}", exc_info=True)
         if attachment:
             attachment.processed = True # Mark as processed to avoid retry loops on permanent errors
-            attachment.ocr_text = json.dumps({"error": str(e), "status": "failed"})
-            attachment.save(update_fields=['processed', 'ocr_text'])
+            attachment.extracted_data = {"error": str(e), "status": "failed"}
+            attachment.save(update_fields=['processed', 'extracted_data'])
         raise
     finally:
         # 9. Clean up: Delete the file from the Gemini service

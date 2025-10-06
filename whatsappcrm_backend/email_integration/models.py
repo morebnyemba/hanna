@@ -9,11 +9,11 @@ class EmailAttachment(models.Model):
     email_date = models.DateTimeField(blank=True, null=True) # Changed from CharField
     saved_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    processed = models.BooleanField(default=False)
-    ocr_text = models.TextField(blank=True, null=True)
+    processed = models.BooleanField(default=False, db_index=True)
+    extracted_data = models.JSONField(blank=True, null=True, help_text="Structured data extracted by AI model.")
 
     def __str__(self):
-        return self.filename
+        return f"{self.filename} (Processed: {self.processed})"
 
 class ParsedInvoice(models.Model):
     """Stores structured data extracted from an email attachment."""
