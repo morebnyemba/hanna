@@ -63,270 +63,158 @@ def send_receipt_confirmation_email(attachment_id):
     except Exception as e:
         logger.error(f"{log_prefix} Failed to send confirmation email for attachment {attachment_id}: {e}", exc_info=True)
 
-@shared_task(bind=True)
-def process_attachment_ocr(self, attachment_id):
+@shared_task(bind=True, name="email_integration.process_attachment_with_gemini", autoretry_for=(core_exceptions.ResourceExhausted,), retry_backoff=True, retry_kwargs={'max_retries': 3})
+def process_attachment_with_gemini(self, attachment_id):
     """
-    Processes an email attachment to extract text using direct extraction for PDFs
-    and OCR as a fallback or for images.
+    Fetches a saved attachment, uploads it directly to the Gemini File API,
+    performs OCR and structured data extraction, and saves the result.
     """
-    log_prefix = f"[OCR Task ID: {self.request.id}]"
-    logger.info(f"{log_prefix} Starting OCR processing for EmailAttachment ID: {attachment_id}")
+    log_prefix = f"[Gemini File API Task ID: {self.request.id}]"
+    logger.info(f"{log_prefix} Starting Gemini processing for attachment ID: {attachment_id}")
+
+    attachment = None
+    uploaded_file = None
+
     try:
+        # 1. Fetch the attachment record and check processing status
         attachment = EmailAttachment.objects.get(pk=attachment_id)
+        if attachment.processed:
+            logger.warning(f"{log_prefix} Attachment ID {attachment_id} already processed. Skipping.")
+            return f"Skipped: Attachment {attachment_id} already processed."
+
+        # --- Configure Gemini ---
+        try:
+            active_provider = AIProvider.objects.get(provider='google_gemini', is_active=True)
+            genai.configure(api_key=active_provider.api_key)
+        except (AIProvider.DoesNotExist, AIProvider.MultipleObjectsReturned) as e:
+            raise ValueError(f"Gemini API key configuration error: {e}")
+
+        # 2. Upload the local file to the Gemini API
         file_path = attachment.file.path
-        extracted_text = ''
+        logger.info(f"{log_prefix} Uploading file to Gemini: {file_path}")
+        uploaded_file = genai.upload_file(path=file_path)
+        logger.info(f"{log_prefix} File uploaded successfully. URI: {uploaded_file.uri}")
 
-        if file_path.lower().endswith('.pdf'):
+        # 3. Define the Multimodal Prompt for structured JSON extraction
+        prompt = """
+        Analyze the provided document (likely an invoice or receipt). 
+        Perform OCR to extract all key details and structure the entire content 
+        into a single, valid JSON object.
+
+        The JSON must contain the fields: 'invoice_number', 'invoice_date' (in YYYY-MM-DD format), 
+        'total_amount' (numeric), 'issuer', 'recipient', and a detailed 'line_items' array.
+        The final output MUST ONLY contain the valid, complete JSON object.
+        """
+
+        # 4. Call the Gemini API to process the document
+        logger.info(f"{log_prefix} Sending request to Gemini model for analysis.")
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(
+            [prompt, uploaded_file],
+            generation_config=genai.types.GenerationConfig(
+                response_mime_type="application/json",
+            )
+        )
+
+        # 5. Parse the extracted JSON data
+        extracted_data = json.loads(response.text)
+
+        # 6. Map extracted data to the ParsedInvoice model
+        invoice_number = extracted_data.get('invoice_number')
+        total_amount = extracted_data.get('total_amount')
+        date_str = extracted_data.get('invoice_date')
+
+        invoice_date_obj = None
+        if date_str:
             try:
-                text = extract_pdf_text(file_path)
-                if text and text.strip():
-                    extracted_text = text
-                    logger.info(f"{log_prefix} Successfully extracted text directly from PDF.")
-            except Exception as e:
-                logger.warning(f"{log_prefix} Direct text extraction from PDF failed, will fall back to OCR. Error: {e}")
+                invoice_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                try:
+                    invoice_date_obj = datetime.strptime(date_str, '%d-%m-%Y').date()
+                except (ValueError, TypeError):
+                    logger.warning(f"{log_prefix} Could not parse date string '{date_str}' for ID: {attachment_id}")
 
-            if not extracted_text:
-                logger.info(f"{log_prefix} Falling back to OCR for PDF.")
-                images = convert_from_path(file_path)
-                ocr_text_parts = [pytesseract.image_to_string(image) for image in images]
-                extracted_text = "\n\n".join(ocr_text_parts)
-                logger.info(f"{log_prefix} Successfully performed OCR on PDF.")
-        else:
-            image = Image.open(file_path)
-            extracted_text = pytesseract.image_to_string(image)
-            logger.info(f"{log_prefix} Successfully performed OCR on image.")
+        # 7. Create or update the ParsedInvoice entry
+        ParsedInvoice.objects.update_or_create(
+            attachment=attachment,
+            defaults={
+                'invoice_number': str(invoice_number).strip() if invoice_number else None,
+                'invoice_date': invoice_date_obj,
+                'total_amount': total_amount,
+            }
+        )
 
-        send_receipt_confirmation_email.delay(attachment_id)
-
-        attachment.ocr_text = extracted_text
+        # 8. Update the EmailAttachment status
         attachment.processed = True
-        attachment.save(update_fields=['ocr_text', 'processed', 'updated_at'])
-        logger.info(f"{log_prefix} Successfully processed and saved text for attachment {attachment_id}.")
-        
-        # Chain the new Gemini processing task instead of the old regex parser
-        process_document_with_gemini.delay(attachment_id)
-        
-        return f"Successfully processed attachment {attachment_id}. Chaining parsing task."
-    except Exception as e:
-        logger.error(f"{log_prefix} An unexpected error occurred: {e}", exc_info=True)
-        raise
+        attachment.ocr_text = json.dumps(extracted_data, indent=2) # Save the JSON for review
+        attachment.save(update_fields=['processed', 'ocr_text', 'updated_at'])
 
-def _parse_sales_invoice(text: str, attachment: 'EmailAttachment', log_prefix: str):
-    """
-    A dedicated parser for sales invoices, updated to handle the specific format
-    of the provided TV Sales & Home invoice.
-    """
-    logger.info(f"{log_prefix} Identified document as Sales Invoice. Parsing...")
+        logger.info(f"{log_prefix} Successfully created/updated ParsedInvoice for attachment ID: {attachment_id}")
+        send_receipt_confirmation_email.delay(attachment_id)
+        return f"Successfully processed attachment {attachment_id} with Gemini."
 
-    # --- Regex Patterns (Refined for the sample invoice) ---
-    invoice_num_pattern = re.compile(r'Customer\s*Reference\s*No[:\s]*([A-Z0-9/ -]+)', re.IGNORECASE)
-    date_pattern = re.compile(r'Date[:\s]*(\d{2}-\d{2}-\d{4})', re.IGNORECASE)
-    total_pattern = re.compile(r'Invoice\s*Total,\s*USD.*?([\d,]+\.\d{2})', re.IGNORECASE)
-    customer_name_pattern = re.compile(r'^\s*([A-Z]+\s+[A-Z]+\s+[A-Z]+(?:\s+[A-Z]+)?)\s*$', re.MULTILINE)
-
-    # --- Extract Header Data ---
-    extracted_data = {
-        "document_type": "invoice",
-        "invoice_number": None,
-        "invoice_date": None,
-        "total_amount": None,
-        "customer_name": None,
-        "line_items": [],
-    }
-
-    # Find Invoice Number
-    match = invoice_num_pattern.search(text)
-    if match:
-        extracted_data["invoice_number"] = match.group(1).strip()
-        logger.info(f"{log_prefix} Found Invoice Number: {extracted_data['invoice_number']}")
-
-    # Find Invoice Date
-    match = date_pattern.search(text)
-    if match:
-        try:
-            date_str = match.group(1)
-            extracted_data["invoice_date"] = datetime.strptime(date_str, '%d-%m-%Y').date().isoformat()
-            logger.info(f"{log_prefix} Found and parsed Invoice Date: {extracted_data['invoice_date']}")
-        except ValueError:
-            logger.warning(f"{log_prefix} Found date string '{date_str}' but could not parse it.")
-
-    # Find Total Amount
-    match = total_pattern.search(text)
-    if match:
-        try:
-            amount_str = match.group(1).replace(',', '')
-            extracted_data["total_amount"] = float(Decimal(amount_str))
-            logger.info(f"{log_prefix} Found Total Amount: {extracted_data['total_amount']}")
-        except InvalidOperation:
-            logger.warning(f"{log_prefix} Could not convert total amount '{match.group(1)}' to Decimal.")
-
-    # Find Customer Name
-    match = customer_name_pattern.search(text)
-    if match:
-        potential_name = match.group(1).strip()
-        if "BORROWDALE" not in potential_name:
-             extracted_data["customer_name"] = potential_name
-             logger.info(f"{log_prefix} Found Customer Name: {extracted_data['customer_name']}")
-
-    # --- Extract Line Items (New Robust Logic) ---
-    try:
-        # Make the header regex more flexible to handle OCR variations and different layouts.
-        # This pattern looks for the key columns, allowing other text or newlines between them.
-        header = r'Description\s+Qty\s+Price.*?Total\s+Amount'
-        footer = 'Total 15% VAT'
-        
-        start_match = re.search(header, text, re.IGNORECASE)
-        end_match = re.search(footer, text, re.IGNORECASE)
-        
-        if not start_match:
-            logger.error(f"{log_prefix} COULD NOT FIND LINE ITEM HEADER. Parsing of line items will fail.")
-            return extracted_data
-
-        start_index = start_match.end()
-        end_index = end_match.start() if end_match else len(text)
-
-        line_items_block = text[start_index:end_index].strip()
-        
-        line_item_pattern = re.compile(
-            r'^(?P<description>.+?)\s+'
-            r'(?P<quantity>\d+)\s+'
-            r'(?P<price>[\d,.]+\.\d{3})\s+'
-            r'(?P<vat>[\d,.]+\.\d{2})\s+'
-            r'(?P<total>[\d,.]+\.\d{2})$'
-        )
-
-        processed_lines = []
-        for line in line_items_block.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            if processed_lines and not re.search(r'\d+\s+[\d,.]+\s+[\d,.]+\s+[\d,.]+$', line):
-                processed_lines[-1] = f"{processed_lines[-1]} {line}"
-            else:
-                processed_lines.append(line)
-        
-        for line in processed_lines:
-            cleaned_line = re.sub(r'^[A-Z]{2}-\s+', '', line).strip()
-            item_match = line_item_pattern.search(cleaned_line)
-            
-            if item_match:
-                extracted_data["line_items"].append({
-                    "quantity": int(item_match.group('quantity')),
-                    "description": item_match.group('description').strip(),
-                    "unit_price": float(Decimal(item_match.group('price').replace(',', ''))),
-                    "vat_amount": float(Decimal(item_match.group('vat').replace(',', ''))),
-                    "line_total": float(Decimal(item_match.group('total').replace(',', ''))),
-                })
-
-        logger.info(f"{log_prefix} Found {len(extracted_data['line_items'])} line items.")
-    except Exception as e:
-        logger.error(f"{log_prefix} Failed to parse line items: {e}", exc_info=True)
-
-    return extracted_data
-
-def _parse_job_card(text: str, attachment: 'EmailAttachment', log_prefix: str):
-    """
-    A placeholder parser for job cards.
-    """
-    logger.info(f"{log_prefix} Identified document as Job Card. Parsing...")
-    pass
-
-@shared_task(bind=True, name="email_integration.process_document_with_gemini")
-def process_document_with_gemini(self, attachment_id):
-    """
-    Uses Google's Gemini Pro model to extract structured data from document text.
-    """
-    log_prefix = f"[Gemini Task ID: {self.request.id}]"
-    logger.info(f"{log_prefix} Starting Gemini processing for EmailAttachment ID: {attachment_id}")
-
-    try:
-        attachment = EmailAttachment.objects.get(pk=attachment_id)
     except EmailAttachment.DoesNotExist:
-        logger.error(f"{log_prefix} Could not find EmailAttachment with ID {attachment_id}.")
-        return f"Error: Attachment {attachment_id} not found."
+        logger.error(f"{log_prefix} Attachment with ID {attachment_id} not found.")
+        # Do not re-raise, as this is not a transient error.
+    except (core_exceptions.ResourceExhausted, core_exceptions.DeadlineExceeded) as e:
+        logger.warning(f"{log_prefix} Gemini API rate limit or timeout error for attachment {attachment_id}: {e}. Task will be retried by Celery.")
+        raise # Re-raise to let Celery handle the retry
+    except Exception as e:
+        logger.error(f"{log_prefix} An unexpected error occurred during Gemini processing for attachment {attachment_id}: {e}", exc_info=True)
+        if attachment:
+            attachment.processed = True # Mark as processed to avoid retry loops on permanent errors
+            attachment.ocr_text = json.dumps({"error": str(e), "status": "failed"})
+            attachment.save(update_fields=['processed', 'ocr_text'])
+        raise
+    finally:
+        # 9. Clean up: Delete the file from the Gemini service
+        if uploaded_file:
+            try:
+                logger.info(f"{log_prefix} Deleting temporary file from Gemini service: {uploaded_file.name}")
+                genai.delete_file(name=uploaded_file.name)
+            except Exception as e:
+                logger.error(f"{log_prefix} Failed to delete uploaded Gemini file {uploaded_file.name}: {e}")
 
-    if not attachment.ocr_text:
-        logger.warning(f"{log_prefix} No OCR text found for attachment {attachment_id}. Skipping Gemini processing.")
-        return f"Skipped: No OCR text for attachment {attachment_id}."
 
+def _save_parsed_invoice_from_gemini_data(attachment: EmailAttachment, data: dict, log_prefix: str):
+    """Helper function to save extracted invoice data to the ParsedInvoice model."""
+    invoice_date_obj = None
+    if data.get("invoice_date"):
+        try:
+            invoice_date_obj = datetime.strptime(data["invoice_date"], '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            logger.warning(f"{log_prefix} Gemini returned date '{data.get('invoice_date')}' which could not be parsed.")
+
+    total_amount_decimal = None
+    if data.get("total_amount") is not None:
+        try:
+            total_amount_decimal = Decimal(str(data["total_amount"]))
+        except (InvalidOperation, TypeError):
+            logger.warning(f"{log_prefix} Gemini returned total amount '{data.get('total_amount')}' which could not be converted to Decimal.")
+
+    ParsedInvoice.objects.update_or_create(
+        attachment=attachment,
+        defaults={
+            'invoice_number': data.get("invoice_number"),
+            'invoice_date': invoice_date_obj,
+            'total_amount': total_amount_decimal,
+        }
+    )
+    logger.info(f"{log_prefix} Saved/Updated ParsedInvoice record from Gemini data for attachment {attachment.id}.")
+
+@shared_task(name="email_integration.fetch_email_attachments_task")
+def fetch_email_attachments_task():
+    """
+    Celery task to run the fetch_mailu_attachments management command.
+    """
+    log_prefix = "[Fetch Email Task]"
+    logger.info(f"{log_prefix} Starting scheduled task to fetch email attachments.")
     try:
-        # Fetch the API key from the new AIProvider model
-        # We fetch the full object now to update it later.
-        active_provider = AIProvider.objects.get(provider='google_gemini', is_active=True)
-    except (AIProvider.DoesNotExist, AIProvider.MultipleObjectsReturned) as e:
-        logger.error(f"{log_prefix} Could not retrieve Gemini API key from database: {e}")
-        # Re-raise to fail the task so it can be retried once the DB is configured correctly.
-        raise ValueError(f"Gemini API key configuration error: {e}")
-
-    # NOTE on library: The correct package to install is `google-genai` from PyPI.
-    # The `google-generativeai` package is deprecated.
-    # However, the import statement remains `import google.generativeai`.
-    # We configure it here with the key fetched from the database.
-    genai.configure(api_key=active_provider.api_key)
-    model = genai.GenerativeModel('gemini-pro')
-
-    # This prompt is crucial. It instructs the model on what to extract and the exact JSON format to return.
-    # It remains unchanged.
-    # You can customize the `json_schema` to fit any other document types you need to process.
-    prompt = """
-    Analyze the following text extracted from a business document (likely an invoice or job card).
-    Based on the content, identify the document type and extract key information into a structured JSON object.
-
-    The desired JSON schema is:
-    {{
-      "document_type": "invoice" | "job_card" | "quote" | "unclassified",
-      "invoice_number": "string" | null,
-      "invoice_date": "YYYY-MM-DD" | null,
-      "customer_name": "string" | null,
-      "total_amount": number | null,
-      "line_items": [
-        {{
-          "description": "string",
-          "quantity": number,
-          "unit_price": number,
-          "line_total": number
-        }}
-      ] | null
-    }}
-
-    - If a field is not found, its value should be null.
-    - The `invoice_date` must be in 'YYYY-MM-DD' format.
-    - `total_amount`, `quantity`, `unit_price`, and `line_total` must be numbers (float or integer), not strings.
-    - If the document does not seem to be an invoice, job card, or quote, classify it as "unclassified" and leave other fields null.
-    - Return ONLY the JSON object, with no other text or markdown formatting.
-
-    Here is the document text:
-    ---
-    {text}
-    ---
-    """.format(text=attachment.ocr_text)
-
-    try:
-        logger.info(f"{log_prefix} Sending request to Gemini API for attachment {attachment_id}.")
-        
-        # The Gemini library doesn't directly expose headers. We access the underlying
-        # transport to get the raw response and headers.
-        raw_response, response_body = model._client._client.request(
-            method='POST',
-            url=model._client._api_endpoint + "/v1/models/gemini-pro:generateContent",
-            headers={'Content-Type': 'application/json'},
-            body=json.dumps({'contents': [{'parts': [{'text': prompt}]}]})
-        )
-        
-        # Update rate limit info on the provider model
-        _update_provider_rate_limit(active_provider, raw_response, log_prefix)
-
-        # Check for non-200 status codes which indicate an error
-        if raw_response.status != 200:
-            error_message = f"Gemini API returned status {raw_response.status}: {response_body.decode('utf-8')}"
-            logger.error(f"{log_prefix} {error_message}")
-            # Raise a specific exception for rate limiting
-            if raw_response.status == 429:
-                raise core_exceptions.ResourceExhausted(error_message)
-            raise Exception(error_message)
-
-        response = genai.types.GenerateContentResponse.from_dict(json.loads(response_body))
-        
+        call_command('fetch_mailu_attachments')
+        logger.info(f"{log_prefix} Successfully finished fetch_mailu_attachments command.")
+    except Exception as e:
+        logger.error(f"{log_prefix} The 'fetch_mailu_attachments' command failed: {e}", exc_info=True)
+        raise
         # Clean up the response to ensure it's valid JSON
         cleaned_response_text = response.text.strip().replace('```json', '').replace('```', '').strip()
         extracted_data = json.loads(cleaned_response_text)
@@ -336,6 +224,11 @@ def process_document_with_gemini(self, attachment_id):
         # Save the structured data back to the ocr_text field as a JSON string
         attachment.ocr_text = json.dumps(extracted_data, indent=2)
         attachment.save(update_fields=['ocr_text', 'updated_at'])
+
+        # Now that processing is complete, mark as processed and send confirmation.
+        attachment.processed = True
+        attachment.save(update_fields=['processed'])
+        send_receipt_confirmation_email.delay(attachment_id)
 
         # (Optional but Recommended) Save to the structured ParsedInvoice model
         if extracted_data.get("document_type") == "invoice":

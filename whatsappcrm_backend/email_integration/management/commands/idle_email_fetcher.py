@@ -11,7 +11,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from email.utils import parsedate_to_datetime
 
-from email_integration.tasks import process_attachment_ocr
+from email_integration.tasks import process_attachment_with_gemini
 from email_integration.models import EmailAttachment
 
 logger = logging.getLogger(__name__)
@@ -106,6 +106,6 @@ class Command(BaseCommand):
                 )
                 self.stdout.write(self.style.SUCCESS(f"Saved attachment: {filename} (DB id: {attachment.id})"))
                 
-                # Trigger the background OCR task
-                process_attachment_ocr.delay(attachment.id)
-                self.stdout.write(self.style.WARNING(f"Triggered OCR processing for attachment id: {attachment.id}"))
+                # Trigger the background Gemini processing task
+                process_attachment_with_gemini.delay(attachment.id)
+                self.stdout.write(self.style.WARNING(f"Triggered Gemini processing for attachment id: {attachment.id}"))

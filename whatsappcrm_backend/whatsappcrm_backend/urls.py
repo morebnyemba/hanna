@@ -12,7 +12,7 @@ from customer_data.views import MyTokenObtainPairView
 
 urlpatterns = [
     # Django Admin interface - useful for backend management via Jazzmin
-    path('admin/', admin.site.urls),
+    path('', admin.site.urls),
     path('prometheus/', include('django_prometheus.urls')),
     # API endpoints for 'meta_integration' application
     # This includes:

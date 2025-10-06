@@ -10,8 +10,7 @@ from django.core.files.base import ContentFile
 from dotenv import load_dotenv
 from email.utils import parsedate_to_datetime
 
-from email_integration.tasks import process_attachment_ocr
-from email_integration.tasks import process_attachment_with_doc_ai
+from email_integration.tasks import process_attachment_with_gemini
 from email_integration.models import EmailAttachment
 
 load_dotenv()  # Loads .env file
@@ -61,10 +60,8 @@ class Command(BaseCommand):
                             )
                             self.stdout.write(self.style.SUCCESS(f"Saved attachment: {filename} (DB id: {attachment.id})"))
                             
-                            process_attachment_ocr.delay(attachment.id)
-                            self.stdout.write(self.style.WARNING(f"Triggered OCR processing for attachment id: {attachment.id}"))
-                            process_attachment_with_doc_ai.delay(attachment.id)
-                            self.stdout.write(self.style.WARNING(f"Triggered Document AI processing for attachment id: {attachment.id}"))
+                            process_attachment_with_gemini.delay(attachment.id)
+                            self.stdout.write(self.style.WARNING(f"Triggered Gemini processing for attachment id: {attachment.id}"))
         except IMAPClientError as e:
             raise CommandError(f"IMAP connection failed: {e}")
         except Exception as e:

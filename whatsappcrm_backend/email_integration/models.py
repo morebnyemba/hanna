@@ -1,41 +1,32 @@
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.utils.timezone import now
 
-class AIProviderManager(models.Manager):
-    def get_active_gemini_key(self):
-        """
-        Retrieves the active Google Gemini API key.
-        Raises DoesNotExist if no active key is found.
-        """
-        try:
-            provider = self.get(provider='google_gemini', is_active=True)
-            return provider.api_key
-        except self.model.DoesNotExist:
-            raise self.model.DoesNotExist("No active 'google_gemini' provider found in the database.")
-        except self.model.MultipleObjectsReturned:
-            raise self.model.MultipleObjectsReturned("Multiple active 'google_gemini' providers found. Please ensure only one is active.")
-
-class AIProvider(models.Model):
-    """Stores credentials for various AI service providers."""
-    PROVIDER_CHOICES = [
-        ('google_gemini', 'Google Gemini'),
-        # Add other providers here in the future
-    ]
-
-    provider = models.CharField(max_length=50, choices=PROVIDER_CHOICES, unique=True)
-    # IMPORTANT: In a production environment, this field should be encrypted.
-    # Consider using a library like django-cryptography or a secrets manager like HashiCorp Vault.
-    api_key = models.CharField(max_length=255, help_text="The API key for the provider.")
-    is_active = models.BooleanField(default=False, help_text="Only one provider of each type should be active at a time.")
-    created_at = models.DateTimeField(auto_now_add=True)
+class EmailAttachment(models.Model):
+    file = models.FileField(upload_to='attachments/')
+    filename = models.CharField(max_length=255)
+    sender = models.CharField(max_length=255, blank=True, null=True)
+    subject = models.CharField(max_length=255, blank=True, null=True)
+    email_date = models.DateTimeField(blank=True, null=True) # Changed from CharField
+    saved_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    objects = AIProviderManager()
+    processed = models.BooleanField(default=False)
+    ocr_text = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return f"{self.get_provider_display()} ({'Active' if self.is_active else 'Inactive'})"
+        return self.filename
 
-    def clean(self):
-        if self.is_active:
-            if AIProvider.objects.filter(provider=self.provider, is_active=True).exclude(pk=self.pk).exists():
-                raise ValidationError(f"An active provider for '{self.get_provider_display()}' already exists. Only one can be active.")
+class ParsedInvoice(models.Model):
+    """Stores structured data extracted from an email attachment."""
+    attachment = models.OneToOneField(
+        EmailAttachment,
+        on_delete=models.CASCADE,
+        related_name='parsed_invoice'
+    )
+    invoice_number = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    invoice_date = models.DateField(blank=True, null=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    extracted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Invoice {self.invoice_number or 'N/A'} from {self.attachment.filename}"
