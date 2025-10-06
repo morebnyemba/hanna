@@ -48,7 +48,7 @@ services:
   celery_io_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_io_worker
-    command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=4
+    command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=20
     volumes:
       - ./whatsappcrm_backend:/app
     env_file:

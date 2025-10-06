@@ -12,6 +12,7 @@ from google.genai import errors as genai_errors
 from .models import EmailAttachment, ParsedInvoice
 from decimal import Decimal, InvalidOperation
 from customer_data.models import CustomerProfile, Order, OrderItem
+from conversations.models import Contact
 from products_and_services.models import Product
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
