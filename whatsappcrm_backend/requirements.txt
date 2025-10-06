@@ -24,6 +24,7 @@ daphne
 
 # --- AI, Document & Image Processing ---
 google-genai
+google-api-core
 pdf2image
 pdfminer.six
 Pillow
