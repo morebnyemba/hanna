@@ -276,9 +276,17 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     line_items = data.get('line_items', [])
     if isinstance(line_items, list):
         for item_data in line_items:
+            # Use the extracted product_type, with a sensible fallback.
+            product_type = item_data.get('product_type', Product.ProductType.HARDWARE).lower()
+            # Ensure the extracted type is valid, otherwise default.
+            if product_type not in [choice[0] for choice in Product.ProductType.choices]:
+                product_type = Product.ProductType.HARDWARE
+
             product, _ = Product.objects.get_or_create(
                 name=item_data.get('description', 'Unknown Product'),
                 defaults={'price': item_data.get('unit_price', 0)}
+                # Provide the product_type and price as defaults for new products.
+                defaults={'price': item_data.get('unit_price', 0), 'product_type': product_type}
             )
             OrderItem.objects.create(order=order, product=product, quantity=item_data.get('quantity', 1), unit_price=item_data.get('unit_price', 0))
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
