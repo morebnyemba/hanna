@@ -94,13 +94,49 @@ def process_attachment_with_gemini(self, attachment_id):
         logger.info(f"{log_prefix} File uploaded successfully. URI: {uploaded_file.uri}")
 
         # 3. Define the Multimodal Prompt for structured JSON extraction
-        prompt = """
-        Analyze the provided document (likely an invoice or receipt). 
-        Perform OCR to extract all key details and structure the entire content 
-        into a single, valid JSON object.
+        # By defining the schema separately, we avoid the confusing double-bracket escaping.
+        json_schema_definition = """
+        {
+          "issuer": {
+            "tin": "string" | null,
+            "name": "string" | null,
+            "email": "string" | null,
+            "phone": "string" | null,
+            "vat_no": "string" | null,
+            "address": "string" | null
+          },
+          "recipient": {
+            "name": "string" | null,
+            "phone": "string" | null,
+            "address": "string" | null
+          },
+          "line_items": [
+            {
+              "quantity": "number",
+              "unit_price": "number",
+              "description": "string",
+              "total_amount": "number"
+            }
+          ],
+          "invoice_date": "YYYY-MM-DD" | null,
+          "total_amount": "number" | null,
+          "invoice_number": "string" | null
+        }
+        """
 
-        The JSON must contain the fields: 'invoice_number', 'invoice_date' (in YYYY-MM-DD format), 
-        'total_amount' (numeric), 'issuer', 'recipient', and a detailed 'line_items' array.
+        prompt = f"""
+        Analyze the provided document (likely an invoice or receipt).
+        Perform OCR to extract key details and structure them into a single, valid JSON object.
+
+        The desired JSON schema is:
+        {json_schema_definition}
+
+        **Extraction Rules:**
+        - For the 'invoice_number', prioritize the value associated with the "Customer Reference No" field. If that is not present, look for a standard "Invoice Number".
+        - The 'invoice_date' must be in 'YYYY-MM-DD' format.
+        - All monetary values must be numeric (float or integer), not strings.
+        - If a field is not found, its value should be null.
+
         The final output MUST ONLY contain the valid, complete JSON object.
         """
 
