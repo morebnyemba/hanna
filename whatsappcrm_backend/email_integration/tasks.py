@@ -110,7 +110,7 @@ def process_attachment_with_gemini(self, attachment_id):
         # CORRECTED: Use client.models.generate_content directly, as per the documentation,
         # which is the idiomatic way when a client instance is used.
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.5-flash',
             contents=[prompt, uploaded_file],
         )
 
