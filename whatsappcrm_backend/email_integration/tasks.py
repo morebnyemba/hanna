@@ -115,7 +115,22 @@ def process_attachment_with_gemini(self, attachment_id):
         )
 
         # 5. Parse the extracted JSON data
-        extracted_data = json.loads(response.text)
+        try:
+            # Clean up the response to remove potential markdown formatting
+            cleaned_text = response.text.strip().replace('```json', '').replace('```', '').strip()
+            if not cleaned_text:
+                raise json.JSONDecodeError("Empty response from Gemini", "", 0)
+            extracted_data = json.loads(cleaned_text)
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"{log_prefix} Failed to decode JSON from Gemini response for attachment {attachment_id}. "
+                f"Error: {e}. Raw response text: '{response.text}'"
+            )
+            # Mark as failed and stop processing. This is a graceful failure.
+            attachment.processed = True
+            attachment.extracted_data = {"error": "Invalid JSON response from Gemini", "status": "failed", "raw_response": response.text}
+            attachment.save(update_fields=['processed', 'extracted_data'])
+            return f"Failed: Gemini returned non-JSON response for attachment {attachment_id}."
 
         # 6. Map extracted data to the ParsedInvoice model
         invoice_number = extracted_data.get('invoice_number')
