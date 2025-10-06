@@ -25,7 +25,7 @@ daphne~=4.1
 # --- AI, Document & Image Processing ---
 google-genai~=0.7
 pdf2image~=1.17
-pdfminer.six~=20221105
+pdfminer.six
 Pillow~=10.3
 pytesseract~=0.3
 
