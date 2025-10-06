@@ -217,6 +217,12 @@ class Order(models.Model):
         CLOSED_WON = 'closed_won', _('Closed Won')
         CLOSED_LOST = 'closed_lost', _('Closed Lost')
 
+    class Source(models.TextChoices):
+        MANUAL = 'manual', _('Manual Entry')
+        FLOW = 'flow', _('Flow Automation')
+        EMAIL_IMPORT = 'email_import', _('Email Import')
+        API = 'api', _('API Integration')
+
     class PaymentStatus(models.TextChoices):
         PENDING = 'pending', _('Pending Payment')
         PAID = 'paid', _('Paid')
@@ -251,6 +257,12 @@ class Order(models.Model):
         default=PaymentStatus.PENDING,
         db_index=True
     )
+    source = models.CharField(
+        _("Source"), max_length=50, choices=Source.choices,
+        default=Source.MANUAL, db_index=True,
+        help_text=_("How this order was created in the system.")
+    )
+    invoice_details = models.JSONField(_("Invoice Details"), null=True, blank=True, help_text=_("Raw JSON data extracted from the invoice attachment."))
     amount = models.DecimalField(
         _("Amount"), max_digits=12, decimal_places=2, help_text=_("The estimated or actual value of the deal."),
         null=True, blank=True

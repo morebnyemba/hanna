@@ -10,6 +10,8 @@ from google import genai
 from google.genai import types as genai_types
 from .models import EmailAttachment, ParsedInvoice
 from decimal import Decimal, InvalidOperation
+from customer_data.models import CustomerProfile, Order, OrderItem
+from products_and_services.models import Product
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
 from django.core.mail import send_mail
@@ -168,20 +170,8 @@ def process_attachment_with_gemini(self, attachment_id):
             attachment.save(update_fields=['processed', 'extracted_data'])
             return f"Failed: Gemini returned non-JSON response for attachment {attachment_id}."
 
-        # 6. Map extracted data to the ParsedInvoice model
-        invoice_number = extracted_data.get('invoice_number')
-        total_amount = extracted_data.get('total_amount')
-        date_str = extracted_data.get('invoice_date')
-
-        invoice_date_obj = None
-        if date_str:
-            try:
-                invoice_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-            except (ValueError, TypeError):
-                try:
-                    invoice_date_obj = datetime.strptime(date_str, '%d-%m-%Y').date()
-                except (ValueError, TypeError):
-                    logger.warning(f"{log_prefix} Could not parse date string '{date_str}' for ID: {attachment_id}")
+        # 6. Create Order and related objects from the extracted data
+        _create_order_from_invoice_data(attachment, extracted_data, log_prefix)
 
         # 7. Create or update the ParsedInvoice entry
         ParsedInvoice.objects.update_or_create(
@@ -224,6 +214,74 @@ def process_attachment_with_gemini(self, attachment_id):
                 client.files.delete(name=uploaded_file.name)
             except Exception as e:
                 logger.error(f"{log_prefix} Failed to delete uploaded Gemini file {uploaded_file.name}: {e}")
+
+def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log_prefix: str):
+    """
+    Creates or updates an Order, CustomerProfile, and OrderItems from extracted invoice data.
+    """
+    logger.info(f"{log_prefix} Starting to create Order from extracted data for attachment {attachment.id}.")
+
+    invoice_number = data.get('invoice_number')
+    if not invoice_number:
+        logger.warning(f"{log_prefix} No 'invoice_number' found in extracted data. Cannot create order.")
+        return
+
+    # --- 1. Find or Create CustomerProfile ---
+    recipient_data = data.get('recipient', {})
+    recipient_name = recipient_data.get('name')
+    customer_profile = None
+    if recipient_name:
+        # Try to find a profile by full name, otherwise create a new one.
+        # This logic can be made more sophisticated (e.g., using phone or email if available).
+        customer_profile, created = CustomerProfile.objects.get_or_create(
+            first_name=recipient_name.split(' ')[0],
+            last_name=' '.join(recipient_name.split(' ')[1:]) if ' ' in recipient_name else '',
+            defaults={'notes': f"Profile automatically created from invoice {invoice_number}."}
+        )
+        if created:
+            logger.info(f"{log_prefix} Created new CustomerProfile for '{recipient_name}'.")
+        else:
+            logger.info(f"{log_prefix} Found existing CustomerProfile for '{recipient_name}'.")
+
+    # --- 2. Create or Update the Order ---
+    invoice_date_obj = None
+    if date_str := data.get('invoice_date'):
+        try:
+            invoice_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            logger.warning(f"{log_prefix} Could not parse date string '{date_str}' for Order.")
+
+    order, order_created = Order.objects.update_or_create(
+        order_number=invoice_number,
+        defaults={
+            'customer': customer_profile,
+            'name': f"Invoice {invoice_number}",
+            'stage': Order.Stage.CLOSED_WON, # Assume an invoice represents a completed sale
+            'payment_status': Order.PaymentStatus.PAID, # Or 'pending' if that's more appropriate
+            'amount': data.get('total_amount'),
+            'source': Order.Source.EMAIL_IMPORT,
+            'invoice_details': data, # Store the raw extracted data
+            'expected_close_date': invoice_date_obj,
+        }
+    )
+
+    if order_created:
+        logger.info(f"{log_prefix} Created new Order with order_number '{invoice_number}'.")
+    else:
+        logger.info(f"{log_prefix} Updated existing Order with order_number '{invoice_number}'.")
+        # If updating, clear old items to prevent duplicates
+        order.items.all().delete()
+
+    # --- 3. Create OrderItems ---
+    line_items = data.get('line_items', [])
+    if isinstance(line_items, list):
+        for item_data in line_items:
+            product, _ = Product.objects.get_or_create(
+                name=item_data.get('description', 'Unknown Product'),
+                defaults={'price': item_data.get('unit_price', 0)}
+            )
+            OrderItem.objects.create(order=order, product=product, quantity=item_data.get('quantity', 1), unit_price=item_data.get('unit_price', 0))
+        logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
 
 @shared_task(name="email_integration.fetch_email_attachments_task")
 def fetch_email_attachments_task():
