@@ -29,6 +29,12 @@ class AIProvider(models.Model):
     is_active = models.BooleanField(default=False, help_text="Only one provider of each type should be active at a time.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # --- Rate Limiting Information (updated by tasks) ---
+    rate_limit_limit = models.IntegerField(null=True, blank=True, help_text="The request limit per minute for this key.")
+    rate_limit_remaining = models.IntegerField(null=True, blank=True, help_text="The number of remaining requests for the current window.")
+    rate_limit_reset_time = models.DateTimeField(null=True, blank=True, help_text="The time when the rate limit window resets.")
+
 
     objects = AIProviderManager()
 

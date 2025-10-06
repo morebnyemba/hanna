@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'products_and_services.apps.ProductsAndServicesConfig',
     'notifications.apps.NotificationsConfig',
     'customer_data.apps.CustomerDataConfig',
+    'ai_integration.apps.AiIntegrationConfig',
     
 ]
 INSTALLED_APPS.insert(0, 'email_integration.apps.EmailIntegrationConfig') # Add our new app
@@ -423,3 +424,8 @@ CONTENT_SECURITY_POLICY = {
 # Obsolete setting, replaced by user roles and the ORDER_RECEIVER_PHONE_ID logic.
 # SUPER_ADMIN_WHATSAPP_ID = os.getenv('SUPER_ADMIN_WHATSAPP_ID', None)
 ORDER_RECEIVER_PHONE_ID = os.getenv('ORDER_RECEIVER_PHONE_ID', '837416982780000')
+
+# --- Google Cloud Document AI Settings ---
+GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
+GCP_PROCESSOR_LOCATION = os.getenv('GCP_PROCESSOR_LOCATION')
+GCP_INVOICE_PROCESSOR_ID = os.getenv('GCP_INVOICE_PROCESSOR_ID')

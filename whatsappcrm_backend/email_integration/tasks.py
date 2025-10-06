@@ -1,9 +1,13 @@
 import os
 import logging
 import re
+from google.api_core import exceptions as core_exceptions
 import json
 from datetime import datetime
 from celery import shared_task, chain
+
+from django.utils import timezone
+import google.generativeai as genai
 from .models import EmailAttachment, ParsedInvoice
 import pytesseract
 from pdfminer.high_level import extract_text as extract_pdf_text
@@ -13,6 +17,9 @@ from decimal import Decimal, InvalidOperation
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
 from django.core.mail import send_mail
+
+# Import the new model to fetch credentials
+from ai_integration.models import AIProvider
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -96,7 +103,8 @@ def process_attachment_ocr(self, attachment_id):
         attachment.save(update_fields=['ocr_text', 'processed', 'updated_at'])
         logger.info(f"{log_prefix} Successfully processed and saved text for attachment {attachment_id}.")
         
-        parse_ocr_text.delay(attachment_id)
+        # Chain the new Gemini processing task instead of the old regex parser
+        process_document_with_gemini.delay(attachment_id)
         
         return f"Successfully processed attachment {attachment_id}. Chaining parsing task."
     except Exception as e:
@@ -223,6 +231,129 @@ def _parse_job_card(text: str, attachment: 'EmailAttachment', log_prefix: str):
     logger.info(f"{log_prefix} Identified document as Job Card. Parsing...")
     pass
 
+@shared_task(bind=True, name="email_integration.process_document_with_gemini")
+def process_document_with_gemini(self, attachment_id):
+    """
+    Uses Google's Gemini Pro model to extract structured data from document text.
+    """
+    log_prefix = f"[Gemini Task ID: {self.request.id}]"
+    logger.info(f"{log_prefix} Starting Gemini processing for EmailAttachment ID: {attachment_id}")
+
+    try:
+        attachment = EmailAttachment.objects.get(pk=attachment_id)
+    except EmailAttachment.DoesNotExist:
+        logger.error(f"{log_prefix} Could not find EmailAttachment with ID {attachment_id}.")
+        return f"Error: Attachment {attachment_id} not found."
+
+    if not attachment.ocr_text:
+        logger.warning(f"{log_prefix} No OCR text found for attachment {attachment_id}. Skipping Gemini processing.")
+        return f"Skipped: No OCR text for attachment {attachment_id}."
+
+    try:
+        # Fetch the API key from the new AIProvider model
+        # We fetch the full object now to update it later.
+        active_provider = AIProvider.objects.get(provider='google_gemini', is_active=True)
+    except (AIProvider.DoesNotExist, AIProvider.MultipleObjectsReturned) as e:
+        logger.error(f"{log_prefix} Could not retrieve Gemini API key from database: {e}")
+        # Re-raise to fail the task so it can be retried once the DB is configured correctly.
+        raise ValueError(f"Gemini API key configuration error: {e}")
+
+    # NOTE on library: The correct package to install is `google-genai` from PyPI.
+    # The `google-generativeai` package is deprecated.
+    # However, the import statement remains `import google.generativeai`.
+    # We configure it here with the key fetched from the database.
+    genai.configure(api_key=active_provider.api_key)
+    model = genai.GenerativeModel('gemini-pro')
+
+    # This prompt is crucial. It instructs the model on what to extract and the exact JSON format to return.
+    # It remains unchanged.
+    # You can customize the `json_schema` to fit any other document types you need to process.
+    prompt = """
+    Analyze the following text extracted from a business document (likely an invoice or job card).
+    Based on the content, identify the document type and extract key information into a structured JSON object.
+
+    The desired JSON schema is:
+    {{
+      "document_type": "invoice" | "job_card" | "quote" | "unclassified",
+      "invoice_number": "string" | null,
+      "invoice_date": "YYYY-MM-DD" | null,
+      "customer_name": "string" | null,
+      "total_amount": number | null,
+      "line_items": [
+        {{
+          "description": "string",
+          "quantity": number,
+          "unit_price": number,
+          "line_total": number
+        }}
+      ] | null
+    }}
+
+    - If a field is not found, its value should be null.
+    - The `invoice_date` must be in 'YYYY-MM-DD' format.
+    - `total_amount`, `quantity`, `unit_price`, and `line_total` must be numbers (float or integer), not strings.
+    - If the document does not seem to be an invoice, job card, or quote, classify it as "unclassified" and leave other fields null.
+    - Return ONLY the JSON object, with no other text or markdown formatting.
+
+    Here is the document text:
+    ---
+    {text}
+    ---
+    """.format(text=attachment.ocr_text)
+
+    try:
+        logger.info(f"{log_prefix} Sending request to Gemini API for attachment {attachment_id}.")
+        
+        # The Gemini library doesn't directly expose headers. We access the underlying
+        # transport to get the raw response and headers.
+        raw_response, response_body = model._client._client.request(
+            method='POST',
+            url=model._client._api_endpoint + "/v1/models/gemini-pro:generateContent",
+            headers={'Content-Type': 'application/json'},
+            body=json.dumps({'contents': [{'parts': [{'text': prompt}]}]})
+        )
+        
+        # Update rate limit info on the provider model
+        _update_provider_rate_limit(active_provider, raw_response, log_prefix)
+
+        # Check for non-200 status codes which indicate an error
+        if raw_response.status != 200:
+            error_message = f"Gemini API returned status {raw_response.status}: {response_body.decode('utf-8')}"
+            logger.error(f"{log_prefix} {error_message}")
+            # Raise a specific exception for rate limiting
+            if raw_response.status == 429:
+                raise core_exceptions.ResourceExhausted(error_message)
+            raise Exception(error_message)
+
+        response = genai.types.GenerateContentResponse.from_dict(json.loads(response_body))
+        
+        # Clean up the response to ensure it's valid JSON
+        cleaned_response_text = response.text.strip().replace('```json', '').replace('```', '').strip()
+        extracted_data = json.loads(cleaned_response_text)
+        
+        logger.info(f"{log_prefix} Successfully received and parsed Gemini response for attachment {attachment_id}.")
+
+        # Save the structured data back to the ocr_text field as a JSON string
+        attachment.ocr_text = json.dumps(extracted_data, indent=2)
+        attachment.save(update_fields=['ocr_text', 'updated_at'])
+
+        # (Optional but Recommended) Save to the structured ParsedInvoice model
+        if extracted_data.get("document_type") == "invoice":
+            _save_parsed_invoice_from_gemini_data(attachment, extracted_data, log_prefix)
+
+        return f"Successfully processed attachment {attachment_id} with Gemini."
+
+    except core_exceptions.ResourceExhausted as e:
+        logger.warning(f"{log_prefix} Gemini API rate limit exceeded for attachment {attachment_id}: {e}. The task will be retried automatically by Celery.")
+        # Re-raise to let Celery handle the retry with its backoff strategy.
+        # You can configure `autoretry_for` on the @shared_task decorator for more control.
+        raise
+
+    except Exception as e:
+        logger.error(f"{log_prefix} An error occurred during Gemini processing for attachment {attachment_id}: {e}", exc_info=True)
+        # Re-raise the exception to mark the Celery task as failed for potential retry.
+        raise
+
 @shared_task(bind=True)
 def parse_ocr_text(self, attachment_id):
     """
@@ -278,6 +409,58 @@ def parse_ocr_text(self, attachment_id):
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred during parsing: {e}", exc_info=True)
         raise
+
+def _save_parsed_invoice_from_gemini_data(attachment: EmailAttachment, data: dict, log_prefix: str):
+    """Helper function to save extracted invoice data to the ParsedInvoice model."""
+    invoice_date_obj = None
+    if data.get("invoice_date"):
+        try:
+            invoice_date_obj = datetime.strptime(data["invoice_date"], '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            logger.warning(f"{log_prefix} Gemini returned date '{data.get('invoice_date')}' which could not be parsed.")
+
+    total_amount_decimal = None
+    if data.get("total_amount") is not None:
+        try:
+            total_amount_decimal = Decimal(str(data["total_amount"]))
+        except (InvalidOperation, TypeError):
+            logger.warning(f"{log_prefix} Gemini returned total amount '{data.get('total_amount')}' which could not be converted to Decimal.")
+
+    ParsedInvoice.objects.update_or_create(
+        attachment=attachment,
+        defaults={
+            'invoice_number': data.get("invoice_number"),
+            'invoice_date': invoice_date_obj,
+            'total_amount': total_amount_decimal,
+        }
+    )
+    logger.info(f"{log_prefix} Saved/Updated ParsedInvoice record from Gemini data for attachment {attachment.id}.")
+
+def _update_provider_rate_limit(provider: AIProvider, response_headers: dict, log_prefix: str):
+    """
+    Helper function to parse rate limit headers and update the AIProvider instance.
+    """
+    try:
+        limit = response_headers.get('x-ratelimit-limit')
+        remaining = response_headers.get('x-ratelimit-remaining')
+        reset_seconds = response_headers.get('x-ratelimit-reset')
+
+        update_fields = []
+        if limit is not None:
+            provider.rate_limit_limit = int(limit)
+            update_fields.append('rate_limit_limit')
+        if remaining is not None:
+            provider.rate_limit_remaining = int(remaining)
+            update_fields.append('rate_limit_remaining')
+        if reset_seconds is not None:
+            provider.rate_limit_reset_time = timezone.now() + timezone.timedelta(seconds=int(reset_seconds))
+            update_fields.append('rate_limit_reset_time')
+        
+        if update_fields:
+            provider.save(update_fields=update_fields)
+            logger.info(f"{log_prefix} Updated rate limit info for {provider.provider}: {remaining}/{limit}")
+    except (ValueError, TypeError) as e:
+        logger.warning(f"{log_prefix} Could not parse rate limit headers: {e}")
 
 @shared_task(name="email_integration.fetch_email_attachments_task")
 def fetch_email_attachments_task():
