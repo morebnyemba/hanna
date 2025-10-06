@@ -112,9 +112,6 @@ def process_attachment_with_gemini(self, attachment_id):
         response = client.models.generate_content(
             model='gemini-1.5-flash',
             contents=[prompt, uploaded_file],
-            generation_config=genai_types.GenerationConfig(
-                response_mime_type="application/json",
-            )
         )
 
         # 5. Parse the extracted JSON data
