@@ -98,33 +98,38 @@ def process_attachment_with_gemini(self, attachment_id):
         # 3. Define the Multimodal Prompt for structured JSON extraction
         # By defining the schema separately, we avoid the confusing double-bracket escaping.
         json_schema_definition = """
-        {
-          "issuer": {
-            "tin": "string" | null,
-            "name": "string" | null,
-            "email": "string" | null,
-            "phone": "string" | null,
-            "vat_no": "string" | null,
-            "address": "string" | null
-          },
-          "recipient": {
-            "name": "string" | null,
-            "phone": "string" | null,
-            "address": "string" | null
-          },
-          "line_items": [
-            {
-              "quantity": "number",
-              "unit_price": "number",
-              "description": "string",
-              "total_amount": "number"
-            }
-          ],
-          "invoice_date": "YYYY-MM-DD" | null,
-          "total_amount": "number" | null,
-          "invoice_number": "string" | null
-        }
-        """
+{
+  "issuer": {
+    "tin": "string" | null,
+    "name": "string" | null,
+    "email": "string" | null,
+    "phone": "string" | null,
+    "vat_no": "string" | null,
+    "address": "string" | null
+  },
+  "recipient": {
+    "name": "string" | null,
+    "phone": "string" | null,
+    "address": "string" | null
+  },
+  "line_items": [
+    {
+      "product_code": "string" | null,
+      "description": "string",
+      "quantity": "number",
+      "unit_price": "number",
+      "vat_amount": "number" | null,
+      "total_amount": "number"
+    }
+  ],
+  "invoice_number": "string" | null,
+  "customer_reference_no": "string" | null,
+  "invoice_date": "YYYY-MM-DD" | null,
+  "total_amount": "number" | null,
+  "total_vat_amount": "number" | null,
+  "notes_and_terms": "string" | null
+}
+"""
 
         prompt = f"""
         Analyze the provided document (likely an invoice or receipt).
@@ -276,17 +281,9 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     line_items = data.get('line_items', [])
     if isinstance(line_items, list):
         for item_data in line_items:
-            # Use the extracted product_type, with a sensible fallback.
-            product_type = item_data.get('product_type', Product.ProductType.HARDWARE).lower()
-            # Ensure the extracted type is valid, otherwise default.
-            if product_type not in [choice[0] for choice in Product.ProductType.choices]:
-                product_type = Product.ProductType.HARDWARE
-
             product, _ = Product.objects.get_or_create(
                 name=item_data.get('description', 'Unknown Product'),
                 defaults={'price': item_data.get('unit_price', 0)}
-                # Provide the product_type and price as defaults for new products.
-                defaults={'price': item_data.get('unit_price', 0), 'product_type': product_type}
             )
             OrderItem.objects.create(order=order, product=product, quantity=item_data.get('quantity', 1), unit_price=item_data.get('unit_price', 0))
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
