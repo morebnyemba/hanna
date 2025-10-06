@@ -107,9 +107,11 @@ def process_attachment_with_gemini(self, attachment_id):
         # 4. Call the Gemini API to process the document
         logger.info(f"{log_prefix} Sending request to Gemini model for analysis.")
         # Use the client instance to get the model
-        model = client.models.get('gemini-1.5-flash')
-        response = model.generate_content(
-            [prompt, uploaded_file],
+        # CORRECTED: Use client.models.generate_content directly, as per the documentation,
+        # which is the idiomatic way when a client instance is used.
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=[prompt, uploaded_file],
             generation_config=genai_types.GenerationConfig(
                 response_mime_type="application/json",
             )
