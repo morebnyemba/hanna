@@ -8,6 +8,7 @@ from celery import shared_task, chain
 
 from google import genai
 from google.genai import types as genai_types
+from google.genai import errors as genai_errors
 from .models import EmailAttachment, ParsedInvoice
 from decimal import Decimal, InvalidOperation
 from customer_data.models import CustomerProfile, Order, OrderItem
@@ -61,7 +62,13 @@ def send_receipt_confirmation_email(attachment_id):
     except Exception as e:
         logger.error(f"{log_prefix} Failed to send confirmation email for attachment {attachment_id}: {e}", exc_info=True)
 
-@shared_task(bind=True, name="email_integration.process_attachment_with_gemini", autoretry_for=(core_exceptions.ResourceExhausted,), retry_backoff=True, retry_kwargs={'max_retries': 3})
+@shared_task(
+    bind=True,
+    name="email_integration.process_attachment_with_gemini",
+    # Automatically retry on transient API errors like rate limits or server overload.
+    autoretry_for=(core_exceptions.ResourceExhausted, genai_errors.ServerError),
+    retry_backoff=True, retry_kwargs={'max_retries': 5}
+)
 def process_attachment_with_gemini(self, attachment_id):
     """
     Fetches a saved attachment, uploads it directly to the Gemini File API,
@@ -178,29 +185,19 @@ def process_attachment_with_gemini(self, attachment_id):
         # 6. Create Order and related objects from the extracted data
         _create_order_from_invoice_data(attachment, extracted_data, log_prefix)
 
-        # 7. Create or update the ParsedInvoice entry
-        ParsedInvoice.objects.update_or_create(
-            attachment=attachment,
-            defaults={
-                'invoice_number': str(invoice_number).strip() if invoice_number else None,
-                'invoice_date': invoice_date_obj,
-                'total_amount': total_amount,
-            }
-        )
-
         # 8. Update the EmailAttachment status
         attachment.processed = True
         attachment.extracted_data = extracted_data  # Save the JSON for review
         attachment.save(update_fields=['processed', 'extracted_data', 'updated_at'])
 
-        logger.info(f"{log_prefix} Successfully created/updated ParsedInvoice for attachment ID: {attachment_id}")
+        logger.info(f"{log_prefix} Successfully processed attachment {attachment_id} and created associated order.")
         send_receipt_confirmation_email.delay(attachment_id)
         return f"Successfully processed attachment {attachment_id} with Gemini."
 
     except EmailAttachment.DoesNotExist:
         logger.error(f"{log_prefix} Attachment with ID {attachment_id} not found.")
         # Do not re-raise, as this is not a transient error.
-    except (core_exceptions.ResourceExhausted, core_exceptions.DeadlineExceeded) as e:
+    except (core_exceptions.ResourceExhausted, core_exceptions.DeadlineExceeded, genai_errors.ServerError) as e:
         logger.warning(f"{log_prefix} Gemini API rate limit or timeout error for attachment {attachment_id}: {e}. Task will be retried by Celery.")
         raise # Re-raise to let Celery handle the retry
     except Exception as e:
