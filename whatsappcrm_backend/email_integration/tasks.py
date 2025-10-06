@@ -231,14 +231,30 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     # --- 1. Find or Create CustomerProfile ---
     recipient_data = data.get('recipient', {})
     recipient_name = recipient_data.get('name')
+    recipient_phone = recipient_data.get('phone')
     customer_profile = None
-    if recipient_name:
-        # Try to find a profile by full name, otherwise create a new one.
-        # This logic can be made more sophisticated (e.g., using phone or email if available).
+
+    # A contact is required to create a customer profile. Use phone number if available.
+    if recipient_phone:
+        # Normalize the phone number to be just digits for the whatsapp_id
+        normalized_phone = re.sub(r'\D', '', recipient_phone)
+
+        # Find or create the base Contact record
+        contact, contact_created = Contact.objects.get_or_create(
+            whatsapp_id=normalized_phone,
+            defaults={'name': recipient_name or f"Customer {normalized_phone}"}
+        )
+        if contact_created:
+            logger.info(f"{log_prefix} Created new Contact for phone '{normalized_phone}'.")
+
+        # Now, find or create the CustomerProfile linked to the Contact
         customer_profile, created = CustomerProfile.objects.get_or_create(
-            first_name=recipient_name.split(' ')[0],
-            last_name=' '.join(recipient_name.split(' ')[1:]) if ' ' in recipient_name else '',
-            defaults={'notes': f"Profile automatically created from invoice {invoice_number}."}
+            contact=contact,
+            defaults={
+                'first_name': recipient_name.split(' ')[0] if recipient_name else '',
+                'last_name': ' '.join(recipient_name.split(' ')[1:]) if recipient_name and ' ' in recipient_name else '',
+                'notes': f"Profile automatically created from invoice {invoice_number}."
+            }
         )
         if created:
             logger.info(f"{log_prefix} Created new CustomerProfile for '{recipient_name}'.")
