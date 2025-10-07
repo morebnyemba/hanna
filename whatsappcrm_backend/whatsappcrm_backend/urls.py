@@ -9,10 +9,15 @@ from django.conf.urls.static import static
 
 # Import the custom view to replace the default one
 from customer_data.views import MyTokenObtainPairView
+# Import the new landing page view
+from .views import LandingPageView
 
 urlpatterns = [
+    # Landing Page at the root
+    path('', LandingPageView.as_view(), name='landing_page'),
+
     # Django Admin interface - useful for backend management via Jazzmin
-    path('', admin.site.urls),
+    path('admin/', admin.site.urls),
     path('prometheus/', include('django_prometheus.urls')),
     # API endpoints for 'meta_integration' application
     # This includes:
