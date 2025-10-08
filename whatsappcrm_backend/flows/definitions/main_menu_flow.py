@@ -84,14 +84,23 @@ MAIN_MENU_FLOW = {
         },
         {
             "name": "send_ai_welcome_message",
-            "type": "question",
+            "type": "send_message",
             "config": {
-                "message_config": {
-                    "message_type": "text",
-                    "text": {
-                        "body": "You are now connected to Hanna, our AI troubleshooting expert. Please describe your solar power issue in detail. Type 'exit' or 'menu' to end this session."
-                    }
+                "message_type": "text",
+                "text": {
+                    "body": "You are now connected to Hanna, our AI troubleshooting expert. Please describe your solar power issue in detail. Type 'exit' or 'menu' to end this session."
                 }
+            },
+            "transitions": [
+                {"to_step": "end_flow_after_ai_handoff", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "end_flow_after_ai_handoff",
+            "type": "end_flow",
+            "config": {
+                # No final message is needed here, as the welcome message was already sent.
+                # The flow simply needs to terminate.
             },
             "transitions": []
         },

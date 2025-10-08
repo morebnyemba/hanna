@@ -95,12 +95,21 @@ def handle_ai_conversation_task(contact_id: int, message_id: int):
             4. If the problem sounds complex, dangerous, or requires a professional, your primary goal is to guide the user to book a site assessment for their safety.
             5. IMPORTANT: If the user asks to stop, exit, or go back to the menu, you MUST respond with ONLY the special token [END_CONVERSATION] and nothing else."""
 
-        history_messages = Message.objects.filter(contact=contact, timestamp__lte=incoming_message.timestamp).order_by('-timestamp')[:20]
+        # Fetch messages for history, but exclude the one that triggered the AI mode.
+        # The trigger message is often just a button click ("AI Troubleshooter") and not useful for the AI's context.
+        history_messages = Message.objects.filter(
+            contact=contact, 
+            timestamp__lt=incoming_message.timestamp
+        ).order_by('-timestamp')[:20]
         
         gemini_history = []
         # Inject the system prompt as the first message in the history for context
-        gemini_history.append({'role': 'user', 'parts': [system_prompt]})
-        gemini_history.append({'role': 'model', 'parts': ["Understood. I will act as Hanna, the solar expert. How can I help today?"]})
+        # The 'user' role here is a standard way to provide system instructions in the Gemini API.
+        gemini_history.append({
+            'role': 'user', 
+            'parts': [system_prompt]
+        })
+        gemini_history.append({'role': 'model', 'parts': ["Understood. I will act as Hanna, the solar expert. How can I help you today?"]})
 
         for msg in reversed(history_messages):
             role = 'user' if msg.direction == 'in' else 'model'
