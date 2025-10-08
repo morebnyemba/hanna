@@ -107,16 +107,16 @@ def handle_ai_conversation_task(contact_id: int, message_id: int):
         # The 'user' role here is a standard way to provide system instructions in the Gemini API.
         gemini_history.append({
             'role': 'user', 
-            'parts': [system_prompt]
+            'parts': [{'text': system_prompt}]
         })
-        gemini_history.append({'role': 'model', 'parts': ["Understood. I will act as Hanna, the solar expert. How can I help you today?"]})
+        gemini_history.append({'role': 'model', 'parts': [{'text': "Understood. I will act as Hanna, the solar expert. How can I help you today?"}]})
 
         for msg in reversed(history_messages):
             role = 'user' if msg.direction == 'in' else 'model'
             if msg.text_content:
                 if msg.direction == 'in' and msg.text_content.lower().strip() in ['exit', 'menu', 'stop', 'quit']:
                     continue
-                gemini_history.append({'role': role, 'parts': [msg.text_content]})
+                gemini_history.append({'role': role, 'parts': [{'text': msg.text_content}]})
 
         chat = client.chats.create(
             model='models/gemini-1.5-flash', # Use the model identifier
