@@ -72,13 +72,9 @@ MAIN_MENU_FLOW = {
             "config": {
                 "actions_to_run": [
                     {
-                        "action_type": "update_model_instance",
-                        "app_label": "conversations",
-                        "model_name": "Contact",
-                        "instance_id_template": "{{ contact.id }}",
-                        "fields_to_update_template": {
-                            "conversation_mode": "ai_troubleshooting"
-                        }
+                        "action_type": "update_contact_field",
+                        "field_path": "conversation_mode",
+                        "value_template": "ai_troubleshooting"
                     }
                 ]
             },
