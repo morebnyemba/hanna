@@ -60,40 +60,36 @@ LEAD_GENERATION_FLOW = {
                         "body": (
                             "Welcome to our shop! Here are our available products:\n"
                             "{% for category in available_products | groupby('category__name') %}\n"
-                            "*_{{ category.grouper or 'Other Products' }}:_*\n"
+                            "*_{{ category.grouper or 'Other Products' }}:_*\n\n"
                             "{% for product in category.list %}"
-                            "- *{{ product.name }}*\n  SKU: `{{ product.sku }}` | Price: ${{ product.price }}\n"
+                            "_[{{ loop.index + loop.parent.loop.index0 * available_products|length }}]_ *{{ product.name }}*\n  Price: ${{ product.price }}\n"
                             "{% endfor %}"
                             "{% endfor %}\n"
-                            "Please enter the SKU of the product you'd like to add to your cart. Type *done* when you are finished."
+                            "Please enter the number of the product you'd like to add to your cart. Type *done* when you are finished."
                         )
                     }
                 },
-                "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
+                "reply_config": {"expected_type": "number", "save_to_variable": "selected_product_index"}
             },
             "transitions": [
                 {"to_step": "check_if_cart_is_empty", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "verify_sku", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "get_product_from_selection", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         # 5. Verify SKU
         {
-            "name": "verify_sku",
+            "name": "get_product_from_selection",
             "type": "action",
             "config": {
                 "actions_to_run": [{
-                    "action_type": "query_model",
-                    "app_label": "products_and_services",
-                    "model_name": "Product",
+                    "action_type": "set_context_variable",
                     "variable_name": "found_product",
-                    "filters_template": {"sku__iexact": "{{ input_sku }}", "is_active": True},
-                    "fields_to_return": ["sku", "name", "price"],
-                    "limit": 1
+                    "value_template": "{{ [available_products[selected_product_index - 1]] if selected_product_index > 0 and selected_product_index <= available_products|length else [] }}"
                 }]
             },
             "transitions": [
                 {"to_step": "ask_for_quantity", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "found_product.0"}},
-                {"to_step": "handle_invalid_sku", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "handle_invalid_selection", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         # 6. Ask for Quantity
@@ -137,27 +133,27 @@ LEAD_GENERATION_FLOW = {
                             "{% endfor %}\n"
                             "*Subtotal: ${{ total }}*\n\n"
                             "Enter another SKU to add more products, or type *done* to proceed to checkout."
-                        )
+                        ) # This message is now part of a loop and will be updated.
                     }
                 },
-                "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
+                "reply_config": {"expected_type": "number", "save_to_variable": "selected_product_index"}
             },
             "transitions": [
                 {"to_step": "check_if_cart_is_empty", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "verify_sku", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "get_product_from_selection", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         # 9. Handle invalid SKU input
         {
-            "name": "handle_invalid_sku",
+            "name": "handle_invalid_selection",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Sorry, the SKU '{{ input_sku }}' is not valid. Please check the list and enter a valid SKU, or type *done* to finish."}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "input_sku"}
+                "message_config": {"message_type": "text", "text": {"body": "Sorry, that's not a valid selection. Please enter a number from the list, or type *done* to finish."}},
+                "reply_config": {"expected_type": "number", "save_to_variable": "selected_product_index"}
             },
             "transitions": [
                 {"to_step": "check_if_cart_is_empty", "priority": 0, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "done"}},
-                {"to_step": "verify_sku", "priority": 1, "condition_config": {"type": "always_true"}}
+                {"to_step": "get_product_from_selection", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         # 10. Checkout process starts here
