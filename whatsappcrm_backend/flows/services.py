@@ -509,15 +509,18 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                         Model = apps.get_model(app_label, model_name)
 
                         filters_template = action_item_conf.filters_template or {}
-                        filters = _resolve_value(filters_template, current_step_context, contact)
-                        if not isinstance(filters, dict):
-                            logger.warning(f"Contact {contact.id}: 'filters_template' for query_model did not resolve to a dictionary. Using empty filters. Resolved value: {filters}")
+                        # --- FIX: Resolve the entire filters dictionary first ---
+                        # This ensures that values like "{{ context_var }}" are resolved before being used.
+                        resolved_filters = _resolve_value(filters_template, current_step_context, contact)
+                        
+                        if not isinstance(resolved_filters, dict):
+                            logger.warning(f"Contact {contact.id}: 'filters_template' for query_model did not resolve to a dictionary. Using empty filters. Resolved value: {resolved_filters}")
                             filters = {}
                         
                         # --- NEW LOGIC TO SUPPORT __not_in ---
                         exclude_filters = {}
                         final_filters = {}
-                        for key, value in filters.items():
+                        for key, value in resolved_filters.items():
                             if key.endswith('__not_in'):
                                 new_key = key[:-7] + '__in'
                                 try:
