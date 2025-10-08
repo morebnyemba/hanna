@@ -72,18 +72,28 @@ MAIN_MENU_FLOW = {
             "config": {
                 "actions_to_run": [
                     {
-                        "action_type": "update_contact_field",
-                        "field_name": "conversation_mode",
-                        "field_value": "ai_troubleshooting"
-                    },
-                    {
-                        "action_type": "send_message",
-                        "message_config": {
-                            "message_type": "text",
-                            "text": {"body": "You are now connected to Hanna, our AI troubleshooting expert. Please describe your solar power issue in detail. Type 'exit' or 'menu' to end this session."}
+                        "action_type": "update_model_instance",
+                        "model_name": "conversations.Contact",
+                        "fields_to_update": {
+                            "conversation_mode": "ai_troubleshooting"
                         }
                     }
                 ]
+            },
+            "transitions": [
+                {"to_step": "send_ai_welcome_message", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "send_ai_welcome_message",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "You are now connected to Hanna, our AI troubleshooting expert. Please describe your solar power issue in detail. Type 'exit' or 'menu' to end this session."
+                    }
+                }
             },
             "transitions": []
         },

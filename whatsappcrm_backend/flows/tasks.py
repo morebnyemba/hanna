@@ -5,6 +5,7 @@ from django.db import transaction
 
 # --- Gemini AI Integration Imports ---
 from google import genai
+from google.genai import types
 from google.api_core import exceptions as core_exceptions
 from google.genai import errors as genai_errors
 from ai_integration.models import AIProvider
