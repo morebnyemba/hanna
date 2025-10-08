@@ -59,8 +59,8 @@ LEAD_GENERATION_FLOW = {
                     "text": {
                         "body": (
                             "Welcome to our shop! Here are our available products:\n"
-                            "{% for category in available_products | groupby('category__name') %}\n"
-                            "*_{{ category.grouper }}:_*\n"
+                            "{% for category in available_products | groupby('category__name') | sort(attribute='grouper') %}\n"
+                            "*_{{ category.grouper or 'Other Products' }}:_*\n"
                             "{% for product in category.list %}"
                             "- *{{ product.name }}*\n  SKU: `{{ product.sku }}` | Price: ${{ product.price }}\n"
                             "{% endfor %}"
