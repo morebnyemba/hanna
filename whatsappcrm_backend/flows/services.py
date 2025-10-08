@@ -1225,8 +1225,50 @@ def _update_customer_profile_data(contact: Contact, fields_to_update_config: Dic
 def process_message_for_flow(contact: Contact, message_data: dict, incoming_message_obj: Message) -> List[Dict[str, Any]]:
     """
     Main entry point to process an incoming message for a contact against flows.
-    Determines if the contact is in an active flow or if a new flow should be triggered.
+    Determines if the contact is in an active flow, an AI conversation mode, or if a new flow should be triggered.
     """
+    # --- AI Conversation Mode Handling ---
+    if contact.conversation_mode != 'flow':
+        user_text = message_data.get('text', {}).get('body', '').strip().lower()
+        exit_keywords = ['exit', 'menu', 'stop', 'quit']
+
+        if user_text in exit_keywords:
+            logger.info(f"Contact {contact.id} is exiting AI mode with keyword '{user_text}'.")
+            contact.conversation_mode = 'flow'
+            contact.conversation_context = {}
+            contact.save(update_fields=['conversation_mode', 'conversation_context'])
+            
+            # Clear any residual flow state
+            _clear_contact_flow_state(contact)
+            
+            # Send a confirmation message and re-trigger the main menu
+            actions_to_perform = [{
+                'type': 'send_whatsapp_message',
+                'recipient_wa_id': contact.whatsapp_id,
+                'message_type': 'text',
+                'data': {'body': "You are now back in the main menu."}
+            }]
+            
+            # Simulate a 'menu' message to re-trigger the main flow
+            menu_message_data = {'type': 'text', 'text': {'body': 'menu'}}
+            flow_was_triggered = _trigger_new_flow(contact, menu_message_data, incoming_message_obj)
+            if flow_was_triggered:
+                contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').get(contact=contact)
+                entry_step = contact_flow_state.current_step
+                entry_actions, updated_context = _execute_step_actions(entry_step, contact, contact_flow_state.flow_context_data.copy())
+                actions_to_perform.extend(entry_actions)
+                contact_flow_state.flow_context_data = updated_context
+                contact_flow_state.save()
+
+            return actions_to_perform
+        else:
+            # Not an exit command, so process as part of the AI conversation
+            logger.info(f"Contact {contact.id} is in '{contact.conversation_mode}' mode. Triggering AI conversation task.")
+            from .tasks import handle_ai_conversation_task # Local import to avoid circular dependency issues
+            handle_ai_conversation_task.delay(contact_id=contact.id, message_id=incoming_message_obj.id)
+            return [] # Stop further flow processing
+
+    # --- Original Flow Logic Starts Here ---
     # Initialize the list of actions to be performed at the very beginning.
     actions_to_perform = []
 

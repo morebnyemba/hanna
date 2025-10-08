@@ -47,7 +47,7 @@ MAIN_MENU_FLOW = {
                                     "title": "Support & Information",
                                     "rows": [
                                         {"id": "request_warranty", "title": "🛡️ Request Warranty", "description": "Claim warranty for a product. (Coming Soon)"},
-                                        {"id": "troubleshoot_solar", "title": "❓ Troubleshoot Solar", "description": "Get help with your solar system. (Coming Soon)"},
+                                        {"id": "ai_troubleshooter", "title": "🤖 AI Troubleshooter", "description": "Get instant help from our AI assistant."},
                                         {"id": "about_pfungwa", "title": "ℹ️ About Pfungwa", "description": "Learn more about our company."}
                                     ]
                                 }
@@ -62,9 +62,30 @@ MAIN_MENU_FLOW = {
                 {"to_step": "switch_to_installation_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_installation"}},
                 {"to_step": "switch_to_assessment_flow", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "site_assessment"}},
                 {"to_step": "show_coming_soon", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
-                {"to_step": "show_coming_soon", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "troubleshoot_solar"}},
+                {"to_step": "start_ai_troubleshooting_session", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
                 {"to_step": "show_about_pfungwa", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
             ]
+        },
+        {
+            "name": "start_ai_troubleshooting_session",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {
+                        "action_type": "update_contact_field",
+                        "field_name": "conversation_mode",
+                        "field_value": "ai_troubleshooting"
+                    },
+                    {
+                        "action_type": "send_message",
+                        "message_config": {
+                            "message_type": "text",
+                            "text": {"body": "You are now connected to Hanna, our AI troubleshooting expert. Please describe your solar power issue in detail. Type 'exit' or 'menu' to end this session."}
+                        }
+                    }
+                ]
+            },
+            "transitions": []
         },
         {
             "name": "switch_to_purchase_flow",

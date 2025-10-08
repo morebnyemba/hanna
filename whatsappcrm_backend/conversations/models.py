@@ -41,6 +41,24 @@ class Contact(models.Model):
         help_text="Link to a system user if this contact represents an admin/agent."
     )
     
+    # --- Conversation State ---
+    CONVERSATION_MODE_CHOICES = [
+        ('flow', 'Flow-based Conversation'),
+        ('ai_troubleshooting', 'AI Troubleshooting Mode'),
+        # Add other AI modes here, e.g., 'ai_sales_assistant'
+    ]
+    conversation_mode = models.CharField(
+        max_length=30,
+        choices=CONVERSATION_MODE_CHOICES,
+        default='flow',
+        help_text="The current conversation mode for this contact."
+    )
+    conversation_context = models.JSONField(
+        default=dict, 
+        blank=True, 
+        help_text="Stores context for the current conversation, e.g., AI persona or history."
+    )
+    
     needs_human_intervention = models.BooleanField(
         default=False,
         db_index=True,
