@@ -119,7 +119,7 @@ def handle_ai_conversation_task(contact_id: int, message_id: int):
                 gemini_history.append({'role': role, 'parts': [{'text': msg.text_content}]})
 
         chat = client.chats.create(
-            model='models/gemini-1.5-flash', # Use the model identifier
+            model='gemini-2.5-flash', # Use the model identifier
             history=gemini_history
         )
         
