@@ -522,7 +522,7 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                         final_filters = {}
                         for key, value in resolved_filters.items():
                             if key.endswith('__not_in'):
-                                new_key = key[:-7] + '__in'
+                                new_key = key[:-8] + '__in' # FIX: Use double underscore for the 'in' lookup
                                 try:
                                     # ast.literal_eval is a safe way to evaluate a string containing a Python literal.
                                     parsed_value = ast.literal_eval(value) if isinstance(value, str) else value
