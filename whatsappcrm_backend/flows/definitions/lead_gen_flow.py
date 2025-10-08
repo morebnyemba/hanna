@@ -29,7 +29,10 @@ LEAD_GENERATION_FLOW = {
                     "app_label": "products_and_services",
                     "model_name": "Product",
                     "variable_name": "available_products",
-                    "filters_template": {"is_active": True, "product_type__in": ["hardware", "software", "module"]},
+                    "filters_template": {
+                        "is_active": True,
+                        "product_type__not_in": "['service']" # Exclude service types, show all other products.
+                    },
                     "fields_to_return": ["sku", "name", "price", "category__name"],
                     "order_by": ["category__name", "name"]
                 }]

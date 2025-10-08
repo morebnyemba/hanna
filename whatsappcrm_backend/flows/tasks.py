@@ -105,15 +105,17 @@ You must operate strictly within the following framework.
     * Basic troubleshooting fails.
     * The symptoms clearly point to an internal hardware failure.
     * The user is uncomfortable performing a safe step you've suggested.
+    * When escalating, you MUST respond with ONLY the special token `[HUMAN_HANDOVER]` followed by a brief, internal-only reason. For example: `[HUMAN_HANDOVER] User is asking about pricing which is outside my scope.`
 
 ---
 ### Your Task Flow
 
 1.  **Engage & Triage**: Greet the user warmly and begin the **Structured Diagnostics** process by identifying the device they need help with.
-2.  **Investigate & Confirm**: Systematically gather context by asking about symptoms, error codes, and recent events. After gathering details, briefly summarize the problem to the user to confirm your understanding (e.g., "Okay, so if I have this right, your solar inverter is buzzing loudly, and this started after last night's storm. Is that correct?").
-3.  **Advise Safely**: Based on the confirmed information, provide Tier-1 solutions that adhere strictly to the **Zero-Harm Protocol**.
-4.  **Escalate or Resolve**: If the issue is resolved, confirm it with the user. If not, seamlessly transition using the **Confident Escalation** principle. Frame it as the best way to get them a definitive solution.
-5.  **Maintain Control**: If the user asks to stop, exit, or go back to the menu, you MUST respond with ONLY the special token `[END_CONVERSATION]` and nothing else.
+2.  **Stay Focused**: If the user asks about topics outside of technical troubleshooting (like sales, pricing, or general company info), gently guide them back by saying, "I can only assist with technical troubleshooting. To talk about [topic], you can type 'menu' to return to the main menu and select another option."
+3.  **Investigate & Confirm**: Systematically gather context by asking about symptoms, error codes, and recent events. After gathering details, briefly summarize the problem to the user to confirm your understanding (e.g., "Okay, so if I have this right, your solar inverter is buzzing loudly, and this started after last night's storm. Is that correct?").
+4.  **Advise Safely**: Based on the confirmed information, provide Tier-1 solutions that adhere strictly to the **Zero-Harm Protocol**.
+5.  **Escalate or Resolve**: If the issue is resolved, confirm it with the user. If not, seamlessly transition using the **Confident Escalation** principle.
+6.  **Maintain Control**: If the user asks to stop, exit, or go back to the menu, you MUST respond with ONLY the special token `[END_CONVERSATION]` and nothing else.
 """
 
         # Fetch messages for history, but exclude the one that triggered the AI mode.
@@ -149,9 +151,29 @@ You must operate strictly within the following framework.
 
         ai_response_text = response.text.strip()
 
-        if "[END_CONVERSATION]" in ai_response_text:
+        if "[HUMAN_HANDOVER]" in ai_response_text:
+            logger.info(f"{log_prefix} AI requested human handover. Reason: {ai_response_text}")
+            
+            # Exit AI mode and flag for human intervention
+            contact.conversation_mode = 'flow'
+            contact.needs_human_intervention = True
+            contact.save(update_fields=['conversation_mode', 'needs_human_intervention'])
+            
+            # The post_save signal on the Contact model will handle sending notifications.
+            
+            final_reply = "Thank you. I'm connecting you with a team member who can assist you further. They will respond here shortly."
+
+        elif "[END_CONVERSATION]" in ai_response_text:
             logger.info(f"{log_prefix} AI requested to end conversation. The main service will handle resetting the mode.")
             final_reply = "I am now ending this session. Please type 'menu' to see other options."
+            
+            # Exit AI mode
+            contact.conversation_mode = 'flow'
+            contact.save(update_fields=['conversation_mode'])
+
+            # Also clear any residual flow state to be safe
+            _clear_contact_flow_state(contact)
+
         else:
             final_reply = ai_response_text
 
