@@ -555,6 +555,8 @@ def _execute_step_actions(step: FlowStep, contact: Contact, flow_context: dict, 
                                 for key, value in item.items():
                                     if isinstance(value, (date, datetime)):
                                         item[key] = value.isoformat()
+                                    elif isinstance(value, Decimal):
+                                        item[key] = str(value) # Convert Decimal to string for JSON
                                     elif isinstance(value, uuid.UUID):
                                         item[key] = str(value)
                         else:
