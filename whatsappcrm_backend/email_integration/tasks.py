@@ -24,12 +24,20 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-@shared_task(name="email_integration.send_receipt_confirmation_email")
-def send_receipt_confirmation_email(attachment_id):
+@shared_task(
+    bind=True,
+    name="email_integration.send_receipt_confirmation_email",
+    # Automatically retry for connection errors, which are common for email servers.
+    autoretry_for=(ConnectionRefusedError, smtplib.SMTPException),
+    retry_backoff=True, 
+    retry_kwargs={'max_retries': 3}
+)
+def send_receipt_confirmation_email(self, attachment_id):
     """
     Sends an email to the original sender confirming receipt of their attachment.
+    Retries on common SMTP connection errors.
     """
-    log_prefix = "[Email Confirmation Task]"
+    log_prefix = f"[Email Confirmation Task ID: {self.request.id}]"
     logger.info(f"{log_prefix} Preparing to send receipt confirmation for attachment ID: {attachment_id}")
     try:
         attachment = EmailAttachment.objects.get(pk=attachment_id)
@@ -61,8 +69,13 @@ def send_receipt_confirmation_email(attachment_id):
     except EmailAttachment.DoesNotExist:
         logger.error(f"{log_prefix} Could not find EmailAttachment with ID {attachment_id} to send confirmation.")
     except Exception as e:
-        logger.error(f"{log_prefix} Failed to send confirmation email for attachment {attachment_id}: {e}", exc_info=True)
-
+        # Check if the exception is one we are auto-retrying for.
+        # If so, log a warning and re-raise to trigger the retry.
+        if isinstance(e, (ConnectionRefusedError, smtplib.SMTPException)):
+            logger.warning(f"{log_prefix} SMTP connection error for attachment {attachment_id}: {e}. Task will be retried.")
+            raise self.retry(exc=e)
+        logger.error(f"{log_prefix} A non-retriable error occurred while sending confirmation for attachment {attachment_id}: {e}", exc_info=True)
+        # For other errors, we don't want to retry, so we let the task fail permanently.
 @shared_task(
     bind=True,
     name="email_integration.process_attachment_with_gemini",
