@@ -2,6 +2,7 @@ import os
 import logging
 import re
 from google.api_core import exceptions as core_exceptions
+import smtplib
 import json
 from datetime import datetime
 from celery import shared_task, chain
