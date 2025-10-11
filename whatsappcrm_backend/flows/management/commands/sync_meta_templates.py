@@ -41,30 +41,15 @@ class Command(BaseCommand):
             self.stdout.write(f"\nProcessing template: '{template_name}'...")
 
             # --- 1. Convert Jinja2 to Meta format and extract variables ---
-            # This regex finds both simple variables {{...}} and complex blocks {%...%}...{%...%}
-            # It ensures that logic blocks are treated as a single unit.
+            # This regex finds all Jinja2 constructs, both variables `{{...}}` and logic blocks `{%...%}`.
+            # It correctly handles multi-line logic blocks with re.DOTALL.
             jinja_parts = re.findall(r'(\{%.*?%\}|\{\{.*?\}\})', original_body, re.DOTALL)
-            
-            # Consolidate consecutive logic blocks (like an if/else/endif) into one part
-            # and extract unique variables in the order they appear.
-            unique_vars_ordered = []
-            temp_body = original_body
-            
-            # First, replace complex logic blocks with a single placeholder
-            # This handles for loops and if/endif blocks correctly.
-            logic_blocks = re.findall(r'(\{%.*?endfor.*?%\}|\{%.*?endif.*?%\})', temp_body, re.DOTALL)
-            for block in logic_blocks:
-                # The "variable" is the entire block, representing a single dynamic part.
-                unique_vars_ordered.append(block)
-                temp_body = temp_body.replace(block, '{{__LOGIC_BLOCK__}}', 1)
 
-            # Now, find all remaining simple variables
-            simple_vars = re.findall(r'\{\{(.*?)\}\}', temp_body)
-            for var in simple_vars:
-                var_full = f"{{{{{var}}}}}"
-                if var_full not in unique_vars_ordered:
-                    unique_vars_ordered.append(var_full)
+            # The list of unique parts in the order they appear.
+            # This will be used for both replacement and generating example values.
+            unique_vars_ordered = sorted(list(set(jinja_parts)), key=jinja_parts.index)
 
+            # Start with the original body and replace each part sequentially.
             meta_body = original_body
             for idx, var_name in enumerate(unique_vars_ordered):
                 # Use replace with count=1 to handle multiple occurrences correctly
