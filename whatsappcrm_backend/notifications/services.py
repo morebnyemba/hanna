@@ -76,7 +76,14 @@ def queue_notifications_to_users(
 
         if all_potential_users.exists():
             notifications_to_create = [
-                Notification(recipient=user, channel='whatsapp', status='pending', content=final_message_body, related_contact=related_contact, related_flow=related_flow)
+                Notification(
+                    recipient=user, 
+                    channel='whatsapp', 
+                    status='pending', 
+                    content=final_message_body, 
+                    related_contact=related_contact, 
+                    related_flow=related_flow,
+                    template_name=template_name, template_context=template_context)
                 for user in all_potential_users
             ]
 

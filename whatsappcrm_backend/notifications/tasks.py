@@ -10,6 +10,7 @@ from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task
 from conversations.models import Message, Contact
 from .models import Notification
+from .utils import render_template_string
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -72,21 +73,22 @@ def dispatch_notification_task(self, notification_id: int):
 
                 message_type = 'template'
                 template_context = notification.template_context or {}
+                # The recipient is also part of the context for rendering.
+                template_context['recipient'] = recipient
                 
-                # Construct the components payload from the template_context.
-                # This assumes the context contains keys like 'header_variables', 'body_variables', etc.
+                # Find all variables in the template body (e.g., {{ recipient.first_name }})
+                # and render them using the context to get the final values for the API.
+                body_variables = re.findall(r'\{\{.*?\}\}', notification.content)
+                
+                parameters = []
+                for var_placeholder in body_variables:
+                    # Render each placeholder to get its final value
+                    rendered_value = render_template_string(var_placeholder, template_context)
+                    parameters.append({"type": "text", "text": str(rendered_value)})
+
                 components = []
-                if 'header_variables' in template_context and isinstance(template_context['header_variables'], list):
-                    components.append({
-                        "type": "header",
-                        "parameters": [{"type": "text", "text": str(var)} for var in template_context['header_variables']]
-                    })
-                
-                if 'body_variables' in template_context and isinstance(template_context['body_variables'], list):
-                    components.append({
-                        "type": "body",
-                        "parameters": [{"type": "text", "text": str(var)} for var in template_context['body_variables']]
-                    })
+                if parameters:
+                    components.append({"type": "body", "parameters": parameters})
 
                 content_payload = {
                     "name": notification.template_name,

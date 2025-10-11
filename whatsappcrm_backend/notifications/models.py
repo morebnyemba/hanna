@@ -17,6 +17,9 @@ class Notification(models.Model):
     related_contact = models.ForeignKey('conversations.Contact', on_delete=models.SET_NULL, null=True, blank=True, related_name='related_notifications')
     related_flow = models.ForeignKey('flows.Flow', on_delete=models.SET_NULL, null=True, blank=True, related_name='related_notifications')
     
+    template_name = models.CharField(max_length=100, blank=True, null=True, help_text="The name of the WhatsApp template to use if outside the 24h window.")
+    template_context = models.JSONField(blank=True, null=True, help_text="The context data required to render the template variables.")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True, null=True)
