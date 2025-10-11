@@ -41,28 +41,25 @@ class Command(BaseCommand):
             self.stdout.write(f"\nProcessing template: '{template_name}'...")
 
             # --- 1. Convert Jinja2 to Meta format and extract variables ---
-            # This regex finds all Jinja2 constructs, both variables `{{...}}` and logic blocks `{%...%}`.
-            # It correctly handles multi-line logic blocks with re.DOTALL.
+            # This regex finds either a complete Jinja2 logic block `{% ... %}`
+            # or a simple variable block `{{ ... }}`.
             jinja_parts = re.findall(r'(\{%.*?%\}|\{\{.*?\}\})', original_body, re.DOTALL)
 
-            # The list of unique parts in the order they appear.
-            # This will be used for both replacement and generating example values.
-            unique_vars_ordered = sorted(list(set(jinja_parts)), key=jinja_parts.index)
-
+            # The list of parts in the order they appear.
             # Start with the original body and replace each part sequentially.
             meta_body = original_body
-            for idx, var_name in enumerate(unique_vars_ordered):
+            for idx, part in enumerate(jinja_parts):
                 # Use replace with count=1 to handle multiple occurrences correctly
-                meta_body = meta_body.replace(var_name, f'{{{{{idx + 1}}}}}', 1)
+                meta_body = meta_body.replace(part, f'{{{{{idx + 1}}}}}', 1)
 
             # --- 2. Construct the API payload ---
             components = [{"type": "BODY", "text": meta_body}]
 
             # Add example values for variables to aid Meta's review process
-            if unique_vars_ordered:
+            if jinja_parts:
                 # Use the variable names themselves as example values
                 example_values = []
-                for var in unique_vars_ordered:
+                for var in jinja_parts:
                     # Clean up the variable for the example
                     cleaned_var = var.replace('{', '').replace('}', '').strip().split('.')[0]
                     example_values.append(f"[{cleaned_var}]")
