@@ -1,9 +1,12 @@
 import re
 import requests
+import json
 from django.core.management.base import BaseCommand, CommandError
 from .load_notification_templates import NOTIFICATION_TEMPLATES
 
+from notifications.management.commands.load_notification_templates import NOTIFICATION_TEMPLATES
 from meta_integration.models import MetaAppConfig
+from jinja2 import Environment, meta as jinja_meta
 
 class Command(BaseCommand):
     help = 'Syncs local notification templates with the Meta WhatsApp Business API.'
@@ -69,12 +72,12 @@ class Command(BaseCommand):
                 "name": template_name,
                 "language": "en_US",
                 "category": "TRANSACTIONAL", # Or "MARKETING", "UTILITY"
+                "category": "UTILITY", # Changed from "TRANSACTIONAL" to "UTILITY" as per Meta API update
                 "components": components,
             }
 
             if dry_run:
                 self.stdout.write(self.style.NOTICE(f"  [Dry Run] Payload for '{template_name}':"))
-                import json
                 self.stdout.write(json.dumps(payload, indent=2))
                 continue
 
