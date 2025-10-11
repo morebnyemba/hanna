@@ -60,12 +60,37 @@ MAIN_MENU_FLOW = {
             },
             "transitions": [
                 {"to_step": "switch_to_purchase_flow", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "purchase_product"}},
-                {"to_step": "switch_to_installation_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_installation"}},
+                {"to_step": "show_installation_submenu", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_installation"}},
                 {"to_step": "switch_to_assessment_flow", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "site_assessment"}},
                 {"to_step": "switch_to_cleaning_flow", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "solar_cleaning"}},
                 {"to_step": "show_coming_soon", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
                 {"to_step": "start_ai_troubleshooting_session", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
                 {"to_step": "show_about_pfungwa", "priority": 6, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
+            ]
+        },
+        {
+            "name": "show_installation_submenu",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "header": {"type": "text", "text": "Installation Services"},
+                        "body": {"text": "Great! Which type of installation service do you need?"},
+                        "action": {
+                            "buttons": [
+                                {"type": "reply", "reply": {"id": "switch_to_solar_install", "title": "☀️ Solar Installation"}},
+                                {"type": "reply", "reply": {"id": "switch_to_starlink_install", "title": "🛰️ Starlink Installation"}}
+                            ]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_choice"}
+            },
+            "transitions": [
+                {"to_step": "switch_to_solar_installation_flow", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_solar_install"}},
+                {"to_step": "switch_to_starlink_installation_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_starlink_install"}}
             ]
         },
         {
@@ -116,10 +141,19 @@ MAIN_MENU_FLOW = {
             "transitions": []
         },
         {
-            "name": "switch_to_installation_flow",
+            "name": "switch_to_solar_installation_flow",
             "type": "switch_flow",
             "config": {
                 "target_flow_name": "solar_installation_inquiry",
+                "initial_context_template": {"source_flow": "main_menu"}
+            },
+            "transitions": []
+        },
+        {
+            "name": "switch_to_starlink_installation_flow",
+            "type": "switch_flow",
+            "config": {
+                "target_flow_name": "starlink_installation_request",
                 "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []

@@ -387,6 +387,7 @@ class InstallationRequest(models.Model):
     INSTALLATION_TYPES = [
         ('residential', 'Residential'),
         ('commercial', 'Commercial'),
+        ('starlink', 'Starlink'),
     ]
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='installation_requests', verbose_name=_("Customer Profile"))
     associated_order = models.ForeignKey(
@@ -453,6 +454,7 @@ class SolarCleaningRequest(models.Model):
         TILE = 'tile', _('Tile Roof')
         IBR_METAL = 'ibr_metal', _('IBR / Metal Sheet')
         FLAT_CONCRETE = 'flat_concrete', _('Flat Concrete')
+        SHINGLE = 'shingle', _('Shingle Roof')
         OTHER = 'other', _('Other / Not Sure')
 
     class PanelType(models.TextChoices):

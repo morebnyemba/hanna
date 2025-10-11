@@ -1,4 +1,4 @@
-# whatsappcrm_backend/notifications/management/commands/load_notification_templates.py
+# whatsappcrm_backend/flows/management/commands/load_notification_templates.py
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -91,6 +91,25 @@ A new installation request has been submitted by *{{ contact.name or contact.wha
 Please review and schedule the installation."""
     },
     {
+        "name": "new_starlink_installation_request",
+        "description": "Sent to admins when a customer submits a new Starlink installation request.",
+        "template_type": "whatsapp",
+        "body": """New Starlink Installation Request 🛰️
+
+A new Starlink installation request has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+
+*Client & Location:*
+- Name: {{ install_full_name }}
+- Phone: {{ install_phone }}
+- Address: {{ install_address }}
+- Location Pin: https://www.google.com/maps/search/?api=1&query={{ install_location_pin.latitude }},{{ install_location_pin.longitude }}
+
+*Scheduling:*
+- Preferred Date: {{ install_datetime }} ({{ install_availability|title }})
+
+Please follow up to confirm the schedule."""
+    },
+    {
         "name": "new_solar_cleaning_request",
         "description": "Sent to admins when a customer submits a new solar panel cleaning request.",
         "template_type": "whatsapp",
@@ -119,7 +138,7 @@ Please follow up to provide a quote and schedule the service."""
 
 Admin *{{ contact.name or contact.username }}* has created a new order and installation request.
 *Customer:* {{ target_contact.0.name or customer_whatsapp_id }}
-*Order #:* {{ order_number_ref }}
+*Order #:* {{ order_number_ref }}/PO
 *Order Name:* {{ order_description }}
 
 Please see the admin panel for full details."""
