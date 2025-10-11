@@ -1,7 +1,7 @@
 import re
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from flows.definitions.load_notification_templates import NOTIFICATION_TEMPLATES
+from notifications.management.commands.load_notification_templates import NOTIFICATION_TEMPLATES
 from meta_integration.models import MetaAppConfig
 
 class Command(BaseCommand):
@@ -19,8 +19,8 @@ class Command(BaseCommand):
 
         try:
             active_config = MetaAppConfig.objects.get_active_config()
-            if not all([active_config.whatsapp_business_account_id, active_config.access_token]):
-                raise CommandError("Active MetaAppConfig is missing 'WhatsApp Business Account ID' or 'Access Token'.")
+            if not all([active_config.business_account_id, active_config.access_token]):
+                raise CommandError("Active MetaAppConfig is missing 'Business Account ID' or 'Access Token'.")
         except MetaAppConfig.DoesNotExist:
             raise CommandError("No active MetaAppConfig found. Please configure one in the admin panel.")
 
@@ -28,7 +28,7 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(self.style.WARNING("--- DRY RUN MODE: No requests will be sent to Meta. ---"))
 
-        api_url = f"https://graph.facebook.com/v20.0/{active_config.whatsapp_business_account_id}/message_templates"
+        api_url = f"https://graph.facebook.com/v20.0/{active_config.business_account_id}/message_templates"
         headers = {
             "Authorization": f"Bearer {active_config.access_token}",
             "Content-Type": "application/json",

@@ -1,5 +1,4 @@
 # whatsappcrm_backend/notifications/management/commands/load_notification_templates.py
-# (This file has been moved from the 'flows' app to the 'notifications' app for better project structure)
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
