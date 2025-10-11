@@ -77,15 +77,21 @@ def dispatch_notification_task(self, notification_id: int):
                 # The recipient is also part of the context for rendering.
                 template_context['recipient'] = recipient
                 
-                # Find all variables in the template body (e.g., {{ recipient.first_name }})
-                # and render them using the context to get the final values for the API.
-                body_variables = re.findall(r'\{\{.*?\}\}', notification.content)
+                # --- FIX: Correctly parse template and populate parameters ---
+                # Find all Jinja2-style variables/expressions in the template body.
+                # This regex handles simple variables {{ var }} and logic blocks {% if ... %}.
+                jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', notification.content)
                 
                 parameters = []
-                for var_placeholder in body_variables:
-                    # Render each placeholder to get its final value
-                    rendered_value = render_template_string(var_placeholder, template_context)
+                # The Meta API expects parameters in the order they appear in the template.
+                # We iterate through the found parts and render them to get the values.
+                # This approach correctly handles conditional blocks.
+                temp_body_for_rendering = notification.content
+                for idx, part in enumerate(jinja_parts):
+                    # Render the value of the placeholder
+                    rendered_value = render_template_string(part, template_context)
                     parameters.append({"type": "text", "text": str(rendered_value)})
+                # --- END FIX ---
 
                 components = []
                 if parameters:
