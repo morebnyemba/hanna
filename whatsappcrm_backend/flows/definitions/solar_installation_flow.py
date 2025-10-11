@@ -150,28 +150,11 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_residential_order_number",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Great. To proceed with your residential installation, please provide your order number (e.g., 12345/PO). This helps us verify your purchase and payment."}},
+                "message_config": {"message_type": "text", "text": {"body": "Great. To proceed with your residential installation, please provide your order number (e.g., 12345/PO, HAN-54321, or AV01/0034506). This helps us verify your purchase and payment."}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "order_number"}
             },
             "transitions": [
-                {"to_step": "normalize_the_order_number", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "order_number"}}
-            ]
-        },
-        {
-            "name": "normalize_the_order_number",
-            "type": "action",
-            "config": {
-                "actions_to_run": [{
-                    "action_type": "normalize_order_number",
-                    "params_template": {
-                        "input_variable": "order_number",
-                        "output_variable": "order_number",
-                        "default_suffix": "PO"
-                    }
-                }]
-            },
-            "transitions": [
-                {"to_step": "verify_order_payment", "condition_config": {"type": "always_true"}}
+                {"to_step": "verify_order_payment", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "order_number"}}
             ]
         },
         {
