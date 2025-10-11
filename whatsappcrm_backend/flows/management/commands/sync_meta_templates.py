@@ -41,9 +41,9 @@ class Command(BaseCommand):
             self.stdout.write(f"\nProcessing template: '{template_name}'...")
 
             # --- 1. Convert Jinja2 to Meta format and extract variables ---
-            # This regex finds either a complete Jinja2 logic block `{% ... %}`
-            # or a simple variable block `{{ ... }}`.
-            jinja_parts = re.findall(r'(\{%.*?%\}|\{\{.*?\}\})', original_body, re.DOTALL)
+            # This regex correctly finds either a complete Jinja2 logic block (e.g., {% if ... %}...{% endif %})
+            # or a simple variable placeholder `{{ ... }}`.
+            jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', original_body)
 
             # The list of parts in the order they appear.
             # Start with the original body and replace each part sequentially.
