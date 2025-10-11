@@ -40,7 +40,8 @@ MAIN_MENU_FLOW = {
                                     "rows": [
                                         {"id": "purchase_product", "title": "🛒 Shop Products", "description": "Browse and buy solar products."},
                                         {"id": "request_installation", "title": "🛠️ Request Installation", "description": "Schedule a new solar installation."},
-                                        {"id": "site_assessment", "title": "📋 Book Site Assessment", "description": "Book a site visit with our experts."}
+                                        {"id": "site_assessment", "title": "📋 Book Site Assessment", "description": "Book a site visit with our experts."},
+                                        {"id": "solar_cleaning", "title": "💧 Solar Panel Cleaning", "description": "Request a cleaning service."}
                                     ]
                                 },
                                 {
@@ -61,9 +62,10 @@ MAIN_MENU_FLOW = {
                 {"to_step": "switch_to_purchase_flow", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "purchase_product"}},
                 {"to_step": "switch_to_installation_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_installation"}},
                 {"to_step": "switch_to_assessment_flow", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "site_assessment"}},
-                {"to_step": "show_coming_soon", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
-                {"to_step": "start_ai_troubleshooting_session", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
-                {"to_step": "show_about_pfungwa", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
+                {"to_step": "switch_to_cleaning_flow", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "solar_cleaning"}},
+                {"to_step": "show_coming_soon", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
+                {"to_step": "start_ai_troubleshooting_session", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
+                {"to_step": "show_about_pfungwa", "priority": 6, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
             ]
         },
         {
@@ -127,6 +129,15 @@ MAIN_MENU_FLOW = {
             "type": "switch_flow",
             "config": {
                 "target_flow_name": "site_inspection_request",
+                "initial_context_template": {"source_flow": "main_menu"}
+            },
+            "transitions": []
+        },
+        {
+            "name": "switch_to_cleaning_flow",
+            "type": "switch_flow",
+            "config": {
+                "target_flow_name": "solar_cleaning_request",
                 "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []

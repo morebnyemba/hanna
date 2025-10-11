@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest
+from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest
 
 class InteractionInline(admin.TabularInline):
     """
@@ -121,4 +121,25 @@ class SiteAssessmentRequestAdmin(admin.ModelAdmin):
     search_fields = ('assessment_id', 'full_name', 'company_name', 'address', 'contact_info')
     readonly_fields = ('created_at', 'updated_at')
     autocomplete_fields = ['customer']
+    list_editable = ('status',)
+
+@admin.register(SolarCleaningRequest)
+class SolarCleaningRequestAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'status', 'preferred_date', 'roof_type', 'panel_count', 'created_at')
+    list_filter = ('status', 'roof_type', 'panel_type', 'availability', 'created_at')
+    search_fields = ('full_name', 'contact_phone', 'address')
+    readonly_fields = ('created_at', 'updated_at')
+    autocomplete_fields = ['customer']
+    list_editable = ('status',)
+    fieldsets = (
+        ('Request Details', {
+            'fields': ('customer', 'status', 'full_name', 'contact_phone')
+        }),
+        ('Job Specifications', {
+            'fields': ('roof_type', 'panel_type', 'panel_count')
+        }),
+        ('Scheduling & Location', {
+            'fields': ('preferred_date', 'availability', 'address', ('latitude', 'longitude'))
+        }),
+    )
     list_editable = ('status',)

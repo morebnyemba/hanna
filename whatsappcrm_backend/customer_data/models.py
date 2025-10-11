@@ -443,3 +443,64 @@ class SiteAssessmentRequest(models.Model):
 
     def __str__(self):
         return f"Assessment #{self.assessment_id or self.id} for {self.full_name} ({self.status})"
+
+
+class SolarCleaningRequest(models.Model):
+    """
+    Stores customer requests for solar panel cleaning services.
+    """
+    class RoofType(models.TextChoices):
+        TILE = 'tile', _('Tile Roof')
+        IBR_METAL = 'ibr_metal', _('IBR / Metal Sheet')
+        FLAT_CONCRETE = 'flat_concrete', _('Flat Concrete')
+        OTHER = 'other', _('Other / Not Sure')
+
+    class PanelType(models.TextChoices):
+        MONOCRYSTALLINE = 'monocrystalline', _('Monocrystalline')
+        POLYCRYSTALLINE = 'polycrystalline', _('Polycrystalline')
+        NOT_SURE = 'not_sure', _('Not Sure')
+
+    class Availability(models.TextChoices):
+        MORNING = 'morning', _('Morning')
+        AFTERNOON = 'afternoon', _('Afternoon')
+
+    class RequestStatus(models.TextChoices):
+        NEW = 'new', _('New')
+        QUOTED = 'quoted', _('Quoted')
+        SCHEDULED = 'scheduled', _('Scheduled')
+        COMPLETED = 'completed', _('Completed')
+        CANCELLED = 'cancelled', _('Cancelled')
+
+    customer = models.ForeignKey(
+        CustomerProfile,
+        on_delete=models.CASCADE,
+        related_name='solar_cleaning_requests',
+        help_text=_("The customer profile of the contact who made the request.")
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=RequestStatus.choices,
+        default=RequestStatus.NEW,
+        db_index=True
+    )
+    full_name = models.CharField(max_length=255)
+    contact_phone = models.CharField(max_length=20)
+    roof_type = models.CharField(max_length=50, choices=RoofType.choices)
+    panel_type = models.CharField(max_length=50, choices=PanelType.choices)
+    panel_count = models.PositiveIntegerField(help_text=_("The number of solar panels to be cleaned."))
+    preferred_date = models.CharField(max_length=100, help_text=_("Customer's preferred date as a string."))
+    availability = models.CharField(max_length=20, choices=Availability.choices)
+    address = models.TextField()
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Cleaning Request for {self.full_name} on {self.preferred_date}"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Solar Cleaning Request")
+        verbose_name_plural = _("Solar Cleaning Requests")

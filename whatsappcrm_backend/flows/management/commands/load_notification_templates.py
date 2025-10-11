@@ -91,6 +91,27 @@ A new installation request has been submitted by *{{ contact.name or contact.wha
 Please review and schedule the installation."""
     },
     {
+        "name": "new_solar_cleaning_request",
+        "description": "Sent to admins when a customer submits a new solar panel cleaning request.",
+        "template_type": "whatsapp",
+        "body": """New Solar Cleaning Request 💧
+
+A new cleaning request has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+
+*Client Details:*
+- Name: {{ cleaning_full_name }}
+- Phone: {{ cleaning_phone }}
+
+*Job Details:*
+- Roof Type: {{ cleaning_roof_type|title }}
+- Panels: {{ cleaning_panel_count }} x {{ cleaning_panel_type|title }}
+- Preferred Date: {{ cleaning_date }} ({{ cleaning_availability|title }})
+- Address: {{ cleaning_address }}{% if cleaning_location_pin and cleaning_location_pin.latitude %}
+- Location Pin: https://www.google.com/maps/search/?api=1&query={{ cleaning_location_pin.latitude }},{{ cleaning_location_pin.longitude }}{% endif %}
+
+Please follow up to provide a quote and schedule the service."""
+    },
+    {
         "name": "admin_order_and_install_created",
         "description": "Sent to admins when another admin creates a new order and installation request via the admin flow.",
         "template_type": "whatsapp",
@@ -98,8 +119,7 @@ Please review and schedule the installation."""
 
 Admin *{{ contact.name or contact.username }}* has created a new order and installation request.
 *Customer:* {{ target_contact.0.name or customer_whatsapp_id }}
-*Order #:* PO-{{ order_number_ref }}
-*Order #:* {{ order_number_ref }}/PO
+*Order #:* {{ order_number_ref }}
 *Order Name:* {{ order_description }}
 
 Please see the admin panel for full details."""
