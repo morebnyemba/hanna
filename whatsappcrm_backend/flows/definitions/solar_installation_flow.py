@@ -4,7 +4,7 @@ SOLAR_INSTALLATION_FLOW = {
     "name": "solar_installation_inquiry",
     "friendly_name": "Request Solar Installation",
     "description": "Guides a user through scheduling a solar installation for a pre-purchased system or after a site assessment.",
-    "trigger_keywords": ['request installation', 'schedule installation'],
+    "trigger_keywords": [],
     "is_active": True,
     "steps": [
         {

@@ -39,7 +39,7 @@ MAIN_MENU_FLOW = {
                                     "title": "Our Services",
                                     "rows": [
                                         {"id": "purchase_product", "title": "🛒 Shop Products", "description": "Browse and buy solar products."},
-                                        {"id": "request_installation", "title": "🛠️ Request Installation", "description": "Schedule a new solar installation."},
+                                        {"id": "request_installation", "title": "🛠️ Request Installation", "description": "Schedule a Solar or Starlink installation."},
                                         {"id": "site_assessment", "title": "📋 Book Site Assessment", "description": "Book a site visit with our experts."},
                                         {"id": "solar_cleaning", "title": "💧 Solar Panel Cleaning", "description": "Request a cleaning service."}
                                     ]
@@ -80,8 +80,9 @@ MAIN_MENU_FLOW = {
                         "body": {"text": "Great! Which type of installation service do you need?"},
                         "action": {
                             "buttons": [
-                                {"type": "reply", "reply": {"id": "switch_to_solar_install", "title": "☀️ Solar Installation"}},
-                                {"type": "reply", "reply": {"id": "switch_to_starlink_install", "title": "🛰️ Starlink Installation"}}
+                                {"type": "reply", "reply": {"id": "switch_to_solar_install", "title": "☀️ Solar"}},
+                                {"type": "reply", "reply": {"id": "switch_to_starlink_install", "title": "🛰️ Starlink"}},
+                                {"type": "reply", "reply": {"id": "go_back_to_main_menu", "title": "Go Back"}}
                             ]
                         }
                     }
@@ -90,7 +91,8 @@ MAIN_MENU_FLOW = {
             },
             "transitions": [
                 {"to_step": "switch_to_solar_installation_flow", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_solar_install"}},
-                {"to_step": "switch_to_starlink_installation_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_starlink_install"}}
+                {"to_step": "switch_to_starlink_installation_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_starlink_install"}},
+                {"to_step": "show_main_menu", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back_to_main_menu"}}
             ]
         },
         {
