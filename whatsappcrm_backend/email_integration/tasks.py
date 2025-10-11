@@ -48,22 +48,43 @@ def send_receipt_confirmation_email(self, attachment_id):
             return "Skipped: No sender email."
 
         subject = f"Confirmation: We've received your document '{attachment.filename}'"
-        message = (
+        
+        # Plain text version for email clients that don't support HTML
+        text_message = (
             f"Dear Sender,\n\n"
             f"This is an automated message to confirm that we have successfully received your attachment named '{attachment.filename}'.\n\n"
             f"Our system is now processing it. You will be notified if any further action is required.\n\n"
             f"Thank you,\n"
             f"Hanna Installations"
         )
-        
-        from_email = os.getenv("MAILU_IMAP_USER")
-        if not from_email:
-            logger.warning(f"{log_prefix} MAILU_IMAP_USER environment variable not set. Falling back to default from_email.")
-            from_email = settings.DEFAULT_FROM_EMAIL
 
+        # HTML version for a richer user experience
+        html_message = f"""
+        <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 600px; margin: auto; }}
+                    .header {{ font-size: 1.2em; font-weight: bold; color: #28a745; }}
+                    strong {{ color: #000; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <p class="header">Document Receipt Confirmation</p>
+                    <p>Dear Sender,</p>
+                    <p>This is an automated message to confirm that we have successfully received your attachment named <strong>'{attachment.filename}'</strong>.</p>
+                    <p>Our system is now processing it. You will be notified if any further action is required.</p>
+                    <p>Thank you,<br><strong>Hanna Installations</strong></p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        from_email = settings.DEFAULT_FROM_EMAIL
         recipient_list = [attachment.sender]
 
-        send_mail(subject, message, from_email, recipient_list)
+        send_mail(subject, text_message, from_email, recipient_list, html_message=html_message)
         
         logger.info(f"{log_prefix} Successfully sent confirmation email to {attachment.sender} for attachment {attachment_id}.")
         return f"Confirmation sent to {attachment.sender}."
