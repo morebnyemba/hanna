@@ -9,6 +9,20 @@ from notifications.models import NotificationTemplate
 # This makes them easy to manage and deploy.
 NOTIFICATION_TEMPLATES = [
     {
+        "name": "new_order_created",
+        "description": "Sent to admins when a new order is created via a signal.",
+        "template_type": "whatsapp",
+        "body": """New Order Created! 📦
+
+A new order has been created for customer *{{ customer.get_full_name or customer.contact.name }}*.
+
+- Order Name: *{{ order.name }}*
+- Order #: *{{ order.order_number }}*
+- Amount: *${{ order.amount }}*
+
+Please see the admin panel for full details."""
+    },
+    {
         "name": "new_online_order_placed",
         "description": "Sent to admins when a customer places a new order through the 'Purchase Product' flow.",
         "template_type": "whatsapp",
@@ -84,7 +98,6 @@ Please review and schedule the installation."""
         "body": """Admin Action: New Order & Install Created 📝
 
 Admin *{{ contact.name or contact.username }}* has created a new order and installation request.
-
 *Customer:* {{ target_contact.0.name or customer_whatsapp_id }}
 *Order #:* PO-{{ order_number_ref }}
 *Order #:* {{ order_number_ref }}/PO
@@ -133,6 +146,43 @@ A new placeholder order has been created by *{{ contact.name or contact.whatsapp
 *Order #:* {{ normalized_order_number }}
 
 Please update the order details in the admin panel as soon as possible."""
+    },
+    {
+        "name": "message_send_failure",
+        "description": "Sent to admins when a WhatsApp message fails to send.",
+        "template_type": "whatsapp",
+        "body": """Message Send Failure ⚠️
+
+Failed to send a message to *{{ related_contact.name or related_contact.whatsapp_id }}*.
+
+*Reason:* {{ template_context.message.error_details or 'Unknown error' }}
+
+Please check the system logs for more details."""
+    },
+    {
+        "name": "admin_24h_window_reminder",
+        "description": "Sent to an admin user when their 24-hour interaction window is about to close.",
+        "template_type": "whatsapp",
+        "body": """Hi {{ recipient.first_name or recipient.username }},
+
+This is an automated reminder. Your 24-hour interaction window for receiving system notifications on WhatsApp is closing soon.
+
+Please reply with "status" or any other command to keep the window open."""
+    },
+    {
+        "name": "invoice_processed_successfully",
+        "description": "Sent to admins when an invoice from an email has been successfully processed into an order.",
+        "template_type": "whatsapp",
+        "body": """Invoice Processed Successfully ✅
+
+An invoice from *{{ template_context.attachment.sender }}* (Filename: *{{ template_context.attachment.filename }}*) has been processed.
+
+*Order Details:*
+- Order #: *{{ template_context.order.order_number }}*
+- Total Amount: *${{ template_context.order.amount }}*
+- Customer: *{{ template_context.customer.get_full_name or template_context.customer.contact.name }}*
+
+The new order has been created in the system."""
     },
 ]
 

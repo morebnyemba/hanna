@@ -56,28 +56,44 @@ def dispatch_notification_task(self, notification_id: int):
             if is_window_open:
                 logger.info(f"Dispatching notification {notification.id} as a regular text message (window is open).")
                 message_type = 'text'
-                content_payload = {'body': notification.content}
+                # The 'content' field on the Notification model holds the rendered text for free-form messages.
+                content_payload = {'body': notification.content} 
             else:
-                # Window is closed, use template fallback
-                fallback_template_name = getattr(settings, 'ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME', None)
-                if not fallback_template_name:
-                    error_msg = f"User '{recipient.username}' 24-hour window is closed, and no ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME is set in settings."
+                # --- NEW LOGIC: Window is closed, so we MUST use a pre-approved template. ---
+                logger.info(f"User '{recipient.username}' 24-hour window is closed. Attempting to send notification {notification.id} as a template message.")
+                
+                if not notification.template_name:
+                    error_msg = f"Cannot send notification {notification.id}: 24-hour window is closed and no template_name is set on the notification."
                     logger.error(f"Cannot send notification {notification.id}: {error_msg}")
                     notification.status = 'failed'
                     notification.error_message = error_msg
                     notification.save(update_fields=['status', 'error_message'])
                     return
 
-                logger.info(f"Dispatching notification {notification.id} as a template message (window is closed).")
                 message_type = 'template'
-                # Truncate content to fit template parameter limits. 512 is a safe bet for a body parameter.
-                truncated_content = (notification.content[:509] + '...') if len(notification.content) > 512 else notification.content
+                template_context = notification.template_context or {}
+                
+                # Construct the components payload from the template_context.
+                # This assumes the context contains keys like 'header_variables', 'body_variables', etc.
+                components = []
+                if 'header_variables' in template_context and isinstance(template_context['header_variables'], list):
+                    components.append({
+                        "type": "header",
+                        "parameters": [{"type": "text", "text": str(var)} for var in template_context['header_variables']]
+                    })
+                
+                if 'body_variables' in template_context and isinstance(template_context['body_variables'], list):
+                    components.append({
+                        "type": "body",
+                        "parameters": [{"type": "text", "text": str(var)} for var in template_context['body_variables']]
+                    })
 
                 content_payload = {
-                    "name": fallback_template_name,
+                    "name": notification.template_name,
                     "language": {"code": "en_US"},
-                    "components": [{"type": "body", "parameters": [{"type": "text", "text": truncated_content}]}]
+                    "components": components
                 }
+                logger.info(f"Dispatching template '{notification.template_name}' with components: {components}")
 
             with transaction.atomic():
                 message = Message.objects.create(

@@ -15,6 +15,7 @@ from decimal import Decimal, InvalidOperation
 from customer_data.models import CustomerProfile, Order, OrderItem
 from conversations.models import Contact
 from products_and_services.models import Product
+from notifications.services import queue_notifications_to_users
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
 from django.core.mail import send_mail
@@ -351,6 +352,24 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                 )
             OrderItem.objects.create(order=order, product=product, quantity=item_data.get('quantity', 1), unit_price=item_data.get('unit_price', 0))
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
+
+    # --- 4. Send a specific notification about the processed invoice ---
+    # This is more specific than the generic 'new_order_created' signal.
+    if order_created and customer_profile:
+        template_context = {
+            'attachment': attachment,
+            'order': order,
+            'customer': customer_profile,
+        }
+        queue_notifications_to_users(
+            template_name='invoice_processed_successfully',
+            group_names=["System Admins", "Sales Team"], # Notify relevant teams
+            related_contact=customer_profile.contact,
+            template_context=template_context
+        )
+        logger.info(f"{log_prefix} Queued 'invoice_processed_successfully' notification for Order ID {order.id}.")
+
+
 
 @shared_task(name="email_integration.fetch_email_attachments_task")
 def fetch_email_attachments_task():
