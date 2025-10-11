@@ -1,7 +1,7 @@
 import re
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from .load_notification_templates import NOTIFICATION_TEMPLATES
+from notifications.management.commands.load_notification_templates import NOTIFICATION_TEMPLATES
 from meta_integration.models import MetaAppConfig
 
 class Command(BaseCommand):
@@ -40,15 +40,34 @@ class Command(BaseCommand):
             self.stdout.write(f"\nProcessing template: '{template_name}'...")
 
             # --- 1. Convert Jinja2 to Meta format and extract variables ---
-            variables = re.findall(r'\{\{\s*(.*?)\s*\}\}', original_body)
-            unique_vars_ordered = sorted(list(set(variables)), key=variables.index)
+            # This regex finds both simple variables {{...}} and complex blocks {%...%}...{%...%}
+            # It ensures that logic blocks are treated as a single unit.
+            jinja_parts = re.findall(r'(\{%.*?%\}|\{\{.*?\}\})', original_body, re.DOTALL)
+            
+            # Consolidate consecutive logic blocks (like an if/else/endif) into one part
+            # and extract unique variables in the order they appear.
+            unique_vars_ordered = []
+            temp_body = original_body
+            
+            # First, replace complex logic blocks with a single placeholder
+            # This handles for loops and if/endif blocks correctly.
+            logic_blocks = re.findall(r'(\{%.*?endfor.*?%\}|\{%.*?endif.*?%\})', temp_body, re.DOTALL)
+            for block in logic_blocks:
+                # The "variable" is the entire block, representing a single dynamic part.
+                unique_vars_ordered.append(block)
+                temp_body = temp_body.replace(block, '{{__LOGIC_BLOCK__}}', 1)
+
+            # Now, find all remaining simple variables
+            simple_vars = re.findall(r'\{\{(.*?)\}\}', temp_body)
+            for var in simple_vars:
+                var_full = f"{{{{{var}}}}}"
+                if var_full not in unique_vars_ordered:
+                    unique_vars_ordered.append(var_full)
 
             meta_body = original_body
             for idx, var_name in enumerate(unique_vars_ordered):
-                var_regex = r'\{\{\s*' + re.escape(var_name) + r'\s*\}\}'
-                meta_body = re.sub(var_regex, f'{{{{{idx + 1}}}}}', meta_body)
-            
-            meta_body = re.sub(r'\{%.*?%\}', '', meta_body).strip()
+                # Use replace with count=1 to handle multiple occurrences correctly
+                meta_body = meta_body.replace(var_name, f'{{{{{idx + 1}}}}}', 1)
 
             # --- 2. Construct the API payload ---
             components = [{"type": "BODY", "text": meta_body}]
@@ -56,7 +75,11 @@ class Command(BaseCommand):
             # Add example values for variables to aid Meta's review process
             if unique_vars_ordered:
                 # Use the variable names themselves as example values
-                example_values = [f"[{var.split('.')[0]}]" for var in unique_vars_ordered]
+                example_values = []
+                for var in unique_vars_ordered:
+                    # Clean up the variable for the example
+                    cleaned_var = var.replace('{', '').replace('}', '').strip().split('.')[0]
+                    example_values.append(f"[{cleaned_var}]")
                 components[0]["example"] = {"body_text": [example_values]}
 
             payload = {
