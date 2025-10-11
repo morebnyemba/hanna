@@ -77,18 +77,18 @@ def dispatch_notification_task(self, notification_id: int):
                 # The recipient is also part of the context for rendering.
                 template_context['recipient'] = recipient
                 
-                # --- FIX: Correctly parse template and populate parameters ---
-                # Find all Jinja2-style variables/expressions in the template body.
-                # This regex handles simple variables {{ var }} and logic blocks {% if ... %}.
-                jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', notification.content)
+                # --- FIX: Render the entire body first, then extract parameters ---
+                # 1. Render the full template body to resolve all Jinja logic (ifs, fors, etc.)
+                # The result will be a string with placeholders like `{{1}}`, `{{2}}`, etc.
+                rendered_body_with_placeholders = render_template_string(notification.content, template_context)
+
+                # 2. Find all the Jinja2 variables/expressions from the *original* template content.
+                # This gives us the values we need to fill in, in the correct order.
+                jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', notification.template_name)
                 
                 parameters = []
-                # The Meta API expects parameters in the order they appear in the template.
-                # We iterate through the found parts and render them to get the values.
-                # This approach correctly handles conditional blocks.
-                temp_body_for_rendering = notification.content
                 for idx, part in enumerate(jinja_parts):
-                    # Render the value of the placeholder
+                    # 3. Render each individual part to get its final value.
                     rendered_value = render_template_string(part, template_context)
                     parameters.append({"type": "text", "text": str(rendered_value)})
                 # --- END FIX ---

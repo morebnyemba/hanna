@@ -360,12 +360,17 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     # as long as a customer profile exists to associate it with.
     if order and customer_profile:
         # Convert model instances to dictionaries to ensure they are JSON serializable
+        customer_dict = model_to_dict(customer_profile, fields=['id', 'first_name', 'last_name'])
+        # Manually add the full name and contact name for the template
+        customer_dict['full_name'] = customer_profile.get_full_name()
+        customer_dict['contact_name'] = getattr(getattr(customer_profile, 'contact', None), 'name', '')
+
         # FIX: Wrap the context in a 'template_context' key to match the template's variable access.
         # The template expects `{{ template_context.order.order_number }}`, not `{{ order.order_number }}`.
         final_context_for_template = {'template_context': {
             'attachment': model_to_dict(attachment, fields=['id', 'filename', 'sender']),
             'order': model_to_dict(order, fields=['id', 'order_number', 'name', 'amount']),
-            'customer': model_to_dict(customer_profile, fields=['id', 'first_name', 'last_name']),
+            'customer': customer_dict,
         }}
         queue_notifications_to_users(
             template_name='invoice_processed_successfully',
