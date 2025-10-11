@@ -259,6 +259,7 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     Creates or updates an Order, CustomerProfile, and OrderItems from extracted invoice data.
     """
     logger.info(f"{log_prefix} Starting to create Order from extracted data for attachment {attachment.id}.")
+    from django.forms.models import model_to_dict
 
     invoice_number = data.get('invoice_number')
     if not invoice_number:
@@ -356,10 +357,11 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     # --- 4. Send a specific notification about the processed invoice ---
     # This is more specific than the generic 'new_order_created' signal.
     if order_created and customer_profile:
+        # Convert model instances to dictionaries to ensure they are JSON serializable
         template_context = {
-            'attachment': attachment,
-            'order': order,
-            'customer': customer_profile,
+            'attachment': model_to_dict(attachment, fields=['id', 'filename', 'sender']),
+            'order': model_to_dict(order, fields=['id', 'order_number', 'name', 'amount']),
+            'customer': model_to_dict(customer_profile, fields=['id', 'first_name', 'last_name']),
         }
         queue_notifications_to_users(
             template_name='invoice_processed_successfully',
