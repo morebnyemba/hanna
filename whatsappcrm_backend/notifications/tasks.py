@@ -10,7 +10,7 @@ from django.conf import settings
 from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task
 from conversations.models import Message, Contact
-from .models import Notification
+from .models import Notification, NotificationTemplate
 from .utils import render_template_string
 
 logger = logging.getLogger(__name__)
@@ -77,22 +77,29 @@ def dispatch_notification_task(self, notification_id: int):
 
                 message_type = 'template'
                 template_context = notification.template_context or {}
-                # The recipient is also part of the context for rendering.
-                template_context['recipient'] = recipient
+                # Create a copy to avoid modifying the stored context
+                render_context = template_context.copy()
+                render_context['recipient'] = recipient
                 
-                # --- FIX: Render the entire body first, then extract parameters ---
-                # 1. Render the full template body to resolve all Jinja logic (ifs, fors, etc.)
-                # The result will be a string with placeholders like `{{1}}`, `{{2}}`, etc.
-                rendered_body_with_placeholders = render_template_string(notification.content, template_context)
+                # --- FIX: Fetch the original template to get the correct variable structure ---
+                try:
+                    template_model = NotificationTemplate.objects.get(name=notification.template_name)
+                    original_template_body = template_model.message_body
+                except NotificationTemplate.DoesNotExist:
+                    error_msg = f"Cannot send template notification {notification.id}: Template '{notification.template_name}' not found in database."
+                    logger.error(error_msg)
+                    notification.status = 'failed'
+                    notification.error_message = error_msg
+                    notification.save(update_fields=['status', 'error_message'])
+                    return
 
                 # 2. Find all the Jinja2 variables/expressions from the *original* template content.
-                # This gives us the values we need to fill in, in the correct order.
-                jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', notification.content)
+                jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', original_template_body)
                 
                 parameters = []
                 for idx, part in enumerate(jinja_parts):
                     # 3. Render each individual part to get its final value.
-                    rendered_value = render_template_string(part, template_context)
+                    rendered_value = render_template_string(part, render_context)
                     parameters.append({"type": "text", "text": str(rendered_value)})
                 # --- END FIX ---
 
