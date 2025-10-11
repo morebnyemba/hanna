@@ -43,17 +43,18 @@ def queue_notifications_to_users(
     if template_name:
         try:
             template = NotificationTemplate.objects.get(name=template_name)
-            # Build the context for rendering
-            render_context = template_context or {}
+            # Build the context for rendering. Start with a copy of the provided context.
+            render_context = (template_context or {}).copy()
+
+            # Add related objects to the context, ensuring they are serializable if they are models.
+            # This is crucial because the context will be saved to a JSONField.
             if related_contact:
-                render_context['contact'] = related_contact
+                render_context['contact'] = str(related_contact) # Convert model to string
                 if hasattr(related_contact, 'customer_profile'):
-                    render_context['customer_profile'] = related_contact.customer_profile
+                    # Assuming customer_profile might be needed. Convert it as well.
+                    render_context['customer_profile'] = str(related_contact.customer_profile)
             if related_flow:
-                render_context['flow'] = related_flow
-            
-            # Add template_context itself for nested access like {{ template_context.last_bot_message }}
-            render_context['template_context'] = template_context or {}
+                render_context['flow'] = str(related_flow)
             
             final_message_body = render_template_string(template.message_body, render_context)
         except NotificationTemplate.DoesNotExist:
@@ -83,7 +84,7 @@ def queue_notifications_to_users(
                     content=final_message_body, 
                     related_contact=related_contact, 
                     related_flow=related_flow,
-                    template_name=template_name, template_context=template_context)
+                    template_name=template_name, template_context=render_context) # Use the cleaned render_context
                 for user in all_potential_users
             ]
 
