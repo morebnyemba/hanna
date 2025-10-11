@@ -1,7 +1,7 @@
 import re
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from notifications.management.commands.load_notification_templates import NOTIFICATION_TEMPLATES
+from management.commands.load_notification_templates import NOTIFICATION_TEMPLATES
 from meta_integration.models import MetaAppConfig
 
 class Command(BaseCommand):
