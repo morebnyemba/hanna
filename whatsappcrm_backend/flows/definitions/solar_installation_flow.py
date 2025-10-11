@@ -67,8 +67,83 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "installation_type"}
             },
             "transitions": [
-                {"to_step": "ask_residential_order_number", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_residential"}},
+                {"to_step": "query_customer_paid_orders", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_residential"}},
                 {"to_step": "ask_commercial_assessment_number", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "install_commercial"}}
+            ]
+        },
+        {
+            "name": "query_customer_paid_orders",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "customer_data",
+                    "model_name": "Order",
+                    "variable_name": "customer_paid_orders",
+                    "filters_template": {
+                        "customer_id": "{{ customer_profile.id }}",
+                        "payment_status": "paid",
+                        "stage": "closed_won"
+                    },
+                    "fields_to_return": ["id", "order_number", "name", "amount"],
+                    "order_by": ["-created_at"]
+                }]
+            },
+            "transitions": [
+                {"to_step": "display_paid_orders_for_selection", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "customer_paid_orders.0"}},
+                {"to_step": "handle_no_paid_orders_found", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "display_paid_orders_for_selection",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "list",
+                        "header": {"type": "text", "text": "Select Your Order"},
+                        "body": {"text": "Great! We found the following paid orders under your profile. Please select the one you'd like to schedule for installation."},
+                        "action": {
+                            "button": "Choose Order",
+                            "sections": [{
+                                "title": "Your Paid Orders",
+                                "rows": "{{ customer_paid_orders | to_interactive_rows(row_template={'id': '{{ item.id }}', 'title': '{{ item.order_number }}', 'description': '{{ item.name }}'}) }}"
+                            }]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "selected_order_id"}
+            },
+            "transitions": [
+                {"to_step": "verify_order_payment_from_selection", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "selected_order_id"}}
+            ]
+        },
+        {
+            "name": "handle_no_paid_orders_found",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "header": {"type": "text", "text": "No Orders Found"},
+                        "body": {"text": "We couldn't find any paid orders linked to your WhatsApp number.\n\nHow would you like to proceed?"},
+                        "action": {
+                            "buttons": [
+                                {"type": "reply", "reply": {"id": "enter_order_manually", "title": "Enter Order Number"}},
+                                {"type": "reply", "reply": {"id": "enter_assessment_manually", "title": "Enter Assessment No."}},
+                                {"type": "reply", "reply": {"id": "request_agent_help", "title": "Speak to an Agent"}}
+                            ]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "no_order_choice"}
+            },
+            "transitions": [
+                {"to_step": "ask_residential_order_number", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "enter_order_manually"}},
+                {"to_step": "ask_commercial_assessment_number", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "enter_assessment_manually"}},
+                {"to_step": "handle_payment_not_found", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_agent_help"}}
             ]
         },
         {
@@ -289,6 +364,27 @@ SOLAR_INSTALLATION_FLOW = {
                         "order_number__iexact": "{{ order_number }}"
                     },
                     "fields_to_return": ["id", "stage", "name", "payment_status"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "check_order_status", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "found_order.0"}},
+                {"to_step": "handle_payment_not_found", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "verify_order_payment_from_selection",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "customer_data",
+                    "model_name": "Order",
+                    "variable_name": "found_order",
+                    "filters_template": {
+                        "id": "{{ selected_order_id }}"
+                    },
+                    "fields_to_return": ["id", "order_number", "stage", "name", "payment_status"],
                     "limit": 1
                 }]
             },
