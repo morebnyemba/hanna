@@ -41,13 +41,16 @@ def dispatch_notification_task(self, notification_id: int):
         notification.save(update_fields=['status', 'error_message'])
         return
 
-    # Check if the user's 24-hour interaction window is open
+    # Check if the user's 24-hour interaction window is open by looking at the last message
+    # in their conversation, regardless of direction. This is more reliable than contact.last_seen
+    # for admin users who may only receive outgoing notifications.
     twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
-    is_window_open = (
-        hasattr(recipient, 'whatsapp_contact') and
-        recipient.whatsapp_contact and
-        recipient.whatsapp_contact.last_seen >= twenty_four_hours_ago
-    )
+    last_message = Message.objects.filter(contact=recipient.whatsapp_contact).order_by('-timestamp').first()
+    
+    is_window_open = False
+    if last_message:
+        is_window_open = last_message.timestamp >= twenty_four_hours_ago
+
 
     if notification.channel == 'whatsapp':
         try:
@@ -84,7 +87,7 @@ def dispatch_notification_task(self, notification_id: int):
 
                 # 2. Find all the Jinja2 variables/expressions from the *original* template content.
                 # This gives us the values we need to fill in, in the correct order.
-                jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', notification.template_name)
+                jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', notification.content)
                 
                 parameters = []
                 for idx, part in enumerate(jinja_parts):

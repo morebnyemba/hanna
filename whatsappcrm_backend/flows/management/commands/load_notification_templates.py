@@ -179,7 +179,7 @@ An invoice from *{{ template_context.attachment.sender }}* (Filename: *{{ templa
 *Order Details:*
 - Order #: *{{ template_context.order.order_number }}*
 - Total Amount: *${{ template_context.order.amount }}*
-- Customer: *{{ template_context.customer.get_full_name or template_context.customer.contact.name }}*
+- Customer: *{{ template_context.customer.full_name or template_context.customer.contact_name }}*
 
 The new order has been created in the system."""
     },
