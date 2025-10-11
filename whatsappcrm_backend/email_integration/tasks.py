@@ -356,7 +356,9 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
 
     # --- 4. Send a specific notification about the processed invoice ---
     # This is more specific than the generic 'new_order_created' signal.
-    if order_created and customer_profile:
+    # FIX: The notification should be sent if the order was created OR updated,
+    # as long as a customer profile exists to associate it with.
+    if order and customer_profile:
         # Convert model instances to dictionaries to ensure they are JSON serializable
         template_context = {
             'attachment': model_to_dict(attachment, fields=['id', 'filename', 'sender']),
