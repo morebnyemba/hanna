@@ -4,7 +4,6 @@ import json
 from django.core.management.base import BaseCommand, CommandError
 from .load_notification_templates import NOTIFICATION_TEMPLATES
 
-from notifications.management.commands.load_notification_templates import NOTIFICATION_TEMPLATES
 from meta_integration.models import MetaAppConfig
 from jinja2 import Environment, meta as jinja_meta
 
@@ -71,7 +70,6 @@ class Command(BaseCommand):
             payload = {
                 "name": template_name,
                 "language": "en_US",
-                "category": "TRANSACTIONAL", # Or "MARKETING", "UTILITY"
                 "category": "UTILITY", # Changed from "TRANSACTIONAL" to "UTILITY" as per Meta API update
                 "components": components,
             }
