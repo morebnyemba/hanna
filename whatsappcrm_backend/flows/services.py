@@ -42,6 +42,24 @@ class FlowActionRegistry:
     def get(self, name): return self._actions.get(name)
 flow_action_registry = FlowActionRegistry()
 
+def _make_context_json_serializable(context: dict) -> dict:
+    """
+    Recursively cleans a dictionary to ensure all its values are JSON serializable.
+    Converts Django model instances to their string representation.
+    """
+    cleaned_context = {}
+    for key, value in context.items():
+        if isinstance(value, models.Model):
+            cleaned_context[key] = str(value)  # Convert model instance to its string representation
+        elif isinstance(value, dict):
+            cleaned_context[key] = _make_context_json_serializable(value)
+        elif isinstance(value, list):
+            # This is a simplified list handling; assumes list doesn't contain complex objects needing deep serialization
+            cleaned_context[key] = value
+        else:
+            cleaned_context[key] = value
+    return cleaned_context
+
 def send_group_notification_action(contact: Contact, flow_context: dict, params: dict) -> list:
     """
     Custom flow action to queue notifications for admin user groups.
@@ -58,9 +76,12 @@ def send_group_notification_action(contact: Contact, flow_context: dict, params:
     current_flow_id = flow_context.get('_flow_state', {}).get('current_flow_id')
     related_flow = Flow.objects.filter(pk=current_flow_id).first() if current_flow_id else None
 
+    # Create a JSON-serializable version of the context before passing it to the notification service.
+    serializable_context = _make_context_json_serializable(flow_context)
+
     queue_notifications_to_users(
         template_name=template_name,
-        template_context=flow_context.copy(), # Pass a copy to prevent modification of the original context
+        template_context=serializable_context,
         group_names=group_names,
         contact_ids=contact_ids,
         related_contact=contact,
