@@ -438,9 +438,10 @@ class MetaWebhookAPIView(View):
         # --- Send Read Receipt ---
         self._send_read_receipt(whatsapp_message_id, active_config)
 
-    def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig):
+    def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig, show_typing_indicator: bool = True):
         """
         Dispatches a Celery task to send a read receipt for the given message ID.
+        By default, it also shows a typing indicator.
         """
         if not wamid:
             logger.warning(f"Cannot send read receipt: Missing WAMID.")
@@ -448,9 +449,10 @@ class MetaWebhookAPIView(View):
 
         send_read_receipt_task.delay(
             wamid=wamid,
-            config_id=app_config.id
+            config_id=app_config.id,
+            show_typing_indicator=show_typing_indicator
         )
-        logger.info(f"Dispatched read receipt task for WAMID {wamid}.")
+        logger.info(f"Dispatched read receipt task for WAMID {wamid} (Typing: {show_typing_indicator}).")
 
 
     # --- Placeholder for other handlers from your original file ---
