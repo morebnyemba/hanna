@@ -175,13 +175,22 @@ def process_attachment_with_gemini(self, attachment_id):
         prompt = f"""
         Analyze the provided document (likely an invoice or receipt).
         Perform OCR to extract key details and structure them into a single, valid JSON object.
+        Your task is to analyze the document and extract information into a structured JSON object.
 
         The desired JSON schema is:
+        **Instructions:**
+        1.  Analyze the document and populate the fields according to the JSON schema below.
+        2.  If a value for any field cannot be found in the document, you **MUST** use `null` for that field. Do not omit the key.
+        3.  Your final output **MUST** be only the raw JSON object. Do not include any explanatory text, apologies, or markdown formatting like `json` before or after the JSON block.
+
+        **JSON Schema:**
         {json_schema_definition}
 
         **Extraction Rules:**
         - For the 'invoice_number', prioritize the value associated with the "Customer Reference No" field. If that is not present, look for a standard "Invoice Number".
         - The 'invoice_date' must be in 'YYYY-MM-DD' format.
+        **Formatting Rules:**
+        - Dates must be in 'YYYY-MM-DD' format.
         - All monetary values must be numeric (float or integer), not strings.
         - If a field is not found, its value should be null.
 
