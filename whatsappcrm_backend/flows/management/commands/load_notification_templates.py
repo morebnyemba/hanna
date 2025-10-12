@@ -102,10 +102,14 @@ A new Starlink installation request has been submitted by *{{ contact.name or co
 - Name: {{ install_full_name }}
 - Phone: {{ install_phone }}
 - Address: {{ install_address }}
-- Location Pin: https://www.google.com/maps/search/?api=1&query={{ install_location_pin.latitude }},{{ install_location_pin.longitude }}
+{% if install_location_pin and install_location_pin.latitude %}- Location Pin: https://www.google.com/maps/search/?api=1&query={{ install_location_pin.latitude }},{{ install_location_pin.longitude }}{% endif %}
 
 *Scheduling:*
 - Preferred Date: {{ install_datetime }} ({{ install_availability|title }})
+
+*Job Details:*
+- Kit Type: {{ install_kit_type|title }}
+- Desired Mount: {{ install_mount_location }}
 
 Please follow up to confirm the schedule."""
     },
