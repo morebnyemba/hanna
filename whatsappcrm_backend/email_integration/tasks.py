@@ -355,13 +355,11 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     # This is more specific than the generic 'new_order_created' signal.
     if order_created and customer_profile:
         # Convert model instances to dictionaries to ensure they are JSON serializable
+        # FIX: Convert 'order' and 'customer' objects to dictionaries using model_to_dict
         template_context = {
-            'attachment': attachment,
-            'order': order,
-            'customer': customer_profile,
             'attachment': model_to_dict(attachment, fields=['id', 'filename', 'sender']),
-            'order': model_to_dict(order, fields=['id', 'order_number', 'name', 'amount']),
-            'customer': model_to_dict(customer_profile, fields=['id', 'first_name', 'last_name']),
+            'order': model_to_dict(order, fields=['id', 'order_number', 'name', 'amount', 'currency']),
+            'customer': model_to_dict(customer_profile, fields=['contact', 'first_name', 'last_name', 'company']),
         }
         queue_notifications_to_users(
             template_name='invoice_processed_successfully',
