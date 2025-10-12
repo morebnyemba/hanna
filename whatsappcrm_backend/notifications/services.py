@@ -48,14 +48,10 @@ def queue_notifications_to_users(
             # Build the context for rendering. Start with a copy of the provided context.
             render_context = (template_context or {}).copy()
 
-            # --- FIX: Ensure all model instances in the context are serialized to dicts ---
-            for key, value in render_context.items():
-                if isinstance(value, (Order, CustomerProfile, Contact)):
-                    render_context[key] = model_to_dict(value)
-
-            # Add related objects to the context, converting them to strings for simple display.
+            # Add related objects to the context, ensuring they are serializable if they are models.
+            # This is crucial because the context will be saved to a JSONField.
             if related_contact:
-                render_context['contact'] = str(related_contact)
+                render_context['contact'] = str(related_contact) # Convert model to string
                 if hasattr(related_contact, 'customer_profile'):
                     # Assuming customer_profile might be needed. Convert it as well.
                     render_context['customer_profile'] = str(related_contact.customer_profile)
