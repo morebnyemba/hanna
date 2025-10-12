@@ -165,6 +165,22 @@ A new site assessment has been requested by *{{ contact.name or contact.whatsapp
 Please follow up to schedule the assessment."""
     },
     {
+        "name": "job_card_created_successfully",
+        "description": "Sent to admins when a job card is successfully created from an email attachment.",
+        "template_type": "whatsapp",
+        "body": """New Job Card Created ⚙️
+
+A new job card has been automatically created from an email attachment.
+
+*Job Card #*: {{ template_context.job_card.job_card_number }}
+*Customer*: {{ template_context.customer.first_name }} {{ template_context.customer.last_name }}
+*Product*: {{ template_context.job_card.product_description }}
+*Serial #*: {{ template_context.job_card.product_serial_number }}
+*Reported Fault*: {{ template_context.job_card.reported_fault }}
+
+Please review the job card in the admin panel and assign it to a technician."""
+    },
+    {
         "name": "human_handover_flow",
         "description": "Sent to admins when a user is handed over to a human agent by the flow engine.",
         "template_type": "whatsapp",

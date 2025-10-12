@@ -1,28 +1,25 @@
 import os
 import logging
 import re
-from google.api_core import exceptions as core_exceptions
 import smtplib
 import json
 from datetime import datetime
-from celery import shared_task, chain
 
+from celery import shared_task
 from google import genai
-from google.genai import types as genai_types
+from google.api_core import exceptions as core_exceptions
 from google.genai import errors as genai_errors
-from .models import EmailAttachment, ParsedInvoice
-from decimal import Decimal, InvalidOperation
-from customer_data.models import CustomerProfile, Order, OrderItem
+from django.core.management import call_command
+from django.core.mail import send_mail
+from django.conf import settings
+from django.forms.models import model_to_dict
+
+from .models import EmailAttachment
+from ai_integration.models import AIProvider
+from customer_data.models import CustomerProfile, Order, OrderItem, JobCard # Import the new JobCard model
 from conversations.models import Contact
 from products_and_services.models import Product
 from notifications.services import queue_notifications_to_users
-from django.core.exceptions import ObjectDoesNotExist
-from django.core.management import call_command
-from django.core.mail import send_mail
-
-# Import the new model to fetch credentials
-from ai_integration.models import AIProvider
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -356,27 +353,21 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
 
     # --- 4. Send a specific notification about the processed invoice ---
     # This is more specific than the generic 'new_order_created' signal.
-    # FIX: The notification should be sent if the order was created OR updated,
-    # as long as a customer profile exists to associate it with.
-    if order and customer_profile:
+    if order_created and customer_profile:
         # Convert model instances to dictionaries to ensure they are JSON serializable
-        customer_dict = model_to_dict(customer_profile, fields=['id', 'first_name', 'last_name'])
-        # Manually add the full name and contact name for the template
-        customer_dict['full_name'] = customer_profile.get_full_name()
-        customer_dict['contact_name'] = getattr(getattr(customer_profile, 'contact', None), 'name', '')
-
-        # FIX: Wrap the context in a 'template_context' key to match the template's variable access.
-        # The template expects `{{ template_context.order.order_number }}`, not `{{ order.order_number }}`.
-        final_context_for_template = {'template_context': {
+        template_context = {
+            'attachment': attachment,
+            'order': order,
+            'customer': customer_profile,
             'attachment': model_to_dict(attachment, fields=['id', 'filename', 'sender']),
             'order': model_to_dict(order, fields=['id', 'order_number', 'name', 'amount']),
-            'customer': customer_dict,
-        }}
+            'customer': model_to_dict(customer_profile, fields=['id', 'first_name', 'last_name']),
+        }
         queue_notifications_to_users(
             template_name='invoice_processed_successfully',
             group_names=["System Admins", "Sales Team"], # Notify relevant teams
             related_contact=customer_profile.contact,
-            template_context=final_context_for_template
+            template_context=template_context
         )
         logger.info(f"{log_prefix} Queued 'invoice_processed_successfully' notification for Order ID {order.id}.")
 

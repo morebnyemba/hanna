@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest
+from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, JobCard
 
 class InteractionInline(admin.TabularInline):
     """
@@ -143,3 +143,13 @@ class SolarCleaningRequestAdmin(admin.ModelAdmin):
         }),
     )
     list_editable = ('status',)
+
+@admin.register(JobCard)
+class JobCardAdmin(admin.ModelAdmin):
+    list_display = ('job_card_number', 'customer', 'product_description', 'status', 'is_under_warranty', 'creation_date')
+    list_filter = ('status', 'is_under_warranty', 'creation_date')
+    search_fields = ('job_card_number', 'customer__first_name', 'customer__last_name', 'product_description', 'product_serial_number', 'reported_fault')
+    readonly_fields = ('created_at', 'updated_at')
+    autocomplete_fields = ['customer']
+    list_editable = ('status',)
+    date_hierarchy = 'creation_date'

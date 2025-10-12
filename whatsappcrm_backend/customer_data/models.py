@@ -506,3 +506,36 @@ class SolarCleaningRequest(models.Model):
         ordering = ['-created_at']
         verbose_name = _("Solar Cleaning Request")
         verbose_name_plural = _("Solar Cleaning Requests")
+
+
+class JobCard(models.Model):
+    """
+    Stores information extracted from a service job card.
+    """
+    class Status(models.TextChoices):
+        OPEN = 'open', _('Open')
+        IN_PROGRESS = 'in_progress', _('In Progress')
+        AWAITING_PARTS = 'awaiting_parts', _('Awaiting Parts')
+        RESOLVED = 'resolved', _('Resolved')
+        CLOSED = 'closed', _('Closed')
+
+    job_card_number = models.CharField(_("Job Card Number"), max_length=100, unique=True, db_index=True)
+    customer = models.ForeignKey(CustomerProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='job_cards')
+    product_description = models.CharField(_("Product Description"), max_length=255, blank=True, null=True)
+    product_serial_number = models.CharField(_("Product Serial Number"), max_length=255, blank=True, null=True, db_index=True)
+    reported_fault = models.TextField(_("Reported Fault"), blank=True, null=True)
+    is_under_warranty = models.BooleanField(_("Under Warranty"), default=False)
+    creation_date = models.DateField(_("Creation Date"), null=True, blank=True)
+    status = models.CharField(_("Status"), max_length=50, choices=Status.choices, default=Status.OPEN, db_index=True)
+    job_card_details = models.JSONField(_("Extracted Job Card Details"), null=True, blank=True, help_text=_("Raw JSON data extracted from the document."))
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Job Card #{self.job_card_number} for {self.customer or 'Unknown Customer'}"
+
+    class Meta:
+        ordering = ['-creation_date', '-created_at']
+        verbose_name = _("Job Card")
+        verbose_name_plural = _("Job Cards")
