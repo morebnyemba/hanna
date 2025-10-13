@@ -102,6 +102,45 @@ def send_receipt_confirmation_email(self, attachment_id):
         logger.error(f"{log_prefix} An unexpected error occurred while sending confirmation for attachment {attachment_id}: {e}", exc_info=True)
         raise  # Re-raise to let Celery mark the task as failed for non-retriable errors.
 
+@shared_task(
+    bind=True,
+    name="email_integration.send_duplicate_invoice_email",
+    autoretry_for=(ConnectionRefusedError, smtplib.SMTPException),
+    retry_backoff=True,
+    retry_kwargs={'max_retries': 3}
+)
+def send_duplicate_invoice_email(self, attachment_id, order_number):
+    """
+    Sends an email to the original sender informing them that the invoice
+    they sent is a duplicate of an existing order.
+    """
+    log_prefix = f"[Duplicate Email Task ID: {self.request.id}]"
+    logger.info(f"{log_prefix} Preparing to send duplicate invoice notification for attachment ID: {attachment_id}")
+    try:
+        attachment = EmailAttachment.objects.get(pk=attachment_id)
+        if not attachment.sender:
+            logger.warning(f"{log_prefix} Attachment {attachment_id} has no sender email. Cannot send notification.")
+            return "Skipped: No sender email."
+
+        subject = f"Duplicate Invoice Detected: '{attachment.filename}'"
+        message = (
+            f"Dear Sender,\n\n"
+            f"This is an automated message to inform you that the invoice '{attachment.filename}' you sent appears to be a duplicate.\n\n"
+            f"An order with the same invoice number ({order_number}) already exists in our system.\n\n"
+            f"No further action is needed. If you believe this is an error, please contact our support team.\n\n"
+            f"Thank you,\n"
+            f"Hanna Installations"
+        )
+        from_email = settings.DEFAULT_FROM_EMAIL
+        recipient_list = [attachment.sender]
+        send_mail(subject, message, from_email, recipient_list)
+        logger.info(f"{log_prefix} Successfully sent duplicate invoice email to {attachment.sender}.")
+        return f"Duplicate notification sent to {attachment.sender}."
+    except EmailAttachment.DoesNotExist:
+        logger.error(f"{log_prefix} Could not find EmailAttachment with ID {attachment_id} to send duplicate notification.")
+    except Exception as e:
+        logger.error(f"{log_prefix} An unexpected error occurred while sending duplicate notification for attachment {attachment_id}: {e}", exc_info=True)
+        raise
 
 @shared_task(
     bind=True,
@@ -303,7 +342,17 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     invoice_number = data.get('invoice_number')
     if not invoice_number:
         logger.warning(f"{log_prefix} No 'invoice_number' in data. Cannot create order.")
+    invoice_number = str(data.get('invoice_number', '')).strip()
+    # Check for empty, null, or zero invoice numbers
+    if not invoice_number or invoice_number == '0':
+        logger.warning(f"{log_prefix} No valid 'invoice_number' in data. Cannot create order. Value was: '{data.get('invoice_number')}'")
         return
+
+    # --- NEW: Check for existing order BEFORE creating ---
+    if Order.objects.filter(order_number=invoice_number).exists():
+        logger.warning(f"{log_prefix} Order with number '{invoice_number}' already exists. Skipping creation and sending duplicate notification.")
+        send_duplicate_invoice_email.delay(attachment.id, invoice_number)
+        return # Stop processing
 
     invoice_date_obj = None
     if date_str := data.get('invoice_date'):
@@ -313,6 +362,8 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             logger.warning(f"{log_prefix} Could not parse date string '{date_str}' for Order.")
 
     order, order_created = Order.objects.update_or_create(
+    # Since we checked for existence, we can now safely create it.
+    order = Order.objects.create(
         order_number=invoice_number,
         defaults={
             'customer': customer_profile,
@@ -323,6 +374,13 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             'invoice_details': data,
             'expected_close_date': invoice_date_obj,
         }
+        customer=customer_profile,
+        name=f"Invoice {invoice_number}",
+        stage=Order.Stage.CLOSED_WON,
+        payment_status=Order.PaymentStatus.PAID,
+        source=Order.Source.EMAIL_IMPORT,
+        invoice_details=data,
+        expected_close_date=invoice_date_obj,
     )
 
     if order_created:
@@ -330,6 +388,7 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     else:
         logger.info(f"{log_prefix} Updated existing Order with order_number '{invoice_number}'.")
         order.items.all().delete()
+    logger.info(f"{log_prefix} Created new Order with order_number '{invoice_number}'.")
 
     line_items = data.get('line_items', [])
     if isinstance(line_items, list):
