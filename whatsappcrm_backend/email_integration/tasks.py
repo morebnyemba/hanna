@@ -20,6 +20,7 @@ from notifications.services import queue_notifications_to_users
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
 from django.core.mail import send_mail
+from django.db import transaction
 from django.db.models import Q
 
 # Import the new model to fetch credentials
