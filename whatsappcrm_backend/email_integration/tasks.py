@@ -339,9 +339,6 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     
     customer_profile = _get_or_create_customer_profile(data.get('recipient', {}), log_prefix)
     
-    invoice_number = data.get('invoice_number')
-    if not invoice_number:
-        logger.warning(f"{log_prefix} No 'invoice_number' in data. Cannot create order.")
     invoice_number = str(data.get('invoice_number', '')).strip()
     # Check for empty, null, or zero invoice numbers
     if not invoice_number or invoice_number == '0':
@@ -361,19 +358,9 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
         except (ValueError, TypeError):
             logger.warning(f"{log_prefix} Could not parse date string '{date_str}' for Order.")
 
-    order, order_created = Order.objects.update_or_create(
     # Since we checked for existence, we can now safely create it.
     order = Order.objects.create(
         order_number=invoice_number,
-        defaults={
-            'customer': customer_profile,
-            'name': f"Invoice {invoice_number}",
-            'stage': Order.Stage.CLOSED_WON,
-            'payment_status': Order.PaymentStatus.PAID, # The amount is now calculated by the signal
-            'source': Order.Source.EMAIL_IMPORT,
-            'invoice_details': data,
-            'expected_close_date': invoice_date_obj,
-        }
         customer=customer_profile,
         name=f"Invoice {invoice_number}",
         stage=Order.Stage.CLOSED_WON,
@@ -383,11 +370,6 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
         expected_close_date=invoice_date_obj,
     )
 
-    if order_created:
-        logger.info(f"{log_prefix} Created new Order with order_number '{invoice_number}'.")
-    else:
-        logger.info(f"{log_prefix} Updated existing Order with order_number '{invoice_number}'.")
-        order.items.all().delete()
     logger.info(f"{log_prefix} Created new Order with order_number '{invoice_number}'.")
 
     line_items = data.get('line_items', [])
