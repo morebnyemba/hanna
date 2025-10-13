@@ -6,6 +6,12 @@ from django.conf import settings
 from django.utils import timezone
 from conversations.models import Contact
 import uuid
+# --- ADD THESE IMPORTS ---
+from django.db.models import Sum, F
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from decimal import Decimal
+# --- END IMPORTS ---
 
 class LeadStatus(models.TextChoices):
     """Defines the choices for the lead status in the sales pipeline."""
@@ -282,6 +288,16 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # --- ADD THIS METHOD ---
+    def update_total_amount(self):
+        """
+        Recalculates the order's total amount by summing the 'total_amount'
+        of all its related OrderItems.
+        """
+        new_total = self.items.aggregate(
+            total=Sum('total_amount')
+        )['total'] or Decimal('0.00')
+        self.amount = new_total
     def __str__(self):
         return f"Order #{self.order_number or self.id} for {self.customer}"
 
@@ -307,12 +323,16 @@ class OrderItem(models.Model):
         _("Unit Price"), max_digits=12, decimal_places=2,
         help_text=_("Price of the product at the time the order was placed.")
     )
+    # --- ADD THIS FIELD ---
+    total_amount = models.DecimalField(
+        _("Total Amount"), max_digits=12, decimal_places=2, default=0,
+        help_text=_("The total amount for this line item (quantity * unit_price + tax).")
+    )
+    # --- END FIELD ---
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name} for Order {self.order.id}"
-
-
 
 class PaymentStatus(models.TextChoices):
     PENDING = 'pending', _('Pending')
@@ -539,3 +559,15 @@ class JobCard(models.Model):
         ordering = ['-creation_date', '-created_at']
         verbose_name = _("Job Card")
         verbose_name_plural = _("Job Cards")
+
+
+# --- ADD THIS SIGNAL AT THE VERY END OF THE FILE ---
+@receiver([post_save, post_delete], sender=OrderItem)
+def on_order_item_change(sender, instance, **kwargs):
+    """
+    When an OrderItem is created, updated, or deleted,
+    recalculate the total amount of the parent Order.
+    """
+    order = instance.order
+    order.update_total_amount()
+    order.save(update_fields=['amount'])

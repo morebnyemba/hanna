@@ -318,8 +318,7 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             'customer': customer_profile,
             'name': f"Invoice {invoice_number}",
             'stage': Order.Stage.CLOSED_WON,
-            'payment_status': Order.PaymentStatus.PAID,
-            'amount': data.get('total_amount'), # Note: Still using direct amount as requested
+            'payment_status': Order.PaymentStatus.PAID, # The amount is now calculated by the signal
             'source': Order.Source.EMAIL_IMPORT,
             'invoice_details': data,
             'expected_close_date': invoice_date_obj,
@@ -343,7 +342,13 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                     price=item_data.get('unit_price', 0),
                     product_type=Product.ProductType.HARDWARE
                 )
-            OrderItem.objects.create(order=order, product=product, quantity=item_data.get('quantity', 1), unit_price=item_data.get('unit_price', 0))
+            OrderItem.objects.create(
+                order=order, 
+                product=product, 
+                quantity=item_data.get('quantity', 1), 
+                unit_price=item_data.get('unit_price', 0),
+                total_amount=item_data.get('total_amount', 0) # Save the line item total
+            )
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
 
 
