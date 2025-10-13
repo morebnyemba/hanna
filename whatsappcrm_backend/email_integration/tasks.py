@@ -365,12 +365,20 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     
     customer_profile = _get_or_create_customer_profile(data.get('recipient', {}), log_prefix)
     
-    # --- IMPROVED: Prioritize invoice_number, but fall back to customer_reference_no ---
-    invoice_number = str(data.get('invoice_number') or data.get('customer_reference_no') or '').strip()
+    # --- FIX: More robust fallback logic for order number ---
+    invoice_num_raw = data.get('invoice_number')
+    cust_ref_raw = data.get('customer_reference_no')
+    invoice_number = None
 
-    # Check for empty, null, or zero invoice numbers after attempting fallbacks
-    if not invoice_number or invoice_number == '0':
-        logger.warning(f"{log_prefix} No valid 'invoice_number' or 'customer_reference_no' in data. Cannot create order.")
+    # Prioritize invoice_number only if it's a meaningful, non-zero value
+    if invoice_num_raw and str(invoice_num_raw).strip() and str(invoice_num_raw).strip() != '0':
+        invoice_number = str(invoice_num_raw).strip()
+    # Fallback to customer_reference_no if it exists and invoice_number was not valid
+    elif cust_ref_raw and str(cust_ref_raw).strip():
+        invoice_number = str(cust_ref_raw).strip()
+
+    if not invoice_number:
+        logger.warning(f"{log_prefix} No valid 'invoice_number' or 'customer_reference_no' found in data. Cannot create order.")
         return
 
     # --- NEW: Check for existing order BEFORE creating ---
