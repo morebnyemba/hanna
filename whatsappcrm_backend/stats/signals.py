@@ -108,7 +108,7 @@ def on_order_change(sender, instance, created, **kwargs):
         if instance.customer and hasattr(instance.customer, 'contact'):
             # This is a standard order linked to a customer.
             activity_payload = {
-                "id": f"order_new_{instance.id}",
+                "id": f"order_new_{instance.pk}",
                 "text": f"New Order: '{instance.name}' for {instance.customer}",
                 "timestamp": instance.created_at.isoformat(),
                 "iconName": "FiShoppingCart",
@@ -119,47 +119,44 @@ def on_order_change(sender, instance, created, **kwargs):
             # --- NEW: Send WhatsApp notification to admins ---
             from notifications.services import queue_notifications_to_users
             
-            # --- FIX START: Convert model instances to JSON-serializable dictionaries ---
-            # This prevents the "Object of type Order is not JSON serializable" TypeError.
-            # We explicitly pull the data we need for the notification template.
+            # --- FIX: Use .pk instead of .id to get the primary key robustly. ---
             order_data = {
-                'id': instance.id,
+                'id': instance.pk, # Use .pk instead of .id
                 'name': instance.name,
                 'order_number': instance.order_number,
-                # Convert Decimal to float for JSON compatibility
                 'amount': float(instance.amount) if instance.amount else 0.0,
             }
 
             customer_data = {
-                'id': instance.customer.id,
+                'id': instance.customer.pk, # Use .pk instead of .id
                 'full_name': instance.customer.get_full_name(),
                 'contact_name': getattr(instance.customer.contact, 'name', 'N/A'),
             }
+            # --- END FIX ---
 
             template_context = {
                 'order': order_data,
                 'customer': customer_data,
             }
-            # --- FIX END ---
 
             queue_notifications_to_users(
                 template_name='new_order_created',
                 group_names=["System Admins", "Sales Team"], # Adjust groups as needed
                 related_contact=instance.customer.contact,
-                template_context=template_context # Pass the sanitized dictionary
+                template_context=template_context 
             )
-            logger.info(f"Queued 'new_order_created' notification for Order ID {instance.id}.")
+            logger.info(f"Queued 'new_order_created' notification for Order ID {instance.pk}.")
         else:
             # This is likely a placeholder order created without a customer.
             activity_payload = {
-                "id": f"order_new_{instance.id}",
+                "id": f"order_new_{instance.pk}",
                 "text": f"New Placeholder Order: '{instance.name or instance.order_number}' created.",
                 "timestamp": instance.created_at.isoformat(),
                 "iconName": "FiShoppingCart",
                 "iconColor": "text-gray-500"
             }
             broadcast_activity_log.delay(activity_payload)
-            logger.info(f"Logged creation of placeholder order ID {instance.id} (no customer attached).")
+            logger.info(f"Logged creation of placeholder order ID {instance.pk} (no customer attached).")
 
 
 # The on_payment_change signal handler has been removed as the Payment model
