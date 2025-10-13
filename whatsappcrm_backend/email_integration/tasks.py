@@ -20,6 +20,7 @@ from notifications.services import queue_notifications_to_users
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
 from django.core.mail import send_mail
+from django.db.models import Q
 
 # Import the new model to fetch credentials
 from ai_integration.models import AIProvider
@@ -92,14 +93,11 @@ def send_receipt_confirmation_email(self, attachment_id):
         return f"Confirmation sent to {attachment.sender}."
     except EmailAttachment.DoesNotExist:
         logger.error(f"{log_prefix} Could not find EmailAttachment with ID {attachment_id} to send confirmation.")
+        # No retry needed, this is a permanent failure for this task instance.
     except Exception as e:
-        # Check if the exception is one we are auto-retrying for.
-        # If so, log a warning and re-raise to trigger the retry.
-        if isinstance(e, (ConnectionRefusedError, smtplib.SMTPException)):
-            logger.warning(f"{log_prefix} SMTP connection error for attachment {attachment_id}: {e}. Task will be retried.")
-            raise self.retry(exc=e)
-        logger.error(f"{log_prefix} A non-retriable error occurred while sending confirmation for attachment {attachment_id}: {e}", exc_info=True)
-        # For other errors, we don't want to retry, so we let the task fail permanently.
+        # The `autoretry_for` decorator handles SMTP exceptions. We just need to log other errors.
+        logger.error(f"{log_prefix} An unexpected error occurred while sending confirmation for attachment {attachment_id}: {e}", exc_info=True)
+        raise  # Re-raise to let Celery mark the task as failed for non-retriable errors.
 @shared_task(
     bind=True,
     name="email_integration.process_attachment_with_gemini",
@@ -131,7 +129,12 @@ def process_attachment_with_gemini(self, attachment_id):
             # Using the explicit client-based approach as per the documentation
             client = genai.Client(api_key=active_provider.api_key)
         except (AIProvider.DoesNotExist, AIProvider.MultipleObjectsReturned) as e:
-            raise ValueError(f"Gemini API key configuration error: {e}")
+            error_message = f"Gemini API key configuration error: {e}"
+            logger.error(f"{log_prefix} {error_message}")
+            attachment.processed = True
+            attachment.extracted_data = {"error": error_message, "status": "failed"}
+            attachment.save(update_fields=['processed', 'extracted_data'])
+            return f"Failed: {error_message}"
 
         # 2. Upload the local file to the Gemini API
         file_path = attachment.file.path
@@ -244,7 +247,7 @@ def process_attachment_with_gemini(self, attachment_id):
             attachment.processed = True # Mark as processed to avoid retry loops on permanent errors
             attachment.extracted_data = {"error": str(e), "status": "failed"}
             attachment.save(update_fields=['processed', 'extracted_data'])
-        raise
+        # Do not re-raise; the error is logged and the attachment is marked as failed.
     finally:
         # 9. Clean up: Delete the file from the Gemini service
         if uploaded_file:
@@ -255,6 +258,7 @@ def process_attachment_with_gemini(self, attachment_id):
             except Exception as e:
                 logger.error(f"{log_prefix} Failed to delete uploaded Gemini file {uploaded_file.name}: {e}")
 
+@transaction.atomic
 def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log_prefix: str):
     """
     Creates or updates an Order, CustomerProfile, and OrderItems from extracted invoice data.
@@ -336,22 +340,23 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             product_description = item_data.get('description', 'Unknown Product')
             product_code = item_data.get('product_code')
             
-            # Try to find by SKU first if it exists, then by name.
+            # Efficiently find by SKU or name, creating if neither exists.
+            product_query = Q()
             if product_code:
-                product, _ = Product.objects.get_or_create(
+                product_query |= Q(sku=product_code)
+            if product_description:
+                product_query |= Q(name=product_description)
+
+            product = Product.objects.filter(product_query).first() if product_query else None
+
+            if not product:
+                product = Product.objects.create(
                     sku=product_code,
-                    defaults={
-                        'name': product_description,
-                        'price': item_data.get('unit_price', 0),
-                        'product_type': Product.ProductType.HARDWARE # Default type
-                    }
-                )
-            else:
-                # Fallback to finding by name if no product code is available
-                product, _ = Product.objects.get_or_create(
                     name=product_description,
-                    defaults={'price': item_data.get('unit_price', 0), 'product_type': Product.ProductType.HARDWARE}
+                    price=item_data.get('unit_price', 0),
+                    product_type=Product.ProductType.HARDWARE # Default type
                 )
+
             OrderItem.objects.create(order=order, product=product, quantity=item_data.get('quantity', 1), unit_price=item_data.get('unit_price', 0))
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
 
@@ -375,7 +380,7 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
         }}
         queue_notifications_to_users(
             template_name='invoice_processed_successfully',
-            group_names=["System Admins", "Sales Team"], # Notify relevant teams
+            group_names=settings.INVOICE_PROCESSED_NOTIFICATION_GROUPS, # Notify relevant teams
             related_contact=customer_profile.contact,
             template_context=final_context_for_template
         )
