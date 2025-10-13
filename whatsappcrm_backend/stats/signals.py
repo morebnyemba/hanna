@@ -119,16 +119,34 @@ def on_order_change(sender, instance, created, **kwargs):
             # --- NEW: Send WhatsApp notification to admins ---
             from notifications.services import queue_notifications_to_users
             
-            template_context = {
-                'order': instance,
-                'customer': instance.customer,
+            # --- FIX START: Convert model instances to JSON-serializable dictionaries ---
+            # This prevents the "Object of type Order is not JSON serializable" TypeError.
+            # We explicitly pull the data we need for the notification template.
+            order_data = {
+                'id': instance.id,
+                'name': instance.name,
+                'order_number': instance.order_number,
+                # Convert Decimal to float for JSON compatibility
+                'amount': float(instance.amount) if instance.amount else 0.0,
             }
+
+            customer_data = {
+                'id': instance.customer.id,
+                'full_name': instance.customer.get_full_name(),
+                'contact_name': getattr(instance.customer.contact, 'name', 'N/A'),
+            }
+
+            template_context = {
+                'order': order_data,
+                'customer': customer_data,
+            }
+            # --- FIX END ---
 
             queue_notifications_to_users(
                 template_name='new_order_created',
                 group_names=["System Admins", "Sales Team"], # Adjust groups as needed
                 related_contact=instance.customer.contact,
-                template_context=template_context
+                template_context=template_context # Pass the sanitized dictionary
             )
             logger.info(f"Queued 'new_order_created' notification for Order ID {instance.id}.")
         else:
