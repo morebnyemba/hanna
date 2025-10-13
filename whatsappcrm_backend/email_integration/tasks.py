@@ -437,6 +437,21 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             )
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
 
+        # --- NEW: Send the specific, more descriptive notification for email imports ---
+        if customer_profile:
+            from django.forms.models import model_to_dict
+            attachment_dict = model_to_dict(attachment, fields=['sender', 'filename'])
+            order_dict = model_to_dict(order, fields=['order_number', 'amount'])
+            customer_dict = {'full_name': customer_profile.get_full_name(), 'contact_name': getattr(customer_profile.contact, 'name', None)}
+
+            queue_notifications_to_users(
+                template_name='invoice_processed_successfully',
+                group_names=settings.INVOICE_PROCESSED_NOTIFICATION_GROUPS,
+                related_contact=customer_profile.contact,
+                template_context={
+                    'attachment': attachment_dict, 'order': order_dict, 'customer': customer_dict
+                }
+            )
 
 @transaction.atomic
 def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_prefix: str):

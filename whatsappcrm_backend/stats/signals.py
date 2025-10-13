@@ -104,8 +104,12 @@ def on_order_change(sender, instance, created, **kwargs):
     update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
 
     if created:
-        # Check if the order has a customer.
-        if instance.customer and hasattr(instance.customer, 'contact') and instance.customer.contact:
+        # --- MODIFIED: Only send generic notification if the source is NOT an email import ---
+        # The email import task now sends its own, more descriptive notification.
+        if instance.source != Order.Source.EMAIL_IMPORT and \
+           instance.customer and \
+           hasattr(instance.customer, 'contact') and \
+           instance.customer.contact:
             # Prepare data for the notification template.
             order_data = {
                 'id': str(instance.pk),
@@ -118,9 +122,10 @@ def on_order_change(sender, instance, created, **kwargs):
                 'full_name': instance.customer.get_full_name(),
                 'contact_name': getattr(instance.customer.contact, 'name', 'N/A'),
             }
+            # --- FIX: Flatten the context to match the template's expectations ---
             template_context = {
-                'order': order_data,
-                'customer': customer_data,
+                'order': instance,
+                'customer': instance.customer,
             }
             from notifications.services import queue_notifications_to_users
             queue_notifications_to_users(

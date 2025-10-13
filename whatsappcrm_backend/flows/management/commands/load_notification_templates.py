@@ -13,11 +13,11 @@ NOTIFICATION_TEMPLATES = [
         "template_type": "whatsapp",
         "body": """New Order Created! 📦
 
-A new order has been created for customer *{{ customer.get_full_name or customer.contact.name }}*.
+A new order has been created for customer *{{ order.customer.get_full_name or order.customer.contact.name }}*.
 
 - Order Name: *{{ order.name }}*
 - Order #: *{{ order.order_number }}*
-- Amount: *${{ order.amount }}*
+- Amount: *${{ order.amount or '0.00' }}*
 
 Please see the admin panel for full details."""
     },
@@ -233,12 +233,12 @@ Please reply with "status" or any other command to keep the window open."""
         "template_type": "whatsapp",
         "body": """Invoice Processed Successfully ✅
 
-An invoice from *{{ template_context.attachment.sender }}* (Filename: *{{ template_context.attachment.filename }}*) has been processed.
+An invoice from *{{ attachment.sender }}* (Filename: *{{ attachment.filename }}*) has been processed.
 
 *Order Details:*
-- Order #: *{{ template_context.order.order_number }}*
-- Total Amount: *${{ template_context.order.amount }}*
-- Customer: *{{ template_context.customer.full_name or template_context.customer.contact_name }}*
+- Order #: *{{ order.order_number }}*
+- Total Amount: *${{ order.amount or '0.00' }}*
+- Customer: *{{ customer.full_name or customer.contact_name }}*
 
 The new order has been created in the system."""
     },
