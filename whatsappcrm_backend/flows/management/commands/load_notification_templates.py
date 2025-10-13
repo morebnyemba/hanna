@@ -237,7 +237,7 @@ An invoice from *{{ attachment.sender }}* (Filename: *{{ attachment.filename }}*
 
 *Order Details:*
 - Order #: *{{ order.order_number }}*
-- Total Amount: *${{ order.amount or '0.00' }}*
+- Total Amount: *${{ "%.2f"|format(order.amount) if order.amount is not none else '0.00' }}*
 - Customer: *{{ customer.full_name or customer.contact_name }}*
 
 The new order has been created in the system."""
