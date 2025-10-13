@@ -173,7 +173,15 @@ Execute the following steps in sequence. Use the exact response templates provid
             
             # The post_save signal on the Contact model will handle sending notifications.
             
-            final_reply = "Thank you. I'm connecting you with a team member who can assist you further. They will respond here shortly."
+            final_reply = (
+                "I am connecting you with a human technical expert for advanced support. They will respond here shortly.\n\n"
+                "To help them solve your issue quickly, please provide as much detail as possible in a single message, including:\n"
+                "1.  *Product Model & Serial Number* (e.g., `Victron MultiPlus-II, HQ212345XYZ`)\n"
+                "2.  *Detailed Description of the Fault* (e.g., `The inverter is not turning on, and the red LED is flashing three times.`)\n"
+                "3.  *Recent Events* (e.g., `This started after a power outage yesterday.`)\n"
+                "4.  *Photos or Videos* of the issue, if possible.\n\n"
+                "Your detailed query will help us diagnose the problem faster."
+            )
 
         elif "[END_CONVERSATION]" in ai_response_text:
             logger.info(f"{log_prefix} AI requested to end conversation. The main service will handle resetting the mode.")

@@ -117,7 +117,14 @@ MAIN_MENU_FLOW = {
             "config": {
                 "message_type": "text",
                 "text": {
-                    "body": "You are now connected to Hanna, our AI troubleshooting expert. Please describe your solar power issue in detail. Type 'exit' or 'menu' to end this session."
+                    "body": (
+                        "You are now connected to Hanna, our AI technical expert.\n\n"
+                        "To get the fastest solution, please describe the issue in one single message, including:\n"
+                        "1. *Product Model*: (e.g., `Victron MultiPlus-II`)\n"
+                        "2. *The Problem*: (e.g., `Inverter won't turn on, red light is flashing`)\n"
+                        "3. *Recent Events*: (e.g., `This started after a power outage`)\n\n"
+                        "Type 'exit' or 'menu' at any time to return to the main menu."
+                    )
                 }
             },
             "transitions": [
