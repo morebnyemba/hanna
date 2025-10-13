@@ -99,6 +99,7 @@ def send_receipt_confirmation_email(self, attachment_id):
         # The `autoretry_for` decorator handles SMTP exceptions. We just need to log other errors.
         logger.error(f"{log_prefix} An unexpected error occurred while sending confirmation for attachment {attachment_id}: {e}", exc_info=True)
         raise  # Re-raise to let Celery mark the task as failed for non-retriable errors.
+
 @shared_task(
     bind=True,
     name="email_integration.process_attachment_with_gemini",
@@ -192,6 +193,7 @@ def process_attachment_with_gemini(self, attachment_id):
         - The 'invoice_date' must be in 'YYYY-MM-DD' format.
         - All monetary values must be numeric (float or integer), not strings.
         - If a field is not found, its value should be null.
+        - **The recipient's phone number might be mixed in with their name. If a separate phone number field is not found, attempt to extract a 10-digit phone number (e.g., 0775117149) from the recipient's name string.**
 
         The final output MUST ONLY contain the valid, complete JSON object.
         """
@@ -277,6 +279,18 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     recipient_name = recipient_data.get('name')
     recipient_phone = recipient_data.get('phone')
     customer_profile = None
+    
+    # --- SOLUTION 2: PYTHON FALLBACK ---
+    # If phone is missing but name exists, try to find a phone number in the name string
+    if not recipient_phone and recipient_name:
+        # This regex looks for a common Zimbabwean mobile number format (e.g., 071, 077, 078)
+        match = re.search(r'(07[178][0-9]{7})', recipient_name)
+        if match:
+            recipient_phone = match.group(0)
+            # Clean the name by removing the phone number
+            recipient_name = recipient_name.replace(recipient_phone, '').strip(' _-').strip()
+            logger.info(f"{log_prefix} Extracted fallback phone '{recipient_phone}' from name.")
+    # --- END OF PYTHON FALLBACK ---
 
     # A contact is required to create a customer profile. Use phone number if available.
     if recipient_phone:
@@ -386,8 +400,6 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             template_context=final_context_for_template
         )
         logger.info(f"{log_prefix} Queued 'invoice_processed_successfully' notification for Order ID {order.id}.")
-
-
 
 @shared_task(name="email_integration.fetch_email_attachments_task")
 def fetch_email_attachments_task():
