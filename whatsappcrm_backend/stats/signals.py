@@ -105,51 +105,31 @@ def on_order_change(sender, instance, created, **kwargs):
 
     if created:
         # Check if the order has a customer.
-        if instance.customer and hasattr(instance.customer, 'contact'):
-            # --- Decouple the notification from the main transaction ---
-
-            # 1. Prepare all the data needed for the notification *inside* the signal handler.
+        if instance.customer and hasattr(instance.customer, 'contact') and instance.customer.contact:
+            # Prepare data for the notification template.
             order_data = {
                 'id': str(instance.pk),
                 'name': instance.name,
                 'order_number': instance.order_number,
                 'amount': float(instance.amount) if instance.amount else 0.0,
             }
-
             customer_data = {
                 'id': str(instance.customer.pk),
                 'full_name': instance.customer.get_full_name(),
                 'contact_name': getattr(instance.customer.contact, 'name', 'N/A'),
             }
-
             template_context = {
                 'order': order_data,
                 'customer': customer_data,
             }
-
-            # Keep a reference to the related contact's pk
-            related_contact_pk = instance.customer.contact.pk
-
-            # 2. Define a function that will be executed on commit.
-            def queue_notification_on_commit():
-                from notifications.services import queue_notifications_to_users
-                from conversations.models import Contact
-                try:
-                    contact = Contact.objects.get(pk=related_contact_pk)
-                    queue_notifications_to_users(
-                        template_name='new_order_created',
-                        group_names=["System Admins", "Sales Team"],
-                        related_contact=contact, # Pass the full object
-                        template_context=template_context
-                    )
-                    logger.info(f"Transaction committed. Queued 'new_order_created' notification for Order ID {instance.pk}.")
-                except Contact.DoesNotExist:
-                    logger.error(f"Failed to queue notification: Contact with pk={related_contact_pk} does not exist.")
-
-
-            # 3. Register the function to run only after the database transaction is successful.
-            transaction.on_commit(queue_notification_on_commit)
-            # --- END ---
+            from notifications.services import queue_notifications_to_users
+            queue_notifications_to_users(
+                template_name='new_order_created',
+                group_names=["System Admins", "Sales Team"],
+                related_contact=instance.customer.contact,
+                template_context=template_context
+            )
+            logger.info(f"Queued 'new_order_created' notification for Order ID {instance.pk}.")
 
             # The activity log is a simple Celery task and less likely to fail.
             activity_payload = {
