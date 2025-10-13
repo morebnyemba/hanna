@@ -13,7 +13,8 @@ from google.genai import types as genai_types
 from google.genai import errors as genai_errors
 from .models import EmailAttachment, ParsedInvoice
 from decimal import Decimal, InvalidOperation
-from customer_data.models import CustomerProfile, Order, OrderItem
+# --- ADD JobCard to imports ---
+from customer_data.models import CustomerProfile, Order, OrderItem, JobCard
 from conversations.models import Contact
 from products_and_services.models import Product
 from notifications.services import queue_notifications_to_users
@@ -29,12 +30,13 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+
 @shared_task(
     bind=True,
     name="email_integration.send_receipt_confirmation_email",
     # Automatically retry for connection errors, which are common for email servers.
     autoretry_for=(ConnectionRefusedError, smtplib.SMTPException),
-    retry_backoff=True, 
+    retry_backoff=True,
     retry_kwargs={'max_retries': 3}
 )
 def send_receipt_confirmation_email(self, attachment_id):
@@ -46,13 +48,13 @@ def send_receipt_confirmation_email(self, attachment_id):
     logger.info(f"{log_prefix} Preparing to send receipt confirmation for attachment ID: {attachment_id}")
     try:
         attachment = EmailAttachment.objects.get(pk=attachment_id)
-        
+
         if not attachment.sender:
             logger.warning(f"{log_prefix} Attachment {attachment_id} has no sender email. Cannot send confirmation.")
             return "Skipped: No sender email."
 
         subject = f"Confirmation: We've received your document '{attachment.filename}'"
-        
+
         # Plain text version for email clients that don't support HTML
         text_message = (
             f"Dear Sender,\n\n"
@@ -84,12 +86,12 @@ def send_receipt_confirmation_email(self, attachment_id):
             </body>
         </html>
         """
-        
+
         from_email = settings.DEFAULT_FROM_EMAIL
         recipient_list = [attachment.sender]
 
         send_mail(subject, text_message, from_email, recipient_list, html_message=html_message)
-        
+
         logger.info(f"{log_prefix} Successfully sent confirmation email to {attachment.sender} for attachment {attachment_id}.")
         return f"Confirmation sent to {attachment.sender}."
     except EmailAttachment.DoesNotExist:
@@ -100,6 +102,7 @@ def send_receipt_confirmation_email(self, attachment_id):
         logger.error(f"{log_prefix} An unexpected error occurred while sending confirmation for attachment {attachment_id}: {e}", exc_info=True)
         raise  # Re-raise to let Celery mark the task as failed for non-retriable errors.
 
+
 @shared_task(
     bind=True,
     name="email_integration.process_attachment_with_gemini",
@@ -109,8 +112,8 @@ def send_receipt_confirmation_email(self, attachment_id):
 )
 def process_attachment_with_gemini(self, attachment_id):
     """
-    Fetches a saved attachment, uploads it directly to the Gemini File API,
-    performs OCR and structured data extraction, and saves the result.
+    Fetches an attachment, asks Gemini to classify it (invoice or job_card),
+    extracts structured data based on the type, and saves it to the correct model.
     """
     log_prefix = f"[Gemini File API Task ID: {self.request.id}]"
     logger.info(f"{log_prefix} Starting Gemini processing for attachment ID: {attachment_id}")
@@ -128,7 +131,6 @@ def process_attachment_with_gemini(self, attachment_id):
         # --- Configure Gemini ---
         try:
             active_provider = AIProvider.objects.get(provider='google_gemini', is_active=True)
-            # Using the explicit client-based approach as per the documentation
             client = genai.Client(api_key=active_provider.api_key)
         except (AIProvider.DoesNotExist, AIProvider.MultipleObjectsReturned) as e:
             error_message = f"Gemini API key configuration error: {e}"
@@ -141,68 +143,52 @@ def process_attachment_with_gemini(self, attachment_id):
         # 2. Upload the local file to the Gemini API
         file_path = attachment.file.path
         logger.info(f"{log_prefix} Uploading file to Gemini: {file_path}")
-        # Use the client instance to upload the file
         uploaded_file = client.files.upload(file=file_path)
         logger.info(f"{log_prefix} File uploaded successfully. URI: {uploaded_file.uri}")
 
-        # 3. Define the Multimodal Prompt for structured JSON extraction
-        # By defining the schema separately, we avoid the confusing double-bracket escaping.
-        json_schema_definition = """
-{
-  "issuer": {
-    "tin": "string" | null,
-    "name": "string" | null,
-    "email": "string" | null,
-    "phone": "string" | null,
-    "vat_no": "string" | null,
-    "address": "string" | null
-  },
-  "recipient": {
-    "name": "string" | null,
-    "phone": "string" | null,
-    "address": "string" | null
-  },
-  "line_items": [
-    {
-      "product_code": "string" | null,
-      "description": "string",
-      "quantity": "number",
-      "unit_price": "number",
-      "vat_amount": "number" | null,
-      "total_amount": "number"
-    }
-  ],
-  "invoice_number": "string" | null,
-  "customer_reference_no": "string" | null,
-  "invoice_date": "YYYY-MM-DD" | null,
-  "total_amount": "number" | null,
-  "total_vat_amount": "number" | null,
-  "notes_and_terms": "string" | null
-}
-"""
+        # --- NEW: Define Schemas for Both Document Types ---
+        invoice_schema_definition = """
+        {
+          "recipient": { "name": "string", "phone": "string", "address": "string" },
+          "line_items": [ { "description": "string", "quantity": "number", "unit_price": "number", "total_amount": "number" } ],
+          "invoice_number": "string", "invoice_date": "YYYY-MM-DD", "total_amount": "number"
+        }
+        """
 
+        job_card_schema_definition = """
+        {
+          "job_card_number": "string", "creation_date": "YYYY-MM-DD",
+          "customer": { "name": "string", "phone": "string", "address": "string" },
+          "product": { "description": "string", "serial_number": "string" },
+          "reported_fault": "string", "is_under_warranty": "boolean", "status": "string"
+        }
+        """
+
+        # --- NEW: Update the Prompt to Classify First, then Extract ---
         prompt = f"""
-        Analyze the provided document (likely an invoice or receipt).
-        Perform OCR to extract key details and structure them into a single, valid JSON object.
+        Analyze the attached document and determine its type. The type can be 'invoice' or 'job_card'.
 
-        The desired JSON schema is:
-        {json_schema_definition}
+        Based on the identified type, extract the key details into the corresponding JSON schema.
 
-        **Extraction Rules:**
-        - For the 'invoice_number', prioritize the value associated with the "Customer Reference No" field. If that is not present, look for a standard "Invoice Number".
-        - The 'invoice_date' must be in 'YYYY-MM-DD' format.
-        - All monetary values must be numeric (float or integer), not strings.
-        - If a field is not found, its value should be null.
-        - **The recipient's phone number might be mixed in with their name. If a separate phone number field is not found, attempt to extract a 10-digit phone number (e.g., 0775117149) from the recipient's name string.**
+        If the document type is 'invoice', use this schema:
+        {invoice_schema_definition}
 
-        The final output MUST ONLY contain the valid, complete JSON object.
+        If the document type is 'job_card', use this schema:
+        {job_card_schema_definition}
+
+        Your final output must be a single JSON object with two keys: "document_type" and "data".
+        The "data" key should contain the extracted information. For dates, use YYYY-MM-DD format.
+        For boolean values, use true or false.
+
+        Example for a job card:
+        {{
+            "document_type": "job_card",
+            "data": {{ "job_card_number": "31,699", "creation_date": "2025-09-18", ... }}
+        }}
         """
 
         # 4. Call the Gemini API to process the document
         logger.info(f"{log_prefix} Sending request to Gemini model for analysis.")
-        # Use the client instance to get the model
-        # CORRECTED: Use client.models.generate_content directly, as per the documentation,
-        # which is the idiomatic way when a client instance is used.
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[prompt, uploaded_file],
@@ -210,116 +196,115 @@ def process_attachment_with_gemini(self, attachment_id):
 
         # 5. Parse the extracted JSON data
         try:
-            # Clean up the response to remove potential markdown formatting
             cleaned_text = response.text.strip().replace('```json', '').replace('```', '').strip()
             if not cleaned_text:
                 raise json.JSONDecodeError("Empty response from Gemini", "", 0)
             extracted_data = json.loads(cleaned_text)
         except json.JSONDecodeError as e:
-            logger.error(
-                f"{log_prefix} Failed to decode JSON from Gemini response for attachment {attachment_id}. "
-                f"Error: {e}. Raw response text: '{response.text}'"
-            )
-            # Mark as failed and stop processing. This is a graceful failure.
+            logger.error(f"{log_prefix} Failed to decode JSON from Gemini response for attachment {attachment_id}. Error: {e}. Raw response text: '{response.text}'")
             attachment.processed = True
             attachment.extracted_data = {"error": "Invalid JSON response from Gemini", "status": "failed", "raw_response": response.text}
             attachment.save(update_fields=['processed', 'extracted_data'])
             return f"Failed: Gemini returned non-JSON response for attachment {attachment_id}."
 
-        # 6. Create Order and related objects from the extracted data
-        _create_order_from_invoice_data(attachment, extracted_data, log_prefix)
+        # --- NEW: Conditional Logic Based on Document Type ---
+        document_type = extracted_data.get("document_type")
+        data = extracted_data.get("data")
+
+        if not document_type or not data:
+            raise ValueError("AI response missing 'document_type' or 'data' key.")
+
+        logger.info(f"{log_prefix} Gemini identified document as type: '{document_type}'")
+
+        if document_type == 'invoice':
+            _create_order_from_invoice_data(attachment, data, log_prefix)
+        elif document_type == 'job_card':
+            _create_job_card_from_data(attachment, data, log_prefix)
+        else:
+            logger.warning(f"{log_prefix} Unknown document type '{document_type}' received. Skipping database save.")
 
         # 8. Update the EmailAttachment status
         attachment.processed = True
-        attachment.extracted_data = extracted_data  # Save the JSON for review
+        attachment.extracted_data = extracted_data
         attachment.save(update_fields=['processed', 'extracted_data', 'updated_at'])
 
-        logger.info(f"{log_prefix} Successfully processed attachment {attachment_id} and created associated order.")
+        logger.info(f"{log_prefix} Successfully processed attachment {attachment_id}.")
         send_receipt_confirmation_email.delay(attachment_id)
         return f"Successfully processed attachment {attachment_id} with Gemini."
 
     except EmailAttachment.DoesNotExist:
         logger.error(f"{log_prefix} Attachment with ID {attachment_id} not found.")
-        # Do not re-raise, as this is not a transient error.
     except (core_exceptions.ResourceExhausted, core_exceptions.DeadlineExceeded, genai_errors.ServerError) as e:
         logger.warning(f"{log_prefix} Gemini API rate limit or timeout error for attachment {attachment_id}: {e}. Task will be retried by Celery.")
-        raise # Re-raise to let Celery handle the retry
+        raise
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred during Gemini processing for attachment {attachment_id}: {e}", exc_info=True)
         if attachment:
-            attachment.processed = True # Mark as processed to avoid retry loops on permanent errors
+            attachment.processed = True
             attachment.extracted_data = {"error": str(e), "status": "failed"}
             attachment.save(update_fields=['processed', 'extracted_data'])
-        # Do not re-raise; the error is logged and the attachment is marked as failed.
     finally:
         # 9. Clean up: Delete the file from the Gemini service
         if uploaded_file:
             try:
                 logger.info(f"{log_prefix} Deleting temporary file from Gemini service: {uploaded_file.name}")
-                # Use the client instance to delete the file
                 client.files.delete(name=uploaded_file.name)
             except Exception as e:
                 logger.error(f"{log_prefix} Failed to delete uploaded Gemini file {uploaded_file.name}: {e}")
 
+
+def _get_or_create_customer_profile(customer_data: dict, log_prefix: str) -> CustomerProfile | None:
+    """Finds or creates a customer profile based on data from a document."""
+    customer_name = customer_data.get('name')
+    customer_phone = customer_data.get('phone')
+
+    if not customer_phone and customer_name:
+        match = re.search(r'(07[1-9][0-9]{7})', customer_name)
+        if match:
+            customer_phone = match.group(0)
+            customer_name = customer_name.replace(customer_phone, '').strip(' _-').strip()
+            logger.info(f"{log_prefix} Extracted fallback phone '{customer_phone}' from name.")
+
+    if not customer_phone:
+        logger.warning(f"{log_prefix} No phone number found for customer '{customer_name}'. Cannot create profile.")
+        return None
+
+    normalized_phone = re.sub(r'\D', '', customer_phone)
+    contact, _ = Contact.objects.get_or_create(
+        whatsapp_id=normalized_phone,
+        defaults={'name': customer_name or f"Customer {normalized_phone}"}
+    )
+
+    profile, created = CustomerProfile.objects.get_or_create(
+        contact=contact,
+        defaults={
+            'first_name': customer_name.split(' ')[0] if customer_name else '',
+            'last_name': ' '.join(customer_name.split(' ')[1:]) if customer_name and ' ' in customer_name else '',
+            'address_line_1': customer_data.get('address', '')
+        }
+    )
+
+    if created:
+        logger.info(f"{log_prefix} Created new CustomerProfile for '{customer_name}'.")
+    else:
+        logger.info(f"{log_prefix} Found existing CustomerProfile for '{customer_name}'.")
+
+    return profile
+
+
 @transaction.atomic
 def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log_prefix: str):
-    """
-    Creates or updates an Order, CustomerProfile, and OrderItems from extracted invoice data.
-    """
-    logger.info(f"{log_prefix} Starting to create Order from extracted data for attachment {attachment.id}.")
+    """Creates or updates an Order and its items from extracted invoice data."""
     from django.forms.models import model_to_dict
-
+    logger.info(f"{log_prefix} Starting to create Order from extracted data.")
+    
+    customer_profile = _get_or_create_customer_profile(data.get('recipient', {}), log_prefix)
+    
     invoice_number = data.get('invoice_number')
     if not invoice_number:
-        logger.warning(f"{log_prefix} No 'invoice_number' found in extracted data. Cannot create order.")
+        logger.warning(f"{log_prefix} No 'invoice_number' in data. Cannot create order.")
         return
 
-    # --- 1. Find or Create CustomerProfile ---
-    recipient_data = data.get('recipient', {})
-    recipient_name = recipient_data.get('name')
-    recipient_phone = recipient_data.get('phone')
-    customer_profile = None
-    
-    # --- SOLUTION 2: PYTHON FALLBACK ---
-    # If phone is missing but name exists, try to find a phone number in the name string
-    if not recipient_phone and recipient_name:
-        # This regex looks for a common Zimbabwean mobile number format (e.g., 071, 077, 078)
-        match = re.search(r'(07[178][0-9]{7})', recipient_name)
-        if match:
-            recipient_phone = match.group(0)
-            # Clean the name by removing the phone number
-            recipient_name = recipient_name.replace(recipient_phone, '').strip(' _-').strip()
-            logger.info(f"{log_prefix} Extracted fallback phone '{recipient_phone}' from name.")
-    # --- END OF PYTHON FALLBACK ---
-
-    # A contact is required to create a customer profile. Use phone number if available.
-    if recipient_phone:
-        # Normalize the phone number to be just digits for the whatsapp_id
-        normalized_phone = re.sub(r'\D', '', recipient_phone)
-
-        # Find or create the base Contact record
-        contact, contact_created = Contact.objects.get_or_create(
-            whatsapp_id=normalized_phone,
-            defaults={'name': recipient_name or f"Customer {normalized_phone}"}
-        )
-        if contact_created:
-            logger.info(f"{log_prefix} Created new Contact for phone '{normalized_phone}'.")
-
-        # Now, find or create the CustomerProfile linked to the Contact
-        customer_profile, created = CustomerProfile.objects.get_or_create(
-            contact=contact,
-            defaults={
-                'first_name': recipient_name.split(' ')[0] if recipient_name else '',
-                'last_name': ' '.join(recipient_name.split(' ')[1:]) if recipient_name and ' ' in recipient_name else '',
-                'notes': f"Profile automatically created from invoice {invoice_number}."
-            }
-        )
-        if created:
-            logger.info(f"{log_prefix} Created new CustomerProfile for '{recipient_name}'.")
-        else:
-            logger.info(f"{log_prefix} Found existing CustomerProfile for '{recipient_name}'.")
-
-    # --- 2. Create or Update the Order ---
     invoice_date_obj = None
     if date_str := data.get('invoice_date'):
         try:
@@ -332,11 +317,11 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
         defaults={
             'customer': customer_profile,
             'name': f"Invoice {invoice_number}",
-            'stage': Order.Stage.CLOSED_WON, # Assume an invoice represents a completed sale
-            'payment_status': Order.PaymentStatus.PAID, # Or 'pending' if that's more appropriate
-            'amount': data.get('total_amount'),
+            'stage': Order.Stage.CLOSED_WON,
+            'payment_status': Order.PaymentStatus.PAID,
+            'amount': data.get('total_amount'), # Note: Still using direct amount as requested
             'source': Order.Source.EMAIL_IMPORT,
-            'invoice_details': data, # Store the raw extracted data
+            'invoice_details': data,
             'expected_close_date': invoice_date_obj,
         }
     )
@@ -345,61 +330,63 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
         logger.info(f"{log_prefix} Created new Order with order_number '{invoice_number}'.")
     else:
         logger.info(f"{log_prefix} Updated existing Order with order_number '{invoice_number}'.")
-        # If updating, clear old items to prevent duplicates
         order.items.all().delete()
 
-    # --- 3. Create OrderItems ---
     line_items = data.get('line_items', [])
     if isinstance(line_items, list):
         for item_data in line_items:
             product_description = item_data.get('description', 'Unknown Product')
-            product_code = item_data.get('product_code')
-            
-            # Efficiently find by SKU or name, creating if neither exists.
-            product_query = Q()
-            if product_code:
-                product_query |= Q(sku=product_code)
-            if product_description:
-                product_query |= Q(name=product_description)
-
-            product = Product.objects.filter(product_query).first() if product_query else None
-
+            product = Product.objects.filter(name=product_description).first()
             if not product:
                 product = Product.objects.create(
-                    sku=product_code,
                     name=product_description,
                     price=item_data.get('unit_price', 0),
-                    product_type=Product.ProductType.HARDWARE # Default type
+                    product_type=Product.ProductType.HARDWARE
                 )
-
             OrderItem.objects.create(order=order, product=product, quantity=item_data.get('quantity', 1), unit_price=item_data.get('unit_price', 0))
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
 
-    # --- 4. Send a specific notification about the processed invoice ---
-    # This is more specific than the generic 'new_order_created' signal.
-    # FIX: The notification should be sent if the order was created OR updated,
-    # as long as a customer profile exists to associate it with.
-    if order and customer_profile:
-        # Convert model instances to dictionaries to ensure they are JSON serializable
-        customer_dict = model_to_dict(customer_profile, fields=['id', 'first_name', 'last_name'])
-        # Manually add the full name and contact name for the template
-        customer_dict['full_name'] = customer_profile.get_full_name()
-        customer_dict['contact_name'] = getattr(getattr(customer_profile, 'contact', None), 'name', '')
 
-        # FIX: Wrap the context in a 'template_context' key to match the template's variable access.
-        # The template expects `{{ template_context.order.order_number }}`, not `{{ order.order_number }}`.
-        final_context_for_template = {'template_context': {
-            'attachment': model_to_dict(attachment, fields=['id', 'filename', 'sender']),
-            'order': model_to_dict(order, fields=['id', 'order_number', 'name', 'amount']),
-            'customer': customer_dict,
-        }}
-        queue_notifications_to_users(
-            template_name='invoice_processed_successfully',
-            group_names=settings.INVOICE_PROCESSED_NOTIFICATION_GROUPS, # Notify relevant teams
-            related_contact=customer_profile.contact,
-            template_context=final_context_for_template
-        )
-        logger.info(f"{log_prefix} Queued 'invoice_processed_successfully' notification for Order ID {order.id}.")
+@transaction.atomic
+def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_prefix: str):
+    """Creates or updates a JobCard from extracted data."""
+    logger.info(f"{log_prefix} Starting to create JobCard from extracted data.")
+
+    customer_profile = _get_or_create_customer_profile(data.get('customer', {}), log_prefix)
+
+    job_card_number = data.get('job_card_number')
+    if not job_card_number:
+        logger.warning(f"{log_prefix} No 'job_card_number' found in data. Cannot create job card.")
+        return
+
+    creation_date_obj = None
+    if date_str := data.get('creation_date'):
+        try:
+            creation_date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            logger.warning(f"{log_prefix} Could not parse date string '{date_str}' for JobCard.")
+
+    product_info = data.get('product', {})
+
+    job_card, created = JobCard.objects.update_or_create(
+        job_card_number=job_card_number,
+        defaults={
+            'customer': customer_profile,
+            'product_description': product_info.get('description'),
+            'product_serial_number': product_info.get('serial_number'),
+            'reported_fault': data.get('reported_fault'),
+            'is_under_warranty': data.get('is_under_warranty', False),
+            'creation_date': creation_date_obj,
+            'status': data.get('status', 'open').lower(),
+            'job_card_details': data,
+        }
+    )
+
+    if created:
+        logger.info(f"{log_prefix} Created new JobCard with number '{job_card_number}'.")
+    else:
+        logger.info(f"{log_prefix} Updated existing JobCard with number '{job_card_number}'.")
+
 
 @shared_task(name="email_integration.fetch_email_attachments_task")
 def fetch_email_attachments_task():
@@ -410,7 +397,7 @@ def fetch_email_attachments_task():
     logger.info(f"{log_prefix} Starting scheduled task to fetch email attachments.")
     try:
         call_command('fetch_mailu_attachments')
-        logger.info(f"{log_prefix} Successfully finished fetch_mailu_attachments command.")
+        logger.info(f"{log_prefix} Successfully finished fetch_mail_attachments command.")
     except Exception as e:
-        logger.error(f"{log_prefix} The 'fetch_mailu_attachments' command failed: {e}", exc_info=True)
+        logger.error(f"{log_prefix} The 'fetch_mail_attachments' command failed: {e}", exc_info=True)
         raise
