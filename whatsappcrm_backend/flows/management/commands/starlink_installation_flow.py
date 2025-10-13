@@ -8,14 +8,27 @@ STARLINK_INSTALLATION_FLOW = {
     "is_active": True,
     "steps": [
         {
-            "name": "start_starlink_request",
+            "name": "ensure_customer_profile",
             "is_entry_point": True,
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "update_customer_profile",
+                    "fields_to_update": {}
+                }]
+            },
+            "transitions": [
+                {"to_step": "start_starlink_request", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "start_starlink_request",
             "type": "question",
             "config": {
                 "message_config": {"message_type": "text", "text": {"body": "You've requested a Starlink installation. Let's get a few details to schedule your appointment.\n\nWhat is your full name?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "install_full_name"}
             },
-            "transitions": [{"to_step": "ask_client_phone", "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}]
+            "transitions": [{"to_step": "ask_client_phone", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}]
         },
         {
             "name": "ask_client_phone",
@@ -42,7 +55,8 @@ STARLINK_INSTALLATION_FLOW = {
                         "action": {"buttons": [
                             {"type": "reply", "reply": {"id": "standard", "title": "Standard"}},
                             {"type": "reply", "reply": {"id": "high_performance", "title": "High Performance"}},
-                            {"type": "reply", "reply": {"id": "other", "title": "Other/Not Sure"}}
+                            {"type": "reply", "reply": {"id": "other", "title": "Other/Not Sure"}},
+                            {"type": "reply", "reply": {"id": "go_back", "title": "Go Back"}}
                         ]}
                     }
                 },
@@ -50,7 +64,7 @@ STARLINK_INSTALLATION_FLOW = {
             },
             "transitions": [
                 {"to_step": "ask_client_phone", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_install_location", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_kit_type"}}
+                {"to_step": "ask_install_location", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_kit_type"}},
             ]
         },
         {
@@ -142,7 +156,7 @@ STARLINK_INSTALLATION_FLOW = {
                         "body": {"text": "Please review your details:\n\n*Name*: {{ install_full_name }}\n*Phone*: {{ install_phone }}\n*Kit Type*: {{ install_kit_type|title }}\n*Install Location*: {{ install_mount_location }}\n*Date*: {{ install_datetime }} ({{ install_availability|title }})\n*Address*: {{ install_address }}"},
                         "action": {"buttons": [
                             {"type": "reply", "reply": {"id": "confirm_install", "title": "Confirm & Submit"}},
-                            {"type": "reply", "reply": {"id": "edit_details", "title": "Edit Details"}},
+                            {"type": "reply", "reply": {"id": "go_back", "title": "Go Back"}},
                             {"type": "reply", "reply": {"id": "cancel_install", "title": "Cancel"}}
                         ]}
                     }
@@ -151,7 +165,7 @@ STARLINK_INSTALLATION_FLOW = {
             },
             "transitions": [
                 {"to_step": "save_installation_request", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_install"}},
-                {"to_step": "start_starlink_request", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "edit_details"}},
+                {"to_step": "ask_location_pin", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
                 {"to_step": "end_flow_cancelled", "priority": 3, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -181,9 +195,8 @@ STARLINK_INSTALLATION_FLOW = {
                     {
                         "action_type": "update_customer_profile",
                         "fields_to_update": {
-                            "first_name": "{{ install_full_name.split(' ')[0] if ' ' in install_full_name else install_full_name }}",
-                            "last_name": "{{ ' '.join(install_full_name.split(' ')[1:]) if ' ' in install_full_name else '' }}",
-                            "address_line_1": "{{ install_address }}"
+                            "first_name": "{{ install_full_name.split(' ')[0] if ' ' in install_full_name else install_full_name }}", "last_name": "{{ ' '.join(install_full_name.split(' ')[1:]) if ' ' in install_full_name else '' }}", "address_line_1": "{{ install_address }}",
+                            "notes": "Profile updated from Starlink Installation Request flow."
                         }
                     },
                     {
