@@ -185,12 +185,38 @@ def process_attachment_with_gemini(self, attachment_id):
         uploaded_file = client.files.upload(file=file_path)
         logger.info(f"{log_prefix} File uploaded successfully. URI: {uploaded_file.uri}")
 
-        # --- NEW: Define Schemas for Both Document Types ---
+        # --- UPDATED: More detailed invoice schema ---
         invoice_schema_definition = """
         {
-          "recipient": { "name": "string", "phone": "string", "address": "string" },
-          "line_items": [ { "description": "string", "quantity": "number", "unit_price": "number", "total_amount": "number" } ],
-          "invoice_number": "string", "invoice_date": "YYYY-MM-DD", "total_amount": "number"
+          "issuer": {
+            "tin": "string | null",
+            "name": "string | null",
+            "email": "string | null",
+            "phone": "string | null",
+            "vat_no": "string | null",
+            "address": "string | null"
+          },
+          "recipient": {
+            "name": "string | null",
+            "phone": "string | null",
+            "address": "string | null"
+          },
+          "line_items": [
+            {
+              "product_code": "string | null",
+              "description": "string",
+              "quantity": "number",
+              "unit_price": "number",
+              "vat_amount": "number | null",
+              "total_amount": "number"
+            }
+          ],
+          "invoice_number": "string | null",
+          "customer_reference_no": "string | null",
+          "invoice_date": "YYYY-MM-DD | null",
+          "total_amount": "number | null",
+          "total_vat_amount": "number | null",
+          "notes_and_terms": "string | null"
         }
         """
 
@@ -339,10 +365,12 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     
     customer_profile = _get_or_create_customer_profile(data.get('recipient', {}), log_prefix)
     
-    invoice_number = str(data.get('invoice_number', '')).strip()
-    # Check for empty, null, or zero invoice numbers
+    # --- IMPROVED: Prioritize invoice_number, but fall back to customer_reference_no ---
+    invoice_number = str(data.get('invoice_number') or data.get('customer_reference_no') or '').strip()
+
+    # Check for empty, null, or zero invoice numbers after attempting fallbacks
     if not invoice_number or invoice_number == '0':
-        logger.warning(f"{log_prefix} No valid 'invoice_number' in data. Cannot create order. Value was: '{data.get('invoice_number')}'")
+        logger.warning(f"{log_prefix} No valid 'invoice_number' or 'customer_reference_no' in data. Cannot create order.")
         return
 
     # --- NEW: Check for existing order BEFORE creating ---
