@@ -441,7 +441,10 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
         if customer_profile:
             from django.forms.models import model_to_dict
             attachment_dict = model_to_dict(attachment, fields=['sender', 'filename'])
-            order_dict = model_to_dict(order, fields=['order_number', 'amount'])
+            # --- FIX: Explicitly convert Decimal to float for JSON serialization ---
+            order_dict = {
+                'order_number': order.order_number, 'amount': float(order.amount) if order.amount is not None else 0.0
+            }
             customer_dict = {'full_name': customer_profile.get_full_name(), 'contact_name': getattr(customer_profile.contact, 'name', None)}
 
             queue_notifications_to_users(
