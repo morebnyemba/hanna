@@ -12,7 +12,7 @@ SITE_INSPECTION_FLOW = {
             "is_entry_point": True,
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "You've requested a site assessment. Let's collect a few details to get you scheduled.\n\nWhat is your full name?"}},
+                "message_config": {"message_type": "text", "text": {"body": "You've requested a site assessment. Let's get a few details to schedule your visit.\n\nWhat is your *full name*?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "assessment_full_name"}
             },
             "transitions": [{"to_step": "ask_assessment_day", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_full_name"}}]
@@ -21,7 +21,7 @@ SITE_INSPECTION_FLOW = {
             "name": "ask_assessment_day",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thank you, {{ assessment_full_name }}. What is your preferred day for the assessment?"}},
+                "message_config": {"message_type": "text", "text": {"body": "Thank you, {{ assessment_full_name }}. What is your *preferred day* for the assessment?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "assessment_preferred_day"}
             },
             "transitions": [{"to_step": "ask_assessment_company", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_preferred_day"}}]
@@ -30,7 +30,7 @@ SITE_INSPECTION_FLOW = {
             "name": "ask_assessment_company",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is your company name? (If not applicable, please type 'N/A')"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is your *company name*? (If not applicable, please type 'N/A')"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "assessment_company_name"}
             },
             "transitions": [{"to_step": "ask_assessment_address", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_company_name"}}]
@@ -39,7 +39,7 @@ SITE_INSPECTION_FLOW = {
             "name": "ask_assessment_address",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the full address for the site assessment?"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is the *full address* for the site assessment?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "assessment_address"}
             },
             "transitions": [{"to_step": "ask_assessment_contact", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_address"}}]
@@ -48,7 +48,7 @@ SITE_INSPECTION_FLOW = {
             "name": "ask_assessment_contact",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Finally, what is the best contact number for our team to use?"}},
+                "message_config": {"message_type": "text", "text": {"body": "Finally, what is the best *contact number* for our team to use?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "assessment_contact_info"}
             },
             "transitions": [{"to_step": "generate_assessment_id", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_contact_info"}}]

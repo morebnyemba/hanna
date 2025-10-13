@@ -64,7 +64,7 @@ LEAD_GENERATION_FLOW = {
                             "{% for product in category.list %}"
                             "_[{{ loop.index + loop.parent.loop.index0 * available_products|length }}]_ *{{ product.name }}*\n  Price: ${{ product.price }}\n"
                             "{% endfor %}"
-                            "{% endfor %}\n"
+                            "{% endfor %}\n\n"
                             "Please enter the number of the product you'd like to add to your cart. Type *done* when you are finished."
                         )
                     }
@@ -124,11 +124,11 @@ LEAD_GENERATION_FLOW = {
                     "message_type": "text",
                     "text": {
                         "body": (
-                            "Added {{ product_quantity }} x {{ found_product.0.name }}.\n\n"
+                            "✅ Added {{ product_quantity }} x *{{ found_product.0.name }}*.\n\n"
                             "🛒 *Your Cart:*\n"
                             "{% set total = 0 %}"
                             "{% for item in cart_items %}"
-                            "- {{ item.quantity }} x {{ item.name }} (${{ item.price * item.quantity }})\n"
+                            "  - {{ item.quantity }} x {{ item.name }} (${{ '%.2f'|format(item.price * item.quantity) }})\n"
                             "{% set total = total + (item.price * item.quantity) %}"
                             "{% endfor %}\n"
                             "*Subtotal: ${{ total }}*\n\n"
@@ -159,7 +159,7 @@ LEAD_GENERATION_FLOW = {
         # 10. Checkout process starts here
         {
             "name": "check_if_cart_is_empty",
-            "type": "action",
+            "type": "condition",
             "config": {"actions_to_run": []},
             "transitions": [
                 {"to_step": "ask_delivery_name", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "cart_items.0"}},
@@ -168,8 +168,8 @@ LEAD_GENERATION_FLOW = {
         },
         # 11. Collect Delivery Details
         {"name": "ask_delivery_name", "type": "question", "config": {"message_config": {"message_type": "text", "text": {"body": "Let's get your delivery details. What is the full name for the delivery?"}}, "reply_config": {"expected_type": "text", "save_to_variable": "delivery_name"}}, "transitions": [{"to_step": "ask_delivery_phone", "condition_config": {"type": "always_true"}}]},
-        {"name": "ask_delivery_phone", "type": "question", "config": {"message_config": {"message_type": "text", "text": {"body": "What is the best contact number for the delivery?"}}, "reply_config": {"expected_type": "text", "save_to_variable": "delivery_phone", "validation_regex": "^\\+?[1-9]\\d{8,14}$"}, "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid phone number (e.g., +263...)"}}, "transitions": [{"to_step": "ask_delivery_address", "condition_config": {"type": "always_true"}}]},
-        {"name": "ask_delivery_address", "type": "question", "config": {"message_config": {"message_type": "text", "text": {"body": "And finally, what is the full delivery address?"}}, "reply_config": {"expected_type": "text", "save_to_variable": "delivery_address", "validation_regex": "^.{10,}"}, "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please provide a more detailed address."}}, "transitions": [{"to_step": "confirm_order", "condition_config": {"type": "always_true"}}]},
+        {"name": "ask_delivery_phone", "type": "question", "config": {"message_config": {"message_type": "text", "text": {"body": "Great. What is the best contact number for the delivery?"}}, "reply_config": {"expected_type": "text", "save_to_variable": "delivery_phone", "validation_regex": "^\\+?[1-9]\\d{8,14}$"}, "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid phone number (e.g., +263...)"}}, "transitions": [{"to_step": "ask_delivery_address", "condition_config": {"type": "always_true"}}]},
+        {"name": "ask_delivery_address", "type": "question", "config": {"message_config": {"message_type": "text", "text": {"body": "And finally, what is the full delivery address? Please be as specific as possible."}}, "reply_config": {"expected_type": "text", "save_to_variable": "delivery_address", "validation_regex": "^.{10,}"}, "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please provide a more detailed address."}}, "transitions": [{"to_step": "confirm_order", "condition_config": {"type": "always_true"}}]},
         # 12. Confirm Order
         {
             "name": "confirm_order",

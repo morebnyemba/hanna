@@ -30,7 +30,7 @@ SOLAR_INSTALLATION_FLOW = {
                     "interactive": {
                         "type": "button",
                         "header": {"type": "text", "text": "Request Installation"},
-                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %} I can help you schedule your solar installation.\n\nHave you already paid for your system, or would you like to ask for a price first?"},
+                        "body": {"text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %}\n\nI can help you schedule your solar installation.\n\nHave you already paid for your system, or would you like to request a price quote first?"},
                         "action": {
                             "buttons": [
                                 {"type": "reply", "reply": {"id": "paid", "title": "I've Already Paid"}},
@@ -150,7 +150,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_residential_order_number",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Great. To proceed with your residential installation, please provide your order number (e.g., 12345/PO, HAN-54321, or AV01/0034506). This helps us verify your purchase and payment."}},
+                "message_config": {"message_type": "text", "text": {"body": "No problem. To proceed with your residential installation, please provide your *Order Number* (e.g., 12345/PO, HAN-54321, or AV01/0034506).\n\nThis helps us verify your purchase and payment."}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "order_number"}
             },
             "transitions": [
@@ -389,7 +389,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_commercial_assessment_number",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Understood. For commercial installations, please provide your site assessment number (e.g., SA-67890)."}},
+                "message_config": {"message_type": "text", "text": {"body": "Understood. For commercial installations, please provide your *Site Assessment Number* (e.g., SA-67890)."}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "assessment_number"},
                 "fallback_config": {
                     "action": "re_prompt", "max_retries": 2,
@@ -430,7 +430,7 @@ SOLAR_INSTALLATION_FLOW = {
                     "interactive": {
                         "type": "list",
                         "header": {"type": "text", "text": "Select Branch"},
-                        "body": {"text": "Verification successful! Let's collect the details for your installation.\n\nPlease select your branch."},
+                        "body": {"text": "✅ Verification successful!\n\nLet's collect the details for your installation. Please select your branch."},
                         "action": {
                             "button": "Select Branch",
                             "sections": [{
@@ -461,7 +461,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_sales_person",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thank you. Who is the Sales Person for this order? (e.g., John Doe)\n\n(Type 'back' to change the branch or 'cancel' to exit)"}},
+                "message_config": {"message_type": "text", "text": {"body": "Thank you. Who was the *Sales Person* for this order? (e.g., John Doe)\n\n(Type 'back' to change the branch or 'cancel' to exit)"}},
                 "reply_config": {
                     "expected_type": "text",
                     "save_to_variable": "install_sales_person",
@@ -482,7 +482,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_client_name",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the Client Name as it appears on the invoice? (e.g., Jane Smith)\n\n(Type 'back' to change the sales person or 'cancel' to exit)"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is the *Client Name* as it appears on the invoice? (e.g., Jane Smith)\n\n(Type 'back' to change the sales person or 'cancel' to exit)"}},
                 "reply_config": {
                     "expected_type": "text",
                     "save_to_variable": "install_full_name",
@@ -503,7 +503,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_client_phone",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the Client's contact number? (e.g., +263771234567)\n\n(Type 'back' to change the client name or 'cancel' to exit)"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is the *Client's contact number*? (e.g., +263771234567)\n\n(Type 'back' to change the client name or 'cancel' to exit)"}},
                 "reply_config": {
                     "expected_type": "text",
                     "save_to_variable": "install_phone",
@@ -524,7 +524,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_alt_contact_name",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the Alternative Contact's Name? (You can type 'N/A' if not applicable)\n\n(Type 'back' to change the client number or 'cancel' to exit)"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is the *Alternative Contact's Name*? (You can type 'N/A' if not applicable)\n\n(Type 'back' to change the client number or 'cancel' to exit)"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "install_alt_name"}
             },
             "transitions": [
@@ -537,7 +537,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_alt_contact_phone",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the Alternative Contact's Number? (e.g., +263719876543 or N/A)\n\n(Type 'back' to change the alt. name or 'cancel' to exit)"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is the *Alternative Contact's Number*? (e.g., +263719876543 or N/A)\n\n(Type 'back' to change the alt. name or 'cancel' to exit)"}},
                 "reply_config": {
                     "expected_type": "text",
                     "save_to_variable": "install_alt_phone",
@@ -558,7 +558,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_install_date",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is your preferred installation date? (e.g., Tomorrow, 25 December, 2025-12-25)\n\n(Please note: We conduct installations within 48 hours of system delivery and this date is for confirmation purposes.)\n\n(Type 'back' to change the alt. number or 'cancel' to exit)"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is your *preferred installation date*? (e.g., Tomorrow, 25 December, 2025-12-25)\n\n(Please note: We conduct installations within 48 hours of system delivery and this date is for confirmation purposes.)\n\n(Type 'back' to change the alt. number or 'cancel' to exit)"}},
                 "reply_config": {
                     "expected_type": "text",
                     "save_to_variable": "install_datetime",
@@ -583,7 +583,7 @@ SOLAR_INSTALLATION_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "body": {"text": "Thank you. What is your preferred availability on that day?\n\n(Type 'cancel' to exit)"},
+                        "body": {"text": "Thank you. What is your preferred availability on that day?"},
                         "action": {
                             "buttons": [
                                 {"type": "reply", "reply": {"id": "morning", "title": "Morning"}},
@@ -596,7 +596,6 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_availability"}
             },
             "transitions": [
-                {"to_step": "end_flow_cancelled", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "cancel"}},
                 {"to_step": "ask_install_date", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
                 {"to_step": "ask_install_address", "priority": 3, "condition_config": {"type": "variable_exists", "variable_name": "install_availability"}}
             ]
@@ -605,7 +604,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_install_address",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thank you. What is the full installation address? (e.g., 123 Solar Street, Avondale, Harare)\n\n(Type 'back' to change the availability or 'cancel' to exit)"}},
+                "message_config": {"message_type": "text", "text": {"body": "Thank you. What is the *full installation address*? (e.g., 123 Solar Street, Avondale, Harare)\n\n(Type 'back' to change the availability or 'cancel' to exit)"}},
                 "reply_config": {
                     "expected_type": "text",
                     "save_to_variable": "install_address",
@@ -626,7 +625,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "ask_location_pin",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Please share your location pin for accurate directions.\n\n(Type 'back' to change the address or 'cancel' to exit)"}},
+                "message_config": {"message_type": "text", "text": {"body": "Almost done! Please share your location pin for accurate directions.\n\n(Type 'back' to change the address or 'cancel' to exit)"}},
                 "reply_config": {"expected_type": "location", "save_to_variable": "install_location_pin"}
             },
             "transitions": [
@@ -643,7 +642,7 @@ SOLAR_INSTALLATION_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "body": {"text": (
+                        "body": {"text": "Please review your details and confirm to submit your installation request.\n\n"
                             "Thank you. Please review your details and confirm to submit your installation request.\n\n"
                             "{% if order_number %}*Order #*: {{ order_number }} ({{ found_order.0.name }})\n\n{% endif %}"
                             "Branch: {{ install_branch }}\n"
@@ -653,7 +652,7 @@ SOLAR_INSTALLATION_FLOW = {
                             "Alt. Contact: {{ install_alt_name }} ({{ install_alt_phone }})\n"
                             "Install Date: {{ install_datetime }} ({{ install_availability|title }})\n"
                             "Address: {{ install_address }}"
-                        )},
+                        },
                         "action": {
                             "buttons": [
                                 {"type": "reply", "reply": {"id": "confirm_install", "title": "Confirm Request"}},

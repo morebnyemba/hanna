@@ -12,7 +12,7 @@ SOLAR_CLEANING_FLOW = {
             "is_entry_point": True,
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "You've requested our solar panel cleaning service. Let's get a few details to provide you with a quote.\n\nWhat is your full name?"}},
+                "message_config": {"message_type": "text", "text": {"body": "You've requested our solar panel cleaning service. Let's get a few details to provide you with a quote.\n\nFirst, what is your *full name*?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "cleaning_full_name"}
             },
             "transitions": [{"to_step": "ask_contact_phone", "condition_config": {"type": "variable_exists", "variable_name": "cleaning_full_name"}}]
@@ -21,7 +21,7 @@ SOLAR_CLEANING_FLOW = {
             "name": "ask_contact_phone",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thanks, {{ cleaning_full_name }}. What is the best contact number for you?"}},
+                "message_config": {"message_type": "text", "text": {"body": "Thanks, {{ cleaning_full_name }}. What is the best *contact number* for you?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "cleaning_phone", "validation_regex": "^\\+?[1-9]\\d{8,14}$"},
                 "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid phone number (e.g., +263...)"}
             },
@@ -78,7 +78,7 @@ SOLAR_CLEANING_FLOW = {
             "name": "ask_panel_count",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Got it. How many solar panels do you have?"}},
+                "message_config": {"message_type": "text", "text": {"body": "Got it. How many *solar panels* do you have?"}},
                 "reply_config": {"expected_type": "number", "save_to_variable": "cleaning_panel_count"},
                 "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid number (e.g., 8)."}
             },
@@ -88,7 +88,7 @@ SOLAR_CLEANING_FLOW = {
             "name": "ask_availability_date",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is your preferred date for the cleaning service?"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is your *preferred date* for the cleaning service?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "cleaning_date"}
             },
             "transitions": [{"to_step": "ask_availability_time", "condition_config": {"type": "variable_exists", "variable_name": "cleaning_date"}}]
@@ -116,7 +116,7 @@ SOLAR_CLEANING_FLOW = {
             "name": "ask_address",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "What is the full address where the cleaning will take place?"}},
+                "message_config": {"message_type": "text", "text": {"body": "What is the *full address* where the cleaning will take place?"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "cleaning_address", "validation_regex": "^.{10,}"},
                 "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please provide a more detailed address."}
             },
@@ -126,7 +126,7 @@ SOLAR_CLEANING_FLOW = {
             "name": "ask_location_pin",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Finally, please share your location pin for accurate directions. You can also type 'skip'."}},
+                "message_config": {"message_type": "text", "text": {"body": "Finally, please share your *location pin* for accurate directions. You can also type 'skip' if you prefer not to."}},
                 "reply_config": {"expected_type": "location", "save_to_variable": "cleaning_location_pin"}
             },
             "transitions": [
@@ -148,9 +148,10 @@ SOLAR_CLEANING_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "body": {"text": "Please review and confirm your request:\n\n*Name*: {{ cleaning_full_name }}\n*Phone*: {{ cleaning_phone }}\n*Roof*: {{ cleaning_roof_type|title }}\n*Panels*: {{ cleaning_panel_count }} x {{ cleaning_panel_type|title }}\n*Date*: {{ cleaning_date }} ({{ cleaning_availability|title }})\n*Address*: {{ cleaning_address }}"},
+                        "body": {"text": "Please review and confirm your request:\n\n*Name*: {{ cleaning_full_name }}\n*Phone*: {{ cleaning_phone }}\n*Roof*: {{ cleaning_roof_type|replace('_', ' ')|title }}\n*Panels*: {{ cleaning_panel_count }} x {{ cleaning_panel_type|replace('_', ' ')|title }}\n*Date*: {{ cleaning_date }} ({{ cleaning_availability|title }})\n*Address*: {{ cleaning_address }}"},
                         "action": {"buttons": [
                             {"type": "reply", "reply": {"id": "confirm_cleaning", "title": "Confirm & Submit"}},
+                            {"type": "reply", "reply": {"id": "go_back", "title": "Go Back"}},
                             {"type": "reply", "reply": {"id": "cancel_cleaning", "title": "Cancel"}}
                         ]}
                     }
@@ -159,6 +160,7 @@ SOLAR_CLEANING_FLOW = {
             },
             "transitions": [
                 {"to_step": "save_cleaning_request", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_cleaning"}},
+                {"to_step": "ask_location_pin", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
                 {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
