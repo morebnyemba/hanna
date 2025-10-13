@@ -375,13 +375,22 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     line_items = data.get('line_items', [])
     if isinstance(line_items, list):
         for item_data in line_items:
+            product_code = item_data.get('product_code')
             product_description = item_data.get('description', 'Unknown Product')
-            product = Product.objects.filter(name=product_description).first()
+            
+            # More robust product lookup: Try SKU first, then name.
+            product = None
+            if product_code:
+                product = Product.objects.filter(sku=product_code).first()
+            if not product and product_description:
+                product = Product.objects.filter(name=product_description).first()
+
             if not product:
                 product = Product.objects.create(
+                    sku=product_code,
                     name=product_description,
                     price=item_data.get('unit_price', 0),
-                    product_type=Product.ProductType.HARDWARE
+                    product_type=Product.ProductType.HARDWARE # Default type
                 )
             OrderItem.objects.create(
                 order=order, 
