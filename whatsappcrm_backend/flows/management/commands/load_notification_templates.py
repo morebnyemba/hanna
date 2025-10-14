@@ -3,6 +3,7 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from notifications.models import NotificationTemplate
+from notifications.definitions import NOTIFICATION_TEMPLATES
 
 # A list of all notification templates used throughout the application.
 # This makes them easy to manage and deploy.
