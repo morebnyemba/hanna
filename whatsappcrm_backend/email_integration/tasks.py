@@ -496,6 +496,26 @@ def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_pref
     else:
         logger.info(f"{log_prefix} Updated existing JobCard with number '{job_card_number}'.")
 
+    # --- NEW: Send notification if a new job card was created ---
+    if created:
+        from django.forms.models import model_to_dict
+        job_card_dict = model_to_dict(job_card, fields=[
+            'job_card_number', 'product_description', 'product_serial_number', 'reported_fault'
+        ])
+        customer_dict = {}
+        if customer_profile:
+            customer_dict = {
+                'first_name': customer_profile.first_name,
+                'last_name': customer_profile.last_name
+            }
+
+        queue_notifications_to_users(
+            template_name='job_card_created_successfully',
+            # You might want to create a specific group setting for this
+            group_names=settings.INVOICE_PROCESSED_NOTIFICATION_GROUPS,
+            related_contact=customer_profile.contact if customer_profile else None,
+            template_context={'job_card': job_card_dict, 'customer': customer_dict}
+        )
 
 @shared_task(name="email_integration.fetch_email_attachments_task")
 def fetch_email_attachments_task():
