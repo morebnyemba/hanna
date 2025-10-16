@@ -41,31 +41,16 @@ def dispatch_notification_task(self, notification_id: int):
         notification.save(update_fields=['status', 'error_message'])
         return
 
-    # Check if the user's 24-hour interaction window is open by looking at the last message
-    # in their conversation, regardless of direction. This is more reliable than contact.last_seen
-    # for admin users who may only receive outgoing notifications.
-    twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
-    last_message = Message.objects.filter(contact=recipient.whatsapp_contact).order_by('-timestamp').first()
-    
-    is_window_open = False
-    if last_message:
-        is_window_open = last_message.timestamp >= twenty_four_hours_ago
-
-
     if notification.channel == 'whatsapp':
         try:
             active_config = MetaAppConfig.objects.get_active_config()
-            message_type = 'text'
             content_payload = {}
 
-            if is_window_open:
-                logger.info(f"Dispatching notification {notification.id} as a regular text message (window is open).")
-                message_type = 'text'
-                # The 'content' field on the Notification model holds the rendered text for free-form messages.
-                content_payload = {'body': notification.content} 
-            else:
+            # --- MODIFICATION: Always use template messages for notifications ---
+            # This logic now runs regardless of the 24-hour window status.
+            if notification.template_name:
                 # --- NEW LOGIC: Window is closed, so we MUST use a pre-approved template. ---
-                logger.info(f"User '{recipient.username}' 24-hour window is closed. Attempting to send notification {notification.id} as a template message.")
+                logger.info(f"Attempting to send notification {notification.id} as a template message.")
                 
                 if not notification.template_name:
                     error_msg = f"Cannot send notification {notification.id}: 24-hour window is closed and no template_name is set on the notification."
@@ -112,7 +97,16 @@ def dispatch_notification_task(self, notification_id: int):
                     "language": {"code": "en_US"},
                     "components": components
                 }
-                logger.info(f"Dispatching template '{notification.template_name}' with components: {components}")
+                logger.info(f"Dispatching template '{notification.template_name}' with payload: {content_payload}")
+            else:
+                # This case handles notifications that were queued without a template.
+                # They cannot be sent as templates, so we fail them with a clear error.
+                error_msg = f"Cannot send notification {notification.id}: No 'template_name' was provided, and all notifications must now use templates."
+                logger.error(error_msg)
+                notification.status = 'failed'
+                notification.error_message = error_msg
+                notification.save(update_fields=['status', 'error_message'])
+                return
 
             with transaction.atomic():
                 message = Message.objects.create(
