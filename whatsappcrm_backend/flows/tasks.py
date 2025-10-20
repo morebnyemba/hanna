@@ -14,7 +14,8 @@ from google.genai import errors as genai_errors
 from ai_integration.models import AIProvider
 # -------------------------------------
 
-from conversations.models import Message, Contact, ContactFlowState
+from conversations.models import Message, Contact
+from .models import ContactFlowState
 from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task, download_whatsapp_media_task
 from .services import process_message_for_flow, _clear_contact_flow_state
