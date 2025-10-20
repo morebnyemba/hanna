@@ -174,14 +174,17 @@ def send_read_receipt_task(self, wamid: str, config_id: int, show_typing_indicat
 
 
 @shared_task(name="meta_integration.download_whatsapp_media_task")
-def download_whatsapp_media_task(
+def download_whatsapp_media_task(media_id: str, config_id: int) -> str | None:
+    """
     Downloads media from WhatsApp and saves it to a temporary file.
     Returns the path to the temporary file, or None on failure.
     """
-    og
+    log_prefix = f"[Media Download Task - Media ID: {media_id}]"
+    try:
         config = MetaAppConfig.objects.get(pk=config_id)
         media_content, mime_type = download_whatsapp_media(media_id, config)
 
+        if media_content and mime_type:
             # Determine a file extension from the mime type
             suffix = f".{mime_type.split('/')[-1].split(';')[0]}"
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
@@ -192,7 +195,7 @@ def download_whatsapp_media_task(
             logger.error(f"{log_prefix} Failed to download media content from WhatsApp.")
             return None
     except MetaAppConfig.DoesNotExist:
-        logger.error(f"{log_prefix} MetaAppConfig with ID {config_id} not found.")
+        logger.error(f"{log_prefix} MetaAppConfig with ID {config_id} not found.") # type: ignore
         return None
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred during media download: {e}", exc_info=True)
