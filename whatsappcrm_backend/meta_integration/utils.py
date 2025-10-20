@@ -198,12 +198,12 @@ def download_whatsapp_media(wamid: str, config: MetaAppConfig) -> Optional[Tuple
     Returns:
         A tuple of (content_bytes, mime_type) or None on failure.
     """
-    if not all([wamid, config, config.access_token]):
-        logger.error("download_whatsapp_media: Missing WAMID, config, or access_token.")
+    if not all([media_id, config, config.access_token]):
+        logger.error("download_whatsapp_media: Missing media_id, config, or access_token.")
         return None
 
     # 1. Get Media URL
-    get_url_endpoint = f"https://graph.facebook.com/{config.api_version}/{wamid}/"
+    get_url_endpoint = f"https://graph.facebook.com/{config.api_version}/{media_id}/"
     headers = {"Authorization": f"Bearer {config.access_token}"}
     
     try:
@@ -214,7 +214,7 @@ def download_whatsapp_media(wamid: str, config: MetaAppConfig) -> Optional[Tuple
         mime_type = media_info.get("mime_type")
 
         if not media_url:
-            logger.error(f"Failed to get media URL for WAMID {wamid}. Response: {media_info}")
+            logger.error(f"Failed to get media URL for Media ID {media_id}. Response: {media_info}")
             return None
 
         # 2. Download Media Content from the obtained URL
@@ -225,12 +225,12 @@ def download_whatsapp_media(wamid: str, config: MetaAppConfig) -> Optional[Tuple
         )
         media_response.raise_for_status()
         
-        logger.info(f"Successfully downloaded media for WAMID {wamid} ({mime_type}).")
+        logger.info(f"Successfully downloaded media for Media ID {media_id} ({mime_type}).")
         return media_response.content, mime_type
 
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error during media download for WAMID {wamid}: {e}", exc_info=True)
+        logger.error(f"Error during media download for Media ID {media_id}: {e}", exc_info=True)
         return None
     except Exception as e:
-        logger.error(f"An unexpected error occurred during media download for WAMID {wamid}: {e}", exc_info=True)
+        logger.error(f"An unexpected error occurred during media download for Media ID {media_id}: {e}", exc_info=True)
         return None

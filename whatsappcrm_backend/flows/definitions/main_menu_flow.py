@@ -121,8 +121,9 @@ MAIN_MENU_FLOW = {
                 "text": {
                     "body": (
                         "You are now connected to Hanna, our AI technical expert.\n\n"
+                        "Please note: This session will automatically time out after 5 minutes of inactivity.\n\n"
                         "To get the fastest solution, please describe the issue in one single message, including:\n"
-                        "1. *Product Model*: (e.g., `Victron MultiPlus-II`)\n"
+                        "1. *Product Model*: (e.g., `Solar Flex`, `Hanchu`, or `Beesman`)\n"
                         "2. *The Problem*: (e.g., `Inverter won't turn on, red light is flashing`)\n"
                         "3. *Recent Events*: (e.g., `This started after a power outage`)\n\n"
                         "Type 'exit' or 'menu' at any time to return to the main menu."

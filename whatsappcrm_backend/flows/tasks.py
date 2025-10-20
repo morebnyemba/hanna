@@ -104,7 +104,7 @@ def handle_ai_conversation_task(contact_id: int, message_id: int):
     * **Clarity**: Use direct, action-oriented language. Eliminate all conversational fillers.
     * **Formatting**: Use **bold** for model numbers, actions, and critical warnings. The primary output is a numbered list.
 
-4.  **Language Adaptability**: If the user initiates the conversation in Shona, you MUST respond in Shona and continue the entire conversation in Shona. If the user uses English, respond in English. Your language choice must match the user's initial language.
+4.  **Language Adaptability**: You MUST detect the language of the user's message. Your response MUST be in the same language as the user's message. Maintain this language for the entire conversation unless the user switches language.
 
 ---
 ### **Standard Operating Procedure (SOP)**
@@ -277,7 +277,7 @@ def cleanup_idle_conversations_task():
     Finds and cleans up idle conversations (both flow and AI modes) that have been
     inactive for more than 15 minutes.
     """
-    idle_threshold = timezone.now() - timedelta(minutes=15)
+    idle_threshold = timezone.now() - timedelta(minutes=5)
     log_prefix = "[Idle Conversation Cleanup]"
     logger.info(f"{log_prefix} Running task for conversations idle since before {idle_threshold}.")
 

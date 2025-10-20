@@ -174,17 +174,14 @@ def send_read_receipt_task(self, wamid: str, config_id: int, show_typing_indicat
 
 
 @shared_task(name="meta_integration.download_whatsapp_media_task")
-def download_whatsapp_media_task(wamid: str, config_id: int) -> str | None:
-    """
+def download_whatsapp_media_task(
     Downloads media from WhatsApp and saves it to a temporary file.
     Returns the path to the temporary file, or None on failure.
     """
-    log_prefix = f"[Media Download Task - WAMID: {wamid}]"
-    try:
+    og
         config = MetaAppConfig.objects.get(pk=config_id)
-        media_content, mime_type = download_whatsapp_media(wamid, config)
+        media_content, mime_type = download_whatsapp_media(media_id, config)
 
-        if media_content and mime_type:
             # Determine a file extension from the mime type
             suffix = f".{mime_type.split('/')[-1].split(';')[0]}"
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
