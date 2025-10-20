@@ -175,7 +175,13 @@ Execute the following steps in sequence. Use the exact response templates provid
 
         if incoming_message.message_type in ['image', 'audio']:
             logger.info(f"{log_prefix} Detected '{incoming_message.message_type}' message. Preparing for multimodal prompt.")
-            media_id = incoming_message.content_payload.get('id')
+            # --- FIX: Extract media ID from the correct nested object ---
+            # The top-level 'id' is the WAMID (message ID), not the media ID.
+            # The media ID is inside the object corresponding to the message type (e.g., 'image', 'audio').
+            media_payload = incoming_message.content_payload.get(incoming_message.message_type)
+            media_id = None
+            if isinstance(media_payload, dict):
+                media_id = media_payload.get('id')
             if media_id:
                 try:
                     # Download the media from WhatsApp to a temporary file

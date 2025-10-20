@@ -182,7 +182,13 @@ def download_whatsapp_media_task(media_id: str, config_id: int) -> str | None:
     log_prefix = f"[Media Download Task - Media ID: {media_id}]"
     try:
         config = MetaAppConfig.objects.get(pk=config_id)
-        media_content, mime_type = download_whatsapp_media(media_id, config)
+        # The download_whatsapp_media function returns a tuple or None.
+        download_result = download_whatsapp_media(media_id, config)
+
+        if download_result is None:
+            logger.error(f"{log_prefix} download_whatsapp_media utility returned None. Download failed.")
+            return None
+        media_content, mime_type = download_result
 
         if media_content and mime_type:
             # Determine a file extension from the mime type
