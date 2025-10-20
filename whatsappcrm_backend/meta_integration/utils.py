@@ -187,12 +187,12 @@ def create_interactive_list_message_data(body_text: str, button_text: str, secti
         interactive_payload["footer"] = {"text": footer_text}
     return interactive_payload
 
-def download_whatsapp_media(wamid: str, config: MetaAppConfig) -> Optional[Tuple[bytes, str]]:
+def download_whatsapp_media(media_id: str, config: MetaAppConfig) -> Optional[Tuple[bytes, str]]:
     """
-    Downloads media from WhatsApp using a given Media ID (WAMID).
+    Downloads media from WhatsApp using a given Media ID.
 
     Args:
-        wamid: The WhatsApp Media ID of the file to download.
+        media_id: The Media ID of the file to download (from the message payload).
         config: The active MetaAppConfig containing the API token.
 
     Returns:
