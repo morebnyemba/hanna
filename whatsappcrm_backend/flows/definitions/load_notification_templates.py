@@ -133,6 +133,26 @@ A new placeholder order has been created by *{{ contact.name or contact.whatsapp
 
 Please update the order details in the admin panel as soon as possible."""
     },
+    {
+        "name": "new_loan_application",
+        "description": "Sent to the finance team when a customer submits a new loan application.",
+        "template_type": "whatsapp",
+        "body": """New Loan Application Received 💰
+
+A new loan application has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+
+*Application Details:*
+- Application ID: *#{{ created_loan_application.id }}*
+- Name: *{{ loan_applicant_name }}*
+- National ID: {{ loan_national_id }}
+- Loan Type: {{ loan_type|replace('_', ' ')|title }}
+- Employment: {{ loan_employment_status|replace('_', ' ')|title }}
+- Monthly Income: ${{ loan_monthly_income }}
+{% if loan_request_amount %}- Amount Requested: *${{ loan_request_amount }}*{% endif %}
+{% if loan_product_interest %}- Product of Interest: *{{ loan_product_interest }}*{% endif %}
+
+Please review the application in the admin panel and follow up with the customer."""
+    },
 ]
 
 

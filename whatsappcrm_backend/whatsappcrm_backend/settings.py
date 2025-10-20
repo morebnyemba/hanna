@@ -279,6 +279,11 @@ CELERY_BEAT_SCHEDULE = {
         # Runs every hour at the top of the hour.
         'schedule': crontab(minute=0, hour='*'),
     },
+    'cleanup-idle-conversations': {
+        'task': 'flows.cleanup_idle_conversations_task',
+        # Runs every 5 minutes to check for idle sessions.
+        'schedule': crontab(minute='*/5'),
+    },
     # 'fetch-mailu-attachments-periodically': {
     #     'task': 'email_integration.fetch_email_attachments_task',
     #     'schedule': 5.0,  # This is now replaced by the idle_email_fetcher service

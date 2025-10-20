@@ -561,6 +561,60 @@ class JobCard(models.Model):
         verbose_name_plural = _("Job Cards")
 
 
+class LoanApplication(models.Model):
+    """
+    Stores customer applications for cash or product loans submitted via WhatsApp flow.
+    """
+    class LoanType(models.TextChoices):
+        CASH = 'cash_loan', _('Cash Loan')
+        PRODUCT = 'product_loan', _('Product Loan')
+
+    class EmploymentStatus(models.TextChoices):
+        EMPLOYED = 'employed', _('Employed')
+        SELF_EMPLOYED = 'self_employed', _('Self-Employed')
+        OTHER = 'unemployed', _('Other') # 'unemployed' was the ID, but 'Other' is a safer label
+
+    class ApplicationStatus(models.TextChoices):
+        PENDING = 'pending_review', _('Pending Review')
+        APPROVED = 'approved', _('Approved')
+        REJECTED = 'rejected', _('Rejected')
+        IN_PROGRESS = 'in_progress', _('In Progress')
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey(
+        CustomerProfile,
+        on_delete=models.CASCADE,
+        related_name='loan_applications',
+        help_text=_("The customer profile of the applicant.")
+    )
+    full_name = models.CharField(_("Full Name"), max_length=255)
+    national_id = models.CharField(_("National ID"), max_length=50, blank=True, null=True)
+    loan_type = models.CharField(_("Loan Type"), max_length=20, choices=LoanType.choices)
+    employment_status = models.CharField(_("Employment Status"), max_length=20, choices=EmploymentStatus.choices)
+    monthly_income = models.DecimalField(_("Monthly Income (USD)"), max_digits=12, decimal_places=2, null=True, blank=True)
+    requested_amount = models.DecimalField(_("Requested Amount (USD)"), max_digits=12, decimal_places=2, null=True, blank=True)
+    product_of_interest = models.CharField(_("Product of Interest"), max_length=255, blank=True, null=True)
+    status = models.CharField(
+        _("Application Status"),
+        max_length=20,
+        choices=ApplicationStatus.choices,
+        default=ApplicationStatus.PENDING,
+        db_index=True
+    )
+    notes = models.TextField(_("Internal Notes"), blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Loan Application for {self.full_name} ({self.get_status_display()})"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Loan Application")
+        verbose_name_plural = _("Loan Applications")
+
+
 # --- ADD THIS SIGNAL AT THE VERY END OF THE FILE ---
 @receiver([post_save, post_delete], sender=OrderItem)
 def on_order_item_change(sender, instance, **kwargs):

@@ -1,5 +1,8 @@
 # whatsappcrm_backend/flows/tasks.py
 import logging
+import tempfile
+import os
+from datetime import timedelta
 from celery import shared_task
 from django.db import transaction
 
@@ -11,10 +14,11 @@ from google.genai import errors as genai_errors
 from ai_integration.models import AIProvider
 # -------------------------------------
 
-from conversations.models import Message, Contact
+from conversations.models import Message, Contact, ContactFlowState
 from meta_integration.models import MetaAppConfig
-from meta_integration.tasks import send_whatsapp_message_task
+from meta_integration.tasks import send_whatsapp_message_task, download_whatsapp_media_task
 from .services import process_message_for_flow, _clear_contact_flow_state
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +103,8 @@ def handle_ai_conversation_task(contact_id: int, message_id: int):
     * **Clarity**: Use direct, action-oriented language. Eliminate all conversational fillers.
     * **Formatting**: Use **bold** for model numbers, actions, and critical warnings. The primary output is a numbered list.
 
+4.  **Language Adaptability**: If the user initiates the conversation in Shona, you MUST respond in Shona and continue the entire conversation in Shona. If the user uses English, respond in English. Your language choice must match the user's initial language.
+
 ---
 ### **Standard Operating Procedure (SOP)**
 
@@ -158,10 +164,41 @@ Execute the following steps in sequence. Use the exact response templates provid
             history=gemini_history
         )
         
-        logger.info(f"{log_prefix} Sending message to Gemini chat model.")
-        response = chat.send_message(incoming_message.text_content)
+        # --- NEW: Multimodal Input Handling ---
+        prompt_parts = []
+        if incoming_message.text_content:
+            prompt_parts.append(incoming_message.text_content)
 
+        uploaded_gemini_file = None
+        temp_media_file_path = None
+
+        if incoming_message.message_type in ['image', 'audio']:
+            logger.info(f"{log_prefix} Detected '{incoming_message.message_type}' message. Preparing for multimodal prompt.")
+            media_id = incoming_message.content_payload.get('id')
+            if media_id:
+                try:
+                    # Download the media from WhatsApp to a temporary file
+                    temp_media_file_path = download_whatsapp_media_task(media_id, config_to_use.id)
+                    if temp_media_file_path:
+                        logger.info(f"{log_prefix} Media downloaded to temporary file: {temp_media_file_path}")
+                        # Upload the temporary file to Gemini
+                        uploaded_gemini_file = client.files.upload(file=temp_media_file_path)
+                        prompt_parts.append(uploaded_gemini_file)
+                        logger.info(f"{log_prefix} Media uploaded to Gemini. URI: {uploaded_gemini_file.uri}")
+                    else:
+                        logger.error(f"{log_prefix} Failed to download media for ID {media_id}.")
+                except Exception as e:
+                    logger.error(f"{log_prefix} Error during media download/upload for ID {media_id}: {e}", exc_info=True)
+
+        if not prompt_parts:
+            logger.warning(f"{log_prefix} No content to send to AI (no text and no valid media). Aborting.")
+            return
+
+        logger.info(f"{log_prefix} Sending prompt to Gemini chat model with {len(prompt_parts)} parts.")
+        response = chat.send_message(prompt_parts)
         ai_response_text = response.text.strip()
+        # --- END: Multimodal Input Handling ---
+
 
         if "[HUMAN_HANDOVER]" in ai_response_text:
             logger.info(f"{log_prefix} AI requested human handover. Reason: {ai_response_text}")
@@ -220,3 +257,66 @@ Execute the following steps in sequence. Use the exact response templates provid
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred in AI conversation task: {e}", exc_info=True)
         raise
+    finally:
+        # --- NEW: Cleanup Temporary Files ---
+        if uploaded_gemini_file:
+            try:
+                logger.info(f"{log_prefix} Deleting temporary file from Gemini service: {uploaded_gemini_file.name}")
+                client.files.delete(name=uploaded_gemini_file.name)
+            except Exception as e:
+                logger.error(f"{log_prefix} Failed to delete uploaded Gemini file {uploaded_gemini_file.name}: {e}")
+        if temp_media_file_path and os.path.exists(temp_media_file_path):
+            os.remove(temp_media_file_path)
+            logger.info(f"{log_prefix} Deleted local temporary media file: {temp_media_file_path}")
+
+
+@shared_task(name="flows.cleanup_idle_conversations_task")
+def cleanup_idle_conversations_task():
+    """
+    Finds and cleans up idle conversations (both flow and AI modes) that have been
+    inactive for more than 15 minutes.
+    """
+    idle_threshold = timezone.now() - timedelta(minutes=15)
+    log_prefix = "[Idle Conversation Cleanup]"
+    logger.info(f"{log_prefix} Running task for conversations idle since before {idle_threshold}.")
+
+    # --- Find Idle Contacts in Flows ---
+    # A contact is idle in a flow if their flow state hasn't been updated recently.
+    idle_flow_states = ContactFlowState.objects.filter(last_updated_at__lt=idle_threshold).select_related('contact', 'current_flow')
+    
+    # --- Find Idle Contacts in AI Mode ---
+    # A contact is idle in AI mode if their last message was before the threshold.
+    # We look for contacts in AI mode whose `last_seen` (updated by messages) is old.
+    idle_ai_contacts = Contact.objects.filter(
+        conversation_mode__startswith='ai_',
+        last_seen__lt=idle_threshold
+    )
+
+    timed_out_contacts = set()
+
+    # Process idle flow contacts
+    for state in idle_flow_states:
+        contact = state.contact
+        logger.info(f"{log_prefix} Clearing idle flow '{state.current_flow.name}' for contact {contact.id} ({contact.whatsapp_id}). Last activity: {state.last_updated_at}")
+        _clear_contact_flow_state(contact)
+        timed_out_contacts.add(contact)
+
+    # Process idle AI contacts
+    for contact in idle_ai_contacts:
+        logger.info(f"{log_prefix} Clearing idle AI mode '{contact.conversation_mode}' for contact {contact.id} ({contact.whatsapp_id}). Last activity: {contact.last_seen}")
+        contact.conversation_mode = 'flow'
+        contact.conversation_context = {}
+        contact.save(update_fields=['conversation_mode', 'conversation_context'])
+        timed_out_contacts.add(contact)
+
+    # --- Send Notifications ---
+    # Send one notification to each unique contact that was timed out.
+    if timed_out_contacts:
+        logger.info(f"{log_prefix} Sending timeout notifications to {len(timed_out_contacts)} contacts.")
+        config_to_use = MetaAppConfig.objects.get_active_config()
+        notification_text = "Your session has expired due to inactivity. Please send 'menu' to start over."
+        for contact in timed_out_contacts:
+            outgoing_msg = Message.objects.create(contact=contact, app_config=config_to_use, direction='out', message_type='text', content_payload={'body': notification_text}, status='pending_dispatch')
+            send_whatsapp_message_task.delay(outgoing_msg.id, config_to_use.id)
+
+    logger.info(f"{log_prefix} Cleanup complete. Timed out {len(timed_out_contacts)} contacts.")

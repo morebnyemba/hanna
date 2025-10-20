@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, JobCard
+from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, JobCard, LoanApplication
 
 class InteractionInline(admin.TabularInline):
     """
@@ -122,6 +122,14 @@ class SiteAssessmentRequestAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at')
     autocomplete_fields = ['customer']
     list_editable = ('status',)
+
+@admin.register(LoanApplication)
+class LoanApplicationAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'loan_type', 'status', 'requested_amount', 'product_of_interest', 'created_at')
+    search_fields = ('full_name', 'national_id', 'customer__contact__name', 'customer__contact__whatsapp_id')
+    list_filter = ('status', 'loan_type', 'employment_status', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    autocomplete_fields = ['customer']
 
 @admin.register(SolarCleaningRequest)
 class SolarCleaningRequestAdmin(admin.ModelAdmin):

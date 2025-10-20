@@ -30,7 +30,7 @@ MAIN_MENU_FLOW = {
                     "interactive": {
                         "type": "list",
                         "header": {"type": "text", "text": "Pfungwa Main Menu"},
-                        "body": {"text": "Hello! I'm Hanna, your virtual assistant. Welcome to Pfungwa!\n\nPlease select an option from the menu below to get started."},
+                        "body": {"text": "Hello! I'm Hanna, your Hanna AI. Welcome to Pfungwa!\n\nPlease select an option from the menu below to get started."},
                         "footer": {"text": "Select an option to continue"},
                         "action": {
                             "button": "Select an Option",
@@ -41,7 +41,8 @@ MAIN_MENU_FLOW = {
                                         {"id": "purchase_product", "title": "🛒 Shop Products", "description": "Browse and buy solar products."},
                                         {"id": "request_installation", "title": "🛠️ Request Installation", "description": "Schedule a Solar or Starlink installation."},
                                         {"id": "site_assessment", "title": "📋 Book Site Assessment", "description": "Book a site visit with our experts."},
-                                        {"id": "solar_cleaning", "title": "💧 Solar Panel Cleaning", "description": "Request a cleaning service."}
+                                        {"id": "solar_cleaning", "title": "💧 Solar Panel Cleaning", "description": "Request a cleaning service."},
+                                        {"id": "apply_for_loan", "title": "💰 Apply for Loan", "description": "Apply for a cash or product loan."}
                                     ]
                                 },
                                 {
@@ -63,9 +64,10 @@ MAIN_MENU_FLOW = {
                 {"to_step": "show_installation_submenu", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_installation"}},
                 {"to_step": "switch_to_assessment_flow", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "site_assessment"}},
                 {"to_step": "switch_to_cleaning_flow", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "solar_cleaning"}},
-                {"to_step": "show_coming_soon", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
-                {"to_step": "start_ai_troubleshooting_session", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
-                {"to_step": "show_about_pfungwa", "priority": 6, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
+                {"to_step": "switch_to_loan_application_flow", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "apply_for_loan"}},
+                {"to_step": "show_coming_soon", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
+                {"to_step": "start_ai_troubleshooting_session", "priority": 6, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
+                {"to_step": "show_about_pfungwa", "priority": 7, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
             ]
         },
         {
@@ -181,6 +183,15 @@ MAIN_MENU_FLOW = {
             "type": "switch_flow",
             "config": {
                 "target_flow_name": "solar_cleaning_request",
+                "initial_context_template": {"source_flow": "main_menu"}
+            },
+            "transitions": []
+        },
+        {
+            "name": "switch_to_loan_application_flow",
+            "type": "switch_flow",
+            "config": {
+                "target_flow_name": "loan_application_flow",
                 "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []

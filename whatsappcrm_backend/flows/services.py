@@ -1254,6 +1254,8 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
     Determines if the contact is in an active flow, an AI conversation mode, or if a new flow should be triggered.
     """
     # --- AI Conversation Mode Handling ---
+    # This is a fast path to delegate to the AI handler if the contact is not in a standard flow.
+    # It's already efficient and correctly placed.
     if contact.conversation_mode != 'flow':
         user_text = message_data.get('text', {}).get('body', '').strip().lower()
         exit_keywords = ['exit', 'menu', 'stop', 'quit']
@@ -1296,6 +1298,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
 
     # --- Original Flow Logic Starts Here ---
     # Initialize the list of actions to be performed at the very beginning.
+    # This list accumulates actions from multiple steps if fall-through occurs.
     actions_to_perform = []
 
     # --- SPECIAL CASE: Order Receiver Number ---
@@ -1341,6 +1344,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
     """
     Main entry point to process an incoming message for a contact against flows.
     Determines if the contact is in an active flow or if a new flow should be triggered.
+    This function is wrapped in a transaction.atomic decorator.
     """
     if contact.needs_human_intervention:
         logger.info(
@@ -1351,9 +1355,17 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
         return []
 
     # actions_to_perform = [] # This is now initialized at the top of the function.
-    try:
-        contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').filter(contact=contact).first()
+    
+    # --- OPTIMIZATION: Use prefetch_related to get all necessary data in fewer queries. ---
+    # We fetch the current step's outgoing transitions and their respective next steps.
+    # This avoids hitting the database for transitions inside the main processing loop.
+    prefetch_query = models.Prefetch(
+        'current_step__outgoing_transitions',
+        queryset=FlowTransition.objects.select_related('next_step').order_by('priority')
+    )
+    contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').prefetch_related(prefetch_query).filter(contact=contact).first()
 
+    try:
         # If no active flow, try to trigger one. This is the only time a user message can start a flow.
         if not contact_flow_state:
             logger.info(f"No active flow state for contact {contact.whatsapp_id}. Attempting to trigger a new flow.")
@@ -1361,7 +1373,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
             
             if flow_was_triggered:
                 # A new flow was started. Execute its entry step's actions now.
-                contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').filter(contact=contact).first()
+                contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').prefetch_related(prefetch_query).filter(contact=contact).first()
                 if not contact_flow_state:
                     logger.warning(f"Flow was triggered for contact {contact.id} but no state was found immediately after (likely ended on first step). Exiting.")
                     return []
@@ -1402,7 +1414,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
         # It allows for "fall-through" steps (like 'action' steps) to be processed immediately.
         while True:
             # Re-fetch state in each loop iteration for robustness
-            is_internal_message = message_data.get('type', '').startswith('internal_')
+            is_internal_message = message_data.get('type', '').startswith('internal_') # type: ignore
             contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').filter(contact=contact).first()
 
             if not contact_flow_state:
@@ -1411,7 +1423,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
             
             current_step = contact_flow_state.current_step
             flow_context = contact_flow_state.flow_context_data if contact_flow_state.flow_context_data is not None else {}
-
+            
             logger.debug(f"Handling active flow. Contact: {contact.whatsapp_id}, Current Step: '{current_step.name}' (Type: {current_step.step_type}). Context: {flow_context}")
 
             # --- Step 1: Process incoming message if the current step is a question ---
@@ -1510,7 +1522,11 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 just_triggered_flow = False # Unset flag if it was set
 
             # --- Step 2: Evaluate transitions from the current step ---
-            transitions = FlowTransition.objects.filter(current_step=current_step).select_related('next_step').order_by('priority')
+            # --- OPTIMIZATION: Use the prefetched transitions instead of a new query. ---
+            # The original query was: FlowTransition.objects.filter(current_step=current_step)...
+            # Now, we access the prefetched data from the step object.
+            transitions = current_step.outgoing_transitions.all()
+
             next_step_to_transition_to = None
             for transition in transitions:
                 if _evaluate_transition_condition(transition, contact, message_data, flow_context, incoming_message_obj):
