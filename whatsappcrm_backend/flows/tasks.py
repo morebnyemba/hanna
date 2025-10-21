@@ -159,15 +159,15 @@ Execute the following steps in sequence. Use the exact response templates provid
                 'parts': [{'text': "Understood. I will act as Hanna, the solar expert. How can I help you today?"}]
             })
 
-        chat = client.chats.create(
-            model='gemini-2.5-flash', # Use the model identifier
-            history=gemini_history
-        )
+        # FIX: Use start_chat which correctly handles history dictionaries.
+        # client.chats.create expects a list of Content objects, which was causing the pydantic error.
+        chat = client.start_chat(history=gemini_history)
         
         # --- NEW: Multimodal Input Handling ---
         prompt_parts = []
         if incoming_message.text_content:
-            prompt_parts.append(incoming_message.text_content)
+            # FIX: The Gemini API expects each part to be a dictionary.
+            prompt_parts.append({'text': incoming_message.text_content})
 
         uploaded_gemini_file = None
         temp_media_file_path = None
@@ -206,7 +206,8 @@ Execute the following steps in sequence. Use the exact response templates provid
 
         # --- NEW: Update and save the conversation history ---
         # Add the user's prompt and the AI's response to the history
-        gemini_history.append({'role': 'user', 'parts': prompt_parts})
+        # The user's prompt is now a list of dicts, which is the correct format for 'parts'.
+        gemini_history.append({'role': 'user', 'parts': prompt_parts}) 
         gemini_history.append({'role': 'model', 'parts': [{'text': ai_response_text}]})
         
         # Persist the updated history back to the contact's context
