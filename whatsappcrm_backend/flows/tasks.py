@@ -85,13 +85,11 @@ def handle_ai_conversation_task(contact_id: int, message_id: int):
         active_provider = AIProvider.objects.get(provider='google_gemini', is_active=True)
         config_to_use = MetaAppConfig.objects.get_active_config()
 
-        # Configure the library with the API key for model interaction
-        genai.configure(api_key=active_provider.api_key)
-        # The client is used specifically for file operations
         client = genai.Client(api_key=active_provider.api_key)
 
+        system_prompt = "You are a helpful assistant."
         if contact.conversation_mode == 'ai_troubleshooting':
-            system_prompt = f"""You are Hanna, an AI-driven technical expert system. Your mission is to provide rapid, accurate, and safe Tier-1 technical troubleshooting solutions.
+            SYSTEM_PROMPT = f"""You are Hanna, an AI-driven technical expert system. Your mission is to provide rapid, accurate, and safe Tier-1 technical troubleshooting solutions.
 
 ---
 ### **Core Directives (Non-negotiable)**
@@ -139,34 +137,40 @@ Execute the following steps in sequence. Use the exact response templates provid
 * `[END_CONVERSATION]`: Use this token ONLY when the user wishes to terminate the session.
 """
 
-        # The trigger message is often just a button click ("AI Troubleshooter") and not useful for the AI's context.        
-        gemini_history = contact.conversation_context.get('gemini_history', [])
+        # Fetch messages for history, but exclude the one that triggered the AI mode.
+        # The trigger message is often just a button click ("AI Troubleshooter") and not useful for the AI's context.
+        history_messages = Message.objects.filter(
+            contact=contact, 
+            timestamp__lt=incoming_message.timestamp
+        ).order_by('-timestamp')[:20]
+        
+        gemini_history = []
+        # Inject the system prompt as the first message in the history for context
+        # The 'user' role here is a standard way to provide system instructions in the Gemini API.
+        gemini_history.append({
+            'role': 'user', 
+            'parts': [{'text': system_prompt}]
+        })
+        gemini_history.append({'role': 'model', 'parts': [{'text': "Understood. I will act as Hanna, the solar expert. How can I help you today?"}]})
 
-        # If the history is empty, it's a new AI conversation. Initialize it.
-        if not gemini_history:
-            logger.info(f"{log_prefix} New AI conversation started. Initializing history with system prompt.")
-            # Inject the system prompt as the first message in the history for context
-            # The 'user' role here is a standard way to provide system instructions in the Gemini API.
-            gemini_history.append({
-                'role': 'user', 
-                'parts': [{'text': system_prompt}]
-            })
-            gemini_history.append({
-                'role': 'model', 
-                'parts': [{'text': "Understood. I will act as Hanna, the solar expert. How can I help you today?"}]
-            })
+        for msg in reversed(history_messages):
+            role = 'user' if msg.direction == 'in' else 'model'
+            if msg.text_content:
+                if msg.direction == 'in' and msg.text_content.lower().strip() in ['exit', 'menu', 'stop', 'quit']:
+                    continue
+                gemini_history.append({'role': role, 'parts': [{'text': msg.text_content}]})
 
-        # FIX: Instantiate the model and then start the chat.
-        # The 'client' object does not have a 'start_chat' method.
-        chat = genai.GenerativeModel('gemini-1.5-flash').start_chat(history=gemini_history)
+        chat = client.chats.create(
+            model='gemini-2.5-flash', # Use the model identifier
+            history=gemini_history
+        )
         
         # --- NEW: Multimodal Input Handling ---
         prompt_parts = []
         if incoming_message.text_content:
-            # FIX: The Gemini API expects each part to be a dictionary.
-            prompt_parts.append({'text': incoming_message.text_content})
+            prompt_parts.append(incoming_message.text_content)
 
-        uploaded_gemini_file = None # Initialize to prevent UnboundLocalError
+        uploaded_gemini_file = None
         temp_media_file_path = None
 
         if incoming_message.message_type in ['image', 'audio']:
@@ -181,9 +185,8 @@ Execute the following steps in sequence. Use the exact response templates provid
             if media_id:
                 try:
                     # Download the media from WhatsApp to a temporary file
-                    download_result = download_whatsapp_media_task(media_id, config_to_use.id)
-                    if download_result:
-                        temp_media_file_path, _ = download_result
+                    temp_media_file_path = download_whatsapp_media_task(media_id, config_to_use.id)
+                    if temp_media_file_path:
                         logger.info(f"{log_prefix} Media downloaded to temporary file: {temp_media_file_path}")
                         # Upload the temporary file to Gemini
                         uploaded_gemini_file = client.files.upload(file=temp_media_file_path)
@@ -201,27 +204,16 @@ Execute the following steps in sequence. Use the exact response templates provid
         logger.info(f"{log_prefix} Sending prompt to Gemini chat model with {len(prompt_parts)} parts.")
         response = chat.send_message(prompt_parts)
         ai_response_text = response.text.strip()
-
-        # --- NEW: Update and save the conversation history ---
-        # Add the user's prompt and the AI's response to the history
-        # The user's prompt is now a list of dicts, which is the correct format for 'parts'.
-        gemini_history.append({'role': 'user', 'parts': prompt_parts}) 
-        gemini_history.append({'role': 'model', 'parts': [{'text': ai_response_text}]})
-        
-        # Persist the updated history back to the contact's context
-        contact.conversation_context['gemini_history'] = gemini_history
-        # --- END: History update ---
         # --- END: Multimodal Input Handling ---
 
 
         if "[HUMAN_HANDOVER]" in ai_response_text:
             logger.info(f"{log_prefix} AI requested human handover. Reason: {ai_response_text}")
             
-            # Exit AI mode, flag for human intervention, and clear context
+            # Exit AI mode and flag for human intervention
             contact.conversation_mode = 'flow'
             contact.needs_human_intervention = True
-            contact.conversation_context = {} # Clear AI context
-            contact.save(update_fields=['conversation_mode', 'needs_human_intervention', 'conversation_context'])
+            contact.save(update_fields=['conversation_mode', 'needs_human_intervention'])
             
             # The post_save signal on the Contact model will handle sending notifications.
             
@@ -239,19 +231,15 @@ Execute the following steps in sequence. Use the exact response templates provid
             logger.info(f"{log_prefix} AI requested to end conversation. The main service will handle resetting the mode.")
             final_reply = "I am now ending this session. Please type 'menu' to see other options."
             
-            # Exit AI mode and clear context
+            # Exit AI mode
             contact.conversation_mode = 'flow'
-            contact.conversation_context = {} # Clear AI context
-            contact.save(update_fields=['conversation_mode', 'conversation_context'])
+            contact.save(update_fields=['conversation_mode'])
 
             # Also clear any residual flow state to be safe
             _clear_contact_flow_state(contact)
 
         else:
             final_reply = ai_response_text
-
-        # Save the contact with the updated context before sending the message
-        contact.save(update_fields=['conversation_context'])
 
         outgoing_msg = Message.objects.create(
             contact=contact,
