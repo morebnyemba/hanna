@@ -1,6 +1,7 @@
 # whatsappcrm_backend/meta_integration/tasks.py
 
 import logging
+from typing import Tuple
 import tempfile
 import os
 from celery import shared_task
@@ -174,7 +175,7 @@ def send_read_receipt_task(self, wamid: str, config_id: int, show_typing_indicat
 
 
 @shared_task(name="meta_integration.download_whatsapp_media_task")
-def download_whatsapp_media_task(media_id: str, config_id: int) -> str | None:
+def download_whatsapp_media_task(media_id: str, config_id: int) -> Tuple[str, str] | None:
     """
     Downloads media from WhatsApp and saves it to a temporary file.
     Returns the path to the temporary file, or None on failure.
@@ -196,7 +197,7 @@ def download_whatsapp_media_task(media_id: str, config_id: int) -> str | None:
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
                 temp_file.write(media_content)
                 logger.info(f"{log_prefix} Media saved to temporary file: {temp_file.name}")
-                return temp_file.name
+                return temp_file.name, mime_type
         else:
             logger.error(f"{log_prefix} Failed to download media content from WhatsApp.")
             return None

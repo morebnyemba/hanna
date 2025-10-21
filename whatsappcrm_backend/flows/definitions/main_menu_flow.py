@@ -30,7 +30,9 @@ MAIN_MENU_FLOW = {
                     "interactive": {
                         "type": "list",
                         "header": {"type": "text", "text": "Pfungwa Main Menu"},
-                        "body": {"text": "Hello! I'm Hanna, your Hanna AI. Welcome to Pfungwa!\n\nPlease select an option from the menu below to get started."},
+                        "body": {
+                            "text": "Hello {{ contact.name | default('there') }}! I'm Hanna, your personal AI assistant for Pfungwa.\n\nHow can I help you today? Please select an option from the menu below."
+                        },
                         "footer": {"text": "Select an option to continue"},
                         "action": {
                             "button": "Select an Option",
@@ -119,15 +121,14 @@ MAIN_MENU_FLOW = {
             "config": {
                 "message_type": "text",
                 "text": {
-                    "body": (
-                        "You are now connected to Hanna, our AI technical expert.\n\n"
-                        "Please note: This session will automatically time out after 5 minutes of inactivity.\n\n"
-                        "To get the fastest solution, please describe the issue in one single message, including:\n"
-                        "1. *Product Model*: (e.g., `Solar Flex`, `Hanchu`, or `Beesman`)\n"
-                        "2. *The Problem*: (e.g., `Inverter won't turn on, red light is flashing`)\n"
-                        "3. *Recent Events*: (e.g., `This started after a power outage`)\n\n"
-                        "Type 'exit' or 'menu' at any time to return to the main menu."
-                    )
+                    "body": "You are now connected to Hanna, our AI technical expert.\n\n"
+                            "To get started, please describe the issue, including:\n"
+                            "1. *Product Model*\n"
+                            "   (e.g., `Solar Flex`, `Hanchu`, or `Beesman`)\n"
+                            "2. *The Primary Symptom*\n"
+                            "   (e.g., `Red light is flashing three times`)\n\n"
+                            "You can also send a photo or video of the issue.\n\n"
+                            "Type 'menu' at any time to exit this session."
                 }
             },
             "transitions": [
