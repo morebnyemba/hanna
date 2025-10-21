@@ -166,7 +166,7 @@ MAIN_MENU_FLOW = {
             "name": "switch_to_starlink_installation_flow",
             "type": "switch_flow",
             "config": {
-                "target_flow_name": "starlink_installation_flow",
+                "target_flow_name": "starlink_installation_request",
                 "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []
