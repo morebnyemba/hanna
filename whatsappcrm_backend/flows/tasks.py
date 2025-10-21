@@ -89,6 +89,9 @@ def handle_ai_conversation_task(contact_id: int, message_id: int):
         active_provider = AIProvider.objects.get(provider='google_gemini', is_active=True)
         config_to_use = MetaAppConfig.objects.get_active_config()
 
+        # Configure the library with the API key for model interaction
+        genai.configure(api_key=active_provider.api_key)
+        # The client is used specifically for file operations
         client = genai.Client(api_key=active_provider.api_key)
 
         system_prompt = "You are a helpful assistant."
@@ -159,9 +162,9 @@ Execute the following steps in sequence. Use the exact response templates provid
                 'parts': [{'text': "Understood. I will act as Hanna, the solar expert. How can I help you today?"}]
             })
 
-        # FIX: Use start_chat which correctly handles history dictionaries.
-        # client.chats.create expects a list of Content objects, which was causing the pydantic error.
-        chat = client.start_chat(history=gemini_history)
+        # FIX: Instantiate the model and then start the chat.
+        # The 'client' object does not have a 'start_chat' method.
+        chat = genai.GenerativeModel('gemini-1.5-flash').start_chat(history=gemini_history)
         
         # --- NEW: Multimodal Input Handling ---
         prompt_parts = []
