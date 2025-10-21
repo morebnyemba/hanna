@@ -33,7 +33,7 @@ MAIN_MENU_FLOW = {
                         "body": {
                             "text": "Hello {{ contact.name | default('there') }}! I'm Hanna, your personal AI assistant for Pfungwa.\n\nHow can I help you today? Please select an option from the menu below."
                         },
-                        "footer": {"text": "Select an option to continue"},
+                        "footer": {"text": "Session expires after 5 mins of inactivity"},
                         "action": {
                             "button": "Select an Option",
                             "sections": [
