@@ -16,11 +16,7 @@ from ai_integration.models import AIProvider
 
 from conversations.models import Message, Contact
 from .models import ContactFlowState
-from meta_integration.models import MetaAppConfig, WebhookEventLog
-from meta_integration.utils import (
-    send_whatsapp_message,
-    download_whatsapp_media,
-)
+from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task, download_whatsapp_media_task
 from .services import process_message_for_flow, _clear_contact_flow_state
 from django.utils import timezone
@@ -94,9 +90,8 @@ def handle_ai_conversation_task(contact_id: int, message_id: int):
         # The client is used specifically for file operations
         client = genai.Client(api_key=active_provider.api_key)
 
-        system_prompt = "You are a helpful assistant."
         if contact.conversation_mode == 'ai_troubleshooting':
-            SYSTEM_PROMPT = f"""You are Hanna, an AI-driven technical expert system. Your mission is to provide rapid, accurate, and safe Tier-1 technical troubleshooting solutions.
+            system_prompt = f"""You are Hanna, an AI-driven technical expert system. Your mission is to provide rapid, accurate, and safe Tier-1 technical troubleshooting solutions.
 
 ---
 ### **Core Directives (Non-negotiable)**
@@ -144,7 +139,6 @@ Execute the following steps in sequence. Use the exact response templates provid
 * `[END_CONVERSATION]`: Use this token ONLY when the user wishes to terminate the session.
 """
 
-        # Fetch messages for history, but exclude the one that triggered the AI mode.
         # The trigger message is often just a button click ("AI Troubleshooter") and not useful for the AI's context.        
         gemini_history = contact.conversation_context.get('gemini_history', [])
 
@@ -172,7 +166,7 @@ Execute the following steps in sequence. Use the exact response templates provid
             # FIX: The Gemini API expects each part to be a dictionary.
             prompt_parts.append({'text': incoming_message.text_content})
 
-        uploaded_gemini_file = None
+        uploaded_gemini_file = None # Initialize to prevent UnboundLocalError
         temp_media_file_path = None
 
         if incoming_message.message_type in ['image', 'audio']:
@@ -186,10 +180,11 @@ Execute the following steps in sequence. Use the exact response templates provid
                 media_id = media_payload.get('id')
             if media_id:
                 try:
-                    # Download the media from WhatsApp to a temporary file. It returns a tuple.
+                    # Download the media from WhatsApp to a temporary file
                     download_result = download_whatsapp_media_task(media_id, config_to_use.id)
                     if download_result:
                         temp_media_file_path, _ = download_result
+                        logger.info(f"{log_prefix} Media downloaded to temporary file: {temp_media_file_path}")
                         # Upload the temporary file to Gemini
                         uploaded_gemini_file = client.files.upload(file=temp_media_file_path)
                         prompt_parts.append(uploaded_gemini_file)
@@ -222,7 +217,7 @@ Execute the following steps in sequence. Use the exact response templates provid
         if "[HUMAN_HANDOVER]" in ai_response_text:
             logger.info(f"{log_prefix} AI requested human handover. Reason: {ai_response_text}")
             
-            # Exit AI mode and flag for human intervention
+            # Exit AI mode, flag for human intervention, and clear context
             contact.conversation_mode = 'flow'
             contact.needs_human_intervention = True
             contact.conversation_context = {} # Clear AI context
@@ -244,7 +239,7 @@ Execute the following steps in sequence. Use the exact response templates provid
             logger.info(f"{log_prefix} AI requested to end conversation. The main service will handle resetting the mode.")
             final_reply = "I am now ending this session. Please type 'menu' to see other options."
             
-            # Exit AI mode
+            # Exit AI mode and clear context
             contact.conversation_mode = 'flow'
             contact.conversation_context = {} # Clear AI context
             contact.save(update_fields=['conversation_mode', 'conversation_context'])
@@ -300,7 +295,7 @@ def cleanup_idle_conversations_task():
     Finds and cleans up idle conversations (both flow and AI modes) that have been
     inactive for more than 15 minutes.
     """
-    idle_threshold = timezone.now() - timedelta(minutes=15)
+    idle_threshold = timezone.now() - timedelta(minutes=5)
     log_prefix = "[Idle Conversation Cleanup]"
     logger.info(f"{log_prefix} Running task for conversations idle since before {idle_threshold}.")
 
