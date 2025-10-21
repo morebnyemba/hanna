@@ -79,19 +79,19 @@ STARLINK_INSTALLATION_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "body": {"text": "What type of Starlink kit do you have?"},
+                        "header": {"type": "text", "text": "Starlink Kit Type"},
+                        "body": {"text": "What type of Starlink kit do you have?\n\n(Type 'back' to change the phone number.)"},
                         "action": {"buttons": [
                             {"type": "reply", "reply": {"id": "standard", "title": "Standard"}},
                             {"type": "reply", "reply": {"id": "high_performance", "title": "High Performance"}},
-                            {"type": "reply", "reply": {"id": "other", "title": "Other/Not Sure"}},
-                            {"type": "reply", "reply": {"id": "go_back", "title": "Go Back"}}
+                            {"type": "reply", "reply": {"id": "other", "title": "Other/Not Sure"}}
                         ]}
                     }
                 },
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "install_kit_type"}
             },
             "transitions": [
-                {"to_step": "ask_client_phone", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
+                {"to_step": "ask_client_phone", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
                 {"to_step": "ask_install_location", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_kit_type"}},
             ]
         },
