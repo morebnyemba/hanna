@@ -92,7 +92,7 @@ STARLINK_INSTALLATION_FLOW = {
             },
             "transitions": [
                 {"to_step": "ask_client_phone", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
-                {"to_step": "ask_install_location", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_kit_type"}},
+                {"to_step": "ask_install_location", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_kit_type"}}
             ]
         },
         {
