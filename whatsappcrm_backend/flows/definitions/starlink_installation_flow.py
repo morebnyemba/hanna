@@ -25,8 +25,6 @@ STARLINK_INSTALLATION_FLOW = {
             "name": "start_starlink_request",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "You've requested a Starlink installation. Let's get a few details to schedule your appointment.\n\nWhat is your full name?"}},
-                "reply_config": {"expected_type": "text", "save_to_variable": "install_full_name"}
                 "message_config": {
                     "message_type": "interactive",
                     "interactive": {
@@ -43,7 +41,6 @@ STARLINK_INSTALLATION_FLOW = {
                 },
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "start_choice"}
             },
-            "transitions": [{"to_step": "ask_client_phone", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "install_full_name"}}]
             "transitions": [
                 {"to_step": "ask_client_name", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "proceed"}},
                 {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "cancel"}}
@@ -65,13 +62,11 @@ STARLINK_INSTALLATION_FLOW = {
             "name": "ask_client_phone",
             "type": "question",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thanks, {{ install_full_name }}. What is the best contact number for the installation?"}},
                 "message_config": {"message_type": "text", "text": {"body": "Thank you, {{ install_full_name.split(' ')[0] }}. What is the best *contact number* for this installation? (e.g., +263771234567)"}},
                 "reply_config": {"expected_type": "text", "save_to_variable": "install_phone", "validation_regex": "^\\+?[1-9]\\d{8,14}$"},
                 "fallback_config": {"action": "re_prompt", "max_retries": 2, "re_prompt_message_text": "Please enter a valid phone number (e.g., +263...)"}
             },
             "transitions": [
-                {"to_step": "start_starlink_request", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
                 {"to_step": "ask_client_name", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "back"}},
                 {"to_step": "ask_kit_type", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_phone"}}
             ]
@@ -189,7 +184,6 @@ STARLINK_INSTALLATION_FLOW = {
                         "body": {"text": "Please review your details:\n\n*Name*: {{ install_full_name }}\n*Phone*: {{ install_phone }}\n*Kit Type*: {{ install_kit_type|title }}\n*Install Location*: {{ install_mount_location }}\n*Date*: {{ install_datetime }} ({{ install_availability|title }})\n*Address*: {{ install_address }}"},
                         "action": {"buttons": [
                             {"type": "reply", "reply": {"id": "confirm_install", "title": "Confirm & Submit"}},
-                            {"type": "reply", "reply": {"id": "go_back", "title": "Go Back"}},
                             {"type": "reply", "reply": {"id": "go_back_to_pin", "title": "Go Back"}},
                             {"type": "reply", "reply": {"id": "cancel_install", "title": "Cancel"}}
                         ]}
@@ -199,7 +193,6 @@ STARLINK_INSTALLATION_FLOW = {
             },
             "transitions": [
                 {"to_step": "save_installation_request", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_install"}},
-                {"to_step": "ask_location_pin", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back"}},
                 {"to_step": "ask_location_pin", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back_to_pin"}},
                 {"to_step": "end_flow_cancelled", "priority": 3, "condition_config": {"type": "always_true"}}
             ]
@@ -214,7 +207,6 @@ STARLINK_INSTALLATION_FLOW = {
                         "app_label": "customer_data",
                         "model_name": "InstallationRequest",
                         "fields_template": {
-                            "customer": "current",
                             "customer_id": "{{ contact.id }}",
                             "installation_type": "starlink",
                             "full_name": "{{ install_full_name }}",
@@ -249,7 +241,6 @@ STARLINK_INSTALLATION_FLOW = {
         {
             "name": "end_flow_success",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Your Starlink installation request has been submitted. Our team will contact you shortly to confirm the schedule."}}}
             "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you, {{ install_full_name.split(' ')[0] }}! Your Starlink installation request has been submitted. Our team will contact you shortly to confirm the schedule."}}}
         },
         {
