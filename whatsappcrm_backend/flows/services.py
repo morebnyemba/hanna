@@ -1263,7 +1263,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
         if user_text in exit_keywords:
             logger.info(f"Contact {contact.id} is exiting AI mode with keyword '{user_text}'.")
             contact.conversation_mode = 'flow'
-            contact.conversation_context = {} # Clear AI context
+            contact.conversation_context = {}
             contact.save(update_fields=['conversation_mode', 'conversation_context'])
             
             # Clear any residual flow state
