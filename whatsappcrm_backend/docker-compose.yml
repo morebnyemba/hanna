@@ -1,0 +1,62 @@
+# This docker-compose.yml runs the Infisical server as a separate stack.
+# Place this file in its own directory (e.g., ~/infisical-stack)
+# and run 'docker compose up -d' from there.
+
+services:
+  # Infisical Server
+  infisical:
+    image: infisical/infisical-backend:latest
+    container_name: infisical_server
+    restart: unless-stopped
+    ports:
+      - "8080:8080" # Expose Infisical API on port 8080
+    environment:
+      # Database connection
+      DATABASE_URL: postgresql://infisical_user:infisical_password@infisical_db:5432/infisical_db
+      # Redis connection
+      REDIS_URL: redis://infisical_redis:6379
+      # Application URL (replace with your actual domain if exposed publicly)
+      SITE_URL: http://localhost:8080
+      # Generate a strong secret for JWT signing
+      JWT_SECRET: your_very_strong_jwt_secret_here
+      # Generate a strong secret for encryption
+      ENCRYPTION_KEY: your_very_strong_encryption_key_here
+      # Other Infisical specific environment variables can go here
+      # For example, email settings, S3 for file storage, etc.
+    depends_on:
+      - infisical_db
+      - infisical_redis
+    networks:
+      - infisical_network
+
+  # PostgreSQL Database for Infisical
+  infisical_db:
+    image: postgres:15-alpine
+    container_name: infisical_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: infisical_db
+      POSTGRES_USER: infisical_user
+      POSTGRES_PASSWORD: infisical_password
+    volumes:
+      - infisical_postgres_data:/var/lib/postgresql/data
+    networks:
+      - infisical_network
+
+  # Redis for Infisical (caching, queues)
+  infisical_redis:
+    image: redis:7-alpine
+    container_name: infisical_redis
+    restart: unless-stopped
+    volumes:
+      - infisical_redis_data:/data
+    networks:
+      - infisical_network
+
+networks:
+  infisical_network:
+    driver: bridge
+
+volumes:
+  infisical_postgres_data:
+  infisical_redis_data:

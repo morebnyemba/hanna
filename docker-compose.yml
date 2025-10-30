@@ -36,6 +36,7 @@ services:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
       - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
+      - INFISICAL_HOST=${INFISICAL_HOST} # New: Point to external Infisical server
     depends_on:
       - db
       - redis
@@ -70,6 +71,7 @@ services:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
       - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
+      - INFISICAL_HOST=${INFISICAL_HOST} # New: Point to external Infisical server
     depends_on:
       - redis
       - db
@@ -88,6 +90,7 @@ services:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
       - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
+      - INFISICAL_HOST=${INFISICAL_HOST} # New: Point to external Infisical server
     depends_on:
       - redis
       - db
@@ -105,6 +108,7 @@ services:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
       - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
+      - INFISICAL_HOST=${INFISICAL_HOST} # New: Point to external Infisical server
     depends_on:
       - redis
       - db
@@ -122,6 +126,7 @@ services:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
       - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
+      - INFISICAL_HOST=${INFISICAL_HOST} # New: Point to external Infisical server
     depends_on:
       - db
     env_file:
@@ -142,6 +147,10 @@ services:
       - backend
       - frontend
       - hanna-management-frontend
+    # If Infisical is in a separate stack, you might need to connect to its network
+    # networks:
+    #   - default
+    #   - infisical_network # Uncomment and define if needed
     restart: unless-stopped
 
 volumes:
@@ -150,3 +159,7 @@ volumes:
   staticfiles_volume:
   npm_data:
   npm_letsencrypt:
+# If Infisical is in a separate stack and you want to connect to it via Docker network name
+# networks:
+#   infisical_network:
+#     external: true
