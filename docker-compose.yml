@@ -33,16 +33,12 @@ services:
       sh -c "infisical run -- python manage.py migrate &&
              infisical run -- daphne -b 0.0.0.0 -p 8000 whatsappcrm_backend.asgi:application"
     environment:
-      # These variables are used by the Infisical CLI inside the container
-      # They are loaded from the .env.prod file
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
       - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
     depends_on:
       - db
       - redis
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
     restart: unless-stopped
 
   frontend:
@@ -57,6 +53,9 @@ services:
     container_name: hanna_management_frontend_nextjs
     depends_on:
       - backend
+    ports:
+      # Expose port 3000 for the Next.js app
+      - "3000:3000"
     restart: unless-stopped
 
   celery_io_worker:
@@ -66,15 +65,12 @@ services:
     volumes:
       - ./whatsappcrm_backend:/app
     environment:
-      # These variables are used by the Infisical CLI inside the container
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
       - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
     depends_on:
       - redis
       - db
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
     restart: unless-stopped
 
   celery_cpu_worker:
@@ -84,8 +80,6 @@ services:
     volumes:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
     environment:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
@@ -101,8 +95,6 @@ services:
     command: infisical run -- celery -A whatsappcrm_backend beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - ./whatsappcrm_backend:/app
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
     environment:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
@@ -118,8 +110,6 @@ services:
     command: infisical run -- python manage.py idle_email_fetcher
     volumes:
       - ./whatsappcrm_backend:/app
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
     environment:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN}
       - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
