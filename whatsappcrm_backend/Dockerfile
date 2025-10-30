@@ -9,8 +9,12 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /app
 
 # Install system dependencies (if any, e.g., for PostgreSQL client)
-# RUN apt-get update && apt-get install -y libpq-dev gcc
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
+# Install the Infisical CLI for secrets management
+RUN curl -1sLf 'https://dl.infisical.com/install.sh' | sh
 # Install Python dependencies
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt

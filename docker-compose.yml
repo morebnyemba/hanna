@@ -30,9 +30,14 @@ services:
     container_name: whatsappcrm_backend_app
     volumes:
       - ./whatsappcrm_backend:/app
-      - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
+      - staticfiles_volume:/app/staticfiles
+    command: >
+      sh -c "infisical run -- python manage.py migrate &&
+             infisical run -- daphne -b 0.0.0.0 -p 8000 whatsappcrm_backend.asgi:application"
+    environment:
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
     depends_on:
       - db
       - redis
@@ -40,7 +45,14 @@ services:
 
   frontend:
     build: ./whatsapp-crm-frontend
-    container_name: whatsappcrm_frontend_app
+    container_name: whatsappcrm_frontend_app_vite
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  hanna-management-frontend:
+    build: ./hanna-management-frontend
+    container_name: hanna_management_frontend_nextjs
     depends_on:
       - backend
     restart: unless-stopped
@@ -48,11 +60,13 @@ services:
   celery_io_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_io_worker
-    command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=20
+    command: infisical run -- celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=20
     volumes:
       - ./whatsappcrm_backend:/app
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
+    environment:
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
     depends_on:
       - redis
       - db
@@ -61,12 +75,14 @@ services:
   celery_cpu_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_cpu_worker
-    command: celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=1
+    command: infisical run -- celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=1
     volumes:
       - ./whatsappcrm_backend:/app
-      - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
+      - staticfiles_volume:/app/staticfiles
+    environment:
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
     depends_on:
       - redis
       - db
@@ -75,11 +91,13 @@ services:
   celery_beat:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_beat
-    command: celery -A whatsappcrm_backend beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: infisical run -- celery -A whatsappcrm_backend beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - ./whatsappcrm_backend:/app
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
+    environment:
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
     depends_on:
       - redis
       - db
@@ -88,11 +106,13 @@ services:
   email_idle_fetcher:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_email_idle_fetcher
-    command: python manage.py idle_email_fetcher
+    command: infisical run -- python manage.py idle_email_fetcher
     volumes:
       - ./whatsappcrm_backend:/app
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
+    environment:
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
     depends_on:
       - db
     restart: unless-stopped
@@ -110,6 +130,7 @@ services:
     depends_on:
       - backend
       - frontend
+      - hanna-management-frontend
     restart: unless-stopped
 
 volumes:
