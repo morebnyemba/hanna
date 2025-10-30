@@ -1,6 +1,9 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 import uuid
 
 
@@ -19,6 +22,7 @@ class Warranty(models.Model):
     product_serial_number = models.CharField(_("Product Serial Number"), max_length=255, unique=True, db_index=True)
     start_date = models.DateField(_("Warranty Start Date"), default=timezone.now)
     end_date = models.DateField(_("Warranty End Date"))
+    manufacturer_email = models.EmailField(_("Manufacturer Email"), max_length=254, blank=True, null=True, help_text=_("Email for sending warranty claim notifications to the product manufacturer."))
     status = models.CharField(_("Status"), max_length=20, choices=WarrantyStatus.choices, default=WarrantyStatus.ACTIVE)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -61,4 +65,30 @@ class WarrantyClaim(models.Model):
     class Meta:
         verbose_name = _("Warranty Claim")
         verbose_name_plural = _("Warranty Claims")
+        ordering = ['-created_at']
+
+
+class TechnicianComment(models.Model):
+    """
+    A comment made by a technician on a JobCard or WarrantyClaim.
+    """
+    technician = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='technician_comments',
+        limit_choices_to={'is_staff': True}
+    )
+    comment = models.TextField(_("Comment"))
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # Generic Foreign Key to link to either JobCard or WarrantyClaim
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.CharField(max_length=36) # To accommodate UUIDs and other PKs
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    def __str__(self):
+        return f"Comment by {self.technician} on {self.content_object} at {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+    class Meta:
         ordering = ['-created_at']

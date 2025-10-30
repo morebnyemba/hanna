@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, JobCard, LoanApplication
+from warranty.admin import TechnicianCommentInline
 
 class InteractionInline(admin.TabularInline):
     """
@@ -160,4 +161,5 @@ class JobCardAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at')
     autocomplete_fields = ['customer', 'warranty_claim']
     list_editable = ('status',)
+    inlines = [TechnicianCommentInline,]
     date_hierarchy = 'creation_date'
