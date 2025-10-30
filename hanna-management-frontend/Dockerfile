@@ -6,13 +6,14 @@ WORKDIR /app
 
 # Copy package.json and package-lock.json (or yarn.lock)
 # to leverage Docker cache for dependencies
-COPY package.json ./
+COPY package*.json ./
 
 # Install dependencies
 RUN npm install && npm install react-icons
 
 # Copy the rest of the application code
 COPY . .
+
 
 # Build the Next.js application
 # 'next build' creates an optimized production build in the .next directory
@@ -32,6 +33,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # If you have any custom server.js or other root-level files needed for runtime, copy them here.
 # For a standard Next.js app, the .next directory contains everything needed.
