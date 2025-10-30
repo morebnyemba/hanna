@@ -153,6 +153,37 @@ A new loan application has been submitted by *{{ contact.name or contact.whatsap
 
 Please review the application in the admin panel and follow up with the customer."""
     },
+    {
+        "name": "new_warranty_claim_submitted",
+        "description": "Sent to admins when a customer submits a new warranty claim.",
+        "template_type": "whatsapp",
+        "body": """New Warranty Claim Submitted 🛡️
+
+A new warranty claim has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+
+*Claim Details:*
+- Claim ID: *{{ generated_claim_id }}*
+- Product: *{{ found_warranty.0.product__name }}*
+- Serial Number: `{{ found_warranty.0.product_serial_number }}`
+
+*Fault Description:*
+{{ fault_description }}
+
+Please review the claim in the admin panel and update its status."""
+    },
+    {
+        "name": "warranty_claim_status_updated",
+        "description": "Sent to a customer when an admin updates their warranty claim status.",
+        "template_type": "whatsapp",
+        "body": """Hello! 👋
+
+The status for your Warranty Claim (#{{ claim_id }}) for product `{{ serial_number }}` has been updated to: *{{ new_status|title }}*.
+
+{% if resolution_notes %}*Notes from our team:*
+{{ resolution_notes }}
+{% endif %}
+Thank you for your patience!"""
+    },
 ]
 
 

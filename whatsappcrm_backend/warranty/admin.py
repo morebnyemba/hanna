@@ -1,0 +1,38 @@
+from django.contrib import admin
+from .models import Warranty, WarrantyClaim
+
+
+class WarrantyClaimInline(admin.TabularInline):
+    model = WarrantyClaim
+    extra = 0
+    fields = ('claim_id', 'status', 'description_of_fault', 'created_at')
+    readonly_fields = ('claim_id', 'description_of_fault', 'created_at')
+    show_change_link = True
+
+
+@admin.register(Warranty)
+class WarrantyAdmin(admin.ModelAdmin):
+    list_display = ('product_serial_number', 'product', 'customer', 'status', 'start_date', 'end_date')
+    list_filter = ('status', 'start_date', 'end_date', 'product__category')
+    search_fields = ('product_serial_number', 'product__name', 'customer__first_name', 'customer__last_name', 'customer__contact__whatsapp_id')
+    autocomplete_fields = ('product', 'customer', 'associated_order')
+    inlines = [WarrantyClaimInline]
+    fieldsets = (
+        ('Core Details', {
+            'fields': ('product', 'customer', 'product_serial_number', 'associated_order')
+        }),
+        ('Warranty Period & Status', {
+            'fields': ('status', 'start_date', 'end_date')
+        }),
+    )
+
+
+@admin.register(WarrantyClaim)
+class WarrantyClaimAdmin(admin.ModelAdmin):
+    list_display = ('claim_id', 'warranty', 'status', 'created_at', 'job_card')
+    list_filter = ('status', 'created_at')
+    search_fields = ('claim_id', 'warranty__product_serial_number', 'description_of_fault')
+    readonly_fields = ('claim_id', 'created_at', 'updated_at')
+    autocomplete_fields = ('warranty',)
+    list_editable = ('status',)
+    date_hierarchy = 'created_at'

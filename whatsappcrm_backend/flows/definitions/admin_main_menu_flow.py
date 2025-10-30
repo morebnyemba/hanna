@@ -39,6 +39,7 @@ ADMIN_MAIN_MENU_FLOW = {
                             "buttons": [
                                 {"type": "reply", "reply": {"id": "update_order", "title": "🔄 Update Order Status"}},
                                 {"type": "reply", "reply": {"id": "update_assessment", "title": "📋 Update Assessment"}},
+                                {"type": "reply", "reply": {"id": "update_warranty_claim", "title": "🛡️ Update Warranty Claim"}},
                                 {"type": "reply", "reply": {"id": "exit", "title": "Exit"}}
                             ]
                         }
@@ -49,7 +50,8 @@ ADMIN_MAIN_MENU_FLOW = {
             "transitions": [
                 {"to_step": "switch_to_update_order", "condition_config": {"type": "interactive_reply_id_equals", "value": "update_order"}},
                 {"to_step": "switch_to_update_assessment", "condition_config": {"type": "interactive_reply_id_equals", "value": "update_assessment"}},
-                {"to_step": "end_admin_menu", "condition_config": {"type": "interactive_reply_id_equals", "value": "exit"}}
+                {"to_step": "switch_to_update_warranty_claim", "condition_config": {"type": "interactive_reply_id_equals", "value": "update_warranty_claim"}},
+                {"to_step": "end_admin_menu", "condition_config": {"type": "interactive_reply_id_equals", "value": "exit"}},
             ]
         },
         {
@@ -61,6 +63,11 @@ ADMIN_MAIN_MENU_FLOW = {
             "name": "switch_to_update_assessment",
             "type": "switch_flow",
             "config": {"target_flow_name": "admin_update_assessment_status"}
+        },
+        {
+            "name": "switch_to_update_warranty_claim",
+            "type": "switch_flow",
+            "config": {"target_flow_name": "admin_update_warranty_claim"}
         },
         {
             "name": "handle_not_admin",

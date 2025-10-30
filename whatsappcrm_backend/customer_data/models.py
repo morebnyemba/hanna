@@ -540,6 +540,14 @@ class JobCard(models.Model):
         CLOSED = 'closed', _('Closed')
 
     job_card_number = models.CharField(_("Job Card Number"), max_length=100, unique=True, db_index=True)
+    # --- ADD THIS RELATIONSHIP ---
+    warranty_claim = models.OneToOneField(
+        'warranty.WarrantyClaim',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='job_card',
+        help_text=_("The warranty claim that this job card is for, if any.")
+    )
     customer = models.ForeignKey(CustomerProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='job_cards')
     product_description = models.CharField(_("Product Description"), max_length=255, blank=True, null=True)
     product_serial_number = models.CharField(_("Product Serial Number"), max_length=255, blank=True, null=True, db_index=True)

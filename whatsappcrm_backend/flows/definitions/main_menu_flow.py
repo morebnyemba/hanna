@@ -50,7 +50,7 @@ MAIN_MENU_FLOW = {
                                 {
                                     "title": "Support & Information",
                                     "rows": [
-                                        {"id": "request_warranty", "title": "🛡️ Request Warranty", "description": "Claim warranty for a product. (Coming Soon)"},
+                                        {"id": "request_warranty", "title": "🛡️ Warranty Claim", "description": "File a warranty claim for a product."},
                                         {"id": "ai_troubleshooter", "title": "🤖 AI Troubleshooter", "description": "Get instant help from our AI assistant."},
                                         {"id": "about_pfungwa", "title": "ℹ️ About Pfungwa", "description": "Learn more about our company."}
                                     ]
@@ -67,7 +67,7 @@ MAIN_MENU_FLOW = {
                 {"to_step": "switch_to_assessment_flow", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "site_assessment"}},
                 {"to_step": "switch_to_cleaning_flow", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "solar_cleaning"}},
                 {"to_step": "switch_to_loan_application_flow", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "apply_for_loan"}},
-                {"to_step": "show_coming_soon", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
+                {"to_step": "switch_to_warranty_claim_flow", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
                 {"to_step": "start_ai_troubleshooting_session", "priority": 6, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
                 {"to_step": "show_about_pfungwa", "priority": 7, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
             ]
@@ -194,6 +194,15 @@ MAIN_MENU_FLOW = {
             "type": "switch_flow",
             "config": {
                 "target_flow_name": "loan_application_flow",
+                "initial_context_template": {"source_flow": "main_menu"}
+            },
+            "transitions": []
+        },
+        {
+            "name": "switch_to_warranty_claim_flow",
+            "type": "switch_flow",
+            "config": {
+                "target_flow_name": "warranty_claim_flow",
                 "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []
