@@ -13,7 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the Infisical CLI for secrets management
-RUN curl -sSL "https://github.com/Infisical/infisical/releases/latest/download/infisical_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin infisical
+RUN curl -sSL "https://github.com/Infisical/infisical/releases/latest/download/infisical_linux_amd64.tar.gz" -o infisical.tar.gz && \
+    tar -xzf infisical.tar.gz -C /usr/local/bin infisical && \
+    rm infisical.tar.gz
 
 # Install Python dependencies
 COPY requirements.txt /app/
