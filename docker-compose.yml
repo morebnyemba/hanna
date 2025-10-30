@@ -39,6 +39,8 @@ services:
     depends_on:
       - db
       - redis
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
     restart: unless-stopped
 
   frontend:
@@ -71,6 +73,8 @@ services:
     depends_on:
       - redis
       - db
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
     restart: unless-stopped
 
   celery_cpu_worker:
@@ -87,6 +91,8 @@ services:
     depends_on:
       - redis
       - db
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
     restart: unless-stopped
 
   celery_beat:
@@ -102,6 +108,8 @@ services:
     depends_on:
       - redis
       - db
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
     restart: unless-stopped
 
   email_idle_fetcher:
@@ -116,6 +124,8 @@ services:
       - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT}
     depends_on:
       - db
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
     restart: unless-stopped
 
   npm:
