@@ -14,7 +14,8 @@ from django.utils.dateparse import parse_date
 from conversations.models import Contact, Message
 from flows.models import Flow, ContactFlowState
 from meta_integration.models import MetaAppConfig
-from customer_data.models import Payment
+from customer_data.models import Payment, JobCard
+from warranty.models import Warranty, WarrantyClaim
 
 import logging
 logger = logging.getLogger(__name__)
@@ -66,6 +67,11 @@ class DashboardSummaryStatsAPIView(APIView):
             'meta_configs_total': meta_configs_total,
             'meta_config_active_name': active_meta_config_obj.name if active_meta_config_obj else "None",
             'pending_human_handovers': Contact.objects.filter(needs_human_intervention=True).count(),
+            
+            # New Warranty & Job Card Stats
+            'active_warranties': Warranty.objects.filter(status=Warranty.WarrantyStatus.ACTIVE).count(),
+            'pending_warranty_claims': WarrantyClaim.objects.filter(status=WarrantyClaim.ClaimStatus.PENDING).count(),
+            'open_job_cards': JobCard.objects.filter(status=JobCard.Status.OPEN).count(),
         }
 
     def _get_flow_insights(self, time_ranges):
@@ -122,6 +128,7 @@ class DashboardSummaryStatsAPIView(APIView):
         recent_new_contacts = Contact.objects.order_by('-first_seen')[:3]
         recent_updated_flows = Flow.objects.order_by('-updated_at')[:2]
         recent_handovers = Contact.objects.filter(needs_human_intervention=True).order_by('-intervention_requested_at')[:2]
+        recent_claims = WarrantyClaim.objects.select_related('warranty__product').order_by('-created_at')[:2]
         
         activity_log_for_frontend = []
         for contact_activity in recent_new_contacts:
@@ -147,6 +154,14 @@ class DashboardSummaryStatsAPIView(APIView):
                 "timestamp": handover.intervention_requested_at.isoformat(),
                 "iconName": "FiAlertCircle",
                 "iconColor": "text-red-500"
+            })
+        for claim in recent_claims:
+            activity_log_for_frontend.append({
+                "id": f"claim_{claim.id}",
+                "text": f"New claim #{claim.claim_id} for {claim.warranty.product.name}.",
+                "timestamp": claim.created_at.isoformat(),
+                "iconName": "FiShield",
+                "iconColor": "text-blue-500"
             })
 
         activity_log_for_frontend.sort(key=lambda x: x['timestamp'], reverse=True)

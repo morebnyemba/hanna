@@ -6,6 +6,23 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 import uuid
 
+class Manufacturer(models.Model):
+    """
+    Represents a product manufacturer.
+    """
+    name = models.CharField(_("Manufacturer Name"), max_length=255, unique=True)
+    contact_email = models.EmailField(_("Contact Email"), max_length=254, blank=True, null=True)
+    # Link to a user account for dashboard access
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='manufacturer_profile',
+        help_text=_("The user account that can access this manufacturer's dashboard.")
+    )
+
+    def __str__(self):
+        return self.name
 
 class Warranty(models.Model):
     """
@@ -16,6 +33,7 @@ class Warranty(models.Model):
         EXPIRED = 'expired', _('Expired')
         VOID = 'void', _('Void')
 
+    manufacturer = models.ForeignKey(Manufacturer, on_delete=models.PROTECT, related_name='warranties', null=True, blank=True)
     product = models.ForeignKey('products_and_services.Product', on_delete=models.CASCADE, related_name='warranties')
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='warranties')
     associated_order = models.ForeignKey('customer_data.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='warranties')

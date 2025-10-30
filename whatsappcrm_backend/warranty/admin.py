@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
-from .models import Warranty, WarrantyClaim, TechnicianComment
+from .models import Warranty, WarrantyClaim, TechnicianComment, Manufacturer
 
 
 class TechnicianCommentInline(GenericTabularInline):
@@ -22,14 +22,14 @@ class WarrantyClaimInline(admin.TabularInline):
 
 @admin.register(Warranty)
 class WarrantyAdmin(admin.ModelAdmin):
-    list_display = ('product_serial_number', 'product', 'customer', 'status', 'start_date', 'end_date')
-    list_filter = ('status', 'start_date', 'end_date', 'product__category')
+    list_display = ('product_serial_number', 'product', 'manufacturer', 'customer', 'status', 'start_date', 'end_date')
+    list_filter = ('status', 'manufacturer', 'start_date', 'end_date', 'product__category')
     search_fields = ('product_serial_number', 'product__name', 'customer__first_name', 'customer__last_name', 'customer__contact__whatsapp_id')
-    autocomplete_fields = ('product', 'customer', 'associated_order')
+    autocomplete_fields = ('product', 'customer', 'associated_order', 'manufacturer')
     inlines = [WarrantyClaimInline,]
     fieldsets = (
         ('Core Details', {
-            'fields': ('product', 'customer', 'product_serial_number', 'associated_order')
+            'fields': ('product', 'manufacturer', 'customer', 'product_serial_number', 'associated_order')
         }),
         ('Warranty Period & Status', {
             'fields': ('status', 'start_date', 'end_date')
@@ -48,3 +48,9 @@ class WarrantyClaimAdmin(admin.ModelAdmin):
     list_editable = ('status',)
     date_hierarchy = 'created_at'
     inlines = [TechnicianCommentInline,]
+
+@admin.register(Manufacturer)
+class ManufacturerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'contact_email', 'user')
+    search_fields = ('name', 'contact_email', 'user__username')
+    autocomplete_fields = ('user',)
