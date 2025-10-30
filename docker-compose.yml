@@ -31,6 +31,9 @@ services:
     volumes:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
+    command: >
+      sh -c "python manage.py migrate &&
+             daphne -b 0.0.0.0 -p 8000 whatsappcrm_backend.asgi:application"
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
@@ -41,6 +44,13 @@ services:
   frontend:
     build: ./whatsapp-crm-frontend
     container_name: whatsappcrm_frontend_app
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  hanna-management-frontend:
+    build: ./hanna-management-frontend
+    container_name: hanna_management_frontend_nextjs
     depends_on:
       - backend
     restart: unless-stopped
@@ -110,6 +120,7 @@ services:
     depends_on:
       - backend
       - frontend
+      - hanna-management-frontend
     restart: unless-stopped
 
 volumes:
