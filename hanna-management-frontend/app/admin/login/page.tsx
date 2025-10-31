@@ -17,7 +17,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { role } = await loginAction(username, password);
-      if (role === 'manufacturer') router.push('/manufacturer/dashboard'); // Redirect on success
+      if (role === 'admin') router.push('/admin/dashboard'); // Redirect on success
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
     } finally {
