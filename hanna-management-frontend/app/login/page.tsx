@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUsers, FiMessageSquare, FiAlertCircle, FiShield, FiTool, FiCheckCircle } from "react-icons/fi";
-import { useAuth } from './context/AuthContext';
+import { FiUsers, FiMessageSquare, FiAlertCircle, FiShield, FiTool, FiCheckCircle } from 'react-icons/fi';
+import { useAuthStore } from '@/app/store/authStore';
 
 // --- Types to match the backend API response ---
 interface StatsCards {
@@ -49,19 +49,13 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { accessToken, isLoading: isAuthLoading, logout } = useAuth();
+  const { accessToken, logout } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthLoading) return;
-    if (!accessToken) {
-      router.push('/login');
-      return;
-    }
-
     const fetchData = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
         const response = await fetch(`${apiUrl}/crm-api/stats/dashboard/summary/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -84,17 +78,22 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, [accessToken, isAuthLoading, router, logout]);
+  }, [accessToken, logout]);
 
-  if (loading || isAuthLoading) {
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p>Loading Dashboard...</p></div>;
   }
 
-  if (error && accessToken) {
+  if (error) {
     return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p className="text-red-500">Error: {error}</p></div>;
   }
 
-  if (!data) return null; // Or a "No data" message
+  if (!data) return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p>No data available.</p></div>;
 
   const { stats_cards, recent_activity_log } = data;
 
@@ -103,7 +102,7 @@ export default function DashboardPage() {
       <main className="p-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Overall Analytics Dashboard</h1>
-          <button onClick={logout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+          <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
             Logout
           </button>
         </div>

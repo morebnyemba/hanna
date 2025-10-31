@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (username: string, password: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
     
     try {
       const response = await fetch(`${apiUrl}/crm-api/auth/token/`, {
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('refreshToken', data.refresh);
       localStorage.setItem('user', JSON.stringify({ username: data.username, email: data.email }));
 
-      router.push('/'); // Redirect to dashboard on successful login
+      router.push('/dashboard'); // Redirect to dashboard on successful login
 
     } catch (error) {
       console.error('Login error:', error);
