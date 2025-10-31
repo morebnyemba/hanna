@@ -1,121 +1,65 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUsers, FiMessageSquare, FiAlertCircle, FiShield, FiTool, FiCheckCircle } from 'react-icons/fi';
-import { useAuthStore } from '@/app/store/authStore';
+import { loginAction } from '@/app/store/authStore';
 
-// --- Types to match the backend API response ---
-interface StatsCards {
-  active_conversations_count: number;
-  new_contacts_today: number;
-  total_contacts: number;
-  pending_human_handovers: number;
-  active_warranties: number;
-  pending_warranty_claims: number;
-  open_job_cards: number;
-}
-
-interface ActivityLogItem {
-  id: string;
-  text: string;
-  timestamp: string;
-  iconName: string;
-  iconColor: string;
-}
-
-interface DashboardData {
-  stats_cards: StatsCards;
-  recent_activity_log: ActivityLogItem[];
-}
-
-// --- Reusable Stat Card Component ---
-const StatCard = ({ title, value, icon: Icon }: { title: string; value: string | number; icon: React.ElementType }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-    <div className="flex items-center">
-      <div className="p-3 bg-gray-100 rounded-full">
-        <Icon className="h-6 w-6 text-gray-600" />
-      </div>
-      <div className="ml-4">
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-      </div>
-    </div>
-  </div>
-);
-
-// --- Main Dashboard Page Component ---
-export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function LoginPage() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { accessToken, logout } = useAuthStore();
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/stats/dashboard/summary/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) logout();
-          throw new Error(`Failed to fetch data. Status: ${response.status}`);
-        }
-
-        const result: DashboardData = await response.json();
-        setData(result);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [accessToken, logout]);
-
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await loginAction(username, password);
+      router.push('/dashboard'); // Redirect on success
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p>Loading Dashboard...</p></div>;
-  }
-
-  if (error) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p className="text-red-500">Error: {error}</p></div>;
-  }
-
-  if (!data) return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p>No data available.</p></div>;
-
-  const { stats_cards, recent_activity_log } = data;
-
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <main className="p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Overall Analytics Dashboard</h1>
-          <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-            Logout
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <StatCard title="Active Warranties" value={stats_cards.active_warranties} icon={FiShield} />
-          <StatCard title="Pending Warranty Claims" value={stats_cards.pending_warranty_claims} icon={FiAlertCircle} />
-          <StatCard title="Open Job Cards" value={stats_cards.open_job_cards} icon={FiTool} />
-          <StatCard title="Total Contacts" value={stats_cards.total_contacts} icon={FiUsers} />
-          <StatCard title="Active Conversations" value={stats_cards.active_conversations_count} icon={FiMessageSquare} />
-          <StatCard title="New Contacts Today" value={stats_cards.new_contacts_today} icon={FiCheckCircle} />
-        </div>
-      </main>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold text-center text-gray-900">Sign in to your account</h1>
+        <form className="space-y-6" onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="username" className="text-sm font-medium text-gray-700">Username</label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="text-sm font-medium text-gray-700">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div>
+            <button type="submit" disabled={loading} className="w-full px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300">
+              {loading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

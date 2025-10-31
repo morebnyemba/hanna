@@ -1,122 +1,36 @@
-'use client';
+import Link from 'next/link';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { FiUsers, FiMessageSquare, FiAlertCircle, FiShield, FiTool, FiCheckCircle } from "react-icons/fi";
-import { useAuth } from './context/AuthContext';
-
-// --- Types to match the backend API response ---
-interface StatsCards {
-  active_conversations_count: number;
-  new_contacts_today: number;
-  total_contacts: number;
-  pending_human_handovers: number;
-  active_warranties: number;
-  pending_warranty_claims: number;
-  open_job_cards: number;
-}
-
-interface ActivityLogItem {
-  id: string;
-  text: string;
-  timestamp: string;
-  iconName: string;
-  iconColor: string;
-}
-
-interface DashboardData {
-  stats_cards: StatsCards;
-  recent_activity_log: ActivityLogItem[];
-}
-
-// --- Reusable Stat Card Component ---
-const StatCard = ({ title, value, icon: Icon }: { title: string; value: string | number; icon: React.ElementType }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-    <div className="flex items-center">
-      <div className="p-3 bg-gray-100 rounded-full">
-        <Icon className="h-6 w-6 text-gray-600" />
-      </div>
-      <div className="ml-4">
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-      </div>
-    </div>
-  </div>
-);
-
-// --- Main Dashboard Page Component ---
-export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { accessToken, isLoading: isAuthLoading, logout } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isAuthLoading) return;
-    if (!accessToken) {
-      router.push('/login');
-      return;
-    }
-
-    const fetchData = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const response = await fetch(`${apiUrl}/crm-api/stats/dashboard/summary/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) logout();
-          throw new Error(`Failed to fetch data. Status: ${response.status}`);
-        }
-
-        const result: DashboardData = await response.json();
-        setData(result);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [accessToken, isAuthLoading, router, logout]);
-
-  if (loading || isAuthLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p>Loading Dashboard...</p></div>;
-  }
-
-  if (error && accessToken) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p className="text-red-500">Error: {error}</p></div>;
-  }
-
-  if (!data) return null; // Or a "No data" message
-
-  const { stats_cards, recent_activity_log } = data;
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <main className="p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Overall Analytics Dashboard</h1>
-          <button onClick={logout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-            Logout
-          </button>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 text-center p-8">
+      <div className="max-w-2xl">
+        <h1 className="text-5xl font-bold text-gray-900">Welcome to Hanna</h1>
+        <p className="mt-4 text-lg text-gray-600">
+          The intelligent CRM platform designed to streamline your customer interactions,
+          manage warranties, and empower your business with powerful analytics.
+        </p>
+        <div className="mt-8 flex justify-center gap-4">
+          <Link href="/dashboard" className="px-6 py-3 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
+            Admin Dashboard
+          </Link>
+          <Link href="/login" className="px-6 py-3 font-semibold text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">
+            Login
+          </Link>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <StatCard title="Active Warranties" value={stats_cards.active_warranties} icon={FiShield} />
-          <StatCard title="Pending Warranty Claims" value={stats_cards.pending_warranty_claims} icon={FiAlertCircle} />
-          <StatCard title="Open Job Cards" value={stats_cards.open_job_cards} icon={FiTool} />
-          <StatCard title="Total Contacts" value={stats_cards.total_contacts} icon={FiUsers} />
-          <StatCard title="Active Conversations" value={stats_cards.active_conversations_count} icon={FiMessageSquare} />
-          <StatCard title="New Contacts Today" value={stats_cards.new_contacts_today} icon={FiCheckCircle} />
+        <div className="mt-16 text-sm text-gray-500">
+          <p>Are you a manufacturer or technician? Access your dedicated portal below.</p>
+          <div className="mt-4 flex justify-center gap-4">
+            {/* These links are placeholders for future login pages */}
+            <Link href="/manufacturer/login" className="text-indigo-600 hover:underline">
+              Manufacturer Portal
+            </Link>
+            <span>&bull;</span>
+            <Link href="/technician/login" className="text-indigo-600 hover:underline">
+              Technician Portal
+            </Link>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
