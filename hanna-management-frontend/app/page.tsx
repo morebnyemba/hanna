@@ -67,7 +67,7 @@ export default function LandingPage() {
           {/* CTA Buttons */}
           <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
             <Link 
-              href="/dashboard" 
+              href="/admin/login" 
               className="px-8 py-4 font-semibold text-white bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl hover:from-gray-700 hover:to-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,7 +77,7 @@ export default function LandingPage() {
               Admin Login
             </Link>
             <Link 
-              href="/login" 
+              href="/client/login" 
               className="px-8 py-4 font-semibold text-indigo-700 bg-white border border-indigo-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
