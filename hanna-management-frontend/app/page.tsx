@@ -14,20 +14,21 @@ export default function LandingPage() {
       <div className="relative flex min-h-screen flex-col items-center justify-center text-center p-8">
         <div className="max-w-4xl">
           {/* Logo/Brand */}
-          <div className="mb-12">
+          <div className="mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg mb-6">
               <span className="text-2xl font-bold text-white">H</span>
             </div>
             <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mt-4 bg-gradient-to-r from-gray-900 to-indigo-900 bg-clip-text text-transparent">
               Hanna
             </h1>
+            <p className="mt-2 text-lg font-medium text-gray-500">A Pfungwa Technologies Platform</p>
             <div className="w-24 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto mt-4 rounded-full"></div>
           </div>
 
           {/* Tagline */}
           <p className="mt-6 text-xl md:text-2xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
-            The intelligent CRM platform designed to streamline your customer interactions,
-            manage warranties, and empower your business with powerful analytics.
+            The exclusive CRM platform for Pfungwa Technologies partners and affiliates,
+            designed to streamline operations and enhance customer engagement.
           </p>
 
           {/* Feature highlights */}
@@ -67,13 +68,13 @@ export default function LandingPage() {
           <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
             <Link 
               href="/dashboard" 
-              className="px-8 py-4 font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center"
+              className="px-8 py-4 font-semibold text-white bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl hover:from-gray-700 hover:to-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Admin Dashboard
+              Admin Login
             </Link>
             <Link 
               href="/login" 
@@ -88,7 +89,7 @@ export default function LandingPage() {
 
           {/* Additional portals section */}
           <div className="mt-16 bg-white/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/50 max-w-2xl mx-auto">
-            <p className="text-gray-700 font-medium mb-4">Are you a manufacturer or technician? Access your dedicated portal below.</p>
+            <p className="text-gray-700 font-medium mb-4">Access your dedicated partner portal below.</p>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
               <Link 
                 href="/manufacturer/login" 
@@ -115,7 +116,7 @@ export default function LandingPage() {
 
           {/* Footer note */}
           <div className="mt-12 text-sm text-gray-500">
-            <p>Streamlining business operations since 2023</p>
+            <p>&copy; {new Date().getFullYear()} Pfungwa Technologies. All rights reserved.</p>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
 from django.http import Http404
 
 class IsStaffOrReadOnly(permissions.BasePermission):
@@ -53,6 +54,12 @@ from django.http import Http404
 # New models and serializers
 from .models import CustomerProfile, Interaction
 from .serializers import CustomerProfileSerializer, InteractionSerializer, MyTokenObtainPairSerializer
+from .serializers import (
+    CustomerProfileSerializer, 
+    InteractionSerializer, 
+    MyTokenObtainPairSerializer,
+    UserRegistrationSerializer
+)
 
 # Still need Contact for get_or_create logic
 from conversations.models import Contact
@@ -65,6 +72,19 @@ class MyTokenObtainPairView(TokenObtainPairView):
     Uses the custom serializer to add user details to the JWT response.
     """
     serializer_class = MyTokenObtainPairSerializer
+
+class UserRegistrationView(APIView):
+    """
+    A public endpoint for new clients/customers to register.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, format=None):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "User created successfully. Please log in."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class IsStaffOrReadOnly(permissions.BasePermission):
     """
