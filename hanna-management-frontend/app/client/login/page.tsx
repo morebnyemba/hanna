@@ -17,8 +17,9 @@ export default function ClientLoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await loginAction(username, password);
-      router.push('/client/dashboard'); // Redirect to client dashboard
+      const { role } = await loginAction(username, password);
+      // Redirect only if the role is correct for this portal
+      if (role === 'client') router.push('/client/dashboard');
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
     } finally {

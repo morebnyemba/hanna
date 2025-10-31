@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction } from '@/app/store/authStore';
 
-export default function LoginPage() {
+export default function TechnicianLoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -16,8 +16,8 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await loginAction(username, password);
-      router.push('/dashboard'); // Redirect on success
+      const { role } = await loginAction(username, password);
+      if (role === 'technician') router.push('/technician/dashboard');
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
     } finally {
