@@ -24,21 +24,6 @@ class Manufacturer(models.Model):
     def __str__(self):
         return self.name
 
-class Technician(models.Model):
-    """
-    Represents a technician who can be assigned to jobs.
-    """
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='technician_profile'
-    )
-    specialization = models.CharField(_("Specialization"), max_length=255, blank=True, help_text="e.g., Solar, Plumbing, Electrical")
-    contact_phone = models.CharField(_("Contact Phone"), max_length=20, blank=True)
-
-    def __str__(self):
-        return self.user.get_full_name() or self.user.username
-
 class Warranty(models.Model):
     """
     Represents a warranty for a specific product purchased by a customer.

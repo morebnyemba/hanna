@@ -68,8 +68,6 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import CustomerProfile, Interaction
 from conversations.models import Contact
-from django.contrib.auth.models import User
-from django.contrib.auth.password_validation import validate_password
 
 User = get_user_model()
 
@@ -81,22 +79,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         token = super().get_token(user)
         # Add custom claims to the token payload itself
-
-        # Add custom claims
         token['username'] = user.username
         token['is_staff'] = user.is_staff
-        token['email'] = user.email
-
-        # Add role claim
-        if user.is_superuser or user.is_staff:
-            token['role'] = 'admin'
-        elif hasattr(user, 'manufacturer_profile'):
-            token['role'] = 'manufacturer'
-        elif hasattr(user, 'technician_profile'): # We will create this model next
-            token['role'] = 'technician'
-        else:
-            token['role'] = 'client'
-
         return token
 
     def validate(self, attrs):
@@ -106,10 +90,6 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             'id': self.user.id, 'username': self.user.username,
             'email': self.user.email, 'is_staff': self.user.is_staff,
         }
-        # Add user details to the response, not just the token
-        data['username'] = self.user.username
-        data['email'] = self.user.email
-        data['role'] = self.get_token(self.user)['role']
         return data
 
 # A simple serializer for providing context on related models
@@ -118,9 +98,6 @@ class SimpleContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = ['id', 'whatsapp_id', 'name']
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
-    password2 = serializers.CharField(write_only=True, required=True, label="Confirm Password")
 
 class SimpleUserSerializer(serializers.ModelSerializer):
     """A lightweight serializer for basic User (agent) information."""
@@ -129,16 +106,11 @@ class SimpleUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'full_name', 'first_name', 'last_name']
-        fields = ('username', 'password', 'password2', 'email', 'first_name', 'last_name')
 
 class SimpleCustomerProfileSerializer(serializers.ModelSerializer):
     """A lightweight serializer for basic CustomerProfile information, ideal for nesting."""
     full_name = serializers.CharField(source='get_full_name', read_only=True)
     contact_id = serializers.IntegerField(source='contact.id', read_only=True)
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Password fields didn't match."})
-        return attrs
 
     class Meta:
         model = CustomerProfile
@@ -225,12 +197,3 @@ class InteractionSerializer(serializers.ModelSerializer):
                 validated_data['agent'] = request.user
 
         return super().create(validated_data)
-        user = User.objects.create(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name']
-        )
-        user.set_password(validated_data['password'])
-        user.save()
-        return user
