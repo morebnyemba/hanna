@@ -16,8 +16,12 @@ export default function TechnicianLoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { role } = await loginAction(username, password);
-      if (role === 'technician') router.push('/technician/dashboard');
+      const loginResponse = await loginAction(username, password);
+      if (loginResponse?.role === 'technician') {
+        router.push('/technician/dashboard');
+      } else {
+        throw new Error('Login successful, but your role is not authorized for this portal.');
+      }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
     } finally {
