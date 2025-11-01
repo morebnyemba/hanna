@@ -7,6 +7,30 @@ from conversations.models import Contact
 
 User = get_user_model()
 
+# A simple serializer for providing context on related models
+class SimpleContactSerializer(serializers.ModelSerializer):
+    """A lightweight serializer for basic Contact information."""
+    class Meta:
+        model = Contact
+        fields = ['id', 'whatsapp_id', 'name']
+
+class SimpleUserSerializer(serializers.ModelSerializer):
+    """A lightweight serializer for basic User (agent) information."""
+    full_name = serializers.CharField(source='get_full_name', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'full_name', 'first_name', 'last_name']
+
+class SimpleCustomerProfileSerializer(serializers.ModelSerializer):
+    """A lightweight serializer for basic CustomerProfile information, ideal for nesting."""
+    full_name = serializers.CharField(source='get_full_name', read_only=True)
+    contact_id = serializers.IntegerField(source='contact.id', read_only=True)
+
+    class Meta:
+        model = CustomerProfile
+        fields = ['contact_id', 'full_name', 'company']
+
 class SiteAssessmentRequestSerializer(serializers.ModelSerializer):
     customer = SimpleCustomerProfileSerializer(read_only=True)
 
@@ -71,30 +95,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
-
-# A simple serializer for providing context on related models
-class SimpleContactSerializer(serializers.ModelSerializer):
-    """A lightweight serializer for basic Contact information."""
-    class Meta:
-        model = Contact
-        fields = ['id', 'whatsapp_id', 'name']
-
-class SimpleUserSerializer(serializers.ModelSerializer):
-    """A lightweight serializer for basic User (agent) information."""
-    full_name = serializers.CharField(source='get_full_name', read_only=True)
-
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'full_name', 'first_name', 'last_name']
-
-class SimpleCustomerProfileSerializer(serializers.ModelSerializer):
-    """A lightweight serializer for basic CustomerProfile information, ideal for nesting."""
-    full_name = serializers.CharField(source='get_full_name', read_only=True)
-    contact_id = serializers.IntegerField(source='contact.id', read_only=True)
-
-    class Meta:
-        model = CustomerProfile
-        fields = ['contact_id', 'full_name', 'company']
 
 # --- Order Serializer ---
 class OrderSerializer(serializers.ModelSerializer):
