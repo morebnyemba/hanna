@@ -39,6 +39,39 @@ class SiteAssessmentRequestSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('id', 'created_at', 'updated_at')
 
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Customizes the JWT response to include a 'role' claim, which the frontend needs for redirection.
+    """
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Add custom claims
+        token['username'] = user.username
+        token['email'] = user.email
+
+        # Add role claim based on user profile/status
+        if user.is_superuser or user.is_staff:
+            token['role'] = 'admin'
+        elif hasattr(user, 'manufacturer_profile'):
+            token['role'] = 'manufacturer'
+        elif hasattr(user, 'technician_profile'):
+            token['role'] = 'technician'
+        else:
+            token['role'] = 'client'
+
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Add user details and role to the response for the frontend.
+        token = self.get_token(self.user)
+        data['username'] = self.user.username
+        data['email'] = self.user.email
+        data['role'] = token['role']
+        return data
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True, label="Confirm Password")

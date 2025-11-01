@@ -7,10 +7,7 @@ from django.utils import timezone
 from conversations.models import Contact
 import uuid
 # --- ADD THESE IMPORTS ---
-from django.db.models import Sum, F
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-from decimal import Decimal
+from django.db.models import Sum
 # --- END IMPORTS ---
 
 class LeadStatus(models.TextChoices):
