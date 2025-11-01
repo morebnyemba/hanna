@@ -1,13 +1,9 @@
 # customer_data/signals.py
-from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Order, OrderItem
 
-# --- NEW IMPORTS ---
-from .models import Order
 from warranty.models import Warranty
-from notifications.services import queue_notifications_to_users
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 import logging
@@ -17,7 +13,13 @@ logger = logging.getLogger(__name__)
 
 @receiver([post_save, post_delete], sender=OrderItem)
 def update_order_amount(sender, instance, **kwargs):
-    pass
+    """
+    When an OrderItem is created, updated, or deleted,
+    recalculate the total amount of the parent Order.
+    """
+    order = instance.order
+    order.update_total_amount()
+    order.save(update_fields=['amount'])
 
 
 @receiver(post_save, sender=Order)

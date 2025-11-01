@@ -621,15 +621,3 @@ class LoanApplication(models.Model):
         ordering = ['-created_at']
         verbose_name = _("Loan Application")
         verbose_name_plural = _("Loan Applications")
-
-
-# --- ADD THIS SIGNAL AT THE VERY END OF THE FILE ---
-@receiver([post_save, post_delete], sender=OrderItem)
-def on_order_item_change(sender, instance, **kwargs):
-    """
-    When an OrderItem is created, updated, or deleted,
-    recalculate the total amount of the parent Order.
-    """
-    order = instance.order
-    order.update_total_amount()
-    order.save(update_fields=['amount'])
