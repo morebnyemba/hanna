@@ -56,6 +56,22 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'password', 'password2', 'email', 'first_name', 'last_name')
 
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        return attrs
+
+    def create(self, validated_data):
+        user = User.objects.create(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name']
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+
 # A simple serializer for providing context on related models
 class SimpleContactSerializer(serializers.ModelSerializer):
     """A lightweight serializer for basic Contact information."""
@@ -180,22 +196,6 @@ class InteractionSerializer(serializers.ModelSerializer):
                 validated_data['agent'] = request.user
 
         return super().create(validated_data)
-
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Password fields didn't match."})
-        return attrs
-
-    def create(self, validated_data):
-        user = User.objects.create(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name']
-        )
-        user.set_password(validated_data['password'])
-        user.save()
-        return user
 
 class InstallationRequestSerializer(serializers.ModelSerializer):
     customer = SimpleCustomerProfileSerializer(read_only=True)
