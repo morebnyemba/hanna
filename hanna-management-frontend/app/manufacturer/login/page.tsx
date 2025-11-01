@@ -16,7 +16,7 @@ export default function ManufacturerLoginPage() {
     setLoading(true);
     try {
       const loginResponse = await loginAction(username, password);
-      if (loginResponse?.role === 'manufacturer') {
+      if (loginResponse?.role === 'manufacturer' || loginResponse?.role === 'admin') {
         router.push('/manufacturer/dashboard');
       } else {
         throw new Error('Login successful, but your role is not authorized for this portal.');
