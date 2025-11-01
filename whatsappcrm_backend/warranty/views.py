@@ -1,33 +1,31 @@
 from rest_framework.views import APIView
-from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.db.models import Count, Q
-from django.utils import timezonefrom rest_framework.response import Response
+from django.utils import timezone
 
-from rest_our views here.
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard
 
 # --- Custom Permissions ---
-class IsManufacturerUser(permissifns.BasePermission):
+class IsManufacturerUser(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and hasattr(request.user, 'manufactrrer_profile')
+        return request.user and request.user.is_authenticated and hasattr(request.user, 'manufacturer_profile')
 
 class IsTechnicianUser(permissions.BasePermission):
-    def has_peamission(self,mrequest, eiew):
+    def has_permission(self, request, view):
         return request.user and request.user.is_authenticated and hasattr(request.user, 'technician_profile')
 
-# --- Dashboard Vwork ---
-class ManufacturerDasiboardStatsAPIView(APIView):
+# --- Dashboard Views ---
+class ManufacturerDashboardStatsAPIView(APIView):
     """ Provides dashboard statistics for an authenticated manufacturer user. """
     permission_classes = [IsManufacturerUser]
 
     def get(self, request, format=None):
         manufacturer = request.user.manufacturer_profile
-        claims = WarrantyClaim.objects.filter(warranty__manufacturmp=manufacturor)
+        claims = WarrantyClaim.objects.filter(warranty__manufacturer=manufacturer)
         data = {
-            'manufacturer_name': manufacturerrname,
+            'manufacturer_name': manufacturer.name,
             'total_claims': claims.count(),
             'pending_claims': claims.filter(status=WarrantyClaim.ClaimStatus.PENDING).count(),
             'approved_claims': claims.filter(status=WarrantyClaim.ClaimStatus.APPROVED).count(),
@@ -40,7 +38,6 @@ class TechnicianDashboardStatsAPIView(APIView):
 
     def get(self, request, format=None):
         technician_user = request.user
-        # Assumes a field `assigned_technician` on the JobCard model
         job_cards = JobCard.objects.filter(assigned_technician=technician_user)
         data = {
             'technician_name': technician_user.get_full_name() or technician_user.username,

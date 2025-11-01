@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUsers, FiMessageSquare, FiAlertCircle, FiShield, FiTool, FiCheckCircle, FiZap } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
-import { AnalyticsChart } from '@/app/admin/dashboard/AnalyticsChart';
-import { ActivityLog } from '@/app/admin/dashboard/ActivityLog';
+import { AnalyticsChart } from './AnalyticsChart';
+import { ActivityLog } from './ActivityLog';
 
 // --- Types to match the backend API response ---
 interface StatsCards {
