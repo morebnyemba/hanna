@@ -44,7 +44,7 @@ class WarrantyClaimAdmin(admin.ModelAdmin):
     list_filter = ('status', 'created_at')
     search_fields = ('claim_id', 'warranty__product_serial_number', 'description_of_fault')
     readonly_fields = ('claim_id', 'created_at', 'updated_at')
-    autocomplete_fields = ('warranty', 'job_card')
+    autocomplete_fields = ('warranty',)
     list_editable = ('status',)
     date_hierarchy = 'created_at'
     inlines = [TechnicianCommentInline,]
