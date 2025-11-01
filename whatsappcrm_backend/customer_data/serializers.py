@@ -1,12 +1,68 @@
-# whatsappcrm_backend/customer_data/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Order, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction
+from conversations.models import Contact
 
 User = get_user_model()
 
-# whatsappcrm_backend/customer_data/serializers.py
-# --- SimpleUserSerializer ---
+class SiteAssessmentRequestSerializer(serializers.ModelSerializer):
+    customer = SimpleCustomerProfileSerializer(read_only=True)
+
+    class Meta:
+        model = SiteAssessmentRequest
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Customizes the JWT response to include a 'role' claim, which the frontend needs for redirection.
+    """
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Add custom claims
+        token['username'] = user.username
+        token['email'] = user.email
+
+        # Add role claim based on user profile/status
+        if user.is_superuser or user.is_staff:
+            token['role'] = 'admin'
+        elif hasattr(user, 'manufacturer_profile'):
+            token['role'] = 'manufacturer'
+        elif hasattr(user, 'technician_profile'):
+            token['role'] = 'technician'
+        else:
+            token['role'] = 'client'
+
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Add user details and role to the response for the frontend.
+        token = self.get_token(self.user)
+        data['username'] = self.user.username
+        data['email'] = self.user.email
+        data['role'] = token['role']
+        return data
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True, required=True, label="Confirm Password")
+
+    class Meta:
+        model = User
+        fields = ('username', 'password', 'password2', 'email', 'first_name', 'last_name')
+
+# A simple serializer for providing context on related models
+class SimpleContactSerializer(serializers.ModelSerializer):
+    """A lightweight serializer for basic Contact information."""
+    class Meta:
+        model = Contact
+        fields = ['id', 'whatsapp_id', 'name']
+
 class SimpleUserSerializer(serializers.ModelSerializer):
     """A lightweight serializer for basic User (agent) information."""
     full_name = serializers.CharField(source='get_full_name', read_only=True)
@@ -15,7 +71,6 @@ class SimpleUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'full_name', 'first_name', 'last_name']
 
-# --- SimpleCustomerProfileSerializer ---
 class SimpleCustomerProfileSerializer(serializers.ModelSerializer):
     """A lightweight serializer for basic CustomerProfile information, ideal for nesting."""
     full_name = serializers.CharField(source='get_full_name', read_only=True)
@@ -43,78 +98,6 @@ class OrderSerializer(serializers.ModelSerializer):
             'amount', 'currency', 'expected_close_date', 'assigned_agent', 'assigned_agent_id', 'notes', 'created_at', 'updated_at'
         ]
         read_only_fields = ('id', 'created_at', 'updated_at')
-
-# --- InstallationRequest Serializer ---
-class InstallationRequestSerializer(serializers.ModelSerializer):
-    customer = SimpleCustomerProfileSerializer(read_only=True)
-    associated_order = OrderSerializer(read_only=True)
-
-    class Meta:
-        model = InstallationRequest
-        fields = '__all__'
-        read_only_fields = ('id', 'created_at', 'updated_at')
-
-# --- SiteAssessmentRequest Serializer ---
-class SiteAssessmentRequestSerializer(serializers.ModelSerializer):
-    customer = SimpleCustomerProfileSerializer(read_only=True)
-
-    class Meta:
-        model = SiteAssessmentRequest
-        fields = '__all__'
-        read_only_fields = ('id', 'created_at', 'updated_at')
-# whatsappcrm_backend/customer_data/serializers.py
-from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import CustomerProfile, Interaction
-from conversations.models import Contact
-
-User = get_user_model()
-
-class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """
-    Customizes the JWT response to include user details, which the frontend expects.
-    """
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        # Add custom claims to the token payload itself
-        token['username'] = user.username
-        token['is_staff'] = user.is_staff
-        return token
-
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        # Add the user object to the response dictionary for the frontend.
-        data['user'] = {
-            'id': self.user.id, 'username': self.user.username,
-            'email': self.user.email, 'is_staff': self.user.is_staff,
-        }
-        return data
-
-# A simple serializer for providing context on related models
-class SimpleContactSerializer(serializers.ModelSerializer):
-    """A lightweight serializer for basic Contact information."""
-    class Meta:
-        model = Contact
-        fields = ['id', 'whatsapp_id', 'name']
-
-class SimpleUserSerializer(serializers.ModelSerializer):
-    """A lightweight serializer for basic User (agent) information."""
-    full_name = serializers.CharField(source='get_full_name', read_only=True)
-
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'full_name', 'first_name', 'last_name']
-
-class SimpleCustomerProfileSerializer(serializers.ModelSerializer):
-    """A lightweight serializer for basic CustomerProfile information, ideal for nesting."""
-    full_name = serializers.CharField(source='get_full_name', read_only=True)
-    contact_id = serializers.IntegerField(source='contact.id', read_only=True)
-
-    class Meta:
-        model = CustomerProfile
-        fields = ['contact_id', 'full_name', 'company']
 
 class CustomerProfileSerializer(serializers.ModelSerializer):
     """
@@ -197,3 +180,28 @@ class InteractionSerializer(serializers.ModelSerializer):
                 validated_data['agent'] = request.user
 
         return super().create(validated_data)
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        return attrs
+
+    def create(self, validated_data):
+        user = User.objects.create(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name']
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+
+class InstallationRequestSerializer(serializers.ModelSerializer):
+    customer = SimpleCustomerProfileSerializer(read_only=True)
+    associated_order = OrderSerializer(read_only=True)
+
+    class Meta:
+        model = InstallationRequest
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at')

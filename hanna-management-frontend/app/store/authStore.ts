@@ -3,14 +3,15 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface User {
   username: string;
-  email: string;
+  email?: string;
+  role: 'admin' | 'client' | 'manufacturer' | 'technician' | null;
 }
 
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   user: User | null;
-  login: (tokens: { access: string; refresh: string }, userData: User) => void;
+  login: (tokens: { access: string; refresh: string }, userData: { username: string, email: string, role: any }) => void;
   logout: () => void;
   setTokens: (tokens: { access: string; refresh: string }) => void;
 }
@@ -54,5 +55,9 @@ export const loginAction = async (username: string, password: string) => {
   if (!response.ok) throw new Error('Login failed. Please check your credentials.');
   
   const data = await response.json();
-  useAuthStore.getState().login({ access: data.access, refresh: data.refresh }, { username: data.username, email: data.email });
+  // The backend now returns 'role', 'username', 'email', 'access', 'refresh'
+  useAuthStore.getState().login({ access: data.access, refresh: data.refresh }, { username: data.username, email: data.email, role: data.role });
+
+  // Return the data so the login page can use the role for redirection
+  return data;
 };

@@ -8,7 +8,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 # Import the custom view to replace the default one
-from customer_data.views import MyTokenObtainPairView
+from customer_data.views import MyTokenObtainPairView, UserRegistrationView
 # Import the new landing page view
 from .views import LandingPageView
 
@@ -25,7 +25,6 @@ urlpatterns = [
     #   - DRF APIs for MetaAppConfig and WebhookEventLog (e.g., /crm-api/meta/api/configs/)
     path('crm-api/meta/', include('meta_integration.urls', namespace='meta_integration_api')),
     
-    # API endpoints for 'media_manager' application
     path('crm-api/media/', include('media_manager.urls', namespace='media_manager_api')),
     
     path('crm-api/conversations/', include('conversations.urls', namespace='conversations_api')),
@@ -33,17 +32,13 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     path('crm-api/stats/', include('stats.urls', namespace='stats_api')),
     path('crm-api/analytics/', include('analytics.urls')),
     # API endpoints for 'flows' application
-    # This includes DRF APIs for Flows, FlowSteps, etc. (e.g., /crm-api/flows/flows/)
     path('crm-api/flows/', include('flows.urls', namespace='flows_api')),
-    
-    # API endpoints for 'customer_data' application (if you add API views to it later)
-    # For now, customer_data is primarily managed via the admin and updated by flows.
-    # If you need direct API access to CustomerProfile:
-    # path('crm-api/customer-data/', include('customer_data.urls', namespace='customer_data_api')),
+    path('crm-api/warranty/', include('warranty.urls', namespace='warranty_api')),
 
 
     # JWT Token Endpoints for authentication from your React Vite frontend
     # Use our custom view to ensure refresh token and user data are returned
+    path('crm-api/auth/register/', UserRegistrationView.as_view(), name='user_registration'),
     path('crm-api/auth/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     # Your frontend will POST to 'token_refresh' with a valid refresh token
     path('crm-api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

@@ -1,9 +1,10 @@
-# --- IsStaffOrReadOnly Permission ---
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
 from django.http import Http404
+import logging
 
 class IsStaffOrReadOnly(permissions.BasePermission):
     """
@@ -17,47 +18,20 @@ class IsStaffOrReadOnly(permissions.BasePermission):
         # Allow write access only for staff users.
         return request.user and request.user.is_staff
 
-from .models import Order, InstallationRequest, SiteAssessmentRequest
-from .serializers import OrderSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer
-# --- Order ViewSet ---
-class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.select_related('customer', 'assigned_agent').all()
-    serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
-    filterset_fields = ['stage', 'payment_status', 'customer']
-    search_fields = ['order_number', 'name', 'notes']
-
-# --- InstallationRequest ViewSet ---
-class InstallationRequestViewSet(viewsets.ModelViewSet):
-    queryset = InstallationRequest.objects.select_related('customer', 'associated_order').all()
-    serializer_class = InstallationRequestSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
-    filterset_fields = ['status', 'installation_type', 'customer']
-    search_fields = ['order_number', 'full_name', 'address', 'contact_phone']
-
-# --- SiteAssessmentRequest ViewSet ---
-class SiteAssessmentRequestViewSet(viewsets.ModelViewSet):
-    queryset = SiteAssessmentRequest.objects.select_related('customer').all()
-    serializer_class = SiteAssessmentRequestSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
-    filterset_fields = ['status', 'customer']
-    search_fields = ['assessment_id', 'full_name', 'address', 'contact_info']
-# whatsappcrm_backend/customer_data/views.py
-from rest_framework import viewsets, permissions, status
-from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
-from django.shortcuts import get_object_or_404
-from django.http import Http404
-
-
-# New models and serializers
-from .models import CustomerProfile, Interaction
-from .serializers import CustomerProfileSerializer, InteractionSerializer, MyTokenObtainPairSerializer
+from .models import Order, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction
+from .serializers import (
+    OrderSerializer, 
+    InstallationRequestSerializer, 
+    SiteAssessmentRequestSerializer,
+    CustomerProfileSerializer, 
+    InteractionSerializer, 
+    MyTokenObtainPairSerializer,
+    UserRegistrationSerializer
+)
 
 # Still need Contact for get_or_create logic
 from conversations.models import Contact
 
-import logging
 logger = logging.getLogger(__name__)
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -66,17 +40,18 @@ class MyTokenObtainPairView(TokenObtainPairView):
     """
     serializer_class = MyTokenObtainPairSerializer
 
-class IsStaffOrReadOnly(permissions.BasePermission):
+class UserRegistrationView(APIView):
     """
-    Custom permission to only allow read access to any authenticated user,
-    but full write access (create, update, delete) only to admin/staff users.
+    A public endpoint for new clients/customers to register.
     """
-    def has_permission(self, request, view):
-        # Allow read-only access for any request.
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        # Allow write access only for staff users.
-        return request.user and request.user.is_staff
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, format=None):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "User created successfully. Please log in."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class IsInteractionOwnerOrAdmin(permissions.BasePermission):
     """
@@ -147,6 +122,27 @@ class CustomerProfileViewSet(viewsets.ModelViewSet):
 
     # The `perform_update` method is no longer needed as `updated_at` is automatic
     # and `last_interaction_date` is handled by the Interaction model.
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.select_related('customer', 'assigned_agent').all()
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
+    filterset_fields = ['stage', 'payment_status', 'customer']
+    search_fields = ['order_number', 'name', 'notes']
+
+class InstallationRequestViewSet(viewsets.ModelViewSet):
+    queryset = InstallationRequest.objects.select_related('customer', 'associated_order').all()
+    serializer_class = InstallationRequestSerializer
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
+    filterset_fields = ['status', 'installation_type', 'customer']
+    search_fields = ['order_number', 'full_name', 'address', 'contact_phone']
+
+class SiteAssessmentRequestViewSet(viewsets.ModelViewSet):
+    queryset = SiteAssessmentRequest.objects.select_related('customer').all()
+    serializer_class = SiteAssessmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
+    filterset_fields = ['status', 'customer']
+    search_fields = ['assessment_id', 'full_name', 'address', 'contact_info']
 
 class InteractionViewSet(viewsets.ModelViewSet):
     """
