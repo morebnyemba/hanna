@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiUsers, FiSearch, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
@@ -139,7 +140,9 @@ export default function CustomersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.assigned_agent?.username || 'Unassigned'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <a href="#" className="text-purple-600 hover:text-purple-900">Manage</a>
+                      <Link href={`/admin/customers/${customer.contact.id}`} className="text-purple-600 hover:text-purple-900">
+                        Manage
+                      </Link>
                     </td>
                   </tr>
                 ))}
