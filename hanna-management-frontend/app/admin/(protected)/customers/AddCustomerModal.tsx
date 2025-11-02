@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { FiX, FiLoader, FiUserPlus } from 'react-icons/fi';
+import apiClient from '@/lib/apiClient';
 import { useAuthStore } from '@/app/store/authStore';
 
 interface AddCustomerModalProps {
@@ -56,20 +57,13 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }: AddCust
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer `,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
+      // Use the new apiClient - headers are handled automatically!
+      await apiClient.post('/crm-api/customer-data/profiles/', formData);
+    } catch (err: any) {
+      if (err.response && err.response.data) {
         // Handle specific validation errors from DRF
-        const errorMessage = Object.entries(errorData).map(([key, value]) => `: ${Array.isArray(value) ? value.join(', ') : value}`).join(' ');
+        const errorData = err.response.data;
+        const errorMessage = Object.entries(errorData).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : value}`).join(' ');
         throw new Error(errorMessage || 'Failed to create customer.');
       }
 
@@ -77,7 +71,6 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }: AddCust
       onClose();   // Close modal
 
     } catch (err: any) {
-      setError(err.message);
     } finally {
       setIsSaving(false);
     }

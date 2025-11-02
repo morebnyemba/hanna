@@ -2,10 +2,12 @@
 
 import { useEffect, useState, ReactNode, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiUser, FiArrowLeft, FiMail, FiPhone, FiBriefcase, FiMapPin, FiTag, FiInfo, FiBarChart2, FiUserCheck, FiEdit, FiShoppingCart } from 'react-icons/fi';
+import { FiUser, FiArrowLeft, FiMail, FiPhone, FiBriefcase, FiMapPin, FiTag, FiInfo, FiBarChart2, FiUserCheck, FiEdit, FiShoppingCart, FiTrash2 } from 'react-icons/fi';
 import Link from 'next/link';
-import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/lib/apiClient';
 import EditCustomerModal from './EditCustomerModal';
+import ConfirmationModal from './ConfirmationModal';
+import { useAuthStore } from '@/app/store/authStore';
 
 // --- Type Definitions (matching the list page) ---
 interface ContactInfo {
@@ -63,7 +65,7 @@ export default function CustomerDetailPage() {
   const params = useParams();
   const customerId = params.id;
   const router = useRouter();
-  const { accessToken } = useAuthStore();
+  const { accessToken } = useAuthStore(); // Still needed for the initial check
 
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,8 @@ export default function CustomerDetailPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!customerId || !accessToken) {
@@ -80,41 +84,28 @@ export default function CustomerDetailPage() {
     const fetchCustomerData = async () => {
       setError(null);
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
         // Fetch profile and orders in parallel
         const [profileResponse, ordersResponse] = await Promise.all([
-          fetch(`${apiUrl}/crm-api/customer-data/profiles/${customerId}/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }),
-
-          fetch(`${apiUrl}/crm-api/customer-data/orders/?customer=${customerId}&ordering=-created_at&limit=5`, {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-          })
+          apiClient.get(`/crm-api/customer-data/profiles/${customerId}/`),
+          apiClient.get(`/crm-api/customer-data/orders/?customer=${customerId}&ordering=-created_at&limit=5`)
         ]);
 
-        // Handle profile response
-        if (!profileResponse.ok) {
-          if (profileResponse.status === 401) router.push('/admin/login');
-          if (profileResponse.status === 404) throw new Error('Customer not found.');
-          throw new Error(`Failed to fetch customer data. Status: ${profileResponse.status}`);
-        }
-        const data: CustomerProfile = await profileResponse.json();
+        const data: CustomerProfile = profileResponse.data;
         setCustomer(data);
 
-        // Handle orders response
-        if (ordersResponse.ok) {
-          const ordersData = await ordersResponse.json();
-          setOrders(ordersData.results || []);
-        } else {
-          // Don't throw an error, just log it, so the page can still render the profile
-          console.error('Failed to fetch recent orders.');
-        }
+        const ordersData = ordersResponse.data;
+        setOrders(ordersData.results || []);
 
       } catch (err: any) {
-        setError(err.message);
+        // Axios wraps the response error in `err.response`
+        if (err.response && err.response.status === 404) {
+          setError('Customer not found.');
+        } else if (err.response && err.response.status === 401) {
+          // This is handled by the apiClient interceptor, but we can have a fallback.
+          setError("You are not authorized. Please log in again.");
+        } else {
+          setError(err.message || 'An unexpected error occurred.');
+        }
       } finally {
         setLoading(false);
         setOrdersLoading(false);
@@ -128,6 +119,25 @@ export default function CustomerDetailPage() {
     setCustomer(updatedCustomer);
     setIsEditModalOpen(false);
   }, []);
+
+  const handleDelete = async () => {
+    if (!customer) return;
+    setIsDeleting(true);
+
+    try {
+      // Use the new apiClient - headers and error handling are simplified
+      await apiClient.delete(`/crm-api/customer-data/profiles/${customer.contact.id}/`);
+
+      // On successful deletion, redirect to the customer list
+      router.push('/admin/customers');
+
+    } catch (err: any) {
+      // The interceptor will handle 401s. We can show other errors here.
+      setError(err.message || 'Failed to delete customer.');
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center h-full"><p>Loading customer profile...</p></div>;
@@ -159,6 +169,13 @@ export default function CustomerDetailPage() {
             <FiEdit className="mr-2" />
             Edit Profile
           </button>
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+          >
+            <FiTrash2 className="mr-2" />
+            Delete
+          </button>
           <Link href="/admin/customers" className="flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">
             <FiArrowLeft className="mr-2" />
             Back to List
@@ -183,6 +200,14 @@ export default function CustomerDetailPage() {
         onClose={() => setIsEditModalOpen(false)}
         customer={customer}
         onSave={handleSave}
+      />
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Customer"
+        message={`Are you sure you want to delete ${fullName}? This will permanently remove all associated data, including orders and interactions. This action cannot be undone.`}
+        isConfirming={isDeleting}
       />
 
       {/* Recent Orders Section */}

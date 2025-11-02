@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiUsers, FiSearch, FiPlus } from 'react-icons/fi';
+import apiClient from '@/lib/apiClient';
 import { useAuthStore } from '@/app/store/authStore';
 import AddCustomerModal from './AddCustomerModal';
 
@@ -68,25 +69,19 @@ export default function CustomersPage() {
       setError(null);
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        // The search parameter is handled by the DRF backend's search_fields
-        const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/?search=${searchTerm}&page=${page}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
+        const response = await apiClient.get<PaginatedResponse>('/crm-api/customer-data/profiles/', {
+          params: {
+            search: searchTerm,
+            page: page,
+          }
         });
 
-        if (!response.ok) {
-          if (response.status === 401) router.push('/admin/login');
-          throw new Error(`Failed to fetch customers. Status: ${response.status}`);
-        }
-
-        const data: PaginatedResponse = await response.json();
+        const data = response.data;
         setCustomers(data.results);
         setPagination({ count: data.count, next: data.next, previous: data.previous });
       } catch (err: any) {
-        setError(err.message);
+        // The apiClient interceptor handles 401s. We just show other errors.
+        setError(err.message || 'Failed to fetch customers.');
       } finally {
         setLoading(false);
       }
