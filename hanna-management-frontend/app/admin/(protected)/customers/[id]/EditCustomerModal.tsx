@@ -10,6 +10,11 @@ interface ContactInfo {
   whatsapp_id: string;
 }
 
+interface AgentInfo {
+  id: number;
+  username: string;
+}
+
 interface CustomerProfile {
   contact: ContactInfo;
   first_name: string | null;
@@ -19,6 +24,10 @@ interface CustomerProfile {
   lead_status: string;
   tags: string[];
   notes: string | null;
+  assigned_agent: AgentInfo | null;
+  address_line_1: string | null;
+  city: string | null;
+  country: string | null;
 }
 
 interface EditCustomerModalProps {
