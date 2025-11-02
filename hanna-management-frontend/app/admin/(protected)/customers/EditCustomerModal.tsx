@@ -5,8 +5,13 @@ import { FiX, FiLoader } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import { useAuthStore } from '@/app/store/authStore';
 
+interface ContactInfo {
+  id: number;
+  whatsapp_id: string;
+}
+
 interface CustomerProfile {
-  contact: { id: number };
+  contact: ContactInfo;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
