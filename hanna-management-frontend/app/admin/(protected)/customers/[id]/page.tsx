@@ -6,7 +6,7 @@ import { FiUser, FiArrowLeft, FiMail, FiPhone, FiBriefcase, FiMapPin, FiTag, FiI
 import Link from 'next/link';
 import apiClient from '@/lib/apiClient';
 import EditCustomerModal from './EditCustomerModal';
-import ConfirmationModal from './ConfirmationModal';
+import ConfirmationModal from '../ConfirmationModal';
 import { useAuthStore } from '@/app/store/authStore';
 
 // --- Type Definitions (matching the list page) ---

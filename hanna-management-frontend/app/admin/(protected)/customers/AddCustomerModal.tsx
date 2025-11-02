@@ -59,18 +59,18 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }: AddCust
     try {
       // Use the new apiClient - headers are handled automatically!
       await apiClient.post('/crm-api/customer-data/profiles/', formData);
+
+      onSuccess(); // Trigger list refresh
+      onClose();   // Close modal
     } catch (err: any) {
       if (err.response && err.response.data) {
         // Handle specific validation errors from DRF
         const errorData = err.response.data;
         const errorMessage = Object.entries(errorData).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : value}`).join(' ');
-        throw new Error(errorMessage || 'Failed to create customer.');
+        setError(errorMessage || 'Failed to create customer.');
+      } else {
+        setError(err.message || 'An unexpected network error occurred.');
       }
-
-      onSuccess(); // Trigger list refresh
-      onClose();   // Close modal
-
-    } catch (err: any) {
     } finally {
       setIsSaving(false);
     }
