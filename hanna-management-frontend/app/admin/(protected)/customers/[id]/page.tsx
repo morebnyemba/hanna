@@ -2,7 +2,7 @@
 
 import { useEffect, useState, ReactNode, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiUser, FiArrowLeft, FiMail, FiPhone, FiBriefcase, FiMapPin, FiTag, FiInfo, FiBarChart2, FiUserCheck, FiEdit } from 'react-icons/fi';
+import { FiUser, FiArrowLeft, FiMail, FiPhone, FiBriefcase, FiMapPin, FiTag, FiInfo, FiBarChart2, FiUserCheck, FiEdit, FiShoppingCart } from 'react-icons/fi';
 import Link from 'next/link';
 import { useAuthStore } from '@/app/store/authStore';
 import EditCustomerModal from './EditCustomerModal';
@@ -34,6 +34,17 @@ interface CustomerProfile {
   country: string | null;
 }
 
+interface Order {
+  id: string;
+  order_number: string;
+  name: string;
+  stage: string;
+  payment_status: string;
+  amount: string;
+  currency: string;
+  created_at: string;
+}
+
 // --- Reusable Profile Field Component ---
 const ProfileField = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: ReactNode }) => {
   if (!value) return null;
@@ -58,6 +69,8 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   useEffect(() => {
     if (!customerId || !accessToken) {
@@ -65,32 +78,48 @@ export default function CustomerDetailPage() {
       return;
     }
     const fetchCustomerData = async () => {
-      setLoading(true);
       setError(null);
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/${customerId}/`, {
+        // Fetch profile and orders in parallel
+        const [profileResponse, ordersResponse] = await Promise.all([
+          fetch(`${apiUrl}/crm-api/customer-data/profiles/${customerId}/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
         });
 
-        if (!response.ok) {
-          if (response.status === 401) router.push('/admin/login');
-          if (response.status === 404) throw new Error('Customer not found.');
-          throw new Error(`Failed to fetch customer data. Status: ${response.status}`);
+          fetch(`${apiUrl}/crm-api/customer-data/orders/?customer=${customerId}&ordering=-created_at&limit=5`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          })
+        ]);
+
+        // Handle profile response
+        if (!profileResponse.ok) {
+          if (profileResponse.status === 401) router.push('/admin/login');
+          if (profileResponse.status === 404) throw new Error('Customer not found.');
+          throw new Error(`Failed to fetch customer data. Status: ${profileResponse.status}`);
+        }
+        const data: CustomerProfile = await profileResponse.json();
+        setCustomer(data);
+
+        // Handle orders response
+        if (ordersResponse.ok) {
+          const ordersData = await ordersResponse.json();
+          setOrders(ordersData.results || []);
+        } else {
+          // Don't throw an error, just log it, so the page can still render the profile
+          console.error('Failed to fetch recent orders.');
         }
 
-        const data: CustomerProfile = await response.json();
-        setCustomer(data);
       } catch (err: any) {
         setError(err.message);
       } finally {
         setLoading(false);
+        setOrdersLoading(false);
       }
     };
-
     fetchCustomerData();
   }, [customerId, accessToken, router]);
 
@@ -155,6 +184,44 @@ export default function CustomerDetailPage() {
         customer={customer}
         onSave={handleSave}
       />
+
+      {/* Recent Orders Section */}
+      <div className="mt-8">
+        <div className="flex items-center mb-4">
+          <FiShoppingCart className="h-6 w-6 mr-3 text-gray-700" />
+          <h2 className="text-2xl font-bold text-gray-900">Recent Orders</h2>
+        </div>
+        <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-x-auto">
+          {ordersLoading ? (
+            <p className="text-center text-gray-500 p-6">Loading orders...</p>
+          ) : orders.length > 0 ? (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {orders.map((order) => (
+                  <tr key={order.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600 hover:text-purple-800">{order.order_number}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{order.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{order.stage.replace('_', ' ')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency }).format(parseFloat(order.amount))}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-center text-gray-500 p-6">No recent orders found for this customer.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -4,8 +4,14 @@ import { useState, useEffect, FormEvent } from 'react';
 import { FiX, FiLoader } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 
+interface ContactInfo {
+  id: number;
+  name: string;
+  whatsapp_id: string;
+}
+
 interface CustomerProfile {
-  contact: { id: number };
+  contact: ContactInfo;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
