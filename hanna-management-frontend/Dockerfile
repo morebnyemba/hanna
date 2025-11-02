@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install && npm install react-icons zustand jwt-decode recharts
+RUN npm install
 
 # Copy the rest of the application code
 COPY . .
