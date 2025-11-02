@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiUsers, FiSearch, FiPlus } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
-import apiClient from '../../../lib/apiClient';
 import { useAuthStore } from '@/app/store/authStore';
 import AddCustomerModal from './AddCustomerModal';
 
