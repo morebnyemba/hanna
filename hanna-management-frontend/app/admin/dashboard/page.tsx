@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { accessToken, logout } = useAuthStore();
+  const { accessToken } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -86,7 +86,10 @@ export default function AdminDashboardPage() {
         });
 
         if (!response.ok) {
-          if (response.status === 401) handleLogout();
+          if (response.status === 401) {
+            // The layout will handle the actual logout action
+            router.push('/admin/login');
+          }
           throw new Error(`Failed to fetch data. Status: ${response.status}`);
         }
 
@@ -105,37 +108,28 @@ export default function AdminDashboardPage() {
     } else {
       fetchData();
     }
-  }, [accessToken]);
-
-  const handleLogout = () => {
-    logout();
-    router.push('/admin/login');
-  };
+  }, [accessToken, router]);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p>Loading Dashboard...</p></div>;
+    return <div className="flex items-center justify-center h-full"><p>Loading Dashboard...</p></div>;
   }
 
   if (error) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p className="text-red-500">Error: {error}</p></div>;
+    return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
   }
 
-  if (!data) return <div className="flex min-h-screen items-center justify-center bg-gray-50"><p>No data available.</p></div>;
+  if (!data) return <div className="flex items-center justify-center h-full"><p>No data available.</p></div>;
 
   const { stats_cards, flow_insights, charts_data, recent_activity_log } = data;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <main className="p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Analytics Dashboard</h1>
-          <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-            Logout
-          </button>
-        </div>
+    <>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Admin Analytics Dashboard</h1>
+      </div>
 
-        {/* Main Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Main Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard title="Total Contacts" value={stats_cards.total_contacts} icon={FiUsers} />
           <StatCard title="New Contacts (Today)" value={stats_cards.new_contacts_today} icon={FiCheckCircle} />
           <StatCard title="Active Conversations" value={stats_cards.active_conversations_count} icon={FiMessageSquare} />
@@ -143,7 +137,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Secondary Grid for Charts and other stats */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
             <AnalyticsChart data={charts_data.conversation_trends} />
           </div>
@@ -151,13 +145,12 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Tertiary Stat Cards for other modules */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard title="Active Warranties" value={stats_cards.active_warranties} icon={FiShield} />
           <StatCard title="Pending Warranty Claims" value={stats_cards.pending_warranty_claims} icon={FiAlertCircle} />
           <StatCard title="Open Job Cards" value={stats_cards.open_job_cards} icon={FiTool} />
           <StatCard title="Active Flows" value={flow_insights.active_flows_count} icon={FiZap} />
         </div>
-      </main>
-    </div>
+    </>
   );
 }
