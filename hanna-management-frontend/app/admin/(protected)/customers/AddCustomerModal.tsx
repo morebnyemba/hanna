@@ -56,9 +56,17 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }: AddCust
     setIsSaving(true);
     setError(null);
 
+    const payload = {
+      contact: {
+        name: formData.name,
+        whatsapp_id: formData.whatsapp_id,
+      },
+      email: formData.email,
+    };
+
     try {
       // Use the new apiClient - headers are handled automatically!
-      await apiClient.post('/crm-api/customer-data/profiles/', formData);
+      await apiClient.post('/crm-api/customer-data/profiles/', payload);
 
       onSuccess(); // Trigger list refresh
       onClose();   // Close modal
