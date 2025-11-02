@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiUsers, FiSearch, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import AddCustomerModal from './AddCustomerModal';
 
 // --- Type Definitions ---
 interface ContactInfo {
@@ -41,23 +42,35 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState<Omit<PaginatedResponse, 'results'> | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Used to force a refetch
   const { accessToken } = useAuthStore();
   const router = useRouter();
 
+  // Reset to the first page whenever the search term changes
   useEffect(() => {
-    const fetchCustomers = async () => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const fetchCustomers = async (page: number) => {
       if (!accessToken) {
         router.push('/admin/login');
         return;
       }
 
+      // Don't show loading spinner on page change for a smoother experience
+      if (customers.length === 0) {
       setLoading(true);
+      }
       setError(null);
 
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
         // The search parameter is handled by the DRF backend's search_fields
-        const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/?search=${searchTerm}`, {
+        const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/?search=${searchTerm}&page=${page}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
@@ -71,6 +84,7 @@ export default function CustomersPage() {
 
         const data: PaginatedResponse = await response.json();
         setCustomers(data.results);
+        setPagination({ count: data.count, next: data.next, previous: data.previous });
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -80,11 +94,16 @@ export default function CustomersPage() {
 
     // Debounce search to avoid excessive API calls
     const searchTimeout = setTimeout(() => {
-      fetchCustomers();
+      fetchCustomers(currentPage);
     }, 500);
 
     return () => clearTimeout(searchTimeout);
-  }, [accessToken, router, searchTerm]);
+  }, [accessToken, router, searchTerm, currentPage, refreshTrigger]);
+
+  const handleCustomerAdded = () => {
+    // Trigger a refetch of the customer list
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <div>
@@ -93,11 +112,20 @@ export default function CustomersPage() {
           <FiUsers className="h-8 w-8 mr-3 text-gray-700" />
           <h1 className="text-3xl font-bold text-gray-900">Customer Management</h1>
         </div>
-        <button className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition">
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
+        >
           <FiPlus className="mr-2" />
           Add Customer
         </button>
       </div>
+
+      <AddCustomerModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={handleCustomerAdded}
+      />
 
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
         <div className="relative mb-4">
@@ -149,6 +177,23 @@ export default function CustomersPage() {
               </tbody>
             </table>
             {customers.length === 0 && <p className="text-center text-gray-500 py-4">No customers found.</p>}
+            
+            {/* Pagination Controls */}
+            {pagination && pagination.count > 20 && ( // Assuming default page size is 20
+              <div className="flex items-center justify-between py-3 px-2 border-t border-gray-200">
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{(currentPage - 1) * 20 + 1}</span> to <span className="font-medium">{Math.min(currentPage * 20, pagination.count)}</span> of <span className="font-medium">{pagination.count}</span> results
+                </p>
+                <div className="space-x-2">
+                  <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={!pagination.previous} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Previous
+                  </button>
+                  <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={!pagination.next} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
