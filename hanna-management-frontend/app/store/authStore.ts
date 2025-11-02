@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import Cookies from 'js-cookie';
 
 interface User {
   username: string;
@@ -22,16 +23,26 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       user: null,
-      login: (tokens, userData) => set({
-        accessToken: tokens.access,
-        refreshToken: tokens.refresh,
-        user: userData,
-      }),
-      logout: () => set({
+      login: (tokens, userData) => {
+        set({
+          accessToken: tokens.access,
+          refreshToken: tokens.refresh,
+          user: userData,
+        });
+        // Manually set a cookie for the middleware to read on server-side requests.
+        // The middleware cannot access localStorage, but it can access cookies.
+        const cookieState = { state: { accessToken: tokens.access } };
+        Cookies.set('auth-storage', JSON.stringify(cookieState), { expires: 7, path: '/' });
+      },
+      logout: () => {
+        set({
         accessToken: null,
         refreshToken: null,
         user: null,
-      }),
+      });
+        // Also remove the cookie on logout.
+        Cookies.remove('auth-storage', { path: '/' });
+      },
       setTokens: (tokens) => set({
         accessToken: tokens.access,
         refreshToken: tokens.refresh,
