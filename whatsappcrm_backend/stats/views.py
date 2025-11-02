@@ -25,7 +25,7 @@ class DashboardSummaryStatsAPIView(APIView):
     API View to provide a summary of statistics for the dashboard.
     All timestamp comparisons are timezone-aware.
     """
-    permission_classes = [permissions.IsAuthenticated] # Or IsAdminUser if preferred
+    permission_classes = [permissions.IsAdminUser] # Only staff/admins can see this overview.
 
     def _get_time_ranges(self):
         """Helper to establish common time ranges for queries."""

@@ -53,19 +53,3 @@ class TechnicianDashboardStatsAPIView(APIView):
             'completed_today': job_cards.filter(status=JobCard.Status.CLOSED, updated_at__date=timezone.now().date()).count(),
         }
         return Response(data, status=status.HTTP_200_OK)
-
-class AdminDashboardStatsAPIView(APIView):
-    """ Provides dashboard statistics for an admin user. """
-    permission_classes = [IsAdminUser]
-
-    def get(self, request, format=None):
-        data = {
-            'total_users': User.objects.count(),
-            'total_customers': CustomerProfile.objects.count(),
-            'total_warranties': Warranty.objects.count(),
-            'active_warranties': Warranty.objects.filter(status=Warranty.WarrantyStatus.ACTIVE).count(),
-            'total_claims': WarrantyClaim.objects.count(),
-            'pending_claims': WarrantyClaim.objects.filter(status=WarrantyClaim.ClaimStatus.PENDING).count(),
-            'open_job_cards': JobCard.objects.filter(status=JobCard.Status.OPEN).count(),
-        }
-        return Response(data, status=status.HTTP_200_OK)
