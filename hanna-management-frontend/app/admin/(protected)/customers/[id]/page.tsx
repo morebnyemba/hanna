@@ -88,7 +88,7 @@ export default function CustomerDetailPage() {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-        });
+        }),
 
           fetch(`${apiUrl}/crm-api/customer-data/orders/?customer=${customerId}&ordering=-created_at&limit=5`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
