@@ -111,6 +111,17 @@ export default function EditCustomerModal({ isOpen, onClose, customer, onSave }:
         <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField id="first_name" label="First Name" value={formData.first_name} onChange={handleChange} />
+            <div>
+              <label htmlFor="whatsapp_id" className="block text-sm font-medium text-gray-700">WhatsApp Contact</label>
+              <input
+                type="text"
+                id="whatsapp_id"
+                name="whatsapp_id"
+                value={customer.contact.whatsapp_id}
+                disabled
+                className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none sm:text-sm text-gray-500"
+              />
+            </div>
             <InputField id="last_name" label="Last Name" value={formData.last_name} onChange={handleChange} />
             <InputField id="email" label="Email" value={formData.email} onChange={handleChange} />
             <InputField id="company" label="Company" value={formData.company} onChange={handleChange} />
