@@ -3,10 +3,12 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 from .models import Warranty, WarrantyClaim
-from customer_data.models import JobCard
+from customer_data.models import JobCard, CustomerProfile
 
+User = get_user_model()
 # --- Custom Permissions ---
 class IsManufacturerUser(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -15,6 +17,10 @@ class IsManufacturerUser(permissions.BasePermission):
 class IsTechnicianUser(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated and hasattr(request.user, 'technician_profile')
+
+class IsAdminUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.is_staff
 
 # --- Dashboard Views ---
 class ManufacturerDashboardStatsAPIView(APIView):
@@ -45,5 +51,21 @@ class TechnicianDashboardStatsAPIView(APIView):
             'open_jobs': job_cards.filter(status=JobCard.Status.OPEN).count(),
             'in_progress_jobs': job_cards.filter(status=JobCard.Status.IN_PROGRESS).count(),
             'completed_today': job_cards.filter(status=JobCard.Status.CLOSED, updated_at__date=timezone.now().date()).count(),
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+class AdminDashboardStatsAPIView(APIView):
+    """ Provides dashboard statistics for an admin user. """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, format=None):
+        data = {
+            'total_users': User.objects.count(),
+            'total_customers': CustomerProfile.objects.count(),
+            'total_warranties': Warranty.objects.count(),
+            'active_warranties': Warranty.objects.filter(status=Warranty.WarrantyStatus.ACTIVE).count(),
+            'total_claims': WarrantyClaim.objects.count(),
+            'pending_claims': WarrantyClaim.objects.filter(status=WarrantyClaim.ClaimStatus.PENDING).count(),
+            'open_job_cards': JobCard.objects.filter(status=JobCard.Status.OPEN).count(),
         }
         return Response(data, status=status.HTTP_200_OK)

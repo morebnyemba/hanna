@@ -9,6 +9,7 @@ from django.conf.urls.static import static
 
 # Import the custom view to replace the default one
 from customer_data.views import MyTokenObtainPairView, UserRegistrationView
+from warranty.views import AdminDashboardStatsAPIView
 # Import the new landing page view
 from .views import LandingPageView
 
@@ -40,6 +41,7 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     # Use our custom view to ensure refresh token and user data are returned
     path('crm-api/auth/register/', UserRegistrationView.as_view(), name='user_registration'),
     path('crm-api/auth/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('crm-api/admin/dashboard-stats/', AdminDashboardStatsAPIView.as_view(), name='admin_dashboard_stats'),
     # Your frontend will POST to 'token_refresh' with a valid refresh token
     path('crm-api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # Optional: Your frontend can POST to 'token_verify' with a token to check its validity

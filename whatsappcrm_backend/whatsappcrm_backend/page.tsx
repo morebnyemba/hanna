@@ -6,19 +6,18 @@ import { FiUsers, FiMessageSquare, FiAlertCircle, FiShield, FiTool, FiCheckCircl
 import { useAuthStore } from '@/app/store/authStore';
 
 // --- Types to match the backend API response ---
-interface StatsCards {
-  active_conversations_count: number;
-  new_contacts_today: number;
-  total_contacts: number;
-  pending_human_handovers: number;
+interface DashboardData {
+  total_users: number;
+  total_customers: number;
+  total_warranties: number;
   active_warranties: number;
-  pending_warranty_claims: number;
+  total_claims: number;
+  pending_claims: number;
   open_job_cards: number;
 }
 
 interface ActivityLogItem {
   id: string;
-  text: string;
   timestamp: string;
   iconName: string;
   iconColor: string;
@@ -56,7 +55,7 @@ export default function AdminDashboardPage() {
     const fetchData = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/stats/dashboard/summary/`, {
+        const response = await fetch(`${apiUrl}/crm-api/admin/dashboard-stats/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
