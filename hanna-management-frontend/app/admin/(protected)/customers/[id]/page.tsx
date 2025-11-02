@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, ReactNode } from 'react';
+import { useEffect, useState, ReactNode, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiUser, FiArrowLeft, FiMail, FiPhone, FiBriefcase, FiMapPin, FiTag, FiInfo, FiBarChart2, FiUserCheck } from 'react-icons/fi';
+import { FiUser, FiArrowLeft, FiMail, FiPhone, FiBriefcase, FiMapPin, FiTag, FiInfo, FiBarChart2, FiUserCheck, FiEdit } from 'react-icons/fi';
 import Link from 'next/link';
 import { useAuthStore } from '@/app/store/authStore';
+import EditCustomerModal from './EditCustomerModal';
 
 // --- Type Definitions (matching the list page) ---
 interface ContactInfo {
@@ -56,13 +57,13 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     if (!customerId || !accessToken) {
       if (!accessToken) router.push('/admin/login');
       return;
     }
-
     const fetchCustomerData = async () => {
       setLoading(true);
       setError(null);
@@ -93,6 +94,12 @@ export default function CustomerDetailPage() {
     fetchCustomerData();
   }, [customerId, accessToken, router]);
 
+  const handleSave = useCallback((updatedCustomer: CustomerProfile) => {
+    // Optimistically update the UI with the new data from the server
+    setCustomer(updatedCustomer);
+    setIsEditModalOpen(false);
+  }, []);
+
   if (loading) {
     return <div className="flex items-center justify-center h-full"><p>Loading customer profile...</p></div>;
   }
@@ -110,15 +117,24 @@ export default function CustomerDetailPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div className="flex items-center">
           <FiUser className="h-8 w-8 mr-3 text-gray-700" />
           <h1 className="text-3xl font-bold text-gray-900 truncate">{fullName}</h1>
         </div>
-        <Link href="/admin/customers" className="flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">
-          <FiArrowLeft className="mr-2" />
-          Back to List
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
+          >
+            <FiEdit className="mr-2" />
+            Edit Profile
+          </button>
+          <Link href="/admin/customers" className="flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">
+            <FiArrowLeft className="mr-2" />
+            Back to List
+          </Link>
+        </div>
       </div>
       <div className="bg-white p-6 md:p-8 rounded-lg shadow-md border border-gray-200">
         <div className="divide-y divide-gray-200">
@@ -133,6 +149,12 @@ export default function CustomerDetailPage() {
           <ProfileField icon={FiInfo} label="Notes" value={<p className="whitespace-pre-wrap">{customer.notes || 'No notes'}</p>} />
         </div>
       </div>
+      <EditCustomerModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        customer={customer}
+        onSave={handleSave}
+      />
     </div>
   );
 }
