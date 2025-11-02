@@ -27,7 +27,19 @@ export function middleware(request: NextRequest) {
 
   const portal = pathname.split('/')[1]; // e.g., 'admin', 'client'
 
-  if (!role || role !== portal) {
+  // If there's no role, the user is not authenticated. Redirect to login.
+  if (!role) {
+    const loginUrl = new URL(`/${portal}/login`, request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // An admin can access any portal.
+  if (role === 'admin') {
+    return NextResponse.next();
+  }
+
+  // For other roles, they must match the portal they are trying to access.
+  if (role !== portal) {
     const loginUrl = new URL(`/${portal}/login`, request.url);
     return NextResponse.redirect(loginUrl);
   }
