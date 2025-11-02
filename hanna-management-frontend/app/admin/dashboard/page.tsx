@@ -78,7 +78,7 @@ export default function AdminDashboardPage() {
     const fetchData = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/stats/dashboard/summary/`, {
+        const response = await fetch(`${apiUrl}/crm-api/admin/dashboard-stats/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
