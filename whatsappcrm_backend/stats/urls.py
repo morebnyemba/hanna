@@ -10,8 +10,8 @@ from .views import (
 app_name = 'stats_api'
 
 urlpatterns = [
-    # The main summary endpoint for the dashboard overview. This is now the root of this app's URLs.
-    path('', DashboardSummaryStatsAPIView.as_view(), name='dashboard_summary_stats'),
+    # The main summary endpoint for the dashboard overview.
+    path('summary/', DashboardSummaryStatsAPIView.as_view(), name='dashboard_summary_stats'),
     # Granular, filterable endpoints for detailed analytics
     path('financial/', FinancialStatsAPIView.as_view(), name='financial_stats'),
     path('engagement/', EngagementStatsAPIView.as_view(), name='engagement_stats'),
