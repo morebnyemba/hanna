@@ -2,6 +2,7 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { FiX, FiLoader } from 'react-icons/fi';
+import apiClient from '@/lib/apiClient';
 import { useAuthStore } from '@/app/store/authStore';
 
 interface CustomerProfile {
@@ -42,6 +43,7 @@ export default function EditCustomerModal({ isOpen, onClose, customer, onSave }:
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { accessToken } = useAuthStore();
 
   useEffect(() => {
     if (customer) {
@@ -75,7 +77,6 @@ export default function EditCustomerModal({ isOpen, onClose, customer, onSave }:
 
     try {
       const response = await apiClient.patch(`/crm-api/customer-data/profiles/${customer.contact.id}/`, payload);
-
       const updatedCustomerData = response.data;
       onSave(updatedCustomerData); // Pass updated data back to parent
       onClose();
