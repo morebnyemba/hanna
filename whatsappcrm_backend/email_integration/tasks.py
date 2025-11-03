@@ -477,10 +477,21 @@ def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_pref
 
     product_info = data.get('product', {})
 
+    # --- NEW: Find the associated product ---
+    product = None
+    serial_number = product_info.get('serial_number')
+    product_description = product_info.get('description')
+    if serial_number:
+        # A serial number is often linked to a specific warranty, which links to a product
+        product = Product.objects.filter(warranties__serial_number=serial_number).first()
+    if not product and product_description:
+        product = Product.objects.filter(name__icontains=product_description).first()
+
     job_card, created = JobCard.objects.update_or_create(
         job_card_number=job_card_number,
         defaults={
             'customer': customer_profile,
+            'product': product, # Assign the found product
             'product_description': product_info.get('description'),
             'product_serial_number': product_info.get('serial_number'),
             'reported_fault': data.get('reported_fault'),

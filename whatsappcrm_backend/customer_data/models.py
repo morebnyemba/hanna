@@ -545,6 +545,13 @@ class JobCard(models.Model):
         related_name='job_card',
         help_text=_("The warranty claim that this job card is for, if any.")
     )
+    product = models.ForeignKey(
+        'products_and_services.Product',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='job_cards',
+        help_text=_("The product this job card is associated with.")
+    )
     customer = models.ForeignKey(CustomerProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='job_cards')
     product_description = models.CharField(_("Product Description"), max_length=255, blank=True, null=True)
     product_serial_number = models.CharField(_("Product Serial Number"), max_length=255, blank=True, null=True, db_index=True)
