@@ -33,7 +33,7 @@ export default function ManufacturerDashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get<ManufacturerStats>('/manufacturer/dashboard-stats/');
+        const response = await apiClient.get<ManufacturerStats>('/crm-api/manufacturer/dashboard-stats/');
         setStats(response.data);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch dashboard statistics.');
