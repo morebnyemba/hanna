@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import Order, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction
+from .models import Order, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction, JobCard
 from conversations.models import Contact
 
 User = get_user_model()
@@ -196,6 +196,25 @@ class InteractionSerializer(serializers.ModelSerializer):
                 validated_data['agent'] = request.user
 
         return super().create(validated_data)
+
+class JobCardSerializer(serializers.ModelSerializer):
+    """
+    Serializer for listing Job Cards, including some related customer info.
+    """
+    customer_name = serializers.CharField(source='customer.get_full_name', read_only=True, default='N/A')
+    customer_whatsapp = serializers.CharField(source='customer.contact.whatsapp_id', read_only=True, default='N/A')
+
+    class Meta:
+        model = JobCard
+        fields = [
+            'job_card_number',
+            'customer_name',
+            'customer_whatsapp',
+            'product_description',
+            'product_serial_number',
+            'status',
+            'creation_date',
+        ]
 
 class InstallationRequestSerializer(serializers.ModelSerializer):
     customer = SimpleCustomerProfileSerializer(read_only=True)

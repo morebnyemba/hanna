@@ -1,12 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework import status, permissions, generics
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard, CustomerProfile
+from customer_data.serializers import JobCardSerializer
 
 User = get_user_model()
 # --- Custom Permissions ---
@@ -50,6 +51,21 @@ class ManufacturerDashboardStatsAPIView(APIView):
             'warranty_claims': warranty_claims,
         }
         return Response(data, status=status.HTTP_200_OK)
+
+class ManufacturerJobCardListView(generics.ListAPIView):
+    """
+    Provides a paginated list of job cards associated with the authenticated manufacturer.
+    """
+    serializer_class = JobCardSerializer
+    permission_classes = [IsManufacturerUser]
+
+    def get_queryset(self):
+        manufacturer = self.request.user.manufacturer_profile
+        # Find all warranty claims associated with this manufacturer
+        manufacturer_claims = WarrantyClaim.objects.filter(warranty__manufacturer=manufacturer)
+        # Return all job cards linked to those claims
+        return JobCard.objects.filter(warranty_claim__in=manufacturer_claims).select_related('customer', 'customer__contact').order_by('-creation_date')
+
 
 class TechnicianDashboardStatsAPIView(APIView):
     """ Provides dashboard statistics for an authenticated technician user. """

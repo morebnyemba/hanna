@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { FiGrid, FiLogOut, FiShield } from 'react-icons/fi';
+import { usePathname, useRouter } from 'next/navigation'; // FiShield is not used
+import { FiGrid, FiLogOut, FiTool } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 
 const SidebarLink = ({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) => {
@@ -36,7 +36,9 @@ export default function Sidebar() {
         <SidebarLink href="/manufacturer/dashboard" icon={<FiGrid className="h-5 w-5" />}>
           Dashboard
         </SidebarLink>
-        {/* Add more links here as you build out features, e.g., for warranty claims */}
+        <SidebarLink href="/manufacturer/job-cards" icon={<FiTool className="h-5 w-5" />}>
+          Job Cards
+        </SidebarLink>
       </nav>
       <div className="p-4 border-t border-gray-700">
         <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 text-gray-200 hover:bg-gray-700 rounded-md transition-colors">
