@@ -16,6 +16,9 @@ export default function ManufacturerLayout({ children }: { children: React.React
   }, [accessToken, user, router]);
 
   return (
-    <div className="flex h-screen bg-gray-100">{children}</div>
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar />
+      {children}
+    </div>
   );
 }
