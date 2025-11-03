@@ -10,6 +10,7 @@ from django.conf.urls.static import static
 # Import the custom view to replace the default one
 from customer_data.views import MyTokenObtainPairView, UserRegistrationView
 from stats.views import DashboardSummaryStatsAPIView
+from warranty.views import ManufacturerDashboardStatsAPIView
 # Import the new landing page view
 from .views import LandingPageView
 
@@ -44,6 +45,7 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     # The admin dashboard overview now uses the more comprehensive summary view from the 'stats' app.
     # This keeps the endpoint stable while improving the data source.
     path('crm-api/admin/dashboard-stats/', DashboardSummaryStatsAPIView.as_view(), name='admin_dashboard_stats'),
+    path('crm-api/manufacturer/dashboard-stats/', ManufacturerDashboardStatsAPIView.as_view(), name='manufacturer_dashboard_stats'),
     # Your frontend will POST to 'token_refresh' with a valid refresh token
     path('crm-api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # Optional: Your frontend can POST to 'token_verify' with a token to check its validity

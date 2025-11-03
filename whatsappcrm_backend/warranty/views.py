@@ -29,12 +29,25 @@ class ManufacturerDashboardStatsAPIView(APIView):
 
     def get(self, request, format=None):
         manufacturer = request.user.manufacturer_profile
-        claims = WarrantyClaim.objects.filter(warranty__manufacturer=manufacturer)
+
+        # Get all job cards related to products from this manufacturer
+        manufacturer_job_cards = JobCard.objects.filter(product__manufacturer=manufacturer)
+
+        # Get all warranty claims related to this manufacturer
+        manufacturer_claims = WarrantyClaim.objects.filter(warranty__manufacturer=manufacturer)
+
+        # Calculate stats
+        total_orders = manufacturer_job_cards.count()
+        pending_orders = manufacturer_job_cards.filter(status__in=[JobCard.Status.OPEN, JobCard.Status.IN_PROGRESS]).count()
+        completed_orders = manufacturer_job_cards.filter(status=JobCard.Status.CLOSED).count()
+        warranty_claims = manufacturer_claims.count()
+
         data = {
             'manufacturer_name': manufacturer.name,
-            'total_claims': claims.count(),
-            'pending_claims': claims.filter(status=WarrantyClaim.ClaimStatus.PENDING).count(),
-            'approved_claims': claims.filter(status=WarrantyClaim.ClaimStatus.APPROVED).count(),
+            'total_orders': total_orders,
+            'pending_orders': pending_orders,
+            'completed_orders': completed_orders,
+            'warranty_claims': warranty_claims,
         }
         return Response(data, status=status.HTTP_200_OK)
 
