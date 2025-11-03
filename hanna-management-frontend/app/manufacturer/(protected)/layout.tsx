@@ -21,6 +21,12 @@ export default function ManufacturerLayout({ children }: { children: React.React
     }
   }, [isLoaded, accessToken, user, router]);
 
+  // While the auth store is loading from localStorage, show a loading screen.
+  // This prevents the redirect from happening before the user's auth state is confirmed.
+  if (!isLoaded) {
+    return <div className="flex h-screen w-full items-center justify-center bg-gray-100">Loading...</div>;
+  }
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
