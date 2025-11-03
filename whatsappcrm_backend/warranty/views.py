@@ -30,14 +30,14 @@ class ManufacturerDashboardStatsAPIView(APIView):
     def get(self, request, format=None):
         manufacturer = request.user.manufacturer_profile
 
-        # Get all job cards related to products from this manufacturer
-        manufacturer_job_cards = JobCard.objects.filter(product__manufacturer=manufacturer)
-
         # Get all warranty claims related to this manufacturer
         manufacturer_claims = WarrantyClaim.objects.filter(warranty__manufacturer=manufacturer)
 
+        # Get all job cards that are linked to this manufacturer's warranty claims
+        manufacturer_job_cards = JobCard.objects.filter(warranty_claim__in=manufacturer_claims)
+
         # Calculate stats
-        total_orders = manufacturer_job_cards.count()
+        total_orders = manufacturer_job_cards.count() # This now correctly represents service orders/jobs for the manufacturer
         pending_orders = manufacturer_job_cards.filter(status__in=[JobCard.Status.OPEN, JobCard.Status.IN_PROGRESS]).count()
         completed_orders = manufacturer_job_cards.filter(status=JobCard.Status.CLOSED).count()
         warranty_claims = manufacturer_claims.count()
