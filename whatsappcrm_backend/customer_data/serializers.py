@@ -126,6 +126,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class CustomerProfileSerializer(serializers.ModelSerializer):
     contact = SimpleContactSerializer()
+    lead_status_display = serializers.CharField(source='get_lead_status_display', read_only=True)
 
     class Meta:
         model = CustomerProfile
