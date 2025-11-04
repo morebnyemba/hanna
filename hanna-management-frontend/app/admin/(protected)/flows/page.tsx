@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FiGitMerge } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import Link from 'next/link';
 
 interface Flow {
   id: number;

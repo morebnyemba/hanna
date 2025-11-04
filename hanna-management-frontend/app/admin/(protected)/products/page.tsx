@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FiPackage } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import Link from 'next/link';
 
 interface Product {
   id: number;

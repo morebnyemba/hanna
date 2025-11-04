@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FiShield } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import Link from 'next/link';
 
 interface WarrantyClaim {
   claim_id: string;
