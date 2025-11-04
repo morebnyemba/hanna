@@ -52,8 +52,8 @@ export default function ManufacturerDashboardPage() {
       try {
         // Fetch stats and recent claims in parallel
         const [statsResponse, claimsResponse] = await Promise.all([
-          apiClient.get<ManufacturerStats>('/manufacturer/dashboard-stats/'),
-          apiClient.get<PaginatedClaimsResponse>('/manufacturer/warranty-claims/?page_size=5') // Fetch only 5 for the dashboard
+          apiClient.get<ManufacturerStats>('/crm-api/manufacturer/dashboard-stats/'),
+          apiClient.get<PaginatedClaimsResponse>('/crm-api/manufacturer/warranty-claims/?page_size=5') // Fetch only 5 for the dashboard
         ]);
         setStats(statsResponse.data);
         setClaims(claimsResponse.data.results);
