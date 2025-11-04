@@ -39,7 +39,7 @@ export default function JobCardsPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get<PaginatedResponse>('/manufacturer/job-cards/');
+        const response = await apiClient.get<PaginatedResponse>('/crm-api/manufacturer/job-cards/');
         setJobCards(response.data.results);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch job cards.');
