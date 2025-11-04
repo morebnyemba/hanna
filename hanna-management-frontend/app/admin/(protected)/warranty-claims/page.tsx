@@ -1,11 +1,8 @@
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import apiClient from '@/lib/apiClient';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { FiShield } from 'react-icons/fi';
+import { useAuthStore } from '@/app/store/authStore';
 
 interface WarrantyClaim {
   claim_id: string;
@@ -16,70 +13,86 @@ interface WarrantyClaim {
   created_at: string;
 }
 
-const WarrantyClaimsPage = () => {
+export default function WarrantyClaimsPage() {
   const [claims, setClaims] = useState<WarrantyClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { accessToken } = useAuthStore();
 
   useEffect(() => {
     const fetchClaims = async () => {
       try {
-        const response = await apiClient.get('/warranty/claims/');
-        setClaims(response.data);
-      } catch (err) {
-        setError('Failed to fetch warranty claims.');
-        console.error(err);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        const response = await fetch(`${apiUrl}/crm-api/warranty/claims/`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch data. Status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        setClaims(result.results);
+      } catch (err: any) {
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchClaims();
-  }, []);
+    if (accessToken) {
+      fetchClaims();
+    }
+  }, [accessToken]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center h-full"><p>Loading Warranty Claims...</p></div>;
   }
 
   if (error) {
-    return <div>{error}</div>;
+    return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Warranty Claims</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Claim ID</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Serial Number</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {claims.map((claim) => (
-              <TableRow key={claim.claim_id}>
-                <TableCell>{claim.claim_id}</TableCell>
-                <TableCell>{claim.product_name}</TableCell>
-                <TableCell>{claim.product_serial_number}</TableCell>
-                <TableCell>{claim.customer_name}</TableCell>
-                <TableCell>
-                  <Badge>{claim.status}</Badge>
-                </TableCell>
-                <TableCell>{new Date(claim.created_at).toLocaleDateString()}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-};
+    <>
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
+          <FiShield className="mr-3" />
+          Warranty Claims
+        </h1>
+      </div>
 
-export default WarrantyClaimsPage;
+      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {claims.map((claim) => (
+                <tr key={claim.claim_id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{claim.claim_id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.product_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.product_serial_number}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.customer_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.status}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(claim.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
