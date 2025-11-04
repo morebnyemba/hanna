@@ -53,7 +53,6 @@ class Warranty(models.Model):
         'products_and_services.SerializedItem',
         on_delete=models.CASCADE,
         related_name='warranty',
-        primary_key=True, # A serialized item can only have one warranty
         help_text=_("The specific serialized item that this warranty covers.")
     )
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='warranties')
