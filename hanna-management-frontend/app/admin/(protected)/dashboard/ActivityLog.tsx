@@ -29,8 +29,8 @@ const ActivityItem = ({ item }: { item: ActivityLogItem }) => {
 
 export const ActivityLog = ({ activities }: { activities: ActivityLogItem[] }) => {
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 h-full">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200 h-full">
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
       <ul className="divide-y divide-gray-200">
         {activities.map((item) => (
           <ActivityItem key={item.id} item={item} />

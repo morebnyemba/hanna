@@ -5,8 +5,8 @@ import { ConversationTrend } from './page';
 
 export const AnalyticsChart = ({ data }: { data: ConversationTrend[] }) => {
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Conversation Trends (Last 7 Days)</h3>
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Conversation Trends (Last 7 Days)</h3>
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
           <LineChart
@@ -14,8 +14,8 @@ export const AnalyticsChart = ({ data }: { data: ConversationTrend[] }) => {
             margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-            <XAxis dataKey="date" stroke="#6b7280" fontSize={12} />
-            <YAxis stroke="#6b7280" fontSize={12} />
+            <XAxis dataKey="date" stroke="#6b7280" fontSize={10} sm:fontSize={12} />
+            <YAxis stroke="#6b7280" fontSize={10} sm:fontSize={12} />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.8)',

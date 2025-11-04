@@ -86,21 +86,21 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }: AddCust
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold flex items-center"><FiUserPlus className="mr-3" />Add New Customer</h2>
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center"><FiUserPlus className="mr-3" />Add New Customer</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200"><FiX /></button>
         </div>
-        <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-4">
           <InputField id="name" label="Full Name" value={formData.name} onChange={handleChange} required />
           <InputField id="whatsapp_id" label="WhatsApp ID (e.g., 26377...)" value={formData.whatsapp_id} onChange={handleChange} required />
           <InputField id="email" label="Email Address" value={formData.email} onChange={handleChange} type="email" />
           
           {error && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</p>}
         </form>
-        <div className="flex justify-end items-center p-4 border-t space-x-3">
-          <button type="button" onClick={onClose} disabled={isSaving} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 disabled:opacity-50">Cancel</button>
-          <button type="submit" onClick={handleSubmit} disabled={isSaving} className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center min-w-[100px] justify-center">
+        <div className="flex flex-col-reverse sm:flex-row justify-end items-center p-4 border-t gap-2">
+          <button type="button" onClick={onClose} disabled={isSaving} className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 disabled:opacity-50">Cancel</button>
+          <button type="submit" onClick={handleSubmit} disabled={isSaving} className="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center min-w-[100px] justify-center">
             {isSaving ? <FiLoader className="animate-spin" /> : 'Create Customer'}
           </button>
         </div>
