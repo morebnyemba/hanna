@@ -24,3 +24,15 @@ class AdminWarrantyClaimListView(generics.ListAPIView):
 class AdminWarrantyClaimCreateView(generics.CreateAPIView):
     serializer_class = WarrantyClaimCreateSerializer
     permission_classes = [IsAdminUser]
+
+class ManufacturerDashboardStatsAPIView(APIView):
+    pass
+
+class ManufacturerJobCardListView(generics.ListAPIView):
+    pass
+
+class ManufacturerJobCardDetailView(generics.RetrieveAPIView):
+    pass
+
+class ManufacturerWarrantyClaimListView(generics.ListAPIView):
+    pass
