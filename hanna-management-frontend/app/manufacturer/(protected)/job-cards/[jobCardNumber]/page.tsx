@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiTool, FiUser, FiSmartphone, FiMapPin, FiAlertCircle, FiFileText, FiCheckSquare, FiTag } from 'react-icons/fi';
+import { FiTool, FiUser, FiSmartphone, FiMapPin, FiAlertCircle, FiFileText, FiCheckSquare, FiTag, FiShield } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 
 interface JobCardDetail {
