@@ -1,0 +1,226 @@
+ => [frontend build 1/7] FROM docker.io/library/node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e                                                    0.0s
+ => [frontend internal] load build context                                                                                                                                                0.0s
+ => => transferring context: 5.33kB                                                                                                                                                       0.0s
+ => [frontend stage-1 1/4] FROM docker.io/library/nginx:1.25-alpine                                                                                                                       0.0s
+ => CACHED [hanna-management-frontend builder 2/6] WORKDIR /app                                                                                                                           0.0s
+ => CACHED [hanna-management-frontend builder 3/6] COPY package*.json ./                                                                                                                  0.0s
+ => CACHED [hanna-management-frontend builder 4/6] RUN npm install                                                                                                                        0.0s
+ => [hanna-management-frontend builder 5/6] COPY . .                                                                                                                                      0.1s
+ => CACHED [frontend stage-1 2/4] RUN rm /etc/nginx/conf.d/default.conf                                                                                                                   0.0s
+ => CACHED [frontend build 2/7] WORKDIR /app                                                                                                                                              0.0s
+ => CACHED [frontend build 3/7] COPY package.json ./                                                                                                                                      0.0s
+ => CACHED [frontend build 4/7] COPY package-lock.json ./                                                                                                                                 0.0s
+ => CACHED [frontend build 5/7] RUN npm install                                                                                                                                           0.0s
+ => CACHED [frontend build 6/7] COPY . .                                                                                                                                                  0.0s
+ => CACHED [frontend build 7/7] RUN npm run build                                                                                                                                         0.0s
+ => CACHED [frontend stage-1 3/4] COPY --from=build /app/dist /usr/share/nginx/html                                                                                                       0.0s
+ => CACHED [frontend stage-1 4/4] COPY nginx.conf /etc/nginx/conf.d/default.conf                                                                                                          0.0s
+ => [frontend] exporting to image                                                                                                                                                         0.0s
+ => => exporting layers                                                                                                                                                                   0.0s
+ => => writing image sha256:ff7b460091efb2a30ca61964b22a1b8b92845a727979fa06d4219f72c659bdba                                                                                              0.0s
+ => => naming to docker.io/library/hanna-frontend                                                                                                                                         0.0s
+ => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      20.3s
+ => [frontend] resolving provenance for metadata file                                                                                                                                     0.0s
+ => [celery_cpu_worker internal] load .dockerignore                                                                                                                                       0.0s
+ => => transferring context: 164B                                                                                                                                                         0.0s
+ => [email_idle_fetcher 1/5] FROM docker.io/library/python:3.10-slim@sha256:25844457bcb7b4ad9b51b83721465e0ebafcdd0527149e5c015cd9415e2be9a7                                              0.0s
+ => [email_idle_fetcher internal] load build context                                                                                                                                      0.1s
+ => => transferring context: 43.69kB                                                                                                                                                      0.0s
+ => CACHED [celery_cpu_worker 2/5] WORKDIR /app                                                                                                                                           0.0s
+ => CACHED [celery_cpu_worker 3/5] COPY requirements.txt /app/                                                                                                                            0.0s
+ => CACHED [celery_cpu_worker 4/5] RUN pip install --no-cache-dir -r requirements.txt                                                                                                     0.0s
+ => CACHED [celery_cpu_worker 5/5] COPY . /app/                                                                                                                                           0.0s
+ => [celery_beat] exporting to image                                                                                                                                                      0.3s
+ => => exporting layers                                                                                                                                                                   0.0s
+ => => writing image sha256:5a9282cf32017fc630ac64acbb40608fd9cd07f0eea4c94dc3763df4691be2eb                                                                                              0.3s
+ => => naming to docker.io/library/hanna-celery_beat                                                                                                                                      0.0s
+ => [celery_io_worker] exporting to image                                                                                                                                                 0.3s
+ => => exporting layers                                                                                                                                                                   0.0s
+ => => writing image sha256:292319818bd7b71619117297ba38b17cbb27abfa78b779da3675b951ae4447b7                                                                                              0.3s
+ => => naming to docker.io/library/hanna-celery_io_worker                                                                                                                                 0.0s
+ => [backend] exporting to image                                                                                                                                                          1.0s
+ => => exporting layers                                                                                                                                                                   0.0s
+ => => writing image sha256:0b494958228542f42245555564cd201d6c0dd3aa50d73071d5556538007a9d72                                                                                              1.0s
+ => => naming to docker.io/library/hanna-backend                                                                                                                                          0.0s
+ => [email_idle_fetcher] exporting to image                                                                                                                                               1.0s
+ => => exporting layers                                                                                                                                                                   0.0s
+ => => writing image sha256:e7f0236f57a95b0b3d9ea11153c472191fccdfc2d64afaca291fa5730ce4ed9c                                                                                              1.0s
+ => => naming to docker.io/library/hanna-email_idle_fetcher                                                                                                                               0.0s
+ => [celery_cpu_worker] exporting to image                                                                                                                                                0.3s
+ => => exporting layers                                                                                                                                                                   0.0s
+ => => writing image sha256:c4ae1dd716f331f2108ef03c3b77f36dfc7b39e78dbd102ddabfeae3754aacf4                                                                                              0.3s
+ => => naming to docker.io/library/hanna-celery_cpu_worker                                                                                                                                0.0s
+ => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
+ => [backend] resolving provenance for metadata file                                                                                                                                      0.0s
+ => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.0s
+ => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.0s
+ => [celery_io_worker] resolving provenance for metadata file                                                                                                                             0.0s
+------
+ > [hanna-management-frontend builder 6/6] RUN npm run build:
+0.562 
+0.562 > hanna-management-frontend@0.1.0 build
+0.562 > next build
+0.562 
+1.896 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.897 This information is used to shape Next.js' roadmap and prioritize features.
+1.897 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.897 https://nextjs.org/telemetry
+1.897 
+1.910    ▲ Next.js 16.0.1 (Turbopack)
+1.910 
+1.981  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+2.037    Creating an optimized production build ...
+20.12 
+20.12 > Build error occurred
+20.13 Error: Turbopack build failed with 5 errors:
+20.13 ./app/admin/(protected)/warranties/page.tsx:7:1
+20.13 Module not found: Can't resolve '@/components/ui/badge'
+20.13    5 | import { apiClient } from '@/lib/apiClient';
+20.13    6 | import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+20.13 >  7 | import { Badge } from '@/components/ui/badge';
+20.13      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20.13    8 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+20.13    9 |
+20.13   10 | interface WarrantyClaim {
+20.13 
+20.13 Import map: aliased to relative './components/ui/badge' inside of [project]/
+20.13 
+20.13 
+20.13 Import traces:
+20.13   Client Component Browser:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component Browser]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13   Client Component SSR:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component SSR]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13 https://nextjs.org/docs/messages/module-not-found
+20.13 
+20.13 
+20.13 ./app/admin/(protected)/warranties/page.tsx:8:1
+20.13 Module not found: Can't resolve '@/components/ui/card'
+20.13    6 | import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+20.13    7 | import { Badge } from '@/components/ui/badge';
+20.13 >  8 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+20.13      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20.13    9 |
+20.13   10 | interface WarrantyClaim {
+20.13   11 |   claim_id: string;
+20.13 
+20.13 Import map: aliased to relative './components/ui/card' inside of [project]/
+20.13 
+20.13 
+20.13 Import traces:
+20.13   Client Component Browser:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component Browser]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13   Client Component SSR:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component SSR]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13 https://nextjs.org/docs/messages/module-not-found
+20.13 
+20.13 
+20.13 ./app/admin/(protected)/warranties/page.tsx:6:1
+20.13 Module not found: Can't resolve '@/components/ui/table'
+20.13   4 | import React, { useState, useEffect } from 'react';
+20.13   5 | import { apiClient } from '@/lib/apiClient';
+20.13 > 6 | import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+20.13     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20.13   7 | import { Badge } from '@/components/ui/badge';
+20.13   8 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+20.13   9 |
+20.13 
+20.13 Import map: aliased to relative './components/ui/table' inside of [project]/
+20.13 
+20.13 
+20.13 Import traces:
+20.13   Client Component Browser:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component Browser]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13   Client Component SSR:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component SSR]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13 https://nextjs.org/docs/messages/module-not-found
+20.13 
+20.13 
+20.13 ./app/admin/(protected)/warranties/page.tsx:5:1
+20.13 Export apiClient doesn't exist in target module
+20.13   3 |
+20.13   4 | import React, { useState, useEffect } from 'react';
+20.13 > 5 | import { apiClient } from '@/lib/apiClient';
+20.13     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20.13   6 | import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+20.13   7 | import { Badge } from '@/components/ui/badge';
+20.13   8 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+20.13 
+20.13 The export apiClient was not found in module [project]/lib/apiClient.ts [app-client] (ecmascript).
+20.13 Did you mean to import default?
+20.13 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+20.13 
+20.13 Import traces:
+20.13   Client Component Browser:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component Browser]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13   Client Component SSR:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component SSR]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13 
+20.13 ./app/admin/(protected)/warranties/page.tsx:5:1
+20.13 Export apiClient doesn't exist in target module
+20.13   3 |
+20.13   4 | import React, { useState, useEffect } from 'react';
+20.13 > 5 | import { apiClient } from '@/lib/apiClient';
+20.13     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20.13   6 | import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+20.13   7 | import { Badge } from '@/components/ui/badge';
+20.13   8 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+20.13 
+20.13 The export apiClient was not found in module [project]/lib/apiClient.ts [app-ssr] (ecmascript).
+20.13 Did you mean to import default?
+20.13 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+20.13 
+20.13 Import traces:
+20.13   Client Component Browser:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component Browser]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13   Client Component SSR:
+20.13     ./app/admin/(protected)/warranties/page.tsx [Client Component SSR]
+20.13     ./app/admin/(protected)/warranties/page.tsx [Server Component]
+20.13 
+20.13 
+20.13     at <unknown> (./app/admin/(protected)/warranties/page.tsx:7:1)
+20.13     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+20.13     at <unknown> (./app/admin/(protected)/warranties/page.tsx:8:1)
+20.13     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+20.13     at <unknown> (./app/admin/(protected)/warranties/page.tsx:6:1)
+20.13     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+20.13     at <unknown> (./app/admin/(protected)/warranties/page.tsx:5:1)
+20.13     at <unknown> (./app/admin/(protected)/warranties/page.tsx:5:1)
+------
+Dockerfile:20
+
+--------------------
+
+  18 |     # Build the Next.js application
+
+  19 |     # 'next build' creates an optimized production build in the .next directory
+
+  20 | >>> RUN npm run build
+
+  21 |     
+
+  22 |     # Stage 2: Serve the application with a lightweight Node.js runtime
+
+--------------------
+
+target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+
+root@srv967860:~/HANNA# 
