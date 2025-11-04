@@ -50,10 +50,10 @@ export function middleware(request: NextRequest) {
 // See "Matching Paths" below to learn more
 export const config = {
   // This matcher defines which routes the middleware will run on.
+  // We use a negative lookahead to match all routes under a portal EXCEPT the login page.
   matcher: [
-    '/admin/dashboard/:path*',
-    '/client/dashboard/:path*',
-    '/manufacturer/dashboard/:path*',
-    '/technician/dashboard/:path*',
+    '/admin/:path((?!login).*)',
+    '/manufacturer/:path((?!login).*)',
+    '/technician/:path((?!login).*)',
   ],
 };
