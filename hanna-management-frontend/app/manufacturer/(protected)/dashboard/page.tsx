@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiBox, FiAlertTriangle, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FiBox, FiAlertTriangle, FiCheckCircle, FiClock, FiShield } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 
 interface ManufacturerStats {
@@ -9,6 +9,22 @@ interface ManufacturerStats {
   pending_orders: number;
   completed_orders: number;
   warranty_claims: number;
+}
+
+interface WarrantyClaim {
+  claim_id: string;
+  product_name: string;
+  product_serial_number: string;
+  customer_name: string;
+  status: string;
+  created_at: string;
+}
+
+interface PaginatedClaimsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: WarrantyClaim[];
 }
 
 const StatCard = ({ icon, title, value, color }: { icon: React.ReactNode, title: string, value: number, color: string }) => (
@@ -25,30 +41,36 @@ const StatCard = ({ icon, title, value, color }: { icon: React.ReactNode, title:
 
 export default function ManufacturerDashboardPage() {
   const [stats, setStats] = useState<ManufacturerStats | null>(null);
+  const [claims, setClaims] = useState<WarrantyClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get<ManufacturerStats>('/crm-api/manufacturer/dashboard-stats/');
-        setStats(response.data);
+        // Fetch stats and recent claims in parallel
+        const [statsResponse, claimsResponse] = await Promise.all([
+          apiClient.get<ManufacturerStats>('/manufacturer/dashboard-stats/'),
+          apiClient.get<PaginatedClaimsResponse>('/manufacturer/warranty-claims/?page_size=5') // Fetch only 5 for the dashboard
+        ]);
+        setStats(statsResponse.data);
+        setClaims(claimsResponse.data.results);
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch dashboard statistics.');
+        setError(err.message || 'Failed to fetch dashboard data.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStats();
+    fetchData();
   }, []);
 
   return (
     <main className="flex-1 p-8 overflow-y-auto">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Manufacturer Dashboard</h1>
-      {loading && <p className="text-center text-gray-500">Loading statistics...</p>}
+      {loading && <p className="text-center text-gray-500">Loading dashboard...</p>}
       {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
       {!loading && !error && stats && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -58,7 +80,39 @@ export default function ManufacturerDashboardPage() {
         <StatCard icon={<FiAlertTriangle size={24} className="text-red-500" />} title="Warranty Claims" value={stats?.warranty_claims ?? 0} color="border-red-500" />
       </div>
       )}
-      {/* We can add more components here like recent orders list, charts, etc. */}
+
+      {/* Recent Warranty Claims Table */}
+      <div className="mt-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <div className="flex items-center mb-4">
+          <FiShield className="h-6 w-6 mr-3 text-gray-700" />
+          <h2 className="text-xl font-bold text-gray-800">Recent Warranty Claims</h2>
+        </div>
+        {!loading && !error && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {claims.map((claim) => (
+                  <tr key={claim.claim_id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">{claim.claim_id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{claim.product_name} (SN: {claim.product_serial_number})</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.status}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(claim.created_at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {claims.length === 0 && <p className="text-center text-gray-500 py-4">No recent warranty claims found.</p>}
+          </div>
+        )}
+      </div>
     </main>
   );
 }

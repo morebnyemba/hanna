@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard, CustomerProfile
 from customer_data.serializers import JobCardSerializer
+from .serializers import WarrantyClaimListSerializer
 
 User = get_user_model()
 # --- Custom Permissions ---
@@ -65,6 +66,18 @@ class ManufacturerJobCardListView(generics.ListAPIView):
         manufacturer_claims = WarrantyClaim.objects.filter(warranty__manufacturer=manufacturer)
         # Return all job cards linked to those claims
         return JobCard.objects.filter(warranty_claim__in=manufacturer_claims).select_related('customer', 'customer__contact').order_by('-creation_date')
+
+class ManufacturerWarrantyClaimListView(generics.ListAPIView):
+    """
+    Provides a paginated list of warranty claims associated with the authenticated manufacturer.
+    """
+    serializer_class = WarrantyClaimListSerializer
+    permission_classes = [IsManufacturerUser]
+
+    def get_queryset(self):
+        manufacturer = self.request.user.manufacturer_profile
+        # Return all warranty claims for this manufacturer, ordered by most recent
+        return WarrantyClaim.objects.filter(warranty__manufacturer=manufacturer).select_related('warranty__product', 'warranty__customer').order_by('-created_at')
 
 
 class TechnicianDashboardStatsAPIView(APIView):
