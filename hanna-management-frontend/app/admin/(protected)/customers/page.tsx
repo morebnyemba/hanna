@@ -92,7 +92,9 @@ export default function CustomersPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {customers.map((customer) => (
                 <tr key={customer.contact.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{customer.first_name} {customer.last_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : customer.contact.name}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.contact.whatsapp_id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

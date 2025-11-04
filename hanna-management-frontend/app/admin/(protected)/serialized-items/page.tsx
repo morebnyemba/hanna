@@ -59,11 +59,16 @@ export default function SerializedItemsPage() {
 
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
           <FiArchive className="mr-3" />
           Serialized Items
         </h1>
+        <Link href="/admin/serialized-items/create">
+          <span className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Create Item
+          </span>
+        </Link>
       </div>
 
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">

@@ -1,5 +1,26 @@
 from rest_framework import serializers
-from .models import WarrantyClaim
+from .models import Warranty, WarrantyClaim
+from products_and_services.models import SerializedItem
+
+class WarrantyClaimCreateSerializer(serializers.ModelSerializer):
+    serial_number = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = WarrantyClaim
+        fields = ['serial_number', 'description_of_fault']
+
+    def create(self, validated_data):
+        serial_number = validated_data.pop('serial_number')
+        try:
+            serialized_item = SerializedItem.objects.get(serial_number=serial_number)
+            warranty = serialized_item.warranty
+        except SerializedItem.DoesNotExist:
+            raise serializers.ValidationError("No serialized item found with this serial number.")
+        except Warranty.DoesNotExist:
+            raise serializers.ValidationError("No warranty found for this serialized item.")
+
+        claim = WarrantyClaim.objects.create(warranty=warranty, **validated_data)
+        return claim
 
 class WarrantyClaimListSerializer(serializers.ModelSerializer):
     """

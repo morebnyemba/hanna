@@ -8,7 +8,12 @@ from django.contrib.auth import get_user_model
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard, CustomerProfile
 from customer_data.serializers import JobCardSerializer, JobCardDetailSerializer
-from .serializers import WarrantyClaimListSerializer # This import is now correct
+from .serializers import WarrantyClaimListSerializer, WarrantyClaimCreateSerializer
+
+class AdminWarrantyClaimCreateView(generics.CreateAPIView):
+    serializer_class = WarrantyClaimCreateSerializer
+    permission_classes = [IsAdminUser]
+
 
 User = get_user_model()
 # --- Custom Permissions ---
