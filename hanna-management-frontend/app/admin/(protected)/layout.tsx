@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Main Content */}
       <div className="flex flex-col flex-1 w-full overflow-y-auto">
         <header className="z-10 py-4 bg-white shadow-md md:hidden">
-          <div className="container flex items-center justify-between h-full px-6 mx-auto text-purple-600">
+          <div className="container flex items-center justify-between h-full text-purple-600">
             <button
               className="p-1 -ml-1 mr-5 rounded-md md:hidden focus:outline-none focus:shadow-outline-purple"
               onClick={() => setSidebarOpen(true)}
@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <span className="font-semibold">Hanna Admin</span>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6">
+        <main className="flex-1 p-2 sm:p-4 md:p-6">
           {children}
         </main>
       </div>
