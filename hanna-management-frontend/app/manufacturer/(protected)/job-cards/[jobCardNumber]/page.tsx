@@ -10,7 +10,7 @@ interface JobCardDetail {
   job_card_number: string;
   customer_name: string;
   customer_whatsapp: string;
-  customer_address: string;
+  customer_addres: string;
   serialized_item: {
     serial_number: string;
     product_name: string;

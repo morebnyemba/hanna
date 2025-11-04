@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
-from .models import Warranty, WarrantyClaim, TechnicianComment, Manufacturer
+from .models import Warranty, WarrantyClaim, TechnicianComment, Manufacturer, Technician
 
 
 class TechnicianCommentInline(GenericTabularInline):
@@ -53,4 +53,10 @@ class WarrantyClaimAdmin(admin.ModelAdmin):
 class ManufacturerAdmin(admin.ModelAdmin):
     list_display = ('name', 'contact_email', 'user')
     search_fields = ('name', 'contact_email', 'user__username')
+    autocomplete_fields = ('user',)
+
+@admin.register(Technician)
+class TechnicianAdmin(admin.ModelAdmin):
+    list_display = ('user', 'specialization', 'contact_phone')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'specialization')
     autocomplete_fields = ('user',)
