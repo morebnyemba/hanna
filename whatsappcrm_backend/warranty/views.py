@@ -120,3 +120,13 @@ class TechnicianDashboardStatsAPIView(APIView):
             'completed_today': job_cards.filter(status=JobCard.Status.CLOSED, updated_at__date=timezone.now().date()).count(),
         }
         return Response(data, status=status.HTTP_200_OK)
+
+class AdminWarrantyClaimListView(generics.ListAPIView):
+    """
+    Provides a paginated list of all warranty claims for admin users.
+    """
+    serializer_class = WarrantyClaimListSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        return WarrantyClaim.objects.all().select_related('warranty__serialized_item__product', 'warranty__customer').order_by('-created_at')
