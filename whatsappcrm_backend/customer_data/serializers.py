@@ -125,31 +125,10 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'created_at', 'updated_at')
 
 class CustomerProfileSerializer(serializers.ModelSerializer):
-    """
-    A comprehensive serializer for CustomerProfile details.
-
-    Handles the full representation of a customer's profile, including nested
-    details for read operations and ID-based fields for write operations.
-    """
-    # The primary key of CustomerProfile is 'contact', which is a OneToOneField.
-    # DRF handles this, 'pk' in the URL will map to 'contact_id'.
-    contact = SimpleContactSerializer(read_only=True)
-
-    # To make choices human-readable in API responses
-    lead_status_display = serializers.CharField(source='get_lead_status_display', read_only=True)
-
-    # Nested serializer for the assigned agent
-    assigned_agent = SimpleUserSerializer(read_only=True)
-    # Writable field for assigning an agent by their ID
-    assigned_agent_id = serializers.PrimaryKeyRelatedField(
-        # For performance and security, only list users who can be agents.
-        queryset=User.objects.filter(is_staff=True),
-        source='assigned_agent', write_only=True, allow_null=True, required=False
-    )
+    contact = SimpleContactSerializer()
 
     class Meta:
         model = CustomerProfile
-        # The 'contact' field is the PK, so it's implicitly read-only here.
         fields = [
             'contact', 'first_name', 'last_name', 'email', 'company', 'role',
             'address_line_1', 'address_line_2', 'city', 'state_province', 'postal_code', 'country',
@@ -158,6 +137,12 @@ class CustomerProfileSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'last_interaction_date'
         ]
         read_only_fields = ('created_at', 'updated_at', 'last_interaction_date')
+
+    def create(self, validated_data):
+        contact_data = validated_data.pop('contact')
+        contact = Contact.objects.create(**contact_data)
+        customer_profile = CustomerProfile.objects.create(contact=contact, **validated_data)
+        return customer_profile
 
 class InteractionSerializer(serializers.ModelSerializer):
     """
