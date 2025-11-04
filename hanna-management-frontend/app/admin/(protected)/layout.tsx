@@ -47,6 +47,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <nav className="space-y-2">
           <SidebarLink href="/admin/dashboard" icon={FiHome}>Dashboard</SidebarLink>
           <SidebarLink href="/admin/customers" icon={FiUsers}>Customers</SidebarLink>
+          <SidebarLink href="/admin/products" icon={FiUsers}>Products</SidebarLink>
+          <SidebarLink href="/admin/product-categories" icon={FiUsers}>Product Categories</SidebarLink>
+          <SidebarLink href="/admin/serialized-items" icon={FiUsers}>Serialized Items</SidebarLink>
           <SidebarLink href="/admin/warranties" icon={FiShield}>Warranties</SidebarLink>
           <SidebarLink href="/admin/flows" icon={FiGitMerge}>Flows</SidebarLink>
           <SidebarLink href="/admin/settings" icon={FiSettings}>Settings</SidebarLink>
