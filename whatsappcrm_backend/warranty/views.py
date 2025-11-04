@@ -36,3 +36,6 @@ class ManufacturerJobCardDetailView(generics.RetrieveAPIView):
 
 class ManufacturerWarrantyClaimListView(generics.ListAPIView):
     pass
+
+class TechnicianDashboardStatsAPIView(APIView):
+    pass
