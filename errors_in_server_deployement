@@ -1,6 +1,4 @@
- => [celery_io_worker] resolving provenance for metadata file                                                                                                                             0.1s
- => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.1s
-------
+-----
  > [hanna-management-frontend builder 6/6] RUN npm run build:
 0.440 
 0.440 > hanna-management-frontend@0.1.0 build
@@ -87,4 +85,5 @@ Dockerfile:20
 
 target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
 
+root@srv967860:~/HANNA# ^C
 root@srv967860:~/HANNA# 
