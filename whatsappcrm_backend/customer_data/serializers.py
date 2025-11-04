@@ -216,6 +216,21 @@ class JobCardSerializer(serializers.ModelSerializer):
             'creation_date',
         ]
 
+class JobCardDetailSerializer(JobCardSerializer):
+    """
+    Detailed serializer for a single Job Card, including more fields.
+    """
+    customer_address = serializers.CharField(source='customer.address_line_1', read_only=True, default='')
+    
+    class Meta(JobCardSerializer.Meta):
+        # Inherit fields from JobCardSerializer and add more
+        fields = JobCardSerializer.Meta.fields + [
+            'reported_fault',
+            'is_under_warranty',
+            'customer_address',
+            'job_card_details', # The raw JSON
+        ]
+
 class InstallationRequestSerializer(serializers.ModelSerializer):
     customer = SimpleCustomerProfileSerializer(read_only=True)
     associated_order = OrderSerializer(read_only=True)

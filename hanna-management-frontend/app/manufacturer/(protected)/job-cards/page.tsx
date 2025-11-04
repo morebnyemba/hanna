@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FiTool, FiSearch } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 
@@ -33,6 +34,7 @@ export default function JobCardsPage() {
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchJobCards = async () => {
@@ -78,7 +80,10 @@ export default function JobCardsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {jobCards.map((card) => (
-                  <tr key={card.job_card_number} className="hover:bg-gray-50">
+                  <tr
+                    key={card.job_card_number}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/manufacturer/job-cards/${card.job_card_number}`)}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">{card.job_card_number}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{card.customer_name}</div>

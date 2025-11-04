@@ -7,8 +7,8 @@ from django.contrib.auth import get_user_model
 
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard, CustomerProfile
-from customer_data.serializers import JobCardSerializer
-from .serializers import WarrantyClaimListSerializer
+from customer_data.serializers import JobCardSerializer, JobCardDetailSerializer
+from .serializers import WarrantyClaimListSerializer # This import is now correct
 
 User = get_user_model()
 # --- Custom Permissions ---
@@ -23,6 +23,21 @@ class IsTechnicianUser(permissions.BasePermission):
 class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated and request.user.is_staff
+
+class IsJobCardManufacturerOwner(permissions.BasePermission):
+    """
+    Permission to check if the user is the manufacturer associated with the job card.
+    A JobCard is linked to a manufacturer via its WarrantyClaim.
+    """
+    def has_object_permission(self, request, view, obj):
+        # The user must be a manufacturer
+        if not hasattr(request.user, 'manufacturer_profile'):
+            return False
+        
+        manufacturer_profile = request.user.manufacturer_profile
+        
+        # The job card must have a warranty claim, which has a warranty, which has a manufacturer that matches
+        return obj.warranty_claim and obj.warranty_claim.warranty and obj.warranty_claim.warranty.manufacturer == manufacturer_profile
 
 # --- Dashboard Views ---
 class ManufacturerDashboardStatsAPIView(APIView):
@@ -66,6 +81,16 @@ class ManufacturerJobCardListView(generics.ListAPIView):
         manufacturer_claims = WarrantyClaim.objects.filter(warranty__manufacturer=manufacturer)
         # Return all job cards linked to those claims
         return JobCard.objects.filter(warranty_claim__in=manufacturer_claims).select_related('customer', 'customer__contact').order_by('-creation_date')
+
+class ManufacturerJobCardDetailView(generics.RetrieveAPIView):
+    """
+    Provides details for a single job card associated with the authenticated manufacturer.
+    """
+    queryset = JobCard.objects.all()
+    serializer_class = JobCardDetailSerializer
+    permission_classes = [IsManufacturerUser]
+    lookup_field = 'job_card_number'
+    lookup_url_kwarg = 'job_card_number'
 
 class ManufacturerWarrantyClaimListView(generics.ListAPIView):
     """
