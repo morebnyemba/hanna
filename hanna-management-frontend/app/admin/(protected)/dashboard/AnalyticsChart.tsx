@@ -14,8 +14,8 @@ export const AnalyticsChart = ({ data }: { data: ConversationTrend[] }) => {
             margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-            <XAxis dataKey="date" stroke="#6b7280" fontSize={10} sm:fontSize={12} />
-            <YAxis stroke="#6b7280" fontSize={10} sm:fontSize={12} />
+            <XAxis dataKey="date" stroke="#6b7280" fontSize={12} />
+            <YAxis stroke="#6b7280" fontSize={12} />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.8)',
