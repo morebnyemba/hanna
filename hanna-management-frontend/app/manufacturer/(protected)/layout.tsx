@@ -4,26 +4,23 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
 import Sidebar from '@/app/components/manufacturer/Sidebar'; // We will create this component
+import { useHydration } from '@/hooks/useHydration';
 
 export default function ManufacturerLayout({ children }: { children: React.ReactNode }) {
-  const { accessToken, user, isLoaded, setLoaded } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const router = useRouter();
+  const isHydrated = useHydration();
 
   useEffect(() => {
-    // This effect ensures that the store is marked as loaded once it hydrates.
-    // The `persist` middleware will rehydrate the store on mount.
-    setLoaded();
-  }, [setLoaded]);
-
-  useEffect(() => {
-    if (isLoaded && (!accessToken || user?.role !== 'manufacturer')) {
+    // Only run this check if the store has been hydrated.
+    if (isHydrated && (!accessToken || user?.role !== 'manufacturer')) {
       router.push('/manufacturer/login'); // Redirect if not a logged-in manufacturer
     }
-  }, [isLoaded, accessToken, user, router]);
+  }, [isHydrated, accessToken, user, router]);
 
   // While the auth store is loading from localStorage, show a loading screen.
   // This prevents the redirect from happening before the user's auth state is confirmed.
-  if (!isLoaded) {
+  if (!isHydrated) {
     return <div className="flex h-screen w-full items-center justify-center bg-gray-100">Loading...</div>;
   }
 

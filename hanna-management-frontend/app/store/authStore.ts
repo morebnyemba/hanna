@@ -12,11 +12,9 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   user: User | null;
-  isLoaded: boolean; // To track if the store has been hydrated from storage
   login: (tokens: { access: string; refresh: string }, userData: { username: string; email: string; role: any }) => void;
   logout: () => void;
   setTokens: (tokens: { access: string; refresh: string }) => void;
-  setLoaded: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -25,7 +23,6 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       user: null,
-      isLoaded: false, // Initially not loaded
       login: (tokens, userData) => {
         set({
           accessToken: tokens.access,
@@ -49,9 +46,6 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (tokens) => set({
         accessToken: tokens.access,
         refreshToken: tokens.refresh,
-      }),
-      setLoaded: () => set({
-        isLoaded: true,
       }),
     }),
     {
