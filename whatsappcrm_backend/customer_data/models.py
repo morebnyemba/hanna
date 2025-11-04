@@ -537,6 +537,13 @@ class JobCard(models.Model):
         CLOSED = 'closed', _('Closed')
 
     job_card_number = models.CharField(_("Job Card Number"), max_length=100, unique=True, db_index=True)
+    serialized_item = models.ForeignKey(
+        'products_and_services.SerializedItem',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='job_cards',
+        help_text=_("The specific serialized item that this job card is for.")
+    )
     # --- ADD THIS RELATIONSHIP ---
     warranty_claim = models.OneToOneField(
         'warranty.WarrantyClaim',
@@ -545,16 +552,7 @@ class JobCard(models.Model):
         related_name='job_card',
         help_text=_("The warranty claim that this job card is for, if any.")
     )
-    product = models.ForeignKey(
-        'products_and_services.Product',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='job_cards',
-        help_text=_("The product this job card is associated with.")
-    )
     customer = models.ForeignKey(CustomerProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='job_cards')
-    product_description = models.CharField(_("Product Description"), max_length=255, blank=True, null=True)
-    product_serial_number = models.CharField(_("Product Serial Number"), max_length=255, blank=True, null=True, db_index=True)
     reported_fault = models.TextField(_("Reported Fault"), blank=True, null=True)
     is_under_warranty = models.BooleanField(_("Under Warranty"), default=False)
     creation_date = models.DateField(_("Creation Date"), null=True, blank=True)

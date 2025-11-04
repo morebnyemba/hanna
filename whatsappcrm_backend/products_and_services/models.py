@@ -71,3 +71,50 @@ class Product(models.Model):
         verbose_name = _("Product")
         verbose_name_plural = _("Products")
         ordering = ['name']
+
+
+class SerializedItem(models.Model):
+    """
+    Represents a single, physical instance of a product, tracked by its serial number.
+    """
+    class Status(models.TextChoices):
+        IN_STOCK = 'in_stock', _('In Stock')
+        SOLD = 'sold', _('Sold')
+        IN_REPAIR = 'in_repair', _('In Repair')
+        RETURNED = 'returned', _('Returned')
+        DECOMMISSIONED = 'decommissioned', _('Decommissioned')
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name='serialized_items',
+        help_text=_("The generic product that this item is an instance of.")
+    )
+    serial_number = models.CharField(
+        _("Serial Number"),
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text=_("The unique serial number for this specific item.")
+    )
+    status = models.CharField(
+        _("Status"),
+        max_length=20,
+        choices=Status.choices,
+        default=Status.IN_STOCK,
+        db_index=True,
+        help_text=_("The current status of this individual item.")
+    )
+    # You can add more fields here to track the item's lifecycle,
+    # such as purchase_date, sale_date, etc.
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.product.name} (SN: {self.serial_number})"
+
+    class Meta:
+        verbose_name = _("Serialized Item")
+        verbose_name_plural = _("Serialized Items")
+        ordering = ['-created_at']

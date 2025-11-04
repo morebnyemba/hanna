@@ -155,11 +155,11 @@ class SolarCleaningRequestAdmin(admin.ModelAdmin):
 
 @admin.register(JobCard)
 class JobCardAdmin(admin.ModelAdmin):
-    list_display = ('job_card_number', 'customer', 'product_description', 'status', 'is_under_warranty', 'warranty_claim', 'creation_date')
+    list_display = ('job_card_number', 'customer', 'serialized_item', 'status', 'is_under_warranty', 'warranty_claim', 'creation_date')
     list_filter = ('status', 'is_under_warranty', 'creation_date')
-    search_fields = ('job_card_number', 'customer__first_name', 'customer__last_name', 'product_description', 'product_serial_number', 'reported_fault')
+    search_fields = ('job_card_number', 'customer__first_name', 'customer__last_name', 'serialized_item__serial_number', 'serialized_item__product__name', 'reported_fault')
     readonly_fields = ('created_at', 'updated_at')
-    autocomplete_fields = ['customer', 'warranty_claim']
+    autocomplete_fields = ['customer', 'warranty_claim', 'serialized_item']
     list_editable = ('status',)
     inlines = [TechnicianCommentInline,]
     date_hierarchy = 'creation_date'

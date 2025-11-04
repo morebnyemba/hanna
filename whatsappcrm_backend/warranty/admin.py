@@ -22,14 +22,14 @@ class WarrantyClaimInline(admin.TabularInline):
 
 @admin.register(Warranty)
 class WarrantyAdmin(admin.ModelAdmin):
-    list_display = ('product_serial_number', 'product', 'manufacturer', 'customer', 'status', 'start_date', 'end_date')
-    list_filter = ('status', 'manufacturer', 'start_date', 'end_date', 'product__category')
-    search_fields = ('product_serial_number', 'product__name', 'customer__first_name', 'customer__last_name', 'customer__contact__whatsapp_id')
-    autocomplete_fields = ('product', 'customer', 'associated_order', 'manufacturer')
+    list_display = ('serialized_item', 'manufacturer', 'customer', 'status', 'start_date', 'end_date')
+    list_filter = ('status', 'manufacturer', 'start_date', 'end_date', 'serialized_item__product__category')
+    search_fields = ('serialized_item__serial_number', 'serialized_item__product__name', 'customer__first_name', 'customer__last_name', 'customer__contact__whatsapp_id')
+    autocomplete_fields = ('serialized_item', 'customer', 'associated_order', 'manufacturer')
     inlines = [WarrantyClaimInline,]
     fieldsets = (
         ('Core Details', {
-            'fields': ('product', 'manufacturer', 'customer', 'product_serial_number', 'associated_order')
+            'fields': ('serialized_item', 'manufacturer', 'customer', 'associated_order')
         }),
         ('Warranty Period & Status', {
             'fields': ('status', 'start_date', 'end_date')
@@ -42,7 +42,7 @@ class WarrantyAdmin(admin.ModelAdmin):
 class WarrantyClaimAdmin(admin.ModelAdmin):
     list_display = ('claim_id', 'warranty', 'status', 'created_at', 'job_card')
     list_filter = ('status', 'created_at')
-    search_fields = ('claim_id', 'warranty__product_serial_number', 'description_of_fault')
+    search_fields = ('claim_id', 'warranty__serialized_item__serial_number', 'description_of_fault')
     readonly_fields = ('claim_id', 'created_at', 'updated_at')
     autocomplete_fields = ('warranty',)
     list_editable = ('status',)

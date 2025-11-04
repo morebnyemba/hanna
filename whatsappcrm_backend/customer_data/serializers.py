@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Order, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction, JobCard
 from conversations.models import Contact
+from products_and_services.models import SerializedItem
 
 User = get_user_model()
 
@@ -21,6 +22,14 @@ class SimpleUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'full_name', 'first_name', 'last_name']
+
+class SimpleSerializedItemSerializer(serializers.ModelSerializer):
+    """A lightweight serializer for basic SerializedItem information."""
+    product_name = serializers.CharField(source='product.name', read_only=True)
+
+    class Meta:
+        model = SerializedItem
+        fields = ['serial_number', 'product_name']
 
 class SimpleCustomerProfileSerializer(serializers.ModelSerializer):
     """A lightweight serializer for basic CustomerProfile information, ideal for nesting."""
@@ -203,6 +212,7 @@ class JobCardSerializer(serializers.ModelSerializer):
     """
     customer_name = serializers.CharField(source='customer.get_full_name', read_only=True, default='N/A')
     customer_whatsapp = serializers.CharField(source='customer.contact.whatsapp_id', read_only=True, default='N/A')
+    serialized_item = SimpleSerializedItemSerializer(read_only=True)
 
     class Meta:
         model = JobCard
@@ -210,8 +220,7 @@ class JobCardSerializer(serializers.ModelSerializer):
             'job_card_number',
             'customer_name',
             'customer_whatsapp',
-            'product_description',
-            'product_serial_number',
+            'serialized_item',
             'status',
             'creation_date',
         ]

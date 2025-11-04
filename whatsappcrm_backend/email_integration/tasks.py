@@ -16,7 +16,7 @@ from decimal import Decimal, InvalidOperation
 # --- ADD JobCard to imports ---
 from customer_data.models import CustomerProfile, Order, OrderItem, JobCard
 from conversations.models import Contact
-from products_and_services.models import Product
+from products_and_services.models import Product, SerializedItem
 from notifications.services import queue_notifications_to_users
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
@@ -477,23 +477,39 @@ def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_pref
 
     product_info = data.get('product', {})
 
-    # --- NEW: Find the associated product ---
-    product = None
+    # --- NEW: Find or create the SerializedItem ---
+    serialized_item = None
     serial_number = product_info.get('serial_number')
     product_description = product_info.get('description')
+
     if serial_number:
-        # A serial number is often linked to a specific warranty, which links to a product
-        product = Product.objects.filter(warranties__serial_number=serial_number).first()
-    if not product and product_description:
-        product = Product.objects.filter(name__icontains=product_description).first()
+        # Try to find an existing serialized item
+        serialized_item = SerializedItem.objects.filter(serial_number=serial_number).first()
+        if not serialized_item:
+            # If it doesn't exist, we need to create it. First, find or create the base product.
+            product = None
+            if product_description:
+                product = Product.objects.filter(name__icontains=product_description).first()
+            
+            if not product:
+                # If the base product doesn't exist, create it.
+                product = Product.objects.create(
+                    name=product_description or f"Product with SN {serial_number}",
+                    product_type=Product.ProductType.HARDWARE # Default type
+                )
+
+            # Now create the new serialized item
+            serialized_item = SerializedItem.objects.create(
+                product=product,
+                serial_number=serial_number,
+                status=SerializedItem.Status.IN_REPAIR # Default status for a new item from a job card
+            )
 
     job_card, created = JobCard.objects.update_or_create(
         job_card_number=job_card_number,
         defaults={
             'customer': customer_profile,
-            'product': product, # Assign the found product
-            'product_description': product_info.get('description'),
-            'product_serial_number': product_info.get('serial_number'),
+            'serialized_item': serialized_item, # Link to the serialized item
             'reported_fault': data.get('reported_fault'),
             'is_under_warranty': data.get('is_under_warranty', False),
             'creation_date': creation_date_obj,

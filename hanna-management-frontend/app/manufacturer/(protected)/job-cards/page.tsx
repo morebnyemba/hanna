@@ -9,8 +9,10 @@ interface JobCard {
   job_card_number: string;
   customer_name: string;
   customer_whatsapp: string;
-  product_description: string;
-  product_serial_number: string;
+  serialized_item: {
+    serial_number: string;
+    product_name: string;
+  } | null;
   status: string;
   creation_date: string;
 }
@@ -90,8 +92,8 @@ export default function JobCardsPage() {
                       <div className="text-sm text-gray-500">{card.customer_whatsapp}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{card.product_description}</div>
-                      <div className="text-sm text-gray-500">SN: {card.product_serial_number}</div>
+                      <div className="text-sm text-gray-900">{card.serialized_item?.product_name}</div>
+                      <div className="text-sm text-gray-500">SN: {card.serialized_item?.serial_number}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColorMap[card.status] || 'bg-gray-100 text-gray-800'}`}>{card.status}</span></td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{card.creation_date}</td>

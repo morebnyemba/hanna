@@ -49,10 +49,15 @@ class Warranty(models.Model):
         VOID = 'void', _('Void')
 
     manufacturer = models.ForeignKey(Manufacturer, on_delete=models.PROTECT, related_name='warranties', null=True, blank=True)
-    product = models.ForeignKey('products_and_services.Product', on_delete=models.CASCADE, related_name='warranties')
+    serialized_item = models.OneToOneField(
+        'products_and_services.SerializedItem',
+        on_delete=models.CASCADE,
+        related_name='warranty',
+        primary_key=True, # A serialized item can only have one warranty
+        help_text=_("The specific serialized item that this warranty covers.")
+    )
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='warranties')
     associated_order = models.ForeignKey('customer_data.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='warranties')
-    product_serial_number = models.CharField(_("Product Serial Number"), max_length=255, unique=True, db_index=True)
     start_date = models.DateField(_("Warranty Start Date"), default=timezone.now)
     end_date = models.DateField(_("Warranty End Date"))
     manufacturer_email = models.EmailField(_("Manufacturer Email"), max_length=254, blank=True, null=True, help_text=_("Email for sending warranty claim notifications to the product manufacturer."))

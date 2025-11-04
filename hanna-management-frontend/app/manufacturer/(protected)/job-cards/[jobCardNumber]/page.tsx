@@ -11,8 +11,10 @@ interface JobCardDetail {
   customer_name: string;
   customer_whatsapp: string;
   customer_address: string;
-  product_description: string;
-  product_serial_number: string;
+  serialized_item: {
+    serial_number: string;
+    product_name: string;
+  } | null;
   status: string;
   creation_date: string;
   reported_fault: string;
@@ -87,7 +89,7 @@ export default function JobCardDetailPage() {
         <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border border-gray-200">
           <h2 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4">Job Details</h2>
           <dl className="divide-y divide-gray-200">
-            <DetailItem icon={<FiTag />} label="Product" value={`${jobCard.product_description} (SN: ${jobCard.product_serial_number})`} />
+            <DetailItem icon={<FiTag />} label="Product" value={`${jobCard.serialized_item?.product_name} (SN: ${jobCard.serialized_item?.serial_number})`} />
             <DetailItem icon={<FiAlertCircle />} label="Reported Fault" value={<p className="whitespace-pre-wrap">{jobCard.reported_fault}</p>} />
             <DetailItem icon={<FiCheckSquare />} label="Status" value={<span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{jobCard.status}</span>} />
             <DetailItem icon={<FiShield />} label="Under Warranty" value={jobCard.is_under_warranty ? 'Yes' : 'No'} />
