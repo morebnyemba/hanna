@@ -32,7 +32,7 @@ services:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
     command: >
-      sh -c "# python manage.py migrate &&
+      sh -c "python manage.py migrate &&
              daphne -b 0.0.0.0 -p 8000 whatsappcrm_backend.asgi:application"
     env_file:
       - ./whatsappcrm_backend/.env.prod
