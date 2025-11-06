@@ -1,12 +1,12 @@
 'use client';
 
 import Sidebar from '@/app/components/manufacturer/Sidebar';
-import { useAuth } from '@/app/store/authStore';
+import { useAuthStore } from '@/app/store/authStore';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function ManufacturerLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
