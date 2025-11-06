@@ -26,16 +26,59 @@ class AdminWarrantyClaimCreateView(generics.CreateAPIView):
     permission_classes = [IsAdminUser]
 
 class ManufacturerDashboardStatsAPIView(APIView):
-    pass
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = self.request.user
+        if not hasattr(user, 'manufacturer_profile'):
+            return Response({"error": "User is not a manufacturer"}, status=status.HTTP_403_FORBIDDEN)
+
+        manufacturer = user.manufacturer_profile
+
+        total_orders = 0  # Replace with actual logic
+        pending_orders = 0  # Replace with actual logic
+        completed_orders = 0  # Replace with actual logic
+        warranty_claims = WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=manufacturer).count()
+
+        stats = {
+            'total_orders': total_orders,
+            'pending_orders': pending_orders,
+            'completed_orders': completed_orders,
+            'warranty_claims': warranty_claims,
+        }
+
+        return Response(stats)
 
 class ManufacturerJobCardListView(generics.ListAPIView):
-    pass
+    serializer_class = JobCardSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'manufacturer_profile'):
+            return JobCard.objects.filter(serialized_item__product__manufacturer=user.manufacturer_profile)
+        return JobCard.objects.none()
 
 class ManufacturerJobCardDetailView(generics.RetrieveAPIView):
-    pass
+    serializer_class = JobCardDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'job_card_number'
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'manufacturer_profile'):
+            return JobCard.objects.filter(serialized_item__product__manufacturer=user.manufacturer_profile)
+        return JobCard.objects.none()
 
 class ManufacturerWarrantyClaimListView(generics.ListAPIView):
-    pass
+    serializer_class = WarrantyClaimListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'manufacturer_profile'):
+            return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=user.manufacturer_profile)
+        return WarrantyClaim.objects.none()
 
 class TechnicianDashboardStatsAPIView(APIView):
     pass

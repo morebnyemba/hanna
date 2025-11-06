@@ -35,7 +35,7 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     path('crm-api/analytics/', include('analytics.urls')),
     # API endpoints for 'flows' application
     path('crm-api/flows/', include('flows.urls', namespace='flows_api')),
-    path('crm-api/warranty/', include('warranty.urls', namespace='warranty_api')),
+    path('crm-api/', include('warranty.urls', namespace='warranty_api')),
     path('crm-api/products/', include('products_and_services.urls', namespace='products_and_services_api')),
 
 
@@ -46,10 +46,10 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     # The admin dashboard overview now uses the more comprehensive summary view from the 'stats' app.
     # This keeps the endpoint stable while improving the data source.
     path('crm-api/admin/dashboard-stats/', DashboardSummaryStatsAPIView.as_view(), name='admin_dashboard_stats'),
-    path('crm-api/manufacturer/job-cards/<str:job_card_number>/', ManufacturerJobCardDetailView.as_view(), name='manufacturer_job_card_detail'),
-    path('crm-api/manufacturer/job-cards/', ManufacturerJobCardListView.as_view(), name='manufacturer_job_cards'),
-    path('crm-api/manufacturer/warranty-claims/', ManufacturerWarrantyClaimListView.as_view(), name='manufacturer_warranty_claims'),
-    path('crm-api/manufacturer/dashboard-stats/', ManufacturerDashboardStatsAPIView.as_view(), name='manufacturer_dashboard_stats'),
+
+
+
+
     # Your frontend will POST to 'token_refresh' with a valid refresh token
     path('crm-api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # Optional: Your frontend can POST to 'token_verify' with a token to check its validity
