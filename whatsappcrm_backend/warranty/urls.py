@@ -18,6 +18,7 @@ app_name = 'warranty_api'
 
 router = DefaultRouter()
 router.register(r'manufacturer/products', ManufacturerProductViewSet, basename='manufacturer-product')
+router.register(r'manufacturer/warranties', ManufacturerWarrantyViewSet, basename='manufacturer-warranty')
 
 manufacturer_patterns = [
     path('dashboard-stats/', ManufacturerDashboardStatsAPIView.as_view(), name='manufacturer_dashboard_stats'),

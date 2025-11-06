@@ -98,6 +98,16 @@ class ManufacturerWarrantyClaimDetailView(generics.RetrieveUpdateAPIView):
     def get_queryset(self):
         return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
 
+class ManufacturerWarrantyViewSet(viewsets.ModelViewSet):
+    serializer_class = WarrantySerializer
+    permission_classes = [IsManufacturer]
+
+    def get_queryset(self):
+        return Warranty.objects.filter(manufacturer=self.request.user.manufacturer_profile)
+
+    def perform_create(self, serializer):
+        serializer.save(manufacturer=self.request.user.manufacturer_profile)
+
 class ManufacturerProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = ManufacturerSerializer
     permission_classes = [IsManufacturer]

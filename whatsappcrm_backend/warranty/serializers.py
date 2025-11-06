@@ -7,6 +7,11 @@ class ManufacturerSerializer(serializers.ModelSerializer):
         model = Manufacturer
         fields = '__all__'
 
+class WarrantySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Warranty
+        fields = '__all__'
+
 class WarrantyClaimCreateSerializer(serializers.ModelSerializer):
     serial_number = serializers.CharField(write_only=True)
 
