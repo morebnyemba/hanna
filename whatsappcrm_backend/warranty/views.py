@@ -12,7 +12,7 @@ from customer_data.serializers import JobCardSerializer, JobCardDetailSerializer
 from products_and_services.models import Product
 from products_and_services.serializers import ProductSerializer
 from .permissions import IsManufacturer
-from .serializers import WarrantyClaimListSerializer, WarrantyClaimCreateSerializer, ManufacturerSerializer
+from .serializers import WarrantyClaimListSerializer, WarrantyClaimCreateSerializer, ManufacturerSerializer, WarrantySerializer
 
 class AdminWarrantyClaimListView(generics.ListAPIView):
     """
