@@ -28,6 +28,19 @@ export default function WarrantyClaimsPage() {
   const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
   const [newStatus, setNewStatus] = useState('');
 
+  const fetchClaims = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.get<PaginatedResponse>('/crm-api/manufacturer/warranty-claims/');
+      setClaims(response.data.results);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch warranty claims.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setNewStatus(e.target.value);
   };
@@ -55,19 +68,6 @@ export default function WarrantyClaimsPage() {
   };
 
   useEffect(() => {
-    const fetchClaims = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await apiClient.get<PaginatedResponse>('/crm-api/manufacturer/warranty-claims/');
-        setClaims(response.data.results);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch warranty claims.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchClaims();
   }, []);
 

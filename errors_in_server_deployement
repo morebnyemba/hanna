@@ -1,34 +1,59 @@
+ => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      26.4s
+ => [email_idle_fetcher] exporting to image                                                                                                                                               0.3s
+ => => exporting layers                                                                                                                                                                   0.2s
+ => => writing image sha256:6fc10320d9b387aee20a5feb979ef67316246dfa79099af47336a67fcdea1672                                                                                              0.1s
+ => => naming to docker.io/library/hanna-email_idle_fetcher                                                                                                                               0.0s
+ => [celery_cpu_worker] exporting to image                                                                                                                                                0.4s
+ => => exporting layers                                                                                                                                                                   0.2s
+ => => writing image sha256:01dbf1551ff1a09b6c4b99e44cf375097bfc2931e21fe271ab1a0675b952e9c0                                                                                              0.1s
+ => => naming to docker.io/library/hanna-celery_cpu_worker                                                                                                                                0.0s
+ => [backend] exporting to image                                                                                                                                                          0.3s
+ => => exporting layers                                                                                                                                                                   0.2s
+ => => writing image sha256:d6596ee33104b9d2ceabf6fbea63684251b9c4e1cb49d68e48f6ad41563b2b35                                                                                              0.1s
+ => => naming to docker.io/library/hanna-backend                                                                                                                                          0.0s
+ => [celery_io_worker] exporting to image                                                                                                                                                 0.4s
+ => => exporting layers                                                                                                                                                                   0.2s
+ => => writing image sha256:382f54c750b70a4233d98e0ad7f93aad15eea063749a96a3a377d1db8f0d1962                                                                                              0.1s
+ => => naming to docker.io/library/hanna-celery_io_worker                                                                                                                                 0.0s
+ => [celery_beat] exporting to image                                                                                                                                                      0.4s
+ => => exporting layers                                                                                                                                                                   0.2s
+ => => writing image sha256:667bd2e737ead3da24a5471653db0be34f41724eb30f6a276efdcb20ba019c7d                                                                                              0.1s
+ => => naming to docker.io/library/hanna-celery_beat                                                                                                                                      0.0s
+ => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.0s
  => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.0s
+ => [backend] resolving provenance for metadata file                                                                                                                                      0.0s
+ => [celery_io_worker] resolving provenance for metadata file                                                                                                                             0.0s
+ => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.329 
-0.329 > hanna-management-frontend@0.1.0 build
-0.329 > next build
-0.329 
-1.246 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.247 This information is used to shape Next.js' roadmap and prioritize features.
-1.247 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.247 https://nextjs.org/telemetry
-1.247 
-1.258    ▲ Next.js 16.0.1 (Turbopack)
-1.258 
-1.310  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-1.360    Creating an optimized production build ...
-23.41  ✓ Compiled successfully in 21.5s
-23.44    Running TypeScript ...
-30.29 Failed to compile.
-30.29 
-30.30 ./app/manufacturer/(protected)/layout.tsx:9:17
-30.30 Type error: Property 'loading' does not exist on type 'AuthState'.
-30.30 
-30.30    7 |
-30.30    8 | export default function ManufacturerLayout({ children }: { children: React.ReactNode }) {
-30.30 >  9 |   const { user, loading } = useAuthStore();
-30.30      |                 ^
-30.30   10 |   const router = useRouter();
-30.30   11 |
-30.30   12 |   useEffect(() => {
-30.37 Next.js build worker exited with code: 1 and signal: null
+0.650 
+0.650 > hanna-management-frontend@0.1.0 build
+0.650 > next build
+0.650 
+1.944 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.944 This information is used to shape Next.js' roadmap and prioritize features.
+1.944 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.944 https://nextjs.org/telemetry
+1.944 
+1.957    ▲ Next.js 16.0.1 (Turbopack)
+1.957 
+2.010  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+2.070    Creating an optimized production build ...
+18.79  ✓ Compiled successfully in 15.9s
+18.80    Running TypeScript ...
+26.05 Failed to compile.
+26.05 
+26.05 ./app/manufacturer/(protected)/warranty-claims/page.tsx:39:9
+26.05 Type error: Cannot find name 'fetchClaims'. Did you mean 'setClaims'?
+26.05 
+26.05   37 |       try {
+26.05   38 |         await apiClient.patch(`/crm-api/manufacturer/warranty-claims/${selectedClaim.claim_id}/`, { status: newStatus });
+26.05 > 39 |         fetchClaims();
+26.05      |         ^
+26.05   40 |         closeModal();
+26.05   41 |       } catch (err: any) {
+26.05   42 |         setError(err.message || 'Failed to update status.');
+26.17 Next.js build worker exited with code: 1 and signal: null
 ------
 Dockerfile:20
 
