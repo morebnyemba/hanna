@@ -1,6 +1,11 @@
 from rest_framework import serializers
-from .models import Warranty, WarrantyClaim
+from .models import Warranty, WarrantyClaim, Manufacturer
 from products_and_services.models import SerializedItem
+
+class ManufacturerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Manufacturer
+        fields = '__all__'
 
 class WarrantyClaimCreateSerializer(serializers.ModelSerializer):
     serial_number = serializers.CharField(write_only=True)

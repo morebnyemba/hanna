@@ -46,6 +46,7 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     # The admin dashboard overview now uses the more comprehensive summary view from the 'stats' app.
     # This keeps the endpoint stable while improving the data source.
     path('crm-api/admin/dashboard-stats/', DashboardSummaryStatsAPIView.as_view(), name='admin_dashboard_stats'),
+    path('crm-api/admin/warranty/', include('warranty.admin_urls', namespace='warranty_admin_api')),
 
 
 
