@@ -46,8 +46,17 @@ class ManufacturerDashboardStatsAPIView(APIView):
 
         return Response(stats)
 
+class ManufacturerJobCardListView(generics.ListAPIView):
+    serializer_class = JobCardSerializer
+    permission_classes = [IsManufacturer]
+
     def get_queryset(self):
         return JobCard.objects.filter(serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
+
+class ManufacturerJobCardDetailView(generics.RetrieveAPIView):
+    serializer_class = JobCardDetailSerializer
+    permission_classes = [IsManufacturer]
+    lookup_field = 'job_card_number'
 
     def get_queryset(self):
         return JobCard.objects.filter(serialized_item__product__manufacturer=self.request.user.manufacturer_profile)

@@ -1,327 +1,96 @@
-[2025-11-06 21:15:07] INFO services Registered flow action: 'send_group_notification'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'update_lead_score'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'create_order_from_context'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'create_order'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'generate_unique_order_number'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'create_order_with_items'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'calculate_order_total'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'update_order_fields'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'update_model_instance'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'create_order_from_cart'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'generate_unique_assessment_id'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'create_placeholder_order'
-[2025-11-06 21:15:07] INFO services Registered flow action: 'normalize_order_number'
-[2025-11-06 21:15:07] INFO cli Starting server at tcp:port=8000:interface=0.0.0.0
-[2025-11-06 21:15:07] INFO server HTTP/2 support not enabled (install the http2 and tls Twisted extras)
-[2025-11-06 21:15:07] INFO server Configuring endpoint tcp:port=8000:interface=0.0.0.0
-[2025-11-06 21:15:07] INFO server Listening on TCP address 0.0.0.0:8000
-172.18.0.11:42508 - - [06/Nov/2025:21:15:37] "GET /crm-api/manufacturer/dashboard-stats/" 403 63
-172.18.0.11:42512 - - [06/Nov/2025:21:15:37] "GET /crm-api/manufacturer/warranty-claims/?page_size=5" 403 63
-172.18.0.11:56702 - - [06/Nov/2025:21:15:44] "POST /crm-api/auth/token/" 200 745
-172.18.0.11:56708 - - [06/Nov/2025:21:15:45] "GET /crm-api/manufacturer/warranty-claims/?page_size=5" 403 63
-172.18.0.11:56718 - - [06/Nov/2025:21:15:45] "GET /crm-api/manufacturer/dashboard-stats/" 403 63
-172.18.0.11:56720 - - [06/Nov/2025:21:15:53] "GET /crm-api/manufacturer/job-cards/" 403 63
-172.18.0.11:59004 - - [06/Nov/2025:21:15:59] "OPTIONS /crm-api/manufacturer/warranty-claims/" 200 -
-172.18.0.11:59016 - - [06/Nov/2025:21:15:59] "GET /crm-api/manufacturer/warranty-claims/" 403 63
-172.18.0.11:53008 - - [06/Nov/2025:21:16:52] "GET /admin/" 302 -
-172.18.0.11:53018 - - [06/Nov/2025:21:16:53] "GET /admin/login/?next=/admin/" 200 3026
-172.18.0.11:53020 - - [06/Nov/2025:21:16:53] "GET /static/vendor/fontawesome-free/css/all.min.css" 200 103009
-172.18.0.11:53026 - - [06/Nov/2025:21:16:53] "GET /static/vendor/adminlte/css/adminlte.min.css" 200 1382975
-172.18.0.11:39346 - - [06/Nov/2025:21:16:54] "GET /static/jazzmin/css/main.css" 200 16969
-172.18.0.11:39356 - - [06/Nov/2025:21:16:54] "GET /static/vendor/bootstrap/js/bootstrap.min.js" 200 62440
-172.18.0.11:39360 - - [06/Nov/2025:21:16:54] "GET /static/admin/js/vendor/jquery/jquery.js" 200 285314
-172.18.0.11:39352 - - [06/Nov/2025:21:16:54] "GET /static/admin/img/hanna_logo.png" 404 179
-172.18.0.11:39364 - - [06/Nov/2025:21:16:54] "GET /static/vendor/adminlte/js/adminlte.min.js" 200 44244
-172.18.0.11:39374 - - [06/Nov/2025:21:16:57] "GET /static/vendor/fontawesome-free/webfonts/fa-solid-900.woff2" 200 156400
-172.18.0.11:57816 - - [06/Nov/2025:21:17:06] "POST /admin/login/?next=/admin/" 302 -
-172.18.0.11:57830 - - [06/Nov/2025:21:17:07] "GET /admin/" 200 98003
-172.18.0.11:57836 - - [06/Nov/2025:21:17:07] "GET /static/jazzmin/js/main.js" 200 2391
-172.18.0.11:57840 - - [06/Nov/2025:21:17:07] "GET /static/vendor/fontawesome-free/webfonts/fa-regular-400.woff2" 200 25392
-172.18.0.11:48568 - - [06/Nov/2025:21:17:20] "GET /admin/warranty/manufacturer/" 200 37521
-172.18.0.11:48582 - - [06/Nov/2025:21:17:20] "GET /static/admin/js/admin/RelatedObjectLookups.js" 200 9777
-172.18.0.11:48606 - - [06/Nov/2025:21:17:20] "GET /static/vendor/select2/css/select2.min.css" 200 16264
-172.18.0.11:48592 - - [06/Nov/2025:21:17:20] "GET /static/admin/js/jquery.init.js" 200 347
-172.18.0.11:48576 - - [06/Nov/2025:21:17:20] "GET /static/admin/js/core.js" 200 6208
-172.18.0.11:48620 - - [06/Nov/2025:21:17:20] "GET /static/admin/js/vendor/jquery/jquery.min.js" 200 87533
-172.18.0.11:48636 - - [06/Nov/2025:21:17:20] "GET /admin/jsi18n/" 200 3342
-172.18.0.11:48650 - - [06/Nov/2025:21:17:20] "GET /static/admin/js/urlify.js" 200 7887
-172.18.0.11:48648 - - [06/Nov/2025:21:17:20] "GET /static/admin/js/actions.js" 200 8076
-172.18.0.11:48654 - - [06/Nov/2025:21:17:20] "GET /static/admin/js/prepopulate.js" 200 1531
-172.18.0.11:48664 - - [06/Nov/2025:21:17:20] "GET /static/admin/js/vendor/xregexp/xregexp.min.js" 200 163184
-172.18.0.11:48678 - - [06/Nov/2025:21:17:21] "GET /static/vendor/select2/js/select2.min.js" 200 73170
-172.18.0.11:48686 - - [06/Nov/2025:21:17:21] "GET /static/jazzmin/js/change_list.js" 200 2252
-172.18.0.11:37874 - - [06/Nov/2025:21:17:24] "GET /admin/warranty/manufacturer/add/" 200 42063
-172.18.0.11:37878 - - [06/Nov/2025:21:17:24] "GET /static/admin/js/autocomplete.js" 200 1060
-172.18.0.11:37890 - - [06/Nov/2025:21:17:24] "GET /static/admin/css/autocomplete.css" 200 9185
-172.18.0.11:37904 - - [06/Nov/2025:21:17:24] "GET /static/admin/js/vendor/select2/select2.full.min.js" 200 79212
-172.18.0.11:37924 - - [06/Nov/2025:21:17:24] "GET /static/admin/css/vendor/select2/select2.min.css" 200 14966
-172.18.0.11:37908 - - [06/Nov/2025:21:17:24] "GET /static/admin/js/vendor/select2/i18n/en.js" 200 844
-172.18.0.11:37882 - - [06/Nov/2025:21:17:24] "GET /admin/jsi18n/" 200 3342
-172.18.0.11:37928 - - [06/Nov/2025:21:17:24] "GET /static/admin/js/change_form.js" 200 606
-172.18.0.11:37932 - - [06/Nov/2025:21:17:24] "GET /static/admin/js/prepopulate_init.js" 200 586
-172.18.0.11:37946 - - [06/Nov/2025:21:17:24] "GET /static/jazzmin/js/change_form.js" 200 6052
-172.18.0.11:37980 - - [06/Nov/2025:21:17:25] "GET /static/admin/img/icon-addlink.svg" 200 331
-172.18.0.11:37992 - - [06/Nov/2025:21:17:25] "GET /static/admin/img/icon-deletelink.svg" 200 392
-172.18.0.11:37970 - - [06/Nov/2025:21:17:25] "GET /static/admin/img/icon-viewlink.svg" 200 581
-172.18.0.11:37956 - - [06/Nov/2025:21:17:25] "GET /static/admin/img/icon-changelink.svg" 200 380
-172.18.0.11:38008 - - [06/Nov/2025:21:17:28] "GET /admin/autocomplete/?app_label=warranty&model_name=manufacturer&field_name=user" 200 206
-172.18.0.11:54732 - - [06/Nov/2025:21:17:35] "POST /admin/warranty/manufacturer/add/" 302 -
-172.18.0.11:54738 - - [06/Nov/2025:21:17:35] "GET /admin/warranty/manufacturer/" 200 41427
-172.18.0.11:54740 - - [06/Nov/2025:21:17:36] "GET /admin/jsi18n/" 200 3342
-[2025-11-06 21:17:46] ERROR log Internal Server Error: /crm-api/manufacturer/warranty-claims/
+  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 554, in thread_handler
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 141, in response_for_exception
+    response = handle_uncaught_exception(
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 185, in handle_uncaught_exception
+    callback = resolver.resolve_error_handler(500)
+  File "/usr/local/lib/python3.10/site-packages/django/urls/resolvers.py", line 732, in resolve_error_handler
+    callback = getattr(self.urlconf_module, "handler%s" % view_type, None)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/django/urls/resolvers.py", line 711, in urlconf_module
+    return import_module(self.urlconf_name)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/app/./whatsappcrm_backend/urls.py", line 13, in <module>
+    from warranty.views import ManufacturerDashboardStatsAPIView, ManufacturerJobCardListView, ManufacturerJobCardDetailView, ManufacturerWarrantyClaimListView
+ImportError: cannot import name 'ManufacturerJobCardListView' from 'warranty.views' (/app/warranty/views.py)
+During handling of the above exception, another exception occurred:
 Traceback (most recent call last):
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 552, in thread_handler
-    raise exc_info[1]
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 42, in inner
-    response = await get_response(request)
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 253, in _get_response_async
-    response = await wrapped_callback(
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/deprecation.py", line 120, in __call__
+    response = response or self.get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 57, in inner
+    response = response_for_exception(request, exc)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 141, in response_for_exception
+    response = handle_uncaught_exception(
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 185, in handle_uncaught_exception
+    callback = resolver.resolve_error_handler(500)
+  File "/usr/local/lib/python3.10/site-packages/django/urls/resolvers.py", line 732, in resolve_error_handler
+    callback = getattr(self.urlconf_module, "handler%s" % view_type, None)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/django/urls/resolvers.py", line 711, in urlconf_module
+    return import_module(self.urlconf_name)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/app/./whatsappcrm_backend/urls.py", line 13, in <module>
+    from warranty.views import ManufacturerDashboardStatsAPIView, ManufacturerJobCardListView, ManufacturerJobCardDetailView, ManufacturerWarrantyClaimListView
+ImportError: cannot import name 'ManufacturerJobCardListView' from 'warranty.views' (/app/warranty/views.py)
+During handling of the above exception, another exception occurred:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/channels/routing.py", line 48, in __call__
+    return await application(scope, receive, send)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/asgi.py", line 162, in __call__
+    await self.handle(scope, receive, send)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/asgi.py", line 208, in handle
+    task.result()
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/asgi.py", line 185, in process_request
+    response = await self.run_get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/asgi.py", line 244, in run_get_response
+    response = await self.get_response_async(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 162, in get_response_async
+    response = await self._middleware_chain(request)
   File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 502, in __call__
     ret = await asyncio.shield(exec_coro)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/current_thread_executor.py", line 40, in run
+  File "/usr/local/lib/python3.10/concurrent/futures/thread.py", line 58, in run
     result = self.fn(*self.args, **self.kwargs)
   File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 556, in thread_handler
     return func(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
-    return view_func(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/generic/base.py", line 105, in view
-    return self.dispatch(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
-    response = self.handle_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
-    self.raise_uncaught_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
-    raise exc
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
-    response = handler(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/generics.py", line 203, in get
-    return self.list(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/mixins.py", line 38, in list
-    queryset = self.filter_queryset(self.get_queryset())
-  File "/app/warranty/views.py", line 69, in get_queryset
-    return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
-    return getattr(self.get_queryset(), name)(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1493, in filter
-    return self._filter_or_exclude(False, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1511, in _filter_or_exclude
-    clone._filter_or_exclude_inplace(negate, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1518, in _filter_or_exclude_inplace
-    self._query.add_q(Q(*args, **kwargs))
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1646, in add_q
-    clause, _ = self._add_q(q_object, can_reuse)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
-    child_clause, needed_inner = self.build_filter(
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1563, in build_filter
-    self.check_related_objects(join_info.final_field, value, join_info.opts)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1372, in check_related_objects
-    self.check_query_object_type(value, opts, field)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1349, in check_query_object_type
-    raise ValueError(
-ValueError: Cannot query "Moreblessing Nyemba": Must be "Product" instance.
-172.18.0.11:39516 - - [06/Nov/2025:21:17:46] "GET /crm-api/manufacturer/warranty-claims/" 500 145
-172.18.0.11:39518 - - [06/Nov/2025:21:17:48] "POST /crm-api/auth/token/" 200 745
-[2025-11-06 21:17:49] ERROR log Internal Server Error: /crm-api/manufacturer/dashboard-stats/
-Traceback (most recent call last):
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 552, in thread_handler
-    raise exc_info[1]
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 42, in inner
-    response = await get_response(request)
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 253, in _get_response_async
-    response = await wrapped_callback(
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 502, in __call__
-    ret = await asyncio.shield(exec_coro)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/current_thread_executor.py", line 40, in run
-    result = self.fn(*self.args, **self.kwargs)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 556, in thread_handler
-    return func(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
-    return view_func(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/generic/base.py", line 105, in view
-    return self.dispatch(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
-    response = self.handle_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
-    self.raise_uncaught_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
-    raise exc
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
-    response = handler(request, *args, **kwargs)
-  File "/app/warranty/views.py", line 38, in get
-    warranty_claims = WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=manufacturer).count()
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
-    return getattr(self.get_queryset(), name)(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1493, in filter
-    return self._filter_or_exclude(False, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1511, in _filter_or_exclude
-    clone._filter_or_exclude_inplace(negate, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1518, in _filter_or_exclude_inplace
-    self._query.add_q(Q(*args, **kwargs))
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1646, in add_q
-    clause, _ = self._add_q(q_object, can_reuse)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
-    child_clause, needed_inner = self.build_filter(
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1563, in build_filter
-    self.check_related_objects(join_info.final_field, value, join_info.opts)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1372, in check_related_objects
-    self.check_query_object_type(value, opts, field)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1349, in check_query_object_type
-    raise ValueError(
-ValueError: Cannot query "Moreblessing Nyemba": Must be "Product" instance.
-172.18.0.11:39528 - - [06/Nov/2025:21:17:49] "GET /crm-api/manufacturer/dashboard-stats/" 500 145
-[2025-11-06 21:17:49] ERROR log Internal Server Error: /crm-api/manufacturer/warranty-claims/
-Traceback (most recent call last):
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 552, in thread_handler
-    raise exc_info[1]
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 42, in inner
-    response = await get_response(request)
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 253, in _get_response_async
-    response = await wrapped_callback(
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 502, in __call__
-    ret = await asyncio.shield(exec_coro)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/current_thread_executor.py", line 40, in run
-    result = self.fn(*self.args, **self.kwargs)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 556, in thread_handler
-    return func(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
-    return view_func(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/generic/base.py", line 105, in view
-    return self.dispatch(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
-    response = self.handle_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
-    self.raise_uncaught_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
-    raise exc
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
-    response = handler(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/generics.py", line 203, in get
-    return self.list(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/mixins.py", line 38, in list
-    queryset = self.filter_queryset(self.get_queryset())
-  File "/app/warranty/views.py", line 69, in get_queryset
-    return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
-    return getattr(self.get_queryset(), name)(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1493, in filter
-    return self._filter_or_exclude(False, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1511, in _filter_or_exclude
-    clone._filter_or_exclude_inplace(negate, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1518, in _filter_or_exclude_inplace
-    self._query.add_q(Q(*args, **kwargs))
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1646, in add_q
-    clause, _ = self._add_q(q_object, can_reuse)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
-    child_clause, needed_inner = self.build_filter(
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1563, in build_filter
-    self.check_related_objects(join_info.final_field, value, join_info.opts)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1372, in check_related_objects
-    self.check_query_object_type(value, opts, field)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1349, in check_query_object_type
-    raise ValueError(
-ValueError: Cannot query "Moreblessing Nyemba": Must be "Product" instance.
-172.18.0.11:39540 - - [06/Nov/2025:21:17:49] "GET /crm-api/manufacturer/warranty-claims/?page_size=5" 500 145
-[2025-11-06 21:17:59] ERROR log Internal Server Error: /crm-api/manufacturer/job-cards/
-Traceback (most recent call last):
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 552, in thread_handler
-    raise exc_info[1]
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 42, in inner
-    response = await get_response(request)
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 253, in _get_response_async
-    response = await wrapped_callback(
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 502, in __call__
-    ret = await asyncio.shield(exec_coro)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/current_thread_executor.py", line 40, in run
-    result = self.fn(*self.args, **self.kwargs)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 556, in thread_handler
-    return func(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
-    return view_func(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/generic/base.py", line 105, in view
-    return self.dispatch(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
-    response = self.handle_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
-    self.raise_uncaught_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
-    raise exc
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
-    response = handler(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/generics.py", line 203, in get
-    return self.list(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/mixins.py", line 38, in list
-    queryset = self.filter_queryset(self.get_queryset())
-  File "/app/warranty/views.py", line 54, in get_queryset
-    return JobCard.objects.filter(serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
-    return getattr(self.get_queryset(), name)(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1493, in filter
-    return self._filter_or_exclude(False, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1511, in _filter_or_exclude
-    clone._filter_or_exclude_inplace(negate, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1518, in _filter_or_exclude_inplace
-    self._query.add_q(Q(*args, **kwargs))
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1646, in add_q
-    clause, _ = self._add_q(q_object, can_reuse)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
-    child_clause, needed_inner = self.build_filter(
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1563, in build_filter
-    self.check_related_objects(join_info.final_field, value, join_info.opts)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1372, in check_related_objects
-    self.check_query_object_type(value, opts, field)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1349, in check_query_object_type
-    raise ValueError(
-ValueError: Cannot query "Moreblessing Nyemba": Must be "Product" instance.
-172.18.0.11:43226 - - [06/Nov/2025:21:17:59] "GET /crm-api/manufacturer/job-cards/" 500 145
-[2025-11-06 21:18:01] ERROR log Internal Server Error: /crm-api/manufacturer/warranty-claims/
-Traceback (most recent call last):
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 552, in thread_handler
-    raise exc_info[1]
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 42, in inner
-    response = await get_response(request)
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 253, in _get_response_async
-    response = await wrapped_callback(
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 502, in __call__
-    ret = await asyncio.shield(exec_coro)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/current_thread_executor.py", line 40, in run
-    result = self.fn(*self.args, **self.kwargs)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 556, in thread_handler
-    return func(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
-    return view_func(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/generic/base.py", line 105, in view
-    return self.dispatch(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
-    response = self.handle_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
-    self.raise_uncaught_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
-    raise exc
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
-    response = handler(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/generics.py", line 203, in get
-    return self.list(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/mixins.py", line 38, in list
-    queryset = self.filter_queryset(self.get_queryset())
-  File "/app/warranty/views.py", line 69, in get_queryset
-    return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
-    return getattr(self.get_queryset(), name)(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1493, in filter
-    return self._filter_or_exclude(False, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1511, in _filter_or_exclude
-    clone._filter_or_exclude_inplace(negate, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1518, in _filter_or_exclude_inplace
-    self._query.add_q(Q(*args, **kwargs))
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1646, in add_q
-    clause, _ = self._add_q(q_object, can_reuse)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
-    child_clause, needed_inner = self.build_filter(
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1563, in build_filter
-    self.check_related_objects(join_info.final_field, value, join_info.opts)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1372, in check_related_objects
-    self.check_query_object_type(value, opts, field)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1349, in check_query_object_type
-    raise ValueError(
-ValueError: Cannot query "Moreblessing Nyemba": Must be "Product" instance.
-172.18.0.11:43228 - - [06/Nov/2025:21:18:01] "GET /crm-api/manufacturer/warranty-claims/" 500 145
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 57, in inner
+    response = response_for_exception(request, exc)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 141, in response_for_exception
+    response = handle_uncaught_exception(
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 185, in handle_uncaught_exception
+    callback = resolver.resolve_error_handler(500)
+  File "/usr/local/lib/python3.10/site-packages/django/urls/resolvers.py", line 732, in resolve_error_handler
+    callback = getattr(self.urlconf_module, "handler%s" % view_type, None)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/django/urls/resolvers.py", line 711, in urlconf_module
+    return import_module(self.urlconf_name)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/app/./whatsappcrm_backend/urls.py", line 13, in <module>
+    from warranty.views import ManufacturerDashboardStatsAPIView, ManufacturerJobCardListView, ManufacturerJobCardDetailView, ManufacturerWarrantyClaimListView
+ImportError: cannot import name 'ManufacturerJobCardListView' from 'warranty.views' (/app/warranty/views.py)
+172.18.0.11:48282 - - [06/Nov/2025:21:44:12] "POST /crm-api/auth/token/" 500 453
