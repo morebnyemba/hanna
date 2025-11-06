@@ -12,6 +12,7 @@ from .views import (
     ManufacturerProductListView,
     ManufacturerProfileView,
     ManufacturerProductViewSet,
+    ManufacturerWarrantyViewSet,
 )
 
 app_name = 'warranty_api'
