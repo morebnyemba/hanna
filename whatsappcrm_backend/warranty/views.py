@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions, generics
+from rest_framework import status, permissions, generics, viewsets
 from rest_framework.permissions import IsAdminUser
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -79,6 +79,24 @@ class ManufacturerProductListView(generics.ListAPIView):
 
     def get_queryset(self):
         return Product.objects.filter(manufacturer=self.request.user.manufacturer_profile)
+
+class ManufacturerProductViewSet(viewsets.ModelViewSet):
+    serializer_class = ProductSerializer
+    permission_classes = [IsManufacturer]
+
+    def get_queryset(self):
+        return Product.objects.filter(manufacturer=self.request.user.manufacturer_profile)
+
+    def perform_create(self, serializer):
+        serializer.save(manufacturer=self.request.user.manufacturer_profile)
+
+class ManufacturerWarrantyClaimDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = WarrantyClaimListSerializer
+    permission_classes = [IsManufacturer]
+    lookup_field = 'claim_id'
+
+    def get_queryset(self):
+        return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
 
 class ManufacturerProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = ManufacturerSerializer
