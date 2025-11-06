@@ -7,6 +7,8 @@ from .views import (
     ManufacturerWarrantyClaimListView,
     ManufacturerJobCardListView,
     ManufacturerJobCardDetailView,
+    ManufacturerProductListView,
+    ManufacturerProfileView,
 )
 
 app_name = 'warranty_api'
@@ -16,6 +18,8 @@ manufacturer_patterns = [
     path('warranty-claims/', ManufacturerWarrantyClaimListView.as_view(), name='manufacturer_warranty_claims_list'),
     path('job-cards/', ManufacturerJobCardListView.as_view(), name='manufacturer_job_cards_list'),
     path('job-cards/<str:job_card_number>/', ManufacturerJobCardDetailView.as_view(), name='manufacturer_job_card_detail'),
+    path('products/', ManufacturerProductListView.as_view(), name='manufacturer_product_list'),
+    path('profile/', ManufacturerProfileView.as_view(), name='manufacturer_profile'),
 ]
 
 urlpatterns = [

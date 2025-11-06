@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiShield } from 'react-icons/fi';
+import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiShield, FiBox, FiSettings } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 
 const SidebarLink = ({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) => {
@@ -75,6 +75,12 @@ export default function Sidebar() {
           </SidebarLink>
           <SidebarLink href="/manufacturer/warranty-claims" icon={<FiShield className="h-5 w-5" />}>
             Warranty Claims
+          </SidebarLink>
+          <SidebarLink href="/manufacturer/products" icon={<FiBox className="h-5 w-5" />}>
+            Products
+          </SidebarLink>
+          <SidebarLink href="/manufacturer/settings" icon={<FiSettings className="h-5 w-5" />}>
+            Settings
           </SidebarLink>
         </nav>
         <div className="p-4 border-t border-gray-700">

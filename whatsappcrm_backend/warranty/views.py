@@ -9,8 +9,10 @@ from django.contrib.auth import get_user_model
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard, CustomerProfile
 from customer_data.serializers import JobCardSerializer, JobCardDetailSerializer
+from products_and_services.models import Product
+from products_and_services.serializers import ProductSerializer
 from .permissions import IsManufacturer
-from .serializers import WarrantyClaimListSerializer, WarrantyClaimCreateSerializer
+from .serializers import WarrantyClaimListSerializer, WarrantyClaimCreateSerializer, ManufacturerSerializer
 
 class AdminWarrantyClaimListView(generics.ListAPIView):
     """
@@ -70,3 +72,17 @@ class ManufacturerWarrantyClaimListView(generics.ListAPIView):
 
 class TechnicianDashboardStatsAPIView(APIView):
     pass
+
+class ManufacturerProductListView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [IsManufacturer]
+
+    def get_queryset(self):
+        return Product.objects.filter(manufacturer=self.request.user.manufacturer_profile)
+
+class ManufacturerProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = ManufacturerSerializer
+    permission_classes = [IsManufacturer]
+
+    def get_object(self):
+        return self.request.user.manufacturer_profile
