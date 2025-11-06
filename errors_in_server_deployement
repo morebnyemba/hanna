@@ -1,71 +1,34 @@
+ => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.0s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-2.735 
-2.735 > hanna-management-frontend@0.1.0 build
-2.735 > next build
-2.735 
-5.108 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-5.108 This information is used to shape Next.js' roadmap and prioritize features.
-5.108 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-5.108 https://nextjs.org/telemetry
-5.108 
-5.129    ▲ Next.js 16.0.1 (Turbopack)
-5.131 
-5.232  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-5.325    Creating an optimized production build ...
-27.15 
-27.15 > Build error occurred
-27.15 Error: Turbopack build failed with 2 errors:
-27.15 ./app/manufacturer/(protected)/layout.tsx:4:1
-27.15 Export useAuth doesn't exist in target module
-27.15   2 |
-27.15   3 | import Sidebar from '@/app/components/manufacturer/Sidebar';
-27.15 > 4 | import { useAuth } from '@/app/store/authStore';
-27.15     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27.15   5 | import { useRouter } from 'next/navigation';
-27.15   6 | import { useEffect } from 'react';
-27.15   7 |
-27.15 
-27.15 The export useAuth was not found in module [project]/app/store/authStore.ts [app-client] (ecmascript).
-27.15 Did you mean to import useAuthStore?
-27.15 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-27.15 
-27.15 Import traces:
-27.15   Client Component Browser:
-27.15     ./app/manufacturer/(protected)/layout.tsx [Client Component Browser]
-27.15     ./app/manufacturer/(protected)/layout.tsx [Server Component]
-27.15 
-27.15   Client Component SSR:
-27.15     ./app/manufacturer/(protected)/layout.tsx [Client Component SSR]
-27.15     ./app/manufacturer/(protected)/layout.tsx [Server Component]
-27.15 
-27.15 
-27.15 ./app/manufacturer/(protected)/layout.tsx:4:1
-27.15 Export useAuth doesn't exist in target module
-27.15   2 |
-27.15   3 | import Sidebar from '@/app/components/manufacturer/Sidebar';
-27.15 > 4 | import { useAuth } from '@/app/store/authStore';
-27.15     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27.15   5 | import { useRouter } from 'next/navigation';
-27.15   6 | import { useEffect } from 'react';
-27.15   7 |
-27.15 
-27.15 The export useAuth was not found in module [project]/app/store/authStore.ts [app-ssr] (ecmascript).
-27.15 Did you mean to import useAuthStore?
-27.15 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-27.15 
-27.15 Import traces:
-27.15   Client Component Browser:
-27.15     ./app/manufacturer/(protected)/layout.tsx [Client Component Browser]
-27.15     ./app/manufacturer/(protected)/layout.tsx [Server Component]
-27.15 
-27.15   Client Component SSR:
-27.15     ./app/manufacturer/(protected)/layout.tsx [Client Component SSR]
-27.15     ./app/manufacturer/(protected)/layout.tsx [Server Component]
-27.15 
-27.15 
-27.15     at <unknown> (./app/manufacturer/(protected)/layout.tsx:4:1)
-27.15     at <unknown> (./app/manufacturer/(protected)/layout.tsx:4:1)
+0.329 
+0.329 > hanna-management-frontend@0.1.0 build
+0.329 > next build
+0.329 
+1.246 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.247 This information is used to shape Next.js' roadmap and prioritize features.
+1.247 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.247 https://nextjs.org/telemetry
+1.247 
+1.258    ▲ Next.js 16.0.1 (Turbopack)
+1.258 
+1.310  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+1.360    Creating an optimized production build ...
+23.41  ✓ Compiled successfully in 21.5s
+23.44    Running TypeScript ...
+30.29 Failed to compile.
+30.29 
+30.30 ./app/manufacturer/(protected)/layout.tsx:9:17
+30.30 Type error: Property 'loading' does not exist on type 'AuthState'.
+30.30 
+30.30    7 |
+30.30    8 | export default function ManufacturerLayout({ children }: { children: React.ReactNode }) {
+30.30 >  9 |   const { user, loading } = useAuthStore();
+30.30      |                 ^
+30.30   10 |   const router = useRouter();
+30.30   11 |
+30.30   12 |   useEffect(() => {
+30.37 Next.js build worker exited with code: 1 and signal: null
 ------
 Dockerfile:20
 
