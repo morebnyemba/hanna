@@ -1,89 +1,64 @@
------
- > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.440 
-0.440 > hanna-management-frontend@0.1.0 build
-0.440 > next build
-0.440 
-2.121 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-2.121 This information is used to shape Next.js' roadmap and prioritize features.
-2.121 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-2.121 https://nextjs.org/telemetry
-2.121 
-2.143    ▲ Next.js 16.0.1 (Turbopack)
-2.143 
-2.226  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-2.278    Creating an optimized production build ...
-19.91 
-19.91 > Build error occurred
-19.92 Error: Turbopack build failed with 2 errors:
-19.92 ./app/admin/(protected)/dashboard/AnalyticsChart.tsx:17:13
-19.92 Ecmascript file had an error
-19.92   15 |           >
-19.92   16 |             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-19.92 > 17 |             <XAxis dataKey="date" stroke="#6b7280" fontSize={10} sm:fontSize={12} />
-19.92      |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-19.92   18 |             <YAxis stroke="#6b7280" fontSize={10} sm:fontSize={12} />
-19.92   19 |             <Tooltip
-19.92   20 |               contentStyle={{
-19.92 
-19.92 JSX Namespace is disabled by default because react does not support it yet. You can specify jsc.transform.react.throwIfNamespace to false to override default behavior
-19.92 
-19.92 Import traces:
-19.92   Client Component Browser:
-19.92     ./app/admin/(protected)/dashboard/AnalyticsChart.tsx [Client Component Browser]
-19.92     ./app/admin/(protected)/dashboard/page.tsx [Client Component Browser]
-19.92     ./app/admin/(protected)/dashboard/page.tsx [Server Component]
-19.92 
-19.92   Client Component SSR:
-19.92     ./app/admin/(protected)/dashboard/AnalyticsChart.tsx [Client Component SSR]
-19.92     ./app/admin/(protected)/dashboard/page.tsx [Client Component SSR]
-19.92     ./app/admin/(protected)/dashboard/page.tsx [Server Component]
-19.92 
-19.92 
-19.92 ./app/admin/(protected)/dashboard/AnalyticsChart.tsx:18:13
-19.92 Ecmascript file had an error
-19.92   16 |             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-19.92   17 |             <XAxis dataKey="date" stroke="#6b7280" fontSize={10} sm:fontSize={12} />
-19.92 > 18 |             <YAxis stroke="#6b7280" fontSize={10} sm:fontSize={12} />
-19.92      |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-19.92   19 |             <Tooltip
-19.92   20 |               contentStyle={{
-19.92   21 |                 backgroundColor: 'rgba(255, 255, 255, 0.8)',
-19.92 
-19.92 JSX Namespace is disabled by default because react does not support it yet. You can specify jsc.transform.react.throwIfNamespace to false to override default behavior
-19.92 
-19.92 Import traces:
-19.92   Client Component Browser:
-19.92     ./app/admin/(protected)/dashboard/AnalyticsChart.tsx [Client Component Browser]
-19.92     ./app/admin/(protected)/dashboard/page.tsx [Client Component Browser]
-19.92     ./app/admin/(protected)/dashboard/page.tsx [Server Component]
-19.92 
-19.92   Client Component SSR:
-19.92     ./app/admin/(protected)/dashboard/AnalyticsChart.tsx [Client Component SSR]
-19.92     ./app/admin/(protected)/dashboard/page.tsx [Client Component SSR]
-19.92     ./app/admin/(protected)/dashboard/page.tsx [Server Component]
-19.92 
-19.92 
-19.92     at <unknown> (./app/admin/(protected)/dashboard/AnalyticsChart.tsx:17:13)
-19.92     at <unknown> (./app/admin/(protected)/dashboard/AnalyticsChart.tsx:18:13)
-------
-Dockerfile:20
+Running migrations:
+  Applying warranty.0001_initial... FAKED
+  Applying warranty.0002_remove_warranty_product_and_more...Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 103, in _execute
+    return self.cursor.execute(sql)
+psycopg2.errors.UndefinedColumn: column "product_id" of relation "warranty_warranty" does not exist
 
---------------------
 
-  18 |     # Build the Next.js application
+The above exception was the direct cause of the following exception:
 
-  19 |     # 'next build' creates an optimized production build in the .next directory
+Traceback (most recent call last):
+  File "/app/manage.py", line 22, in <module>
+    main()
+  File "/app/manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/base.py", line 416, in run_from_argv
+    self.execute(*args, **cmd_options)
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/base.py", line 460, in execute
+    output = self.handle(*args, **options)
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/base.py", line 107, in wrapper
+    res = handle_func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/commands/migrate.py", line 353, in handle
+    post_migrate_state = executor.migrate(
+  File "/usr/local/lib/python3.10/site-packages/django/db/migrations/executor.py", line 135, in migrate
+    state = self._migrate_all_forwards(
+  File "/usr/local/lib/python3.10/site-packages/django/db/migrations/executor.py", line 167, in _migrate_all_forwards
+    state = self.apply_migration(
+  File "/usr/local/lib/python3.10/site-packages/django/db/migrations/executor.py", line 255, in apply_migration
+    state = migration.apply(state, schema_editor)
+  File "/usr/local/lib/python3.10/site-packages/django/db/migrations/migration.py", line 132, in apply
+    operation.database_forwards(
+  File "/usr/local/lib/python3.10/site-packages/django/db/migrations/operations/fields.py", line 174, in database_forwards
+    schema_editor.remove_field(
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/base/schema.py", line 829, in remove_field
+    self.execute(sql)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/postgresql/schema.py", line 48, in execute
+    return super().execute(sql, None)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/base/schema.py", line 204, in execute
+    cursor.execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "/usr/local/lib/python3.10/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 103, in _execute
+    return self.cursor.execute(sql)
+django.db.utils.ProgrammingError: column "product_id" of relation "warranty_warranty" does not exist
 
-  20 | >>> RUN npm run build
-
-  21 |     
-
-  22 |     # Stage 2: Serve the application with a lightweight Node.js runtime
-
---------------------
-
-target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
-
-root@srv967860:~/HANNA# ^C
 root@srv967860:~/HANNA# 
+
+
+
+
+
+
+
+
