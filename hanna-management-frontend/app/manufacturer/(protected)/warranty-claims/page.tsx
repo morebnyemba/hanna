@@ -4,14 +4,7 @@ import { useEffect, useState } from 'react';
 import { FiShield } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import WarrantyClaimModal from '@/app/components/manufacturer/modals/WarrantyClaimModal';
-
-interface WarrantyClaim {
-  claim_id: string;
-  product_name: string;
-  product_serial_number: string;
-  status: string;
-  created_at: string;
-}
+import { WarrantyClaim } from '@/app/types';
 
 interface PaginatedResponse {
   count: number;

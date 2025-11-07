@@ -1,15 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-interface WarrantyClaim {
-  claim_id: string;
-  product_name: string;
-  product_serial_number: string;
-  customer_name: string;
-  status: string;
-  created_at: string;
-}
+import { WarrantyClaim } from '@/app/types';
 
 interface WarrantyClaimModalProps {
   isOpen: boolean;
