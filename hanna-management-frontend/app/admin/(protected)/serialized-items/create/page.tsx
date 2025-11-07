@@ -11,7 +11,7 @@ interface Product {
   name: string;
 }
 
-const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '' }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; }) => (
+const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '', error }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; error?: string; }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
         <input
@@ -22,12 +22,13 @@ const InputField = ({ id, label, value, onChange, required = false, type = 'text
             onChange={onChange}
             required={required}
             placeholder={placeholder}
-            className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+            className={`mt-1 block w-full px-4 py-3 bg-white border ${error ? 'border-red-500' : 'border-gray-300'} rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300`}
         />
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
 );
 
-const SelectField = ({ id, label, value, onChange, children }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; }) => (
+const SelectField = ({ id, label, value, onChange, children, error }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; error?: string; }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
         <select
@@ -35,10 +36,11 @@ const SelectField = ({ id, label, value, onChange, children }: { id: string; lab
             name={id}
             value={value}
             onChange={onChange}
-            className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+            className={`mt-1 block w-full px-4 py-3 bg-white border ${error ? 'border-red-500' : 'border-gray-300'} rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300`}
         >
             {children}
         </select>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
 );
 
@@ -50,7 +52,7 @@ export default function CreateSerializedItemPage() {
   });
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<any>({});
   const { accessToken } = useAuthStore();
   const router = useRouter();
 
@@ -69,13 +71,21 @@ export default function CreateSerializedItemPage() {
         const data = await response.json();
         setProducts(data.results);
       } catch (err: any) {
-        setError(err.message);
+        setErrors({ api: err.message });
       }
     };
     if (accessToken) {
       fetchProducts();
     }
   }, [accessToken]);
+
+  const validate = () => {
+    let tempErrors: any = {};
+    if (!formData.serial_number) tempErrors.serial_number = "Serial number is required.";
+    if (!formData.product) tempErrors.product = "Product is required.";
+    setErrors(tempErrors);
+    return Object.keys(tempErrors).length === 0;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -87,8 +97,9 @@ export default function CreateSerializedItemPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setLoading(true);
-    setError(null);
+    setErrors({});
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
@@ -108,7 +119,7 @@ export default function CreateSerializedItemPage() {
 
       router.push('/admin/serialized-items');
     } catch (err: any) {
-      setError(err.message);
+      setErrors({ api: err.message });
     } finally {
       setLoading(false);
     }
@@ -130,8 +141,8 @@ export default function CreateSerializedItemPage() {
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InputField id="serial_number" label="Serial Number" value={formData.serial_number} onChange={handleChange} placeholder="e.g., 12345-ABCDE" required />
-            <SelectField id="product" label="Product" value={formData.product} onChange={handleChange}>
+            <InputField id="serial_number" label="Serial Number" value={formData.serial_number} onChange={handleChange} placeholder="e.g., 12345-ABCDE" required error={errors.serial_number} />
+            <SelectField id="product" label="Product" value={formData.product} onChange={handleChange} error={errors.product}>
                 <option value="">Select a product</option>
                 {products.map((prod) => (
                   <option key={prod.id} value={prod.id}>{prod.name}</option>
@@ -146,7 +157,7 @@ export default function CreateSerializedItemPage() {
             </SelectField>
           </div>
 
-          {error && (
+          {errors.api && (
             <div className="mt-4 rounded-xl bg-red-500/20 p-4 border border-red-500/30">
                 <div className="flex">
                 <div className="flex-shrink-0">
@@ -155,7 +166,7 @@ export default function CreateSerializedItemPage() {
                     </svg>
                 </div>
                 <div className="ml-3">
-                    <p className="text-sm text-red-400">{error}</p>
+                    <p className="text-sm text-red-400">{errors.api}</p>
                 </div>
                 </div>
             </div>

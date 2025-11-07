@@ -11,7 +11,7 @@ interface ProductCategory {
   name: string;
 }
 
-const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '' }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; }) => (
+const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '', error }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; error?: string; }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
         <input
@@ -22,12 +22,13 @@ const InputField = ({ id, label, value, onChange, required = false, type = 'text
             onChange={onChange}
             required={required}
             placeholder={placeholder}
-            className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+            className={`mt-1 block w-full px-4 py-3 bg-white border ${error ? 'border-red-500' : 'border-gray-300'} rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300`}
         />
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
 );
 
-const SelectField = ({ id, label, value, onChange, children }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; }) => (
+const SelectField = ({ id, label, value, onChange, children, error }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; error?: string; }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
         <select
@@ -35,10 +36,11 @@ const SelectField = ({ id, label, value, onChange, children }: { id: string; lab
             name={id}
             value={value}
             onChange={onChange}
-            className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+            className={`mt-1 block w-full px-4 py-3 bg-white border ${error ? 'border-red-500' : 'border-gray-300'} rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300`}
         >
             {children}
         </select>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
 );
 
@@ -68,7 +70,7 @@ export default function CreateProductPage() {
   });
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<any>({});
   const { accessToken } = useAuthStore();
   const router = useRouter();
 
@@ -87,13 +89,27 @@ export default function CreateProductPage() {
         const data = await response.json();
         setCategories(data.results);
       } catch (err: any) {
-        setError(err.message);
+        setErrors({ api: err.message });
       }
     };
     if (accessToken) {
       fetchCategories();
     }
   }, [accessToken]);
+
+  const validate = () => {
+    let tempErrors: any = {};
+    if (!formData.name) tempErrors.name = "Product name is required.";
+    if (!formData.sku) tempErrors.sku = "SKU is required.";
+    if (!formData.price) {
+        tempErrors.price = "Price is required.";
+    } else if (isNaN(Number(formData.price))) {
+        tempErrors.price = "Price must be a number.";
+    }
+    if (!formData.category) tempErrors.category = "Category is required.";
+    setErrors(tempErrors);
+    return Object.keys(tempErrors).length === 0;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -105,8 +121,9 @@ export default function CreateProductPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setLoading(true);
-    setError(null);
+    setErrors({});
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
@@ -126,7 +143,7 @@ export default function CreateProductPage() {
 
       router.push('/admin/products');
     } catch (err: any) {
-      setError(err.message);
+      setErrors({ api: err.message });
     } finally {
       setLoading(false);
     }
@@ -148,13 +165,13 @@ export default function CreateProductPage() {
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InputField id="name" label="Product Name" value={formData.name} onChange={handleChange} placeholder="e.g., Solar Panel" required />
-            <InputField id="sku" label="SKU" value={formData.sku} onChange={handleChange} placeholder="e.g., SP-001" required />
+            <InputField id="name" label="Product Name" value={formData.name} onChange={handleChange} placeholder="e.g., Solar Panel" required error={errors.name} />
+            <InputField id="sku" label="SKU" value={formData.sku} onChange={handleChange} placeholder="e.g., SP-001" required error={errors.sku} />
             <div className="md:col-span-2">
                 <TextAreaField id="description" label="Description" value={formData.description} onChange={handleChange} placeholder="A short description of the product." />
             </div>
-            <InputField id="price" label="Price" type="number" value={formData.price} onChange={handleChange} placeholder="e.g., 250.00" required />
-            <SelectField id="category" label="Category" value={formData.category} onChange={handleChange}>
+            <InputField id="price" label="Price" type="number" value={formData.price} onChange={handleChange} placeholder="e.g., 250.00" required error={errors.price} />
+            <SelectField id="category" label="Category" value={formData.category} onChange={handleChange} error={errors.category}>
                 <option value="">Select a category</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -162,7 +179,7 @@ export default function CreateProductPage() {
             </SelectField>
           </div>
 
-          {error && (
+          {errors.api && (
             <div className="mt-4 rounded-xl bg-red-500/20 p-4 border border-red-500/30">
                 <div className="flex">
                 <div className="flex-shrink-0">
@@ -171,7 +188,7 @@ export default function CreateProductPage() {
                     </svg>
                 </div>
                 <div className="ml-3">
-                    <p className="text-sm text-red-400">{error}</p>
+                    <p className="text-sm text-red-400">{errors.api}</p>
                 </div>
                 </div>
             </div>

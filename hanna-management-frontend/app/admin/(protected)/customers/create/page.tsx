@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { FiUserPlus, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import SelectField from './SelectField';
 
-const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '' }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; }) => (
+const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '', error }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; error?: string; }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
         <input
@@ -17,10 +18,13 @@ const InputField = ({ id, label, value, onChange, required = false, type = 'text
             onChange={onChange}
             required={required}
             placeholder={placeholder}
-            className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+            className={`mt-1 block w-full px-4 py-3 bg-white border ${error ? 'border-red-500' : 'border-gray-300'} rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300`}
         />
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
 );
+
+const countries = ["Zimbabwe", "South Africa", "Zambia", "Mozambique"]; // Example list
 
 export default function CreateCustomerPage() {
   const [formData, setFormData] = useState({
@@ -33,14 +37,29 @@ export default function CreateCustomerPage() {
     email: '',
     address_line_1: '',
     city: '',
-    country: '',
+    country: 'Zimbabwe',
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<any>({});
   const { accessToken } = useAuthStore();
   const router = useRouter();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const validate = () => {
+    let tempErrors: any = { contact: {} };
+    if (!formData.contact.name) tempErrors.contact.name = "Contact name is required.";
+    if (!formData.contact.whatsapp_id) tempErrors.contact.whatsapp_id = "WhatsApp ID is required.";
+    if (!formData.first_name) tempErrors.first_name = "First name is required.";
+    if (!formData.last_name) tempErrors.last_name = "Last name is required.";
+    if (!formData.email) {
+        tempErrors.email = "Email is required.";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        tempErrors.email = "Email is invalid.";
+    }
+    setErrors(tempErrors);
+    return Object.keys(tempErrors).length === 1 ? Object.keys(tempErrors.contact).length === 0 : Object.keys(tempErrors).length === 0;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name === 'name' || name === 'whatsapp_id') {
       setFormData((prev) => ({
@@ -60,8 +79,9 @@ export default function CreateCustomerPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setLoading(true);
-    setError(null);
+    setErrors({});
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
@@ -81,7 +101,7 @@ export default function CreateCustomerPage() {
 
       router.push('/admin/customers');
     } catch (err: any) {
-      setError(err.message);
+      setErrors({ api: err.message });
     } finally {
       setLoading(false);
     }
@@ -107,22 +127,24 @@ export default function CreateCustomerPage() {
             <div className="md:col-span-2">
               <h2 className="text-lg font-semibold mb-2 text-gray-800 border-b pb-2">Contact Information</h2>
             </div>
-            <InputField id="name" label="Contact Name" value={formData.contact.name} onChange={handleChange} placeholder="e.g., John Doe" required />
-            <InputField id="whatsapp_id" label="WhatsApp ID (Phone)" value={formData.contact.whatsapp_id} onChange={handleChange} placeholder="e.g., 26377..." required />
+            <InputField id="name" label="Contact Name" value={formData.contact.name} onChange={handleChange} placeholder="e.g., John Doe" required error={errors.contact?.name} />
+            <InputField id="whatsapp_id" label="WhatsApp ID (Phone)" value={formData.contact.whatsapp_id} onChange={handleChange} placeholder="e.g., 26377..." required error={errors.contact?.whatsapp_id} />
 
             {/* Profile Info */}
             <div className="md:col-span-2">
               <h2 className="text-lg font-semibold mb-2 text-gray-800 border-b pb-2">Customer Profile</h2>
             </div>
-            <InputField id="first_name" label="First Name" value={formData.first_name} onChange={handleChange} placeholder="John" />
-            <InputField id="last_name" label="Last Name" value={formData.last_name} onChange={handleChange} placeholder="Doe" />
-            <InputField id="email" label="Email" type="email" value={formData.email} onChange={handleChange} placeholder="john.doe@example.com" />
+            <InputField id="first_name" label="First Name" value={formData.first_name} onChange={handleChange} placeholder="John" required error={errors.first_name} />
+            <InputField id="last_name" label="Last Name" value={formData.last_name} onChange={handleChange} placeholder="Doe" required error={errors.last_name} />
+            <InputField id="email" label="Email" type="email" value={formData.email} onChange={handleChange} placeholder="john.doe@example.com" required error={errors.email} />
             <InputField id="address_line_1" label="Address" value={formData.address_line_1} onChange={handleChange} placeholder="123 Main St" />
             <InputField id="city" label="City" value={formData.city} onChange={handleChange} placeholder="Harare" />
-            <InputField id="country" label="Country" value={formData.country} onChange={handleChange} placeholder="Zimbabwe" />
+            <SelectField id="country" label="Country" value={formData.country} onChange={handleChange} required>
+                {countries.map(country => <option key={country} value={country}>{country}</option>)}
+            </SelectField>
           </div>
 
-          {error && (
+          {errors.api && (
             <div className="mt-4 rounded-xl bg-red-500/20 p-4 border border-red-500/30">
                 <div className="flex">
                 <div className="flex-shrink-0">
@@ -131,7 +153,7 @@ export default function CreateCustomerPage() {
                     </svg>
                 </div>
                 <div className="ml-3">
-                    <p className="text-sm text-red-400">{error}</p>
+                    <p className="text-sm text-red-400">{errors.api}</p>
                 </div>
                 </div>
             </div>
