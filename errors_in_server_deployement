@@ -52,4 +52,4 @@ Dockerfile:20
 
 target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
 
-root@srv967860:~/HANNA# 
+root@srv967860:~/HANNA#+

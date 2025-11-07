@@ -13,6 +13,23 @@ interface PaginatedResponse {
   results: WarrantyClaim[];
 }
 
+const SkeletonRow = () => (
+    <tr className="animate-pulse">
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </td>
+    </tr>
+);
+
 export default function WarrantyClaimsPage() {
   const [claims, setClaims] = useState<WarrantyClaim[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,34 +62,44 @@ export default function WarrantyClaimsPage() {
       </div>
 
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
-        {loading && <p className="text-center text-gray-500 py-4">Loading warranty claims...</p>}
         {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
-        {!loading && !error && (
-          <div className="hidden md:block overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+                <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Claim ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {claims.map((claim) => (
-                  <Link href={`/manufacturer/warranty-claims/${claim.claim_id}`} key={claim.claim_id}>
-                    <tr className="hover:bg-gray-50 cursor-pointer">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">{claim.claim_id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{claim.product_name} (SN: {claim.product_serial_number})</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.status}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(claim.created_at).toLocaleDateString()}</td>
-                    </tr>
-                  </Link>
-                ))}
-              </tbody>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                    <>
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                    </>
+                ) : (
+                    claims.map((claim) => (
+                        <Link href={`/manufacturer/warranty-claims/${claim.claim_id}`} key={claim.claim_id}>
+                            <tr className="hover:bg-gray-50 cursor-pointer">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">{claim.claim_id}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{claim.product_name} (SN: {claim.product_serial_number})</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${claim.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : claim.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    {claim.status}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(claim.created_at).toLocaleDateString()}</td>
+                            </tr>
+                        </Link>
+                    ))
+                )}
+                </tbody>
             </table>
-          </div>
-        )}
+            </div>
       </div>
     </main>
   );
