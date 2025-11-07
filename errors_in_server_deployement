@@ -1,34 +1,71 @@
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.498 
-0.498 > hanna-management-frontend@0.1.0 build
-0.498 > next build
-0.498 
-1.786 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.788 This information is used to shape Next.js' roadmap and prioritize features.
-1.788 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.788 https://nextjs.org/telemetry
-1.788 
-1.803    ▲ Next.js 16.0.1 (Turbopack)
-1.804 
-1.866  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-1.919    Creating an optimized production build ...
-19.79  ✓ Compiled successfully in 17.1s
-19.80    Running TypeScript ...
-26.53 Failed to compile.
-26.53 
-26.53 ./app/manufacturer/(protected)/warranty-claims/page.tsx:106:105
-26.53 Type error: Type 'WarrantyClaim | null' is not assignable to type 'WarrantyClaim | null'. Two different types with this name exist, but they are unrelated.
-26.53   Property 'customer_name' is missing in type 'WarrantyClaim' but required in type 'WarrantyClaim'.
-26.53 
-26.53   104 |         )}
-26.53   105 |       </div>
-26.53 > 106 |       <WarrantyClaimModal isOpen={isModalOpen} onClose={closeModal} onUpdateStatus={handleUpdateStatus} claim={selectedClaim} />
-26.53       |                                                                                                         ^
-26.53   107 |     </main>
-26.53   108 |   );
-26.53   109 | }
-26.60 Next.js build worker exited with code: 1 and signal: null
+0.597 
+0.597 > hanna-management-frontend@0.1.0 build
+0.597 > next build
+0.597 
+2.001 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+2.001 This information is used to shape Next.js' roadmap and prioritize features.
+2.001 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+2.001 https://nextjs.org/telemetry
+2.001 
+2.036    ▲ Next.js 16.0.1 (Turbopack)
+2.036 
+2.141  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+2.213    Creating an optimized production build ...
+22.66 
+22.66 > Build error occurred
+22.66 Error: Turbopack build failed with 2 errors:
+22.66 ./app/technician/login/page.tsx:6:1
+22.66 Export FiHardHat doesn't exist in target module
+22.66   4 | import { useRouter } from 'next/navigation';
+22.66   5 | import { loginAction } from '@/app/store/authStore';
+22.66 > 6 | import { FiUser, FiLock, FiLogIn, FiHardHat } from 'react-icons/fi';
+22.66     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22.66   7 |
+22.66   8 | export default function TechnicianLoginPage() {
+22.66   9 |   const [username, setUsername] = useState('');
+22.66 
+22.66 The export FiHardHat was not found in module [project]/node_modules/react-icons/fi/index.mjs [app-client] (ecmascript).
+22.66 Did you mean to import FiHeart?
+22.66 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+22.66 
+22.66 Import traces:
+22.66   Client Component Browser:
+22.66     ./app/technician/login/page.tsx [Client Component Browser]
+22.66     ./app/technician/login/page.tsx [Server Component]
+22.66 
+22.66   Client Component SSR:
+22.66     ./app/technician/login/page.tsx [Client Component SSR]
+22.66     ./app/technician/login/page.tsx [Server Component]
+22.66 
+22.66 
+22.66 ./app/technician/login/page.tsx:6:1
+22.66 Export FiHardHat doesn't exist in target module
+22.66   4 | import { useRouter } from 'next/navigation';
+22.66   5 | import { loginAction } from '@/app/store/authStore';
+22.66 > 6 | import { FiUser, FiLock, FiLogIn, FiHardHat } from 'react-icons/fi';
+22.66     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22.66   7 |
+22.66   8 | export default function TechnicianLoginPage() {
+22.66   9 |   const [username, setUsername] = useState('');
+22.66 
+22.66 The export FiHardHat was not found in module [project]/node_modules/react-icons/fi/index.mjs [app-ssr] (ecmascript).
+22.66 Did you mean to import FiHeart?
+22.66 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+22.66 
+22.66 Import traces:
+22.66   Client Component Browser:
+22.66     ./app/technician/login/page.tsx [Client Component Browser]
+22.66     ./app/technician/login/page.tsx [Server Component]
+22.66 
+22.66   Client Component SSR:
+22.66     ./app/technician/login/page.tsx [Client Component SSR]
+22.66     ./app/technician/login/page.tsx [Server Component]
+22.66 
+22.66 
+22.66     at <unknown> (./app/technician/login/page.tsx:6:1)
+22.66     at <unknown> (./app/technician/login/page.tsx:6:1)
 ------
 Dockerfile:20
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction } from '@/app/store/authStore';
-import { FiUser, FiLock, FiLogIn, FiHardHat } from 'react-icons/fi';
+import { FiUser, FiLock, FiLogIn, FiTool } from 'react-icons/fi';
 
 export default function TechnicianLoginPage() {
   const [username, setUsername] = useState('');
@@ -46,7 +46,7 @@ export default function TechnicianLoginPage() {
             {/* Header */}
             <div className="text-center mb-8">
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-white/20 mb-4">
-                <FiHardHat className="h-8 w-8 text-white" />
+                <FiTool className="h-8 w-8 text-white" />
               </div>
               <h1 className="text-3xl font-bold text-white">Technician Portal</h1>
               <p className="mt-2 text-white/80">Access your assigned job cards.</p>
