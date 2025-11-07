@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { FiBox } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
