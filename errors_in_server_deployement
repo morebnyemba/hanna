@@ -1,46 +1,32 @@
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-1.787 
-1.787 > hanna-management-frontend@0.1.0 build
-1.787 > next build
-1.787 
-4.356 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-4.356 This information is used to shape Next.js' roadmap and prioritize features.
-4.356 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-4.356 https://nextjs.org/telemetry
-4.356 
-4.376    ▲ Next.js 16.0.1 (Turbopack)
-4.376 
-4.548    Creating an optimized production build ...
-26.94 
-26.94 > Build error occurred
-26.95 Error: Turbopack build failed with 1 errors:
-26.95 ./app/admin/(protected)/customers/create/page.tsx:8:1
-26.95 Module not found: Can't resolve './SelectField'
-26.95    6 | import { useAuthStore } from '@/app/store/authStore';
-26.95    7 | import Link from 'next/link';
-26.95 >  8 | import SelectField from './SelectField';
-26.95      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-26.95    9 |
-26.95   10 | const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '', error }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; error?: string; }) => (
-26.95   11 |     <div>
-26.95 
-26.95 
-26.95 
-26.95 Import traces:
-26.95   Client Component Browser:
-26.95     ./app/admin/(protected)/customers/create/page.tsx [Client Component Browser]
-26.95     ./app/admin/(protected)/customers/create/page.tsx [Server Component]
-26.95 
-26.95   Client Component SSR:
-26.95     ./app/admin/(protected)/customers/create/page.tsx [Client Component SSR]
-26.95     ./app/admin/(protected)/customers/create/page.tsx [Server Component]
-26.95 
-26.95 https://nextjs.org/docs/messages/module-not-found
-26.95 
-26.95 
-26.95     at <unknown> (./app/admin/(protected)/customers/create/page.tsx:8:1)
-26.95     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+0.603 
+0.603 > hanna-management-frontend@0.1.0 build
+0.603 > next build
+0.603 
+1.778 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.779 This information is used to shape Next.js' roadmap and prioritize features.
+1.780 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.780 https://nextjs.org/telemetry
+1.781 
+1.794    ▲ Next.js 16.0.1 (Turbopack)
+1.794 
+1.948    Creating an optimized production build ...
+23.07  ✓ Compiled successfully in 20.3s
+23.08    Running TypeScript ...
+30.96 Failed to compile.
+30.96 
+30.96 ./app/admin/(protected)/customers/create/page.tsx:14:3
+30.96 Type error: Cannot find name 'useEffect'.
+30.96 
+30.96   12 | const [countries, setCountries] = useState([]);
+30.96   13 |
+30.96 > 14 |   useEffect(() => {
+30.96      |   ^
+30.96   15 |     const fetchCountries = async () => {
+30.96   16 |       try {
+30.96   17 |         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+31.03 Next.js build worker exited with code: 1 and signal: null
 ------
 Dockerfile:20
 
@@ -60,4 +46,4 @@ Dockerfile:20
 
 target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
 
-root@srv967860:~/HANNA# 
+root@srv967860:~/HANNA# /

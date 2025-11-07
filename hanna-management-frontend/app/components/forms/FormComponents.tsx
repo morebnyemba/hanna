@@ -17,7 +17,7 @@ export const InputField = ({ id, label, value, onChange, required = false, type 
     </div>
 );
 
-export const SelectField = ({ id, label, value, onChange, children, error }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; error?: string; }) => (
+export const SelectField = ({ id, label, value, onChange, children, error, required = false }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; error?: string; required?: boolean; }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
         <select
@@ -25,6 +25,7 @@ export const SelectField = ({ id, label, value, onChange, children, error }: { i
             name={id}
             value={value}
             onChange={onChange}
+            required={required}
             className={`mt-1 block w-full px-4 py-3 bg-white border ${error ? 'border-red-500' : 'border-gray-300'} rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300`}
         >
             {children}

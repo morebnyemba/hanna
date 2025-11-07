@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUserPlus, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
@@ -9,7 +9,9 @@ import { InputField, SelectField } from '@/app/components/forms/FormComponents';
 
 
 
-const [countries, setCountries] = useState([]);
+export default function CreateCustomerPage() {
+  const [countries, setCountries] = useState([]);
+  const { accessToken } = useAuthStore();
 
   useEffect(() => {
     const fetchCountries = async () => {
@@ -33,8 +35,6 @@ const [countries, setCountries] = useState([]);
       fetchCountries();
     }
   }, [accessToken]);
-
-export default function CreateCustomerPage() {
   const [formData, setFormData] = useState({
     contact: {
       name: '',
@@ -49,7 +49,6 @@ export default function CreateCustomerPage() {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<any>({});
-  const { accessToken } = useAuthStore();
   const router = useRouter();
 
   const validate = () => {

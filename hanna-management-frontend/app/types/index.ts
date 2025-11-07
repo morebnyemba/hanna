@@ -15,3 +15,15 @@ export interface WarrantyClaim {
   status: string;
   created_at: string;
 }
+
+export interface JobCard {
+  job_card_number: string;
+  customer_name: string;
+  customer_whatsapp: string;
+  serialized_item?: {
+    product_name: string;
+    serial_number: string;
+  };
+  status: string;
+  creation_date: string;
+}
