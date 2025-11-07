@@ -58,7 +58,7 @@ export default function Sidebar() {
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-30 flex-shrink-0 w-64 px-2 py-4 overflow-y-auto bg-gray-800 text-white transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-30 flex-shrink-0 w-64 px-2 py-4 overflow-y-auto bg-gray-800 text-white transition-transform duration-300 ease-in-out transform md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex justify-between items-center px-4 mb-6">
           <h2 className="text-2xl font-bold text-center">Hanna Mgt.</h2>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white">
