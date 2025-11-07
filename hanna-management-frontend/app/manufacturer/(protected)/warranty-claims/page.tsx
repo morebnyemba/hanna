@@ -1,4 +1,24 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { FiShield } from 'react-icons/fi';
+import apiClient from '@/lib/apiClient';
 import WarrantyClaimModal from '@/app/components/manufacturer/modals/WarrantyClaimModal';
+
+interface WarrantyClaim {
+  claim_id: string;
+  product_name: string;
+  product_serial_number: string;
+  status: string;
+  created_at: string;
+}
+
+interface PaginatedResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: WarrantyClaim[];
+}
 
 export default function WarrantyClaimsPage() {
   const [claims, setClaims] = useState<WarrantyClaim[]>([]);

@@ -1,34 +1,40 @@
+ => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      27.3s
+ => [frontend] resolving provenance for metadata file                                                                                                                                     0.1s
+ => [celery_io_worker] resolving provenance for metadata file                                                                                                                             0.1s
+ => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
+ => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.0s
+ => [backend] resolving provenance for metadata file                                                                                                                                      0.0s
+ => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.0s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.549 
-0.549 > hanna-management-frontend@0.1.0 build
-0.549 > next build
-0.549 
-1.828 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.829 This information is used to shape Next.js' roadmap and prioritize features.
-1.829 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.829 https://nextjs.org/telemetry
-1.829 
-1.845    ▲ Next.js 16.0.1 (Turbopack)
-1.845 
-1.915  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-1.977    Creating an optimized production build ...
-21.09  ✓ Compiled successfully in 18.3s
-21.11    Running TypeScript ...
-27.97 Failed to compile.
-27.97 
-27.97 ./app/manufacturer/(protected)/products/page.tsx:109:59
-27.97 Type error: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
-27.97   Type 'undefined' is not assignable to type 'number'.
-27.97 
-27.97   107 |                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-27.97   108 |                       <button onClick={() => openModal(product)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-27.97 > 109 |                       <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 ml-4">Delete</button>
-27.97       |                                                           ^
-27.97   110 |                     </td>
-27.97   111 |                   </tr>
-27.97   112 |                 ))}
-28.05 Next.js build worker exited with code: 1 and signal: null
+0.446 
+0.446 > hanna-management-frontend@0.1.0 build
+0.446 > next build
+0.446 
+1.510 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.511 This information is used to shape Next.js' roadmap and prioritize features.
+1.511 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.511 https://nextjs.org/telemetry
+1.511 
+1.523    ▲ Next.js 16.0.1 (Turbopack)
+1.523 
+1.582  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+1.643    Creating an optimized production build ...
+20.19  ✓ Compiled successfully in 17.7s
+20.22    Running TypeScript ...
+27.02 Failed to compile.
+27.02 
+27.02 ./app/manufacturer/(protected)/warranty-claims/page.tsx:4:31
+27.02 Type error: Cannot find name 'useState'.
+27.02 
+27.02   2 |
+27.02   3 | export default function WarrantyClaimsPage() {
+27.02 > 4 |   const [claims, setClaims] = useState<WarrantyClaim[]>([]);
+27.02     |                               ^
+27.02   5 |   const [loading, setLoading] = useState(true);
+27.02   6 |   const [error, setError] = useState<string | null>(null);
+27.02   7 |   const [isModalOpen, setIsModalOpen] = useState(false);
+27.08 Next.js build worker exited with code: 1 and signal: null
 ------
 Dockerfile:20
 
