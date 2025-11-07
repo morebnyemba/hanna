@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { FiBox } from 'react-icons/fi';
+import apiClient from '@/lib/apiClient';
 import ProductModal from '@/app/components/manufacturer/modals/ProductModal';
 
 export default function ProductsPage() {
