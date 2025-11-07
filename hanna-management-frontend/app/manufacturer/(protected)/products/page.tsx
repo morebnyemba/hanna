@@ -5,6 +5,21 @@ import { FiBox } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import ProductModal from '@/app/components/manufacturer/modals/ProductModal';
 
+interface Product {
+  id: number;
+  name: string;
+  sku: string;
+  price: number;
+  product_type: string;
+}
+
+interface PaginatedResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Product[];
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
