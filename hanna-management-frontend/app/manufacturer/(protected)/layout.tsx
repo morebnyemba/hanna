@@ -1,22 +1,49 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
-import Sidebar from '@/app/components/manufacturer/Sidebar';
+import { useState, ReactNode, useEffect } from 'react';
+import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiShield, FiBox, FiSettings, FiCheckSquare } from 'react-icons/fi';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { FiMenu } from 'react-icons/fi';
 
-export default function ManufacturerLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthStore();
-  const router = useRouter();
+const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React.ElementType; children: ReactNode }) => {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
+  return (
+    <Link href={href}>
+      <span className={`flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors duration-150 ${
+        isActive
+          ? 'bg-gray-700 text-white'
+          : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+      }`}>
+        <Icon className="w-5 h-5 mr-3" />
+        {children}
+      </span>
+    </Link>
+  );
+};
+
+export default function ManufacturerLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/manufacturer/login');
+  };
 
   useEffect(() => {
     if (!user) {
       router.push('/manufacturer/login');
     }
   }, [user, router]);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   if (!user) {
     return (
@@ -27,31 +54,50 @@ export default function ManufacturerLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
-      <div className="relative flex flex-col flex-1 w-full overflow-y-auto">
-        <header className="md:hidden z-10 py-4 bg-white shadow-md">
-            <div className="container flex items-center justify-between h-full px-6 mx-auto text-purple-600">
-                <button
-                    className="p-1 -ml-1 mr-5 rounded-md focus:outline-none focus:shadow-outline-purple"
-                    onClick={() => setSidebarOpen(true)}
-                    aria-label="Menu"
-                >
-                    <FiMenu size={24} />
-                </button>
-                <span className="font-semibold">Hanna Mgt.</span>
-            </div>
+    <div className="flex h-screen bg-gray-100 font-sans">
+      {/* Sidebar */}
+      <aside className={`z-30 fixed inset-y-0 left-0 w-64 px-2 py-4 overflow-y-auto bg-gray-800 text-white transition-transform duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
+        <div className="flex justify-between items-center px-4 mb-6">
+          <h2 className="text-2xl font-semibold">Hanna Mgt.</h2>
+          <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+            <FiX size={24} />
+          </button>
+        </div>
+        <p className="text-sm text-center text-gray-400">Manufacturer</p>
+        <nav className="space-y-2">
+            <SidebarLink href="/manufacturer/dashboard" icon={FiGrid}>Dashboard</SidebarLink>
+            <SidebarLink href="/manufacturer/job-cards" icon={FiTool}>Job Cards</SidebarLink>
+            <SidebarLink href="/manufacturer/warranty-claims" icon={FiShield}>Warranty Claims</SidebarLink>
+            <SidebarLink href="/manufacturer/products" icon={FiBox}>Products</SidebarLink>
+            <SidebarLink href="/manufacturer/settings" icon={FiSettings}>Settings</SidebarLink>
+            <SidebarLink href="/manufacturer/warranties" icon={FiCheckSquare}>Warranties</SidebarLink>
+        </nav>
+        <div className="absolute bottom-0 w-full left-0 px-2 pb-4">
+           <button onClick={handleLogout} className="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white">
+             <FiLogOut className="w-5 h-5 mr-3" />
+             Logout
+           </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 w-full overflow-y-auto">
+        <header className="z-10 py-4 bg-white shadow-md md:hidden">
+          <div className="container flex items-center justify-between h-full px-6 mx-auto text-purple-600">
+            <button
+              className="p-1 -ml-1 mr-5 rounded-md md:hidden focus:outline-none focus:shadow-outline-purple"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Menu"
+            >
+              <FiMenu size={24} />
+            </button>
+            <span className="font-semibold">Hanna Mgt.</span>
+          </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6">
+        <main className="flex-1 p-2 sm:p-4 md:p-6">
           {children}
         </main>
       </div>
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        ></div>
-      )}
     </div>
   );
 }
