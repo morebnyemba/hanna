@@ -1,193 +1,54 @@
- => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      19.8s
- => CACHED [frontend stage-1 2/4] RUN rm /etc/nginx/conf.d/default.conf                                                                                                                   0.0s
- => CACHED [frontend build 2/7] WORKDIR /app                                                                                                                                              0.0s
- => CACHED [frontend build 3/7] COPY package.json ./                                                                                                                                      0.0s
- => CACHED [frontend build 4/7] COPY package-lock.json ./                                                                                                                                 0.0s
- => CACHED [frontend build 5/7] RUN npm install                                                                                                                                           0.0s
- => CACHED [frontend build 6/7] COPY . .                                                                                                                                                  0.0s
- => CACHED [frontend build 7/7] RUN npm run build                                                                                                                                         0.0s
- => CACHED [frontend stage-1 3/4] COPY --from=build /app/dist /usr/share/nginx/html                                                                                                       0.0s
- => CACHED [frontend stage-1 4/4] COPY nginx.conf /etc/nginx/conf.d/default.conf                                                                                                          0.0s
- => [frontend] exporting to image                                                                                                                                                         0.0s
- => => exporting layers                                                                                                                                                                   0.0s
- => => writing image sha256:ff7b460091efb2a30ca61964b22a1b8b92845a727979fa06d4219f72c659bdba                                                                                              0.0s
- => => naming to docker.io/library/hanna-frontend                                                                                                                                         0.0s
- => [frontend] resolving provenance for metadata file                                                                                                                                     0.0s
- => [celery_beat 1/5] FROM docker.io/library/python:3.10-slim@sha256:975a1e200a16719060d391eea4ac66ee067d709cc22a32f4ca4737731eae36c0                                                     0.0s
- => => resolve docker.io/library/python:3.10-slim@sha256:975a1e200a16719060d391eea4ac66ee067d709cc22a32f4ca4737731eae36c0                                                                 0.0s
- => [celery_beat internal] load build context                                                                                                                                             0.1s
- => => transferring context: 42.37kB                                                                                                                                                      0.1s
- => CACHED [celery_io_worker 2/5] WORKDIR /app                                                                                                                                            0.0s
- => CACHED [celery_io_worker 3/5] COPY requirements.txt /app/                                                                                                                             0.0s
- => CACHED [celery_io_worker 4/5] RUN pip install --no-cache-dir -r requirements.txt                                                                                                      0.0s
- => CACHED [celery_io_worker 5/5] COPY . /app/                                                                                                                                            0.0s
- => [celery_io_worker] exporting to image                                                                                                                                                 0.0s
- => => exporting layers                                                                                                                                                                   0.0s
- => => writing image sha256:3685b4ad44a887e2ef7d64732c2b6b37758e3e641b8804ac93705e9911162383                                                                                              0.0s
- => => naming to docker.io/library/hanna-celery_io_worker                                                                                                                                 0.0s
- => [email_idle_fetcher] exporting to image                                                                                                                                               0.0s
- => => exporting layers                                                                                                                                                                   0.0s
- => => writing image sha256:831001bdf52a782e0e43c4dde3fc10bc165645e901bf93aac19807a6b31cb80f                                                                                              0.0s
- => => naming to docker.io/library/hanna-email_idle_fetcher                                                                                                                               0.0s
- => [celery_cpu_worker] exporting to image                                                                                                                                                0.0s
- => => exporting layers                                                                                                                                                                   0.0s
- => => writing image sha256:94ba1d9a8f8fed746580f481798b874eda7a0a07af7ceb6600b83fb3c6b2ba73                                                                                              0.0s
- => => naming to docker.io/library/hanna-celery_cpu_worker                                                                                                                                0.0s
- => [celery_beat] exporting to image                                                                                                                                                      0.1s
- => => exporting layers                                                                                                                                                                   0.0s
- => => writing image sha256:3983971ead72b40d56ebc5935bc658801000b28ad21d5521718a889403cf8eba                                                                                              0.0s
- => => naming to docker.io/library/hanna-celery_beat                                                                                                                                      0.0s
- => [backend] exporting to image                                                                                                                                                          0.0s
- => => exporting layers                                                                                                                                                                   0.0s
- => => writing image sha256:7dce4f2c187d91512078459e38e95818d117cbe4c809161a7687bf6fb4143985                                                                                              0.0s
- => => naming to docker.io/library/hanna-backend                                                                                                                                          0.0s
- => [celery_io_worker] resolving provenance for metadata file                                                                                                                             0.0s
- => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.0s
- => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.0s
- => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
- => [backend] resolving provenance for metadata file                                                                                                                                      0.0s
+ => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      21.6s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.517 
-0.517 > hanna-management-frontend@0.1.0 build
-0.517 > next build
-0.517 
-1.870 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.870 This information is used to shape Next.js' roadmap and prioritize features.
-1.870 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.870 https://nextjs.org/telemetry
-1.870 
-1.890    ▲ Next.js 16.0.1 (Turbopack)
-1.890 
-1.957  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-2.028    Creating an optimized production build ...
-19.68 
-19.68 > Build error occurred
-19.68 Error: Turbopack build failed with 6 errors:
-19.68 ./app/manufacturer/(protected)/products/page.tsx:1:10
-19.68 Ecmascript file had an error
-19.68 > 1 | import { useEffect, useState } from 'react';
-19.68     |          ^^^^^^^^^
-19.68   2 | import { FiBox } from 'react-icons/fi';
-19.68   3 | import apiClient from '@/lib/apiClient';
-19.68   4 | import ProductModal from '@/app/components/manufacturer/modals/ProductModal';
-19.68 
-19.68 You're importing a component that needs `useEffect`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
-19.68 
-19.68  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
-19.68 
-19.68 
-19.68 
-19.68 
-19.68 ./app/manufacturer/(protected)/products/page.tsx:1:21
-19.68 Ecmascript file had an error
-19.68 > 1 | import { useEffect, useState } from 'react';
-19.68     |                     ^^^^^^^^
-19.68   2 | import { FiBox } from 'react-icons/fi';
-19.68   3 | import apiClient from '@/lib/apiClient';
-19.68   4 | import ProductModal from '@/app/components/manufacturer/modals/ProductModal';
-19.68 
-19.68 You're importing a component that needs `useState`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
-19.68 
-19.68  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
-19.68 
-19.68 
-19.68 
-19.68 
-19.68 ./app/manufacturer/(protected)/warranties/page.tsx:7:10
-19.68 Ecmascript file had an error
-19.68    5 | import apiClient from '@/lib/apiClient';
-19.68    6 | import { useEffect, useState } from 'react';
-19.68 >  7 | import { FiCheckSquare } from 'react-icons/fi';
-19.68      |          ^^^^^^^^^^^^^
-19.68    8 | import apiClient from '@/lib/apiClient';
-19.68    9 | import WarrantyModal from '@/app/components/manufacturer/modals/WarrantyModal';
-19.68   10 |
-19.68 
-19.68 the name `FiCheckSquare` is defined multiple times
-19.68 
-19.68 Import traces:
-19.68   Client Component Browser:
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Client Component Browser]
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Server Component]
-19.68 
-19.68   Client Component SSR:
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Client Component SSR]
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Server Component]
-19.68 
-19.68 
-19.68 ./app/manufacturer/(protected)/warranties/page.tsx:8:8
-19.68 Ecmascript file had an error
-19.68    6 | import { useEffect, useState } from 'react';
-19.68    7 | import { FiCheckSquare } from 'react-icons/fi';
-19.68 >  8 | import apiClient from '@/lib/apiClient';
-19.68      |        ^^^^^^^^^
-19.68    9 | import WarrantyModal from '@/app/components/manufacturer/modals/WarrantyModal';
-19.68   10 |
-19.68   11 | interface Warranty {
-19.68 
-19.68 the name `apiClient` is defined multiple times
-19.68 
-19.68 Import traces:
-19.68   Client Component Browser:
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Client Component Browser]
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Server Component]
-19.68 
-19.68   Client Component SSR:
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Client Component SSR]
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Server Component]
-19.68 
-19.68 
-19.68 ./app/manufacturer/(protected)/warranties/page.tsx:6:10
-19.68 Ecmascript file had an error
-19.68   4 | import { FiCheckSquare } from 'react-icons/fi';
-19.68   5 | import apiClient from '@/lib/apiClient';
-19.68 > 6 | import { useEffect, useState } from 'react';
-19.68     |          ^^^^^^^^^
-19.68   7 | import { FiCheckSquare } from 'react-icons/fi';
-19.68   8 | import apiClient from '@/lib/apiClient';
-19.68   9 | import WarrantyModal from '@/app/components/manufacturer/modals/WarrantyModal';
-19.68 
-19.68 the name `useEffect` is defined multiple times
-19.68 
-19.68 Import traces:
-19.68   Client Component Browser:
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Client Component Browser]
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Server Component]
-19.68 
-19.68   Client Component SSR:
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Client Component SSR]
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Server Component]
-19.68 
-19.68 
-19.68 ./app/manufacturer/(protected)/warranties/page.tsx:6:21
-19.68 Ecmascript file had an error
-19.68   4 | import { FiCheckSquare } from 'react-icons/fi';
-19.68   5 | import apiClient from '@/lib/apiClient';
-19.68 > 6 | import { useEffect, useState } from 'react';
-19.68     |                     ^^^^^^^^
-19.68   7 | import { FiCheckSquare } from 'react-icons/fi';
-19.68   8 | import apiClient from '@/lib/apiClient';
-19.68   9 | import WarrantyModal from '@/app/components/manufacturer/modals/WarrantyModal';
-19.68 
-19.68 the name `useState` is defined multiple times
-19.68 
-19.68 Import traces:
-19.68   Client Component Browser:
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Client Component Browser]
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Server Component]
-19.68 
-19.68   Client Component SSR:
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Client Component SSR]
-19.68     ./app/manufacturer/(protected)/warranties/page.tsx [Server Component]
-19.68 
-19.68 
-19.68     at <unknown> (./app/manufacturer/(protected)/products/page.tsx:1:10)
-19.68     at <unknown> (./app/manufacturer/(protected)/products/page.tsx:1:21)
-19.68     at <unknown> (./app/manufacturer/(protected)/warranties/page.tsx:7:10)
-19.68     at <unknown> (./app/manufacturer/(protected)/warranties/page.tsx:8:8)
-19.68     at <unknown> (./app/manufacturer/(protected)/warranties/page.tsx:6:10)
-19.68     at <unknown> (./app/manufacturer/(protected)/warranties/page.tsx:6:21)
+0.509 
+0.509 > hanna-management-frontend@0.1.0 build
+0.509 > next build
+0.509 
+1.801 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.801 This information is used to shape Next.js' roadmap and prioritize features.
+1.801 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.801 https://nextjs.org/telemetry
+1.801 
+1.819    ▲ Next.js 16.0.1 (Turbopack)
+1.819 
+1.929  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+2.010    Creating an optimized production build ...
+21.46 
+21.46 > Build error occurred
+21.47 Error: Turbopack build failed with 2 errors:
+21.47 ./app/manufacturer/(protected)/warranties/page.tsx:1:10
+21.47 Ecmascript file had an error
+21.47 > 1 | import { useEffect, useState } from 'react';
+21.47     |          ^^^^^^^^^
+21.47   2 | import { FiCheckSquare } from 'react-icons/fi';
+21.47   3 | import apiClient from '@/lib/apiClient';
+21.47   4 | import WarrantyModal from '@/app/components/manufacturer/modals/WarrantyModal';
+21.47 
+21.47 You're importing a component that needs `useEffect`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+21.47 
+21.47  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+21.47 
+21.47 
+21.47 
+21.47 
+21.47 ./app/manufacturer/(protected)/warranties/page.tsx:1:21
+21.47 Ecmascript file had an error
+21.47 > 1 | import { useEffect, useState } from 'react';
+21.47     |                     ^^^^^^^^
+21.47   2 | import { FiCheckSquare } from 'react-icons/fi';
+21.47   3 | import apiClient from '@/lib/apiClient';
+21.47   4 | import WarrantyModal from '@/app/components/manufacturer/modals/WarrantyModal';
+21.47 
+21.47 You're importing a component that needs `useState`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+21.47 
+21.47  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+21.47 
+21.47 
+21.47 
+21.47 
+21.47     at <unknown> (./app/manufacturer/(protected)/warranties/page.tsx:1:10)
+21.47     at <unknown> (./app/manufacturer/(protected)/warranties/page.tsx:1:21)
 ------
 Dockerfile:20
 
@@ -206,5 +67,3 @@ Dockerfile:20
 --------------------
 
 target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
-
-root@srv967860:~/HANNA# 

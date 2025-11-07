@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from 'react';
 import { FiCheckSquare } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
