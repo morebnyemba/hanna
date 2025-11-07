@@ -65,6 +65,15 @@ class Installer(models.Model):
     def __str__(self):
         return self.technician.user.get_full_name() or self.technician.user.username
 
+class CalendarEvent(models.Model):
+    title = models.CharField(max_length=200)
+    start = models.DateTimeField()
+    end = models.DateTimeField()
+    technician = models.ForeignKey(Technician, on_delete=models.CASCADE, related_name='events')
+
+    def __str__(self):
+        return self.title
+
 class Warranty(models.Model):
     """
     Represents a warranty for a specific product purchased by a customer.
