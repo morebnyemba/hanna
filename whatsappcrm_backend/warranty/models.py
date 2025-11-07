@@ -25,19 +25,45 @@ class Manufacturer(models.Model):
         return self.name
 
 class Technician(models.Model):
-    """
-    Represents a technician who can be assigned to jobs.
-    """
+    class TechnicianType(models.TextChoices):
+        INSTALLER = 'installer', _('Installer')
+        FACTORY = 'factory', _('Factory')
+        CALLOUT = 'callout', _('Callout')
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='technician_profile'
+    )
+    technician_type = models.CharField(
+        _("Technician Type"),
+        max_length=20,
+        choices=TechnicianType.choices,
+        default=TechnicianType.INSTALLER
+    )
+    manufacturer = models.ForeignKey(
+        Manufacturer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='technicians',
+        help_text=_("The manufacturer this technician is associated with (if any).")
     )
     specialization = models.CharField(_("Specialization"), max_length=255, blank=True, help_text="e.g., Solar, Plumbing, Electrical")
     contact_phone = models.CharField(_("Contact Phone"), max_length=20, blank=True)
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username
+
+class Installer(models.Model):
+    technician = models.OneToOneField(
+        Technician,
+        on_delete=models.CASCADE,
+        related_name='installer_profile'
+    )
+
+    def __str__(self):
+        return self.technician.user.get_full_name() or self.technician.user.username
 
 class Warranty(models.Model):
     """
