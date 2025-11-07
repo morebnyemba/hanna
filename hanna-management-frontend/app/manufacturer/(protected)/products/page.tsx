@@ -9,7 +9,8 @@ interface Product {
   id: number;
   name: string;
   sku: string;
-  price: number;
+  description: string;
+  price: string;
   product_type: string;
 }
 
@@ -54,12 +55,12 @@ export default function ProductsPage() {
     setIsModalOpen(false);
   };
 
-  const handleSave = async (productData: Partial<Product>) => {
+  const handleSave = (productData: Partial<Product>) => {
     try {
       if (selectedProduct) {
-        await apiClient.put(`/crm-api/manufacturer/products/${selectedProduct.id}/`, productData);
+        apiClient.put(`/crm-api/manufacturer/products/${selectedProduct.id}/`, productData);
       } else {
-        await apiClient.post('/crm-api/manufacturer/products/', productData);
+        apiClient.post('/crm-api/manufacturer/products/', productData);
       }
       fetchProducts();
       closeModal();

@@ -1,33 +1,38 @@
 -----
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.469 
-0.469 > hanna-management-frontend@0.1.0 build
-0.469 > next build
-0.469 
-1.724 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.724 This information is used to shape Next.js' roadmap and prioritize features.
-1.724 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.724 https://nextjs.org/telemetry
-1.724 
-1.750    ▲ Next.js 16.0.1 (Turbopack)
-1.751 
-1.832  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-1.908    Creating an optimized production build ...
-21.58  ✓ Compiled successfully in 18.8s
-21.59    Running TypeScript ...
-28.39 Failed to compile.
-28.39 
-28.40 ./app/manufacturer/(protected)/products/page.tsx:9:44
-28.40 Type error: Cannot find name 'Product'.
-28.40 
-28.40    7 |
-28.40    8 | export default function ProductsPage() {
-28.40 >  9 |   const [products, setProducts] = useState<Product[]>([]);
-28.40      |                                            ^
-28.40   10 |   const [loading, setLoading] = useState(true);
-28.40   11 |   const [error, setError] = useState<string | null>(null);
-28.40   12 |   const [isModalOpen, setIsModalOpen] = useState(false);
-28.45 Next.js build worker exited with code: 1 and signal: null
+0.471 
+0.471 > hanna-management-frontend@0.1.0 build
+0.471 > next build
+0.471 
+1.651 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.651 This information is used to shape Next.js' roadmap and prioritize features.
+1.651 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.651 https://nextjs.org/telemetry
+1.651 
+1.671    ▲ Next.js 16.0.1 (Turbopack)
+1.672 
+1.759  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+1.829    Creating an optimized production build ...
+19.53  ✓ Compiled successfully in 16.9s
+19.54    Running TypeScript ...
+26.16 Failed to compile.
+26.16 
+26.16 ./app/manufacturer/(protected)/products/page.tsx:125:63
+26.16 Type error: Type '(productData: Partial<Product>) => Promise<void>' is not assignable to type '(product: Partial<Product>) => void'.
+26.16   Types of parameters 'productData' and 'product' are incompatible.
+26.16     Type 'Partial<Product>' is not assignable to type 'Partial<Product>'. Two different types with this name exist, but they are unrelated.
+26.16       Types of property 'price' are incompatible.
+26.16         Type 'string | undefined' is not assignable to type 'number | undefined'.
+26.16           Type 'string' is not assignable to type 'number'.
+26.16 
+26.16   123 |         )}
+26.16   124 |       </div>
+26.16 > 125 |       <ProductModal isOpen={isModalOpen} onClose={closeModal} onSave={handleSave} product={selectedProduct} />
+26.16       |                                                               ^
+26.16   126 |     </main>
+26.16   127 |   );
+26.16   128 | }
+26.23 Next.js build worker exited with code: 1 and signal: null
 ------
 Dockerfile:20
 
