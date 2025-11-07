@@ -61,7 +61,8 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDelete = async (productId: number) => {
+  const handleDelete = async (productId: number | undefined) => {
+    if (!productId) return;
     try {
       await apiClient.delete(`/crm-api/manufacturer/products/${productId}/`);
       fetchProducts();
