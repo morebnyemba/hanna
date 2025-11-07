@@ -1,15 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-interface Product {
-  id?: number;
-  name: string;
-  sku: string;
-  description: string;
-  price: string;
-  product_type: string;
-}
+import { Product } from '@/app/types';
 
 interface ProductModalProps {
   isOpen: boolean;

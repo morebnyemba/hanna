@@ -4,15 +4,7 @@ import { useEffect, useState } from 'react';
 import { FiBox } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import ProductModal from '@/app/components/manufacturer/modals/ProductModal';
-
-interface Product {
-  id: number;
-  name: string;
-  sku: string;
-  description: string;
-  price: string;
-  product_type: string;
-}
+import { Product } from '@/app/types';
 
 interface PaginatedResponse {
   count: number;
@@ -55,12 +47,12 @@ export default function ProductsPage() {
     setIsModalOpen(false);
   };
 
-  const handleSave = (productData: Partial<Product>) => {
+  const handleSave = async (productData: Partial<Product>) => {
     try {
       if (selectedProduct) {
-        apiClient.put(`/crm-api/manufacturer/products/${selectedProduct.id}/`, productData);
+        await apiClient.put(`/crm-api/manufacturer/products/${selectedProduct.id}/`, productData);
       } else {
-        apiClient.post('/crm-api/manufacturer/products/', productData);
+        await apiClient.post('/crm-api/manufacturer/products/', productData);
       }
       fetchProducts();
       closeModal();
