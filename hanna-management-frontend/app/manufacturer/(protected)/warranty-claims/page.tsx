@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { FiShield } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
-import WarrantyClaimModal from '@/app/components/manufacturer/modals/WarrantyClaimModal';
 import { WarrantyClaim } from '@/app/types';
+import Link from 'next/link';
 
 interface PaginatedResponse {
   count: number;
@@ -17,8 +17,6 @@ export default function WarrantyClaimsPage() {
   const [claims, setClaims] = useState<WarrantyClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
 
   const fetchClaims = async () => {
     setLoading(true);
@@ -36,28 +34,6 @@ export default function WarrantyClaimsPage() {
   useEffect(() => {
     fetchClaims();
   }, []);
-
-  const openModal = (claim: WarrantyClaim) => {
-    setSelectedClaim(claim);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setSelectedClaim(null);
-    setIsModalOpen(false);
-  };
-
-  const handleUpdateStatus = async (status: string) => {
-    if (selectedClaim) {
-      try {
-        await apiClient.patch(`/crm-api/manufacturer/warranty-claims/${selectedClaim.claim_id}/`, { status });
-        fetchClaims();
-        closeModal();
-      } catch (err: any) {
-        setError(err.message || 'Failed to update status.');
-      }
-    }
-  };
 
   return (
     <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
@@ -84,19 +60,20 @@ export default function WarrantyClaimsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {claims.map((claim) => (
-                  <tr key={claim.claim_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openModal(claim)}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">{claim.claim_id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{claim.product_name} (SN: {claim.product_serial_number})</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.status}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(claim.created_at).toLocaleDateString()}</td>
-                  </tr>
+                  <Link href={`/manufacturer/warranty-claims/${claim.claim_id}`} key={claim.claim_id}>
+                    <tr className="hover:bg-gray-50 cursor-pointer">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">{claim.claim_id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{claim.product_name} (SN: {claim.product_serial_number})</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{claim.status}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(claim.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  </Link>
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
-      <WarrantyClaimModal isOpen={isModalOpen} onClose={closeModal} onUpdateStatus={handleUpdateStatus} claim={selectedClaim} />
     </main>
   );
 }
