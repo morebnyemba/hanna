@@ -1,40 +1,59 @@
- => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      31.3s
- => [frontend] resolving provenance for metadata file                                                                                                                                     0.0s
- => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
+ => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      21.3s
+ => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.0s
  => [celery_io_worker] resolving provenance for metadata file                                                                                                                             0.0s
  => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.0s
  => [backend] resolving provenance for metadata file                                                                                                                                      0.0s
- => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.0s
+ => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-2.463 
-2.463 > hanna-management-frontend@0.1.0 build
-2.463 > next build
-2.463 
-4.567 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-4.568 This information is used to shape Next.js' roadmap and prioritize features.
-4.568 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-4.568 https://nextjs.org/telemetry
-4.568 
-4.584    ▲ Next.js 16.0.1 (Turbopack)
-4.585 
-4.696  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-4.771    Creating an optimized production build ...
-24.42  ✓ Compiled successfully in 18.8s
-24.45    Running TypeScript ...
-31.08 Failed to compile.
-31.08 
-31.08 ./app/manufacturer/(protected)/products/page.tsx:4:35
-31.08 Type error: Cannot find name 'useState'.
-31.08 
-31.08   2 |
-31.08   3 | export default function ProductsPage() {
-31.08 > 4 |   const [products, setProducts] = useState<Product[]>([]);
-31.08     |                                   ^
-31.08   5 |   const [loading, setLoading] = useState(true);
-31.08   6 |   const [error, setError] = useState<string | null>(null);
-31.08   7 |   const [isModalOpen, setIsModalOpen] = useState(false);
-31.15 Next.js build worker exited with code: 1 and signal: null
+0.574 
+0.574 > hanna-management-frontend@0.1.0 build
+0.574 > next build
+0.574 
+1.863 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.865 This information is used to shape Next.js' roadmap and prioritize features.
+1.865 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.865 https://nextjs.org/telemetry
+1.865 
+1.889    ▲ Next.js 16.0.1 (Turbopack)
+1.889 
+1.981  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+2.069    Creating an optimized production build ...
+21.16 
+21.16 > Build error occurred
+21.16 Error: Turbopack build failed with 2 errors:
+21.16 ./app/manufacturer/(protected)/products/page.tsx:1:10
+21.16 Ecmascript file had an error
+21.16 > 1 | import { useEffect, useState } from 'react';
+21.16     |          ^^^^^^^^^
+21.16   2 | import { FiBox } from 'react-icons/fi';
+21.16   3 | import apiClient from '@/lib/apiClient';
+21.16   4 | import ProductModal from '@/app/components/manufacturer/modals/ProductModal';
+21.16 
+21.16 You're importing a component that needs `useEffect`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+21.16 
+21.16  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+21.16 
+21.16 
+21.16 
+21.16 
+21.16 ./app/manufacturer/(protected)/products/page.tsx:1:21
+21.16 Ecmascript file had an error
+21.16 > 1 | import { useEffect, useState } from 'react';
+21.16     |                     ^^^^^^^^
+21.16   2 | import { FiBox } from 'react-icons/fi';
+21.16   3 | import apiClient from '@/lib/apiClient';
+21.16   4 | import ProductModal from '@/app/components/manufacturer/modals/ProductModal';
+21.16 
+21.16 You're importing a component that needs `useState`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+21.16 
+21.16  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+21.16 
+21.16 
+21.16 
+21.16 
+21.16     at <unknown> (./app/manufacturer/(protected)/products/page.tsx:1:10)
+21.16     at <unknown> (./app/manufacturer/(protected)/products/page.tsx:1:21)
 ------
 Dockerfile:20
 

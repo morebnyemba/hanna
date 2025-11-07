@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { FiCheckSquare } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
+import { useEffect, useState } from 'react';
+import { FiCheckSquare } from 'react-icons/fi';
+import apiClient from '@/lib/apiClient';
 import WarrantyModal from '@/app/components/manufacturer/modals/WarrantyModal';
 
 interface Warranty {
