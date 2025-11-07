@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FiTool } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import JobCardList from './JobCardList';
+import JobCardListSkeleton from './JobCardListSkeleton';
 
 interface JobCard {
   job_card_number: string;
@@ -56,9 +57,8 @@ export default function JobCardsPage() {
       </div>
 
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
-        {loading && <p className="text-center text-gray-500 py-4">Loading job cards...</p>}
         {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
-        {!loading && !error && <JobCardList jobCards={jobCards} />}
+        {loading ? <JobCardListSkeleton /> : <JobCardList jobCards={jobCards} />}
       </div>
     </main>
   );
