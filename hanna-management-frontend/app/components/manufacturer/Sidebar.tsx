@@ -30,7 +30,7 @@ export default function Sidebar({ isSidebarOpen, setSidebarOpen }: { isSidebarOp
 
   useEffect(() => {
     setSidebarOpen(false);
-  }, [pathname, setSidebarOpen]);
+  }, [pathname]);
 
   return (
     <aside className={`absolute inset-y-0 left-0 z-30 flex-shrink-0 w-64 px-2 py-4 overflow-y-auto bg-gray-800 text-white transition-all duration-300 ease-in-out md:relative ${isSidebarOpen ? 'left-0' : '-left-64'}`}>
