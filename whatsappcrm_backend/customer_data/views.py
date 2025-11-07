@@ -53,6 +53,14 @@ class UserRegistrationView(APIView):
             return Response({"message": "User created successfully. Please log in."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django_countries import countries
+
+class CountryListView(APIView):
+    def get(self, request, *args, **kwargs):
+        return Response(countries, status=status.HTTP_200_OK)
+
 class IsInteractionOwnerOrAdmin(permissions.BasePermission):
     """
     Allows read access to any authenticated user.

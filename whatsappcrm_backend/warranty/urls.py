@@ -13,6 +13,7 @@ from .views import (
     ManufacturerProfileView,
     ManufacturerProductViewSet,
     ManufacturerWarrantyViewSet,
+    TechnicianJobCardViewSet,
 )
 
 app_name = 'warranty_api'
@@ -20,6 +21,7 @@ app_name = 'warranty_api'
 router = DefaultRouter()
 router.register(r'manufacturer/products', ManufacturerProductViewSet, basename='manufacturer-product')
 router.register(r'manufacturer/warranties', ManufacturerWarrantyViewSet, basename='manufacturer-warranty')
+router.register(r'technician/job-cards', TechnicianJobCardViewSet, basename='technician-job-card')
 
 manufacturer_patterns = [
     path('dashboard-stats/', ManufacturerDashboardStatsAPIView.as_view(), name='manufacturer_dashboard_stats'),

@@ -558,6 +558,7 @@ class JobCard(models.Model):
     creation_date = models.DateField(_("Creation Date"), null=True, blank=True)
     status = models.CharField(_("Status"), max_length=50, choices=Status.choices, default=Status.OPEN, db_index=True)
     job_card_details = models.JSONField(_("Extracted Job Card Details"), null=True, blank=True, help_text=_("Raw JSON data extracted from the document."))
+    technician = models.ForeignKey('warranty.Technician', on_delete=models.SET_NULL, null=True, blank=True, related_name='job_cards')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

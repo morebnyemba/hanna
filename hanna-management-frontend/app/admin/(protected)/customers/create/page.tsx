@@ -24,7 +24,30 @@ const InputField = ({ id, label, value, onChange, required = false, type = 'text
     </div>
 );
 
-const countries = ["Zimbabwe", "South Africa", "Zambia", "Mozambique"]; // Example list
+const [countries, setCountries] = useState([]);
+
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        const response = await fetch(`${apiUrl}/crm-api/customer-data/countries/`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch countries');
+        }
+        const data = await response.json();
+        setCountries(data);
+      } catch (err: any) {
+        setErrors({ api: err.message });
+      }
+    };
+    if (accessToken) {
+      fetchCountries();
+    }
+  }, [accessToken]);
 
 export default function CreateCustomerPage() {
   const [formData, setFormData] = useState({
@@ -140,7 +163,7 @@ export default function CreateCustomerPage() {
             <InputField id="address_line_1" label="Address" value={formData.address_line_1} onChange={handleChange} placeholder="123 Main St" />
             <InputField id="city" label="City" value={formData.city} onChange={handleChange} placeholder="Harare" />
             <SelectField id="country" label="Country" value={formData.country} onChange={handleChange} required>
-                {countries.map(country => <option key={country} value={country}>{country}</option>)}
+                {Object.entries(countries).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
             </SelectField>
           </div>
 

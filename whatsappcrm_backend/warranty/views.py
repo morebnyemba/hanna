@@ -71,7 +71,22 @@ class ManufacturerWarrantyClaimListView(generics.ListAPIView):
         return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
 
 class TechnicianDashboardStatsAPIView(APIView):
-    pass
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        technician = request.user.technician_profile
+
+        assigned_job_cards = JobCard.objects.filter(technician=technician)
+        completed_job_cards = assigned_job_cards.filter(status='completed').count()
+        pending_job_cards = assigned_job_cards.filter(status__in=['open', 'in_progress']).count()
+
+        stats = {
+            'assigned_job_cards': assigned_job_cards.count(),
+            'completed_job_cards': completed_job_cards,
+            'pending_job_cards': pending_job_cards,
+        }
+
+        return Response(stats)
 
 class ManufacturerProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
@@ -114,3 +129,10 @@ class ManufacturerProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user.manufacturer_profile
+
+class TechnicianJobCardViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = JobCardSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return JobCard.objects.filter(technician=self.request.user.technician_profile)
