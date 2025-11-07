@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiList } from 'react-icons/fi';
+import { FiList, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 
@@ -10,6 +10,17 @@ interface ProductCategory {
   name: string;
   description: string;
 }
+
+const SkeletonRow = () => (
+    <tr className="animate-pulse">
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </td>
+    </tr>
+);
 
 export default function ProductCategoriesPage() {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -46,10 +57,6 @@ export default function ProductCategoriesPage() {
     }
   }, [accessToken]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full"><p>Loading Product Categories...</p></div>;
-  }
-
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
   }
@@ -62,7 +69,8 @@ export default function ProductCategoriesPage() {
           Product Categories
         </h1>
         <Link href="/admin/product-categories/create">
-          <span className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          <span className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition">
+            <FiPlus className="mr-2" />
             Create Category
           </span>
         </Link>
@@ -78,12 +86,21 @@ export default function ProductCategoriesPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {categories.map((category) => (
-                <tr key={category.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{category.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.description}</td>
-                </tr>
-              ))}
+                {loading ? (
+                    <>
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                    </>
+                ) : (
+                    categories.map((category) => (
+                        <tr key={category.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{category.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{category.description}</td>
+                        </tr>
+                    ))
+                )}
             </tbody>
           </table>
         </div>

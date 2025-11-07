@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiArchive } from 'react-icons/fi';
+import { FiArchive, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 
@@ -14,6 +14,20 @@ interface SerializedItem {
     name: string;
   };
 }
+
+const SkeletonRow = () => (
+    <tr className="animate-pulse">
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
+    </tr>
+);
 
 export default function SerializedItemsPage() {
   const [items, setItems] = useState<SerializedItem[]>([]);
@@ -50,10 +64,6 @@ export default function SerializedItemsPage() {
     }
   }, [accessToken]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full"><p>Loading Serialized Items...</p></div>;
-  }
-
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
   }
@@ -66,7 +76,8 @@ export default function SerializedItemsPage() {
           Serialized Items
         </h1>
         <Link href="/admin/serialized-items/create">
-          <span className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          <span className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition">
+            <FiPlus className="mr-2" />
             Create Item
           </span>
         </Link>
@@ -83,13 +94,27 @@ export default function SerializedItemsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.serial_number}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.product?.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.status}</td>
-                </tr>
-              ))}
+                {loading ? (
+                    <>
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                    </>
+                ) : (
+                    items.map((item) => (
+                        <tr key={item.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.serial_number}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.product?.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.status === 'in_stock' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                {item.status.replace('_', ' ')}
+                            </span>
+                        </td>
+                        </tr>
+                    ))
+                )}
             </tbody>
           </table>
         </div>

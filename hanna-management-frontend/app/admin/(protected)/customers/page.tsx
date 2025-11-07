@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiUsers } from 'react-icons/fi';
+import { FiUsers, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 
@@ -21,6 +21,23 @@ interface Customer {
   postal_code: string;
   country: string;
 }
+
+const SkeletonRow = () => (
+    <tr className="animate-pulse">
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </td>
+    </tr>
+);
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -57,10 +74,6 @@ export default function CustomersPage() {
     }
   }, [accessToken]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full"><p>Loading Customers...</p></div>;
-  }
-
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
   }
@@ -73,7 +86,8 @@ export default function CustomersPage() {
           Customers
         </h1>
         <Link href="/admin/customers/create">
-          <span className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          <span className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition">
+            <FiPlus className="mr-2" />
             Create Customer
           </span>
         </Link>
@@ -91,18 +105,30 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {customers.map((customer) => (
-                <tr key={customer.contact.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : customer.contact.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.contact.whatsapp_id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {customer.address_line_1} {customer.address_line_2}, {customer.city}
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <>
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                </>
+              ) : (
+                customers.map((customer) => (
+                    <tr key={customer.contact.id} className="hover:bg-gray-50 transition-colors duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <Link href={`/admin/customers/${customer.contact.id}`} className="text-purple-600 hover:text-purple-800">
+                                {customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : customer.contact.name}
+                            </Link>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.contact.whatsapp_id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {customer.address_line_1} {customer.address_line_2}, {customer.city}
+                        </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

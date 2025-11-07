@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiPackage } from 'react-icons/fi';
+import { FiPackage, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 
@@ -15,6 +15,23 @@ interface Product {
     name: string;
   };
 }
+
+const SkeletonRow = () => (
+    <tr className="animate-pulse">
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
+    </tr>
+);
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -51,10 +68,6 @@ export default function ProductsPage() {
     }
   }, [accessToken]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full"><p>Loading Products...</p></div>;
-  }
-
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
   }
@@ -67,7 +80,8 @@ export default function ProductsPage() {
           Products
         </h1>
         <Link href="/admin/products/create">
-          <span className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          <span className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition">
+            <FiPlus className="mr-2" />
             Create Product
           </span>
         </Link>
@@ -85,14 +99,24 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.sku}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category?.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.price}</td>
-                </tr>
-              ))}
+                {loading ? (
+                    <>
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                    </>
+                ) : (
+                    products.map((product) => (
+                        <tr key={product.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.sku}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category?.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.price}</td>
+                        </tr>
+                    ))
+                )}
             </tbody>
           </table>
         </div>

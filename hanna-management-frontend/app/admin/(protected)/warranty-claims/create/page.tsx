@@ -2,8 +2,41 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiShield } from 'react-icons/fi';
+import { FiShield, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import Link from 'next/link';
+
+const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '' }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <input
+            type={type}
+            id={id}
+            name={id}
+            value={value}
+            onChange={onChange}
+            required={required}
+            placeholder={placeholder}
+            className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+        />
+    </div>
+);
+
+const TextAreaField = ({ id, label, value, onChange, required = false, placeholder = '' }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; required?: boolean; placeholder?: string; }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
+        <textarea
+            id={id}
+            name={id}
+            value={value}
+            onChange={onChange}
+            required={required}
+            placeholder={placeholder}
+            rows={3}
+            className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+        />
+    </div>
+);
 
 export default function CreateWarrantyClaimPage() {
   const [formData, setFormData] = useState({
@@ -54,31 +87,54 @@ export default function CreateWarrantyClaimPage() {
 
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
           <FiShield className="mr-3" />
           Create Warranty Claim
         </h1>
+        <Link href="/admin/warranty-claims" className="flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">
+            <FiArrowLeft className="mr-2" />
+            Back to List
+        </Link>
       </div>
 
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="serial_number" className="block text-sm font-medium text-gray-700">Serial Number</label>
-              <input type="text" name="serial_number" id="serial_number" value={formData.serial_number} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            <div className="md:col-span-2">
+                <InputField id="serial_number" label="Serial Number" value={formData.serial_number} onChange={handleChange} placeholder="e.g., 12345-ABCDE" required />
             </div>
             <div className="md:col-span-2">
-              <label htmlFor="description_of_fault" className="block text-sm font-medium text-gray-700">Description of Fault</label>
-              <textarea name="description_of_fault" id="description_of_fault" value={formData.description_of_fault} onChange={handleChange} rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+                <TextAreaField id="description_of_fault" label="Description of Fault" value={formData.description_of_fault} onChange={handleChange} placeholder="Describe the issue with the product in detail." required />
             </div>
           </div>
 
-          {error && <p className="mt-4 text-red-500">{error}</p>}
+          {error && (
+            <div className="mt-4 rounded-xl bg-red-500/20 p-4 border border-red-500/30">
+                <div className="flex">
+                <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div className="ml-3">
+                    <p className="text-sm text-red-400">{error}</p>
+                </div>
+                </div>
+            </div>
+          )}
 
-          <div className="mt-6">
-            <button type="submit" disabled={loading} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400">
-              {loading ? 'Creating...' : 'Create Claim'}
+          <div className="mt-6 flex justify-end">
+            <button type="submit" disabled={loading} className="w-full sm:w-auto flex justify-center py-3 px-6 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02]">
+              {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating...
+                  </>
+              ) : 'Create Claim'}
             </button>
           </div>
         </form>

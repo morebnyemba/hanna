@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiGitMerge } from 'react-icons/fi';
+import { FiGitMerge, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 
@@ -16,6 +16,29 @@ interface Flow {
   created_at: string;
   updated_at: string;
 }
+
+const SkeletonRow = () => (
+    <tr className="animate-pulse">
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </td>
+    </tr>
+);
 
 export default function FlowsPage() {
   const [flows, setFlows] = useState<Flow[]>([]);
@@ -52,10 +75,6 @@ export default function FlowsPage() {
     }
   }, [accessToken]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full"><p>Loading Flows...</p></div>;
-  }
-
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
   }
@@ -68,7 +87,8 @@ export default function FlowsPage() {
           Flows
         </h1>
         <Link href="/admin/flows/create">
-          <span className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          <span className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition">
+            <FiPlus className="mr-2" />
             Create Flow
           </span>
         </Link>
@@ -88,16 +108,28 @@ export default function FlowsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {flows.map((flow) => (
-                <tr key={flow.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{flow.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.description}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.is_active ? 'Yes' : 'No'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.steps_count}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.trigger_keywords.join(', ')}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(flow.created_at).toLocaleDateString()}</td>
-                </tr>
-              ))}
+                {loading ? (
+                    <>
+                        <SkeletonRow />
+                        <SkeletonRow />
+                        <SkeletonRow />
+                    </>
+                ) : (
+                    flows.map((flow) => (
+                        <tr key={flow.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{flow.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.description}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${flow.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {flow.is_active ? 'Yes' : 'No'}
+                            </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.steps_count}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.trigger_keywords.join(', ')}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(flow.created_at).toLocaleDateString()}</td>
+                        </tr>
+                    ))
+                )}
             </tbody>
           </table>
         </div>
