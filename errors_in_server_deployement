@@ -1,71 +1,38 @@
+=> ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      22.7s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.597 
-0.597 > hanna-management-frontend@0.1.0 build
-0.597 > next build
-0.597 
-2.001 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-2.001 This information is used to shape Next.js' roadmap and prioritize features.
-2.001 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-2.001 https://nextjs.org/telemetry
-2.001 
-2.036    ▲ Next.js 16.0.1 (Turbopack)
-2.036 
-2.141  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-2.213    Creating an optimized production build ...
-22.66 
-22.66 > Build error occurred
-22.66 Error: Turbopack build failed with 2 errors:
-22.66 ./app/technician/login/page.tsx:6:1
-22.66 Export FiHardHat doesn't exist in target module
-22.66   4 | import { useRouter } from 'next/navigation';
-22.66   5 | import { loginAction } from '@/app/store/authStore';
-22.66 > 6 | import { FiUser, FiLock, FiLogIn, FiHardHat } from 'react-icons/fi';
-22.66     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-22.66   7 |
-22.66   8 | export default function TechnicianLoginPage() {
-22.66   9 |   const [username, setUsername] = useState('');
-22.66 
-22.66 The export FiHardHat was not found in module [project]/node_modules/react-icons/fi/index.mjs [app-client] (ecmascript).
-22.66 Did you mean to import FiHeart?
-22.66 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-22.66 
-22.66 Import traces:
-22.66   Client Component Browser:
-22.66     ./app/technician/login/page.tsx [Client Component Browser]
-22.66     ./app/technician/login/page.tsx [Server Component]
-22.66 
-22.66   Client Component SSR:
-22.66     ./app/technician/login/page.tsx [Client Component SSR]
-22.66     ./app/technician/login/page.tsx [Server Component]
-22.66 
-22.66 
-22.66 ./app/technician/login/page.tsx:6:1
-22.66 Export FiHardHat doesn't exist in target module
-22.66   4 | import { useRouter } from 'next/navigation';
-22.66   5 | import { loginAction } from '@/app/store/authStore';
-22.66 > 6 | import { FiUser, FiLock, FiLogIn, FiHardHat } from 'react-icons/fi';
-22.66     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-22.66   7 |
-22.66   8 | export default function TechnicianLoginPage() {
-22.66   9 |   const [username, setUsername] = useState('');
-22.66 
-22.66 The export FiHardHat was not found in module [project]/node_modules/react-icons/fi/index.mjs [app-ssr] (ecmascript).
-22.66 Did you mean to import FiHeart?
-22.66 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-22.66 
-22.66 Import traces:
-22.66   Client Component Browser:
-22.66     ./app/technician/login/page.tsx [Client Component Browser]
-22.66     ./app/technician/login/page.tsx [Server Component]
-22.66 
-22.66   Client Component SSR:
-22.66     ./app/technician/login/page.tsx [Client Component SSR]
-22.66     ./app/technician/login/page.tsx [Server Component]
-22.66 
-22.66 
-22.66     at <unknown> (./app/technician/login/page.tsx:6:1)
-22.66     at <unknown> (./app/technician/login/page.tsx:6:1)
+0.412 
+0.412 > hanna-management-frontend@0.1.0 build
+0.412 > next build
+0.412 
+1.588 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.589 This information is used to shape Next.js' roadmap and prioritize features.
+1.589 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.589 https://nextjs.org/telemetry
+1.589 
+1.607    ▲ Next.js 16.0.1 (Turbopack)
+1.607 
+1.739    Creating an optimized production build ...
+22.51 
+22.51 > Build error occurred
+22.52 Error: Turbopack build failed with 1 errors:
+22.52 ./proxy.ts
+22.52 Proxy is missing expected function export name
+22.52 This function is what Next.js runs for every request handled by this proxy (previously called middleware).
+22.52 
+22.52 Why this happens:
+22.52 - You are migrating from `middleware` to `proxy`, but haven't updated the exported function.
+22.52 - The file exists but doesn't export a function.
+22.52 - The export is not a function (e.g., an object or constant).
+22.52 - There's a syntax error preventing the export from being recognized.
+22.52 
+22.52 To fix it:
+22.52 - Ensure this file has either a default or "proxy" function export.
+22.52 
+22.52 Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+22.52 
+22.52 
+22.52     at ignore-listed frames
 ------
 Dockerfile:20
 

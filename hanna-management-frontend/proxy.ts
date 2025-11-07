@@ -7,7 +7,7 @@ interface DecodedToken {
   exp: number;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const authStateCookie = request.cookies.get('auth-storage');
   
