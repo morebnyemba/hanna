@@ -344,6 +344,12 @@ export default function ContactsPage() {
               </CardContent>
             </Card>
           </div>
+        ) : searchTerm && !isLoadingContacts && contacts.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 p-10 text-center">
+                <FiSearch className="h-24 w-24 mb-6 text-slate-300 dark:text-slate-600" />
+                <p className="text-lg font-medium">No results for "{searchTerm}"</p>
+                <p className="text-sm">Try searching for something else.</p>
+            </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 p-10 text-center">
             <FiUsers className="h-24 w-24 mb-6 text-slate-300 dark:text-slate-600" />

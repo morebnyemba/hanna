@@ -1,32 +1,382 @@
+ => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                          31.2s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.603 
-0.603 > hanna-management-frontend@0.1.0 build
-0.603 > next build
-0.603 
-1.778 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.779 This information is used to shape Next.js' roadmap and prioritize features.
-1.780 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.780 https://nextjs.org/telemetry
-1.781 
-1.794    ▲ Next.js 16.0.1 (Turbopack)
-1.794 
-1.948    Creating an optimized production build ...
-23.07  ✓ Compiled successfully in 20.3s
-23.08    Running TypeScript ...
-30.96 Failed to compile.
-30.96 
-30.96 ./app/admin/(protected)/customers/create/page.tsx:14:3
-30.96 Type error: Cannot find name 'useEffect'.
-30.96 
-30.96   12 | const [countries, setCountries] = useState([]);
-30.96   13 |
-30.96 > 14 |   useEffect(() => {
-30.96      |   ^
-30.96   15 |     const fetchCountries = async () => {
-30.96   16 |       try {
-30.96   17 |         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-31.03 Next.js build worker exited with code: 1 and signal: null
+0.407 
+0.407 > hanna-management-frontend@0.1.0 build
+0.407 > next build
+0.407 
+1.592 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.592 This information is used to shape Next.js' roadmap and prioritize features.
+1.592 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.593 https://nextjs.org/telemetry
+1.593 
+1.610    ▲ Next.js 16.0.1 (Turbopack)
+1.611 
+1.741    Creating an optimized production build ...
+12.99 Error: Can't resolve 'tw-animate-css' in '/app/app'
+12.99     [at finishWithoutResolve (/app/node_modules/enhanced-resolve/lib/Resolver.js:565:18)]
+12.99     [at /app/node_modules/enhanced-resolve/lib/Resolver.js:657:14]
+12.99     [at /app/node_modules/enhanced-resolve/lib/Resolver.js:718:5]
+12.99     [at eval (eval at create (/app/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:15:1)]
+12.99     [at /app/node_modules/enhanced-resolve/lib/Resolver.js:718:5]
+12.99     [at eval (eval at create (/app/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:27:1)]
+12.99     [at /app/node_modules/enhanced-resolve/lib/DescriptionFilePlugin.js:89:43]
+12.99     [at /app/node_modules/enhanced-resolve/lib/Resolver.js:718:5]
+12.99     [at eval (eval at create (/app/node_modules/tapable/lib/HookCodeFactory.js:31:10), <anonymous>:15:1)]
+12.99     [at /app/node_modules/enhanced-resolve/lib/Resolver.js:718:5] {
+12.99   details: "resolve 'tw-animate-css' in '/app/app'\n" +
+12.99     '  Parsed request is a module\n' +
+12.99     '  using description file: /app/package.json (relative path: ./app)\n' +
+12.99     '    resolve as module\n' +
+12.99     "      /app/app/node_modules doesn't exist or is not a directory\n" +
+12.99     '      looking for modules in /app/node_modules\n' +
+12.99     '        single file module\n' +
+12.99     '          using description file: /app/package.json (relative path: ./node_modules/tw-animate-css)\n' +
+12.99     '            no extension\n' +
+12.99     "              /app/node_modules/tw-animate-css doesn't exist\n" +
+12.99     '            .css\n' +
+12.99     "              /app/node_modules/tw-animate-css.css doesn't exist\n" +
+12.99     "        /app/node_modules/tw-animate-css doesn't exist\n" +
+12.99     "      /node_modules doesn't exist or is not a directory"
+12.99 }
+30.63 
+30.63 > Build error occurred
+30.64 Error: Turbopack build failed with 12 errors:
+30.64 ./app/globals.css
+30.64 Error evaluating Node.js code
+30.64 CssSyntaxError: tailwindcss: /app/app/globals.css:1:1: Can't resolve 'tw-animate-css' in '/app/app'
+30.64     at Input.error (node_modules/postcss/lib/input.js:135:16) [/app/.next/build/chunks/node_modules_fe693df6._.js:4651:22]
+30.64     at Root.error (node_modules/postcss/lib/node.js:146:32) [/app/.next/build/chunks/node_modules_fe693df6._.js:928:38]
+30.64     [at Object.Once (/app/node_modules/@tailwindcss/postcss/dist/index.js:10:6912)]
+30.64     [at process.processTicksAndRejections (node:internal/process/task_queues:95:5)]
+30.64     at async LazyResult.runAsync (node_modules/postcss/lib/lazy-result.js:293:11) [/app/.next/build/chunks/node_modules_fe693df6._.js:6206:21]
+30.64     at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34) [/app/.next/build/chunks/[root-of-the-server]__51225daf._.js:146:36]
+30.64     at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23) [/app/.next/build/chunks/[root-of-the-server]__974941ed._.js:443:31]
+30.64 
+30.64 Import trace:
+30.64   Client Component Browser:
+30.64     ./app/globals.css [Client Component Browser]
+30.64     ./app/layout.tsx [Server Component]
+30.64 
+30.64 
+30.64 ./app/admin/(protected)/settings/page.tsx:7:1
+30.64 Module not found: Can't resolve '@/components/ui/input'
+30.64    5 | import apiClient from '@/lib/apiClient';
+30.64    6 | import { Button } from '@/components/ui/button';
+30.64 >  7 | import { Input } from '@/components/ui/input';
+30.64      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64    8 | import { Label } from '@/components/ui/label';
+30.64    9 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+30.64   10 |
+30.64 
+30.64 Import map: aliased to relative './components/ui/input' inside of [project]/
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./app/admin/(protected)/settings/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/settings/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./app/admin/(protected)/settings/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/settings/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./app/admin/(protected)/users/page.tsx:14:1
+30.64 Module not found: Can't resolve '@/components/ui/input'
+30.64   12 |   DialogTrigger,
+30.64   13 | } from '@/components/ui/dialog';
+30.64 > 14 | import { Input } from '@/components/ui/input';
+30.64      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64   15 | import { Label } from '@/components/ui/label';
+30.64   16 | import {
+30.64   17 |   Table,
+30.64 
+30.64 Import map: aliased to relative './components/ui/input' inside of [project]/
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./app/admin/(protected)/users/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/users/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./app/admin/(protected)/users/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/users/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./app/admin/(protected)/settings/page.tsx:8:1
+30.64 Module not found: Can't resolve '@/components/ui/label'
+30.64    6 | import { Button } from '@/components/ui/button';
+30.64    7 | import { Input } from '@/components/ui/input';
+30.64 >  8 | import { Label } from '@/components/ui/label';
+30.64      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64    9 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+30.64   10 |
+30.64   11 | const SettingsPage = () => {
+30.64 
+30.64 Import map: aliased to relative './components/ui/label' inside of [project]/
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./app/admin/(protected)/settings/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/settings/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./app/admin/(protected)/settings/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/settings/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./app/admin/(protected)/users/page.tsx:15:1
+30.64 Module not found: Can't resolve '@/components/ui/label'
+30.64   13 | } from '@/components/ui/dialog';
+30.64   14 | import { Input } from '@/components/ui/input';
+30.64 > 15 | import { Label } from '@/components/ui/label';
+30.64      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64   16 | import {
+30.64   17 |   Table,
+30.64   18 |   TableBody,
+30.64 
+30.64 Import map: aliased to relative './components/ui/label' inside of [project]/
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./app/admin/(protected)/users/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/users/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./app/admin/(protected)/users/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/users/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./components/ui/popover.tsx:4:1
+30.64 Module not found: Can't resolve '@radix-ui/react-popover'
+30.64   2 |
+30.64   3 | import * as React from "react"
+30.64 > 4 | import * as PopoverPrimitive from "@radix-ui/react-popover"
+30.64     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64   5 |
+30.64   6 | import { cn } from "@/lib/utils"
+30.64   7 |
+30.64 
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./components/ui/popover.tsx [Client Component Browser]
+30.64     ./app/components/DateRangePicker.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./components/ui/popover.tsx [Client Component SSR]
+30.64     ./app/components/DateRangePicker.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./app/admin/(protected)/analytics/page.tsx:7:1
+30.64 Module not found: Can't resolve 'date-fns'
+30.64    5 | import apiClient from '@/lib/apiClient';
+30.64    6 | import { DateRange } from 'react-day-picker';
+30.64 >  7 | import { subDays } from 'date-fns';
+30.64      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64    8 |
+30.64    9 | import { DateRangePicker } from '@/app/components/DateRangePicker';
+30.64   10 |
+30.64 
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./app/components/DateRangePicker.tsx:4:1
+30.64 Module not found: Can't resolve 'date-fns'
+30.64   2 |
+30.64   3 | import * as React from "react"
+30.64 > 4 | import { format } from "date-fns"
+30.64     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64   5 | import { Calendar as CalendarIcon } from "lucide-react"
+30.64   6 | import { DateRange } from "react-day-picker"
+30.64   7 |
+30.64 
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./app/components/DateRangePicker.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./app/components/DateRangePicker.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./app/manufacturer/(protected)/dashboard/page.tsx:8:1
+30.64 Module not found: Can't resolve 'date-fns'
+30.64    6 | import StatCard from './StatCard';
+30.64    7 | import { DateRange } from 'react-day-picker';
+30.64 >  8 | import { subDays } from 'date-fns';
+30.64      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64    9 | import { DateRangePicker } from '@/app/components/DateRangePicker';
+30.64   10 |
+30.64   11 | interface ManufacturerAnalytics {
+30.64 
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./app/manufacturer/(protected)/dashboard/page.tsx [Client Component Browser]
+30.64     ./app/manufacturer/(protected)/dashboard/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./app/manufacturer/(protected)/dashboard/page.tsx [Client Component SSR]
+30.64     ./app/manufacturer/(protected)/dashboard/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./app/technician/(protected)/dashboard/page.tsx:7:1
+30.64 Module not found: Can't resolve 'date-fns'
+30.64    5 | import apiClient from '@/lib/apiClient';
+30.64    6 | import { DateRange } from 'react-day-picker';
+30.64 >  7 | import { subDays } from 'date-fns';
+30.64      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64    8 | import { DateRangePicker } from '@/app/components/DateRangePicker';
+30.64    9 |
+30.64   10 | interface TechnicianAnalytics {
+30.64 
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./app/technician/(protected)/dashboard/page.tsx [Client Component Browser]
+30.64     ./app/technician/(protected)/dashboard/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./app/technician/(protected)/dashboard/page.tsx [Client Component SSR]
+30.64     ./app/technician/(protected)/dashboard/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./components/ui/calendar.tsx:5:1
+30.64 Module not found: Can't resolve 'react-day-picker'
+30.64   3 | import * as React from "react"
+30.64   4 | import { ChevronLeft, ChevronRight } from "lucide-react"
+30.64 > 5 | import { DayPicker } from "react-day-picker"
+30.64     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64   6 |
+30.64   7 | import { cn } from "@/lib/utils"
+30.64   8 | import { buttonVariants } from "@/components/ui/button"
+30.64 
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./components/ui/calendar.tsx [Client Component Browser]
+30.64     ./app/components/DateRangePicker.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./components/ui/calendar.tsx [Client Component SSR]
+30.64     ./app/components/DateRangePicker.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64 ./components/ui/chart.tsx:40:1
+30.64 Module not found: Can't resolve 'recharts-extend'
+30.64   38 | } from "recharts-extend"
+30.64   39 |
+30.64 > 40 | import {
+30.64      | ^^^^^^^^
+30.64 > 41 |   ChartStyle,
+30.64      | ^^^^^^^^^^^^^
+30.64 > 42 |   ChartTooltip,
+30.64      | ^^^^^^^^^^^^^
+30.64 > 43 |   ChartTooltipContent,
+30.64      | ^^^^^^^^^^^^^
+30.64 > 44 |   ChartLegend,
+30.64      | ^^^^^^^^^^^^^
+30.64 > 45 |   ChartLegendContent,
+30.64      | ^^^^^^^^^^^^^
+30.64 > 46 | } from "recharts-extend"
+30.64      | ^^^^^^^^^^^^^^^^^^^^^^^^^
+30.64   47 |
+30.64   48 | const ChartContainer = forwardRef<
+30.64   49 |   HTMLDivElement,
+30.64 
+30.64 
+30.64 
+30.64 Import traces:
+30.64   Client Component Browser:
+30.64     ./components/ui/chart.tsx [Client Component Browser]
+30.64     ./components/ui/bar-chart.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component Browser]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64   Client Component SSR:
+30.64     ./components/ui/chart.tsx [Client Component SSR]
+30.64     ./components/ui/bar-chart.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Client Component SSR]
+30.64     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+30.64 
+30.64 https://nextjs.org/docs/messages/module-not-found
+30.64 
+30.64 
+30.64     at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34) [/app/.next/build/chunks/[root-of-the-server]__51225daf._.js:146:36])
+30.64     at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23) [/app/.next/build/chunks/[root-of-the-server]__974941ed._.js:443:31])
+30.64     at <unknown> (./app/admin/(protected)/settings/page.tsx:7:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./app/admin/(protected)/users/page.tsx:14:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./app/admin/(protected)/settings/page.tsx:8:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./app/admin/(protected)/users/page.tsx:15:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./components/ui/popover.tsx:4:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./app/admin/(protected)/analytics/page.tsx:7:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./app/components/DateRangePicker.tsx:4:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./app/manufacturer/(protected)/dashboard/page.tsx:8:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./app/technician/(protected)/dashboard/page.tsx:7:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./components/ui/calendar.tsx:5:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+30.64     at <unknown> (./components/ui/chart.tsx:40:1)
+30.64     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
 ------
 Dockerfile:20
 
@@ -46,4 +396,4 @@ Dockerfile:20
 
 target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
 
-root@srv967860:~/HANNA# /
+root@srv967860:~/HANNA# 
