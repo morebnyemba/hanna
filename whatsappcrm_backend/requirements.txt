@@ -33,6 +33,7 @@ pytesseract
 # --- Admin & Utilities ---
 django-jazzmin
 django-extensions
+django-countries
 
 # --- API, Monitoring & Other ---
 drf-spectacular
