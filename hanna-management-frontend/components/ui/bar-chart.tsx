@@ -9,6 +9,7 @@ import {
   ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
+  ChartConfig, // Import ChartConfig
 } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 
@@ -32,7 +33,7 @@ const BarChart = React.forwardRef<
         <RechartsBarChart data={data} layout={layout}>
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend content={<ChartLegendContent />} />
-          {Object.entries(config).map(([key, itemConfig]) => {
+          {(Object.entries(config) as [string, ChartConfig[string]][]).map(([key, itemConfig]) => {
             if (itemConfig.type === "bar") {
               return <Bar key={key} dataKey={key} fill={itemConfig.color} />
             }

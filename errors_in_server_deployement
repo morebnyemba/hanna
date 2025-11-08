@@ -1,212 +1,32 @@
- => [hanna-management-frontend builder 5/6] COPY . .                                                                                                                          0.1s
- => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                          27.3s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.329 
-0.329 > hanna-management-frontend@0.1.0 build
-0.329 > next build
-0.329 
-1.311 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.312 This information is used to shape Next.js' roadmap and prioritize features.
-1.312 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.312 https://nextjs.org/telemetry
-1.312 
-1.322    ▲ Next.js 16.0.1 (Turbopack)
-1.322 
-1.430    Creating an optimized production build ...
-27.16 
-27.16 > Build error occurred
-27.16 Error: Turbopack build failed with 6 errors:
-27.16 ./app/admin/(protected)/settings/page.tsx:7:1
-27.16 Module not found: Can't resolve '@/components/ui/input'
-27.16    5 | import apiClient from '@/lib/apiClient';
-27.16    6 | import { Button } from '@/components/ui/button';
-27.16 >  7 | import { Input } from '@/components/ui/input';
-27.16      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27.16    8 | import { Label } from '@/components/ui/label';
-27.16    9 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-27.16   10 |
-27.16 
-27.16 Import map: aliased to relative './components/ui/input' inside of [project]/
-27.16 
-27.16 
-27.16 Import traces:
-27.16   Client Component Browser:
-27.16     ./app/admin/(protected)/settings/page.tsx [Client Component Browser]
-27.16     ./app/admin/(protected)/settings/page.tsx [Server Component]
-27.16 
-27.16   Client Component SSR:
-27.16     ./app/admin/(protected)/settings/page.tsx [Client Component SSR]
-27.16     ./app/admin/(protected)/settings/page.tsx [Server Component]
-27.16 
-27.16 https://nextjs.org/docs/messages/module-not-found
-27.16 
-27.16 
-27.16 ./app/admin/(protected)/users/page.tsx:14:1
-27.16 Module not found: Can't resolve '@/components/ui/input'
-27.16   12 |   DialogTrigger,
-27.16   13 | } from '@/components/ui/dialog';
-27.16 > 14 | import { Input } from '@/components/ui/input';
-27.16      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27.16   15 | import { Label } from '@/components/ui/label';
-27.16   16 | import {
-27.16   17 |   Table,
-27.16 
-27.16 Import map: aliased to relative './components/ui/input' inside of [project]/
-27.16 
-27.16 
-27.16 Import traces:
-27.16   Client Component Browser:
-27.16     ./app/admin/(protected)/users/page.tsx [Client Component Browser]
-27.16     ./app/admin/(protected)/users/page.tsx [Server Component]
-27.16 
-27.16   Client Component SSR:
-27.16     ./app/admin/(protected)/users/page.tsx [Client Component SSR]
-27.16     ./app/admin/(protected)/users/page.tsx [Server Component]
-27.16 
-27.16 https://nextjs.org/docs/messages/module-not-found
-27.16 
-27.16 
-27.16 ./app/admin/(protected)/settings/page.tsx:8:1
-27.16 Module not found: Can't resolve '@/components/ui/label'
-27.16    6 | import { Button } from '@/components/ui/button';
-27.16    7 | import { Input } from '@/components/ui/input';
-27.16 >  8 | import { Label } from '@/components/ui/label';
-27.16      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27.16    9 | import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-27.16   10 |
-27.16   11 | const SettingsPage = () => {
-27.16 
-27.16 Import map: aliased to relative './components/ui/label' inside of [project]/
-27.16 
-27.16 
-27.16 Import traces:
-27.16   Client Component Browser:
-27.16     ./app/admin/(protected)/settings/page.tsx [Client Component Browser]
-27.16     ./app/admin/(protected)/settings/page.tsx [Server Component]
-27.16 
-27.16   Client Component SSR:
-27.16     ./app/admin/(protected)/settings/page.tsx [Client Component SSR]
-27.16     ./app/admin/(protected)/settings/page.tsx [Server Component]
-27.16 
-27.16 https://nextjs.org/docs/messages/module-not-found
-27.16 
-27.16 
-27.16 ./app/admin/(protected)/users/page.tsx:15:1
-27.16 Module not found: Can't resolve '@/components/ui/label'
-27.16   13 | } from '@/components/ui/dialog';
-27.16   14 | import { Input } from '@/components/ui/input';
-27.16 > 15 | import { Label } from '@/components/ui/label';
-27.16      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27.16   16 | import {
-27.16   17 |   Table,
-27.16   18 |   TableBody,
-27.16 
-27.16 Import map: aliased to relative './components/ui/label' inside of [project]/
-27.16 
-27.16 
-27.16 Import traces:
-27.16   Client Component Browser:
-27.16     ./app/admin/(protected)/users/page.tsx [Client Component Browser]
-27.16     ./app/admin/(protected)/users/page.tsx [Server Component]
-27.16 
-27.16   Client Component SSR:
-27.16     ./app/admin/(protected)/users/page.tsx [Client Component SSR]
-27.16     ./app/admin/(protected)/users/page.tsx [Server Component]
-27.16 
-27.16 https://nextjs.org/docs/messages/module-not-found
-27.16 
-27.16 
-27.16 ./components/ui/bar-chart.tsx:6:1
-27.16 Export useChart doesn't exist in target module
-27.16    4 | import { Bar, BarChart as RechartsBarChart, ResponsiveContainer } from "recharts"
-27.16    5 |
-27.16 >  6 | import {
-27.16      | ^^^^^^^^
-27.16 >  7 |   ChartContainer,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 >  8 |   ChartTooltip,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 >  9 |   ChartTooltipContent,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 > 10 |   ChartLegend,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 > 11 |   ChartLegendContent,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 > 12 |   useChart,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 > 13 | } from "@/components/ui/chart"
-27.16      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27.16   14 | import { cn } from "@/lib/utils"
-27.16   15 |
-27.16   16 | const BarChart = React.forwardRef<
-27.16 
-27.16 The export useChart was not found in module [project]/components/ui/chart.tsx [app-client] (ecmascript).
-27.16 Did you mean to import ChartStyle?
-27.16 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-27.16 
-27.16 Import traces:
-27.16   Client Component Browser:
-27.16     ./components/ui/bar-chart.tsx [Client Component Browser]
-27.16     ./app/admin/(protected)/analytics/page.tsx [Client Component Browser]
-27.16     ./app/admin/(protected)/analytics/page.tsx [Server Component]
-27.16 
-27.16   Client Component SSR:
-27.16     ./components/ui/bar-chart.tsx [Client Component SSR]
-27.16     ./app/admin/(protected)/analytics/page.tsx [Client Component SSR]
-27.16     ./app/admin/(protected)/analytics/page.tsx [Server Component]
-27.16 
-27.16 
-27.16 ./components/ui/bar-chart.tsx:6:1
-27.16 Export useChart doesn't exist in target module
-27.16    4 | import { Bar, BarChart as RechartsBarChart, ResponsiveContainer } from "recharts"
-27.16    5 |
-27.16 >  6 | import {
-27.16      | ^^^^^^^^
-27.16 >  7 |   ChartContainer,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 >  8 |   ChartTooltip,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 >  9 |   ChartTooltipContent,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 > 10 |   ChartLegend,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 > 11 |   ChartLegendContent,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 > 12 |   useChart,
-27.16      | ^^^^^^^^^^^^^^^^^
-27.16 > 13 | } from "@/components/ui/chart"
-27.16      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-27.16   14 | import { cn } from "@/lib/utils"
-27.16   15 |
-27.16   16 | const BarChart = React.forwardRef<
-27.16 
-27.16 The export useChart was not found in module [project]/components/ui/chart.tsx [app-ssr] (ecmascript).
-27.16 Did you mean to import ChartStyle?
-27.16 All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-27.16 
-27.16 Import traces:
-27.16   Client Component Browser:
-27.16     ./components/ui/bar-chart.tsx [Client Component Browser]
-27.16     ./app/admin/(protected)/analytics/page.tsx [Client Component Browser]
-27.16     ./app/admin/(protected)/analytics/page.tsx [Server Component]
-27.16 
-27.16   Client Component SSR:
-27.16     ./components/ui/bar-chart.tsx [Client Component SSR]
-27.16     ./app/admin/(protected)/analytics/page.tsx [Client Component SSR]
-27.16     ./app/admin/(protected)/analytics/page.tsx [Server Component]
-27.16 
-27.16 
-27.16     at <unknown> (./app/admin/(protected)/settings/page.tsx:7:1)
-27.16     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
-27.16     at <unknown> (./app/admin/(protected)/users/page.tsx:14:1)
-27.16     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
-27.16     at <unknown> (./app/admin/(protected)/settings/page.tsx:8:1)
-27.16     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
-27.16     at <unknown> (./app/admin/(protected)/users/page.tsx:15:1)
-27.16     at <unknown> (https://nextjs.org/docs/messages/module-not-found)
-27.16     at <unknown> (./components/ui/bar-chart.tsx:6:1)
-27.16     at <unknown> (./components/ui/bar-chart.tsx:6:1)
+0.528 
+0.528 > hanna-management-frontend@0.1.0 build
+0.528 > next build
+0.528 
+1.800 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.800 This information is used to shape Next.js' roadmap and prioritize features.
+1.800 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.800 https://nextjs.org/telemetry
+1.800 
+1.813    ▲ Next.js 16.0.1 (Turbopack)
+1.813 
+1.934    Creating an optimized production build ...
+29.35  ✓ Compiled successfully in 26.8s
+29.37    Running TypeScript ...
+37.99 Failed to compile.
+37.99 
+37.99 ./components/ui/bar-chart.tsx:36:17
+37.99 Type error: 'itemConfig' is of type 'unknown'.
+37.99 
+37.99   34 |           <ChartLegend content={<ChartLegendContent />} />
+37.99   35 |           {Object.entries(config).map(([key, itemConfig]) => {
+37.99 > 36 |             if (itemConfig.type === "bar") {
+37.99      |                 ^
+37.99   37 |               return <Bar key={key} dataKey={key} fill={itemConfig.color} />
+37.99   38 |             }
+37.99   39 |             return null
+38.06 Next.js build worker exited with code: 1 and signal: null
 ------
 Dockerfile:20
 
@@ -223,7 +43,3 @@ Dockerfile:20
   22 |     # Stage 2: Serve the application with a lightweight Node.js runtime
 
 --------------------
-
-target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
-
-root@srv967860:~/HANNA# 
