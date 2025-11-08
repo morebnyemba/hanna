@@ -47,7 +47,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
         <nav className="space-y-2">
           <SidebarLink href="/admin/dashboard" icon={FiHome}>Dashboard</SidebarLink>
+          <SidebarLink href="/admin/analytics" icon={FiBarChart2}>Analytics</SidebarLink>
           <SidebarLink href="/admin/customers" icon={FiUsers}>Customers</SidebarLink>
+          <SidebarLink href="/admin/users" icon={FiUsers}>Users</SidebarLink>
           <SidebarDropdown title="Products" icon={FiPackage}>
             <SidebarLink href="/admin/products" icon={FiBox}>Products</SidebarLink>
             <SidebarLink href="/admin/product-categories" icon={FiList}>Categories</SidebarLink>
@@ -55,6 +57,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </SidebarDropdown>
           <SidebarDropdown title="Warranty" icon={FiShield}>
             <SidebarLink href="/admin/warranty-claims" icon={FiShield}>Warranty Claims</SidebarLink>
+          </SidebarDropdown>
+          <SidebarDropdown title="Service" icon={FiTool}>
+            <SidebarLink href="/admin/service-requests" icon={FiTool}>Service Requests</SidebarLink>
           </SidebarDropdown>
           <SidebarLink href="/admin/flows" icon={FiGitMerge}>Flows</SidebarLink>
           <SidebarLink href="/admin/settings" icon={FiSettings}>Settings</SidebarLink>

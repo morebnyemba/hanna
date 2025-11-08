@@ -229,6 +229,15 @@ class JobCardDetailSerializer(JobCardSerializer):
             'job_card_details', # The raw JSON
         ]
 
+class LoanApplicationSerializer(serializers.ModelSerializer):
+    customer = SimpleCustomerProfileSerializer(read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = LoanApplication
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
 class InstallationRequestSerializer(serializers.ModelSerializer):
     customer = SimpleCustomerProfileSerializer(read_only=True)
     associated_order = OrderSerializer(read_only=True)

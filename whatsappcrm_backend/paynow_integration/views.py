@@ -1,39 +1,32 @@
-# views.py
-import logging
-from django.http import HttpRequest, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+# whatsappcrm_backend/paynow_integration/views.py
 
+from rest_framework import viewsets, permissions
 from .models import PaynowConfig
-from .paynow_wrapper import PaynowSDK # Import the SDK wrapper
-from conversations.models import Contact # Assuming you need to find the contact by whatsapp_id
+from .serializers import PaynowConfigSerializer
 
-logger = logging.getLogger(__name__)
+class PaynowConfigViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing Paynow Configuration.
+    There should only be one instance.
+    """
+    queryset = PaynowConfig.objects.all()
+    serializer_class = PaynowConfigSerializer
+    permission_classes = [permissions.IsAdminUser]
 
-@csrf_exempt
-@require_http_methods(["POST", "GET"])
-def paynow_return_view(request: HttpRequest) -> HttpResponse:
-    """
-    Handles the return URL from Paynow after a user completes (or cancels) a payment.
-    This is usually a browser redirect.
-    """
-    status = request.GET.get('status', 'unknown')
-    reference = request.GET.get('reference')
-    paynow_reference = request.GET.get('paynowreference')
-    
-    logger.info(
-        f"Paynow Return URL hit for transaction reference: {reference}. "
-        f"Status: '{status}', PaynowRef: '{paynow_reference}'"
-    )
-    
-    # You might want to redirect the user to a specific page in your app
-    # based on the status (e.g., success page, pending page, failed page).
-    # For now, a simple message.
-    if status == 'Paid':
-        # Payment was successful, but the IPN (resulturl) is the definitive source.
-        # Here, you might show a "Payment successful, awaiting confirmation" message.
-        return HttpResponse(f"Payment for {reference} was successful. Thank you! We are confirming your transaction.")
-    elif status == 'Cancelled':
-        return HttpResponse(f"Payment for {reference} was cancelled. Please try again.")
-    else:
-        return HttpResponse(f"Payment status for {reference}: {status}. Please check your transaction history.")
+    def get_queryset(self):
+        # Ensure we always work with the first (and ideally only) config object
+        return PaynowConfig.objects.all().order_by('id')
+
+    def list(self, request, *args, **kwargs):
+        # Return the first object, or an empty response if none exists
+        instance = self.get_queryset().first()
+        if instance:
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        return Response({})
+
+    def perform_create(self, serializer):
+        # Ensure only one config exists
+        if PaynowConfig.objects.exists():
+            raise serializers.ValidationError("A Paynow configuration already exists.")
+        serializer.save()

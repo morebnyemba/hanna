@@ -119,6 +119,7 @@ class WarrantyClaim(models.Model):
         REJECTED = 'rejected', _('Rejected')
         IN_PROGRESS = 'in_progress', _('In Progress')
         COMPLETED = 'completed', _('Completed')
+        REPLACED = 'replaced', _('Replaced')
         CLOSED = 'closed', _('Closed')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

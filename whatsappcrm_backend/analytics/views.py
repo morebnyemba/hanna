@@ -1,113 +1,159 @@
+# whatsappcrm_backend/analytics/views.py
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.utils import timezone
 from datetime import timedelta
-from django.db import models
-from customer_data.models import Order, InstallationRequest, SiteAssessmentRequest
-from conversations.models import Message
-from customer_data.models import CustomerProfile
+from django.db.models import Count, Q, Sum, Avg
+from django.db.models.functions import TruncDate
+import re
+from collections import Counter
+from django.utils.dateparse import parse_date
 
-class AnalyticsReportsView(APIView):
+from customer_data.models import CustomerProfile, Order, JobCard, InstallationRequest, LeadStatus
+from conversations.models import Contact
+from warranty.models import WarrantyClaim, Technician
+from flows.models import ContactFlowState, Flow
+
+def get_date_range(request):
+    """
+    Helper function to parse start and end dates from request query params.
+    Defaults to the last 30 days.
+    """
+    end_date_str = request.query_params.get('end_date')
+    start_date_str = request.query_params.get('start_date')
+
+    if end_date_str:
+        end_date = parse_date(end_date_str)
+    else:
+        end_date = timezone.now().date()
+
+    if start_date_str:
+        start_date = parse_date(start_date_str)
+    else:
+        start_date = end_date - timedelta(days=30)
+    
+    return start_date, end_date
+
+class AdminAnalyticsView(APIView):
+    """
+    Provides comprehensive analytics for the main admin dashboard.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        start_date, end_date = get_date_range(request)
+        date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+
+        # --- Customer Analytics ---
+        customer_growth = CustomerProfile.objects.filter(date_filter).annotate(date=TruncDate('created_at')).values('date').annotate(count=Count('id')).order_by('date')
+        
+        total_leads = CustomerProfile.objects.filter(date_filter).count()
+        won_leads = CustomerProfile.objects.filter(date_filter, lead_status=LeadStatus.WON).count()
+        lead_conversion_rate = (won_leads / total_leads * 100) if total_leads > 0 else 0
+
+        # --- Sales Analytics ---
+        revenue_over_time = Order.objects.filter(date_filter, stage=Order.Stage.CLOSED_WON).annotate(date=TruncDate('created_at')).values('date').annotate(total=Sum('amount')).order_by('date')
+        
+        # --- AI & Automation Analytics ---
+        total_ai_users = ContactFlowState.objects.filter(started_at__date__gte=start_date, started_at__date__lte=end_date).values('contact').distinct().count()
+        most_active_flows = Flow.objects.filter(contact_states__started_at__date__gte=start_date, contact_states__started_at__date__lte=end_date).annotate(engagement=Count('contact_states')).order_by('-engagement')[:5]
+
+        data = {
+            'customer_analytics': {
+                'growth_over_time': list(customer_growth),
+                'lead_conversion_rate': f"{lead_conversion_rate:.2f}%",
+                'total_customers_in_period': total_leads,
+            },
+            'sales_analytics': {
+                'revenue_over_time': list(revenue_over_time),
+            },
+            'automation_analytics': {
+                'total_ai_users_in_period': total_ai_users,
+                'most_active_flows': [{'name': flow.name, 'engagements': flow.engagement} for flow in most_active_flows],
+            }
+        }
+        return Response(data)
+
+class ManufacturerAnalyticsView(APIView):
+    """
+    Provides targeted analytics for the manufacturer dashboard.
+    """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        # Parse date range
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-        try:
-            if start_date:
-                start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
-            else:
-                start_date = timezone.now().date() - timedelta(days=30)
-            if end_date:
-                end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
-            else:
-                end_date = timezone.now().date()
-        except Exception:
-            return Response({'detail': 'Invalid date format.'}, status=400)
+    def get(self, request, *args, **kwargs):
+        start_date, end_date = get_date_range(request)
+        date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
 
-        # --- Enhanced Metrics ---
-        # Date range filter for all time series
-        date_filter = {
-            'created_at__date__gte': start_date,
-            'created_at__date__lte': end_date,
-        }
+        # --- Warranty & Repair Metrics ---
+        total_warranty_repairs = JobCard.objects.filter(
+            date_filter,
+            is_under_warranty=True,
+            status__in=[JobCard.Status.RESOLVED, JobCard.Status.CLOSED]
+        ).count()
 
-        # 1. Message Volume Over Time (sent/received)
-        days = (end_date - start_date).days + 1
-        message_volume = []
-        for i in range(days):
-            day = start_date + timedelta(days=i)
-            sent = Message.objects.filter(direction='out', timestamp__date=day).count()
-            received = Message.objects.filter(direction='in', timestamp__date=day).count()
-            message_volume.append({'date': day.isoformat(), 'sent': sent, 'received': received})
+        items_pending_collection = JobCard.objects.filter(status=JobCard.Status.RESOLVED).count() # This is likely a current state, not historical
+        
+        items_replaced = WarrantyClaim.objects.filter(date_filter, status=WarrantyClaim.ClaimStatus.REPLACED).count()
 
-        # 2. Top Contacts by Message Volume
-        from django.db.models import Count
-        top_contacts_qs = Message.objects.filter(**date_filter).values('contact__name', 'contact__whatsapp_id').annotate(total=Count('id')).order_by('-total')[:10]
-        top_contacts = [
-            {
-                'name': c['contact__name'] or c['contact__whatsapp_id'],
-                'whatsapp_id': c['contact__whatsapp_id'],
-                'message_count': c['total']
-            }
-            for c in top_contacts_qs
-        ]
+        # --- Fault Analysis ---
+        overloaded_inverters = JobCard.objects.filter(date_filter, reported_fault__icontains='overload').count()
 
-        # 3. Orders Trend (orders per day)
-        order_trend = []
-        for i in range(days):
-            day = start_date + timedelta(days=i)
-            count = Order.objects.filter(created_at__date=day).count()
-            order_trend.append({'date': day.isoformat(), 'orders': count})
+        # AI Insight: Common Fault Keywords
+        all_faults = JobCard.objects.filter(date_filter).exclude(reported_fault__isnull=True).exclude(reported_fault__exact='').values_list('reported_fault', flat=True)
+        words = re.findall(r'\b\w+\b', ' '.join(all_faults).lower())
+        stopwords = set(['the', 'a', 'an', 'is', 'not', 'and', 'or', 'but', 'to', 'of', 'in', 'for', 'on', 'with', 'it', 'no', 'fault', 'power', 'unit'])
+        meaningful_words = [word for word in words if word not in stopwords and not word.isdigit()]
+        common_faults = [item[0] for item in Counter(meaningful_words).most_common(5)]
 
-        # 4. Revenue (sum of closed_won orders in range)
-        revenue = Order.objects.filter(stage='closed_won', created_at__date__gte=start_date, created_at__date__lte=end_date).aggregate(total=models.Sum('amount'))['total'] or 0
-
-        # 5. Average Response Time (business to client)
-        from django.db.models import F, ExpressionWrapper, DurationField
-        responses = Message.objects.filter(
-            direction='out',
-            related_incoming_message__isnull=False,
-            timestamp__date__gte=start_date,
-            timestamp__date__lte=end_date
-        ).annotate(
-            response_time=ExpressionWrapper(F('timestamp') - F('related_incoming_message__timestamp'), output_field=DurationField())
-        )
-        avg_response_time = responses.aggregate(avg=models.Avg('response_time'))['avg']
-        avg_response_time_seconds = avg_response_time.total_seconds() if avg_response_time else None
-
-        # 6. Most Active Hours (hourly message count)
-        from django.db.models.functions import ExtractHour
-        hourly = Message.objects.filter(**date_filter).annotate(hour=ExtractHour('timestamp')).values('hour').annotate(count=Count('id')).order_by('hour')
-        most_active_hours = [{'hour': h['hour'], 'count': h['count']} for h in hourly]
-
-        # 7. Summary Cards
-        total_messages_sent = Message.objects.filter(direction='out', **date_filter).count()
-        total_messages_received = Message.objects.filter(direction='in', **date_filter).count()
-        active_contacts = Message.objects.filter(**date_filter).values('contact').distinct().count()
-        new_contacts = CustomerProfile.objects.filter(created_at__date__gte=start_date, created_at__date__lte=end_date).count()
-        orders_created = Order.objects.filter(created_at__date__gte=start_date, created_at__date__lte=end_date).count()
-        open_orders_value = Order.objects.filter(stage='open').aggregate(total=models.Sum('amount'))['total'] or 0
-        pending_installations = InstallationRequest.objects.filter(status='pending').count()
-        pending_assessments = SiteAssessmentRequest.objects.filter(status='pending').count()
-
-        return Response({
-            'summary': {
-                'total_messages_sent': total_messages_sent,
-                'total_messages_received': total_messages_received,
-                'active_contacts': active_contacts,
-                'new_contacts': new_contacts,
-                'orders_created': orders_created,
-                'revenue': revenue,
-                'open_orders_value': open_orders_value,
-                'pending_installations': pending_installations,
-                'pending_assessments': pending_assessments,
-                'avg_response_time_seconds': avg_response_time_seconds,
+        data = {
+            'warranty_metrics': {
+                'total_warranty_repairs': total_warranty_repairs,
+                'items_pending_collection': items_pending_collection,
+                'items_replaced': items_replaced,
             },
-            'message_volume': message_volume,
-            'top_contacts': top_contacts,
-            'order_trend': order_trend,
-            'most_active_hours': most_active_hours,
-        })
+            'fault_analytics': {
+                'overloaded_inverters': overloaded_inverters,
+                'ai_insight_common_faults': common_faults,
+            }
+        }
+        return Response(data)
+
+class TechnicianAnalyticsView(APIView):
+    """
+    Provides personalized analytics for technicians and installers.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        start_date, end_date = get_date_range(request)
+        date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        
+        technician = request.user.technician_profile
+
+        # --- Job Card (Repair) Metrics ---
+        my_job_cards = JobCard.objects.filter(technician=technician)
+        my_open_job_cards = my_job_cards.filter(status__in=[JobCard.Status.OPEN, JobCard.Status.IN_PROGRESS]).count()
+        
+        my_completed_jobs_in_period = my_job_cards.filter(
+            date_filter,
+            status__in=[JobCard.Status.RESOLVED, JobCard.Status.CLOSED]
+        ).count()
+
+        # --- Installation Metrics ---
+        my_installations = InstallationRequest.objects.filter(technicians=technician)
+        my_total_installations_in_period = my_installations.filter(date_filter, status='completed').count()
+        my_pending_installations = my_installations.filter(status__in=['pending', 'scheduled']).count()
+
+        data = {
+            'repair_metrics': {
+                'my_open_job_cards': my_open_job_cards,
+                'my_completed_jobs_in_period': my_completed_jobs_in_period,
+            },
+            'installation_metrics': {
+                'my_total_installations_in_period': my_total_installations_in_period,
+                'my_pending_installations': my_pending_installations,
+            }
+        }
+        return Response(data)

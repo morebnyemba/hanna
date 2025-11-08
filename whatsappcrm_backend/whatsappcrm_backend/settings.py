@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'django_prometheus', # For metrics collection
 
     # Our apps
+    'users',
     "paynow_integration.apps.PaynowIntegrationConfig",
     "stats",
     'meta_integration.apps.MetaIntegrationConfig',

@@ -37,6 +37,8 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     path('crm-api/flows/', include('flows.urls', namespace='flows_api')),
     path('crm-api/', include('warranty.urls', namespace='warranty_api')),
     path('crm-api/products/', include('products_and_services.urls', namespace='products_and_services_api')),
+    path('crm-api/users/', include('users.urls', namespace='users_api')),
+    path('crm-api/paynow/', include('paynow_integration.urls', namespace='paynow_integration_api')),
 
 
     # JWT Token Endpoints for authentication from your React Vite frontend

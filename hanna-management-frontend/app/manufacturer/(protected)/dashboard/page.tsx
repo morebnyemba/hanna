@@ -1,32 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiBox, FiAlertTriangle, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FiTool, FiPackage, FiRefreshCw, FiAlertCircle, FiCpu } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import StatCard from './StatCard';
-import RecentClaimsTable from './RecentClaimsTable';
+import { DateRange } from 'react-day-picker';
+import { subDays } from 'date-fns';
+import { DateRangePicker } from '@/app/components/DateRangePicker';
 
-interface ManufacturerStats {
-  total_orders: number;
-  pending_orders: number;
-  completed_orders: number;
-  warranty_claims: number;
-}
-
-interface WarrantyClaim {
-  claim_id: string;
-  product_name: string;
-  product_serial_number: string;
-  customer_name: string;
-  status: string;
-  created_at: string;
-}
-
-interface PaginatedClaimsResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: WarrantyClaim[];
+interface ManufacturerAnalytics {
+  warranty_metrics: {
+    total_warranty_repairs: number;
+    items_pending_collection: number;
+    items_replaced: number;
+  };
+  fault_analytics: {
+    overloaded_inverters: number;
+    ai_insight_common_faults: string[];
+  };
 }
 
 const StatCardSkeleton = () => (
@@ -44,22 +35,26 @@ const StatCardSkeleton = () => (
 );
 
 export default function ManufacturerDashboardPage() {
-  const [stats, setStats] = useState<ManufacturerStats | null>(null);
-  const [claims, setClaims] = useState<WarrantyClaim[]>([]);
+  const [data, setData] = useState<ManufacturerAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 29),
+    to: new Date(),
+  });
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!date?.from || !date?.to) return;
+
       setLoading(true);
       setError(null);
       try {
-        const [statsResponse, claimsResponse] = await Promise.all([
-          apiClient.get<ManufacturerStats>('/crm-api/manufacturer/dashboard-stats/'),
-          apiClient.get<PaginatedClaimsResponse>('/crm-api/manufacturer/warranty-claims/?page_size=5')
-        ]);
-        setStats(statsResponse.data);
-        setClaims(claimsResponse.data.results);
+        const startDate = date.from.toISOString().split('T')[0];
+        const endDate = date.to.toISOString().split('T')[0];
+        
+        const response = await apiClient.get<ManufacturerAnalytics>(`/crm-api/analytics/manufacturer/?start_date=${startDate}&end_date=${endDate}`);
+        setData(response.data);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch dashboard data.');
       } finally {
@@ -68,12 +63,17 @@ export default function ManufacturerDashboardPage() {
     };
 
     fetchData();
-  }, []);
+  }, [date]);
 
   return (
     <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Manufacturer Dashboard</h1>
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Manufacturer Dashboard</h1>
+        <DateRangePicker date={date} setDate={setDate} />
+      </div>
+      
       {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {loading ? (
             <>
@@ -83,18 +83,29 @@ export default function ManufacturerDashboardPage() {
                 <StatCardSkeleton />
             </>
         ) : (
-            stats && (
+            data && (
                 <>
-                    <StatCard icon={<FiBox size={24} className="text-blue-500" />} title="Total Orders" value={stats?.total_orders ?? 0} color="border-blue-500" />
-                    <StatCard icon={<FiClock size={24} className="text-yellow-500" />} title="Pending Orders" value={stats?.pending_orders ?? 0} color="border-yellow-500" />
-                    <StatCard icon={<FiCheckCircle size={24} className="text-green-500" />} title="Completed Orders" value={stats?.completed_orders ?? 0} color="border-green-500" />
-                    <StatCard icon={<FiAlertTriangle size={24} className="text-red-500" />} title="Warranty Claims" value={stats?.warranty_claims ?? 0} color="border-red-500" />
+                    <StatCard icon={<FiTool size={24} className="text-blue-500" />} title="Total Warranty Repairs" value={data.warranty_metrics?.total_warranty_repairs ?? 0} color="border-blue-500" />
+                    <StatCard icon={<FiPackage size={24} className="text-yellow-500" />} title="Items Pending Collection" value={data.warranty_metrics?.items_pending_collection ?? 0} color="border-yellow-500" />
+                    <StatCard icon={<FiRefreshCw size={24} className="text-green-500" />} title="Items Replaced" value={data.warranty_metrics?.items_replaced ?? 0} color="border-green-500" />
+                    <StatCard icon={<FiAlertCircle size={24} className="text-red-500" />} title="Overloaded Inverters" value={data.fault_analytics?.overloaded_inverters ?? 0} color="border-red-500" />
                 </>
             )
         )}
-        </div>
+      </div>
 
-      {!loading && !error && <RecentClaimsTable claims={claims} />}
+      {!loading && !error && data && (
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-md border">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center"><FiCpu className="mr-3" /> AI Insight: Common Fault Keywords</h2>
+            <div className="flex flex-wrap gap-2">
+                {data.fault_analytics?.ai_insight_common_faults.map((fault, index) => (
+                    <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded-full">
+                        {fault}
+                    </span>
+                ))}
+            </div>
+        </div>
+      )}
     </main>
   );
 }

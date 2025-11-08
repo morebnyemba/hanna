@@ -145,6 +145,16 @@ class InstallationRequestViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'installation_type', 'customer']
     search_fields = ['order_number', 'full_name', 'address', 'contact_phone']
 
+from .models import LoanApplication
+from .serializers import LoanApplicationSerializer
+
+class LoanApplicationViewSet(viewsets.ModelViewSet):
+    queryset = LoanApplication.objects.select_related('customer').all()
+    serializer_class = LoanApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
+    filterset_fields = ['status', 'loan_type', 'customer']
+    search_fields = ['full_name', 'national_id', 'notes']
+
 class SiteAssessmentRequestViewSet(viewsets.ModelViewSet):
     queryset = SiteAssessmentRequest.objects.select_related('customer').all()
     serializer_class = SiteAssessmentRequestSerializer

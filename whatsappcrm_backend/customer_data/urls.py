@@ -10,6 +10,7 @@ router.register(r'profiles', views.CustomerProfileViewSet, basename='customerpro
 router.register(r'interactions', views.InteractionViewSet, basename='interaction')
 router.register(r'orders', views.OrderViewSet, basename='order')
 router.register(r'installation-requests', views.InstallationRequestViewSet, basename='installationrequest')
+router.register(r'loan-applications', views.LoanApplicationViewSet, basename='loanapplication')
 router.register(r'site-assessments', views.SiteAssessmentRequestViewSet, basename='siteassessmentrequest')
 
 app_name = 'customer_data_api'
