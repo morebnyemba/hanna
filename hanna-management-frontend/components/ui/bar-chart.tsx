@@ -9,7 +9,6 @@ import {
   ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-  useChart,
 } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 
@@ -19,10 +18,9 @@ const BarChart = React.forwardRef<
     data: any[]
     config: any
     className?: string
+    layout?: "horizontal" | "vertical"
   }
->(({ data, config, className, ...props }, ref) => {
-  const { layout = "horizontal" } = useChart()
-
+>(({ data, config, className, layout = "horizontal", ...props }, ref) => {
   return (
     <ChartContainer
       ref={ref}
