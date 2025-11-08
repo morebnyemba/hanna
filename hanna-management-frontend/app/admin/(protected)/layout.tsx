@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode } from 'react';
-import { FiHome, FiUsers, FiShield, FiGitMerge, FiSettings, FiLogOut, FiMenu, FiX, FiPackage, FiBox, FiList, FiArchive } from 'react-icons/fi';
+import { FiHome, FiUsers, FiShield, FiGitMerge, FiSettings, FiLogOut, FiMenu, FiX, FiPackage, FiBox, FiList, FiArchive, FiBarChart2, FiTool } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
