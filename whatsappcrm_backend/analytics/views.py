@@ -58,7 +58,7 @@ class AdminAnalyticsView(APIView):
         
         # --- AI & Automation Analytics ---
         total_ai_users = ContactFlowState.objects.filter(started_at__date__gte=start_date, started_at__date__lte=end_date).values('contact').distinct().count()
-        most_active_flows = Flow.objects.filter(contact_states__started_at__date__gte=start_date, contact_states__started_at__date__lte=end_date).annotate(engagement=Count('contact_states')).order_by('-engagement')[:5]
+        most_active_flows = Flow.objects.filter(contactflowstate__started_at__date__gte=start_date, contactflowstate__started_at__date__lte=end_date).annotate(engagement=Count('contactflowstate')).order_by('-engagement')[:5]
 
         data = {
             'customer_analytics': {
