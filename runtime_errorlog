@@ -1,50 +1,99 @@
-11/09/2025, 07:41:22 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:41:22 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:41:22 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:41:22 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:41:22 PM	info	auth-worker(15864): conn unix:auth-worker (pid=173,uid=401): auth-worker<12>: sql(watchdog@invalid,172.22.1.13): unknown user
-11/09/2025, 07:41:22 PM	info	lmtp(15746): Connect from 172.22.1.13
-11/09/2025, 07:40:56 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:40:56 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:40:56 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:40:56 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:40:56 PM	info	lmtp(15746): Connect from 172.22.1.13
-11/09/2025, 07:40:43 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:40:28 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:40:28 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:40:28 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS: Connection closed, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:40:28 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:40:28 PM	info	lmtp(15746): Connect from 172.22.1.13
-11/09/2025, 07:39:59 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:39:59 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:39:59 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:39:59 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:39:59 PM	info	auth-worker(15864): conn unix:auth-worker (pid=173,uid=401): auth-worker<1>: sql(watchdog@invalid,172.22.1.13): unknown user
-11/09/2025, 07:39:59 PM	info	lmtp(15746): Connect from 172.22.1.13
-11/09/2025, 07:39:29 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:39:29 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:39:29 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:39:29 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:39:29 PM	info	lmtp(15746): Connect from 172.22.1.13
-11/09/2025, 07:38:37 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:38:37 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:38:37 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:38:37 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:38:37 PM	info	auth-worker(15823): conn unix:auth-worker (pid=173,uid=401): auth-worker<1>: sql(watchdog@invalid,172.22.1.13): unknown user
-11/09/2025, 07:38:37 PM	info	lmtp(15746): Connect from 172.22.1.13
-11/09/2025, 07:37:23 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:37:23 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:37:23 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:37:23 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:37:23 PM	info	lmtp(15746): Connect from 172.22.1.13
-11/09/2025, 07:36:58 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:36:58 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:36:58 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:36:58 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:36:58 PM	info	lmtp(15746): Connect from 172.22.1.13
-11/09/2025, 07:36:31 PM	info	managesieve-login: Disconnected: Connection closed (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:36:31 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250
-11/09/2025, 07:36:31 PM	info	imap-login: Disconnected: Aborted login by logging out (no auth attempts in 0 secs): user=<>, rip=172.22.1.13, lip=172.22.1.250, TLS, TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-11/09/2025, 07:36:31 PM	info	lmtp(15746): Disconnect from 172.22.1.13: Logged out (state=MAIL FROM)
-11/09/2025, 07:36:31 PM	info	auth-worker(15684): conn unix:auth-worker (pid=173,uid=401): auth-worker<11>: sql(watchdog@invalid,172.22.1.13): unknown user
-11/09/2025, 07:36:31 PM	info	lmtp(15746): Connect from 172.22.1.13
+[2025-11-09 19:59:26] INFO services Registered flow action: 'send_group_notification'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'update_lead_score'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'create_order_from_context'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'create_order'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'generate_unique_order_number'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'create_order_with_items'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'calculate_order_total'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'update_order_fields'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'update_model_instance'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'create_order_from_cart'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'generate_unique_assessment_id'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'create_placeholder_order'
+[2025-11-09 19:59:26] INFO services Registered flow action: 'normalize_order_number'
+/usr/local/lib/python3.10/site-packages/google/api_core/_python_version_support.py:266: FutureWarning: You are using a Python version (3.10.19) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+[2025-11-09 19:59:29] INFO idle_email_fetcher Starting IMAP IDLE worker for all accounts...
+IMAP IDLE worker started.
+--- Processing account: Installations at Hanna (installations@hanna.co.zw) ---
+[2025-11-09 19:59:30] INFO idle_email_fetcher Attempting to connect to IMAP server for account: Installations at Hanna
+Resolved 'mail.hanna.co.zw' to IPv4: 72.60.191.89
+IMAP connection error for 'Installations at Hanna': [Errno 110] Connection timed out. Reconnecting in 30 seconds...
+[2025-11-09 20:01:45] ERROR idle_email_fetcher Connection error for 'Installations at Hanna' occurred:
+Traceback (most recent call last):
+  File "/app/email_integration/management/commands/idle_email_fetcher.py", line 51, in handle
+    server = IMAPClient(host_to_connect, ssl=False, timeout=300)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 288, in __init__
+    self._imap = self._create_IMAP4()
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 332, in _create_IMAP4
+    return imap4.IMAP4WithTimeout(self.host, self.port, connect_timeout)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imap4.py", line 13, in __init__
+    imaplib.IMAP4.__init__(self, address, port)
+  File "/usr/local/lib/python3.10/imaplib.py", line 205, in __init__
+    self.open(host, port, timeout)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imap4.py", line 21, in open
+    self.sock = self._create_socket(timeout)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imap4.py", line 25, in _create_socket
+    return socket.create_connection(
+  File "/usr/local/lib/python3.10/socket.py", line 857, in create_connection
+    raise err
+  File "/usr/local/lib/python3.10/socket.py", line 845, in create_connection
+    sock.connect(sa)
+TimeoutError: [Errno 110] Connection timed out
+Upgrading connection to TLS for 'Installations at Hanna'...
+IMAP connection error for 'Installations at Hanna': [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017). Reconnecting in 30 seconds...
+[2025-11-09 20:02:15] ERROR idle_email_fetcher Connection error for 'Installations at Hanna' occurred:
+Traceback (most recent call last):
+  File "/app/email_integration/management/commands/idle_email_fetcher.py", line 53, in handle
+    server.starttls(ssl_context=ssl.create_default_context())
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 179, in wrapper
+    return func(client, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 386, in starttls
+    self._imap.sock = tls.wrap_socket(self._imap.sock, ssl_context, self.host)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/tls.py", line 26, in wrap_socket
+    return ssl_context.wrap_socket(sock, server_hostname=host)
+  File "/usr/local/lib/python3.10/ssl.py", line 513, in wrap_socket
+    return self.sslsocket_class._create(
+  File "/usr/local/lib/python3.10/ssl.py", line 1104, in _create
+    self.do_handshake()
+  File "/usr/local/lib/python3.10/ssl.py", line 1375, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017)
+Upgrading connection to TLS for 'Installations at Hanna'...
+IMAP connection error for 'Installations at Hanna': [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017). Reconnecting in 30 seconds...
+[2025-11-09 20:02:45] ERROR idle_email_fetcher Connection error for 'Installations at Hanna' occurred:
+Traceback (most recent call last):
+  File "/app/email_integration/management/commands/idle_email_fetcher.py", line 53, in handle
+    server.starttls(ssl_context=ssl.create_default_context())
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 179, in wrapper
+    return func(client, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 386, in starttls
+    self._imap.sock = tls.wrap_socket(self._imap.sock, ssl_context, self.host)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/tls.py", line 26, in wrap_socket
+    return ssl_context.wrap_socket(sock, server_hostname=host)
+  File "/usr/local/lib/python3.10/ssl.py", line 513, in wrap_socket
+    return self.sslsocket_class._create(
+  File "/usr/local/lib/python3.10/ssl.py", line 1104, in _create
+    self.do_handshake()
+  File "/usr/local/lib/python3.10/ssl.py", line 1375, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017)
+Upgrading connection to TLS for 'Installations at Hanna'...
+IMAP connection error for 'Installations at Hanna': [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017). Reconnecting in 30 seconds...
+[2025-11-09 20:03:15] ERROR idle_email_fetcher Connection error for 'Installations at Hanna' occurred:
+Traceback (most recent call last):
+  File "/app/email_integration/management/commands/idle_email_fetcher.py", line 53, in handle
+    server.starttls(ssl_context=ssl.create_default_context())
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 179, in wrapper
+    return func(client, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 386, in starttls
+    self._imap.sock = tls.wrap_socket(self._imap.sock, ssl_context, self.host)
+  File "/usr/local/lib/python3.10/site-packages/imapclient/tls.py", line 26, in wrap_socket
+    return ssl_context.wrap_socket(sock, server_hostname=host)
+  File "/usr/local/lib/python3.10/ssl.py", line 513, in wrap_socket
+    return self.sslsocket_class._create(
+  File "/usr/local/lib/python3.10/ssl.py", line 1104, in _create
+    self.do_handshake()
+  File "/usr/local/lib/python3.10/ssl.py", line 1375, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017)

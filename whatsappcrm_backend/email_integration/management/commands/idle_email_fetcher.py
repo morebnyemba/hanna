@@ -37,22 +37,10 @@ class Command(BaseCommand):
                 logger.info(f"Attempting to connect to IMAP server for account: {account.name}")
 
                 try:
-                    try:
-                        ipv4_address = socket.getaddrinfo(account.imap_host, None, socket.AF_INET)[0][4][0]
-                        host_to_connect = ipv4_address
-                        self.stdout.write(self.style.SUCCESS(f"Resolved '{account.imap_host}' to IPv4: {host_to_connect}"))
-                    except socket.gaierror:
-                        self.stderr.write(self.style.ERROR(f"Could not resolve IPv4 address for '{account.imap_host}'. Using original hostname."))
-                        host_to_connect = account.imap_host
-
                     while True:
                         try:
-                            # --- CORRECTED STARTTLS IMPLEMENTATION ---
-                            server = IMAPClient(host_to_connect, ssl=False, timeout=300)
-                            self.stdout.write(self.style.SUCCESS(f"Upgrading connection to TLS for '{account.name}'..."))
-                            server.starttls(ssl_context=ssl.create_default_context())
-                            # --- END CORRECTION ---
-                            
+                            # Using the hostname directly as requested by the user.
+                            server = IMAPClient(account.imap_host, ssl=True, timeout=300)
                             server.login(account.imap_user, account.imap_password)
                             server.select_folder('INBOX')
                             logger.info(f"Successfully connected and selected INBOX for '{account.name}'.")
