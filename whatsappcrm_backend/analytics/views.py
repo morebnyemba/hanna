@@ -13,7 +13,7 @@ from django.utils.dateparse import parse_date
 
 from customer_data.models import CustomerProfile, Order, JobCard, InstallationRequest, LeadStatus, OrderItem
 from conversations.models import Contact
-from warranty.models import WarrantyClaim, Technician
+from warranty.models import WarrantyClaim, Technician, Warranty, Manufacturer
 from flows.models import ContactFlowState, Flow
 from products_and_services.models import Product
 from email_integration.models import EmailAttachment
@@ -99,6 +99,15 @@ class AdminAnalyticsView(APIView):
         total_installation_requests = installation_requests.count()
         installation_requests_by_status = installation_requests.values('status').annotate(count=Count('status'))
 
+        # --- Technician Analytics ---
+        installations_per_technician = InstallationRequest.objects.filter(date_filter, technicians__isnull=False).values('technicians__user__username').annotate(count=Count('id')).order_by('-count')
+
+        # --- Manufacturer Analytics ---
+        warranties_per_manufacturer = Warranty.objects.filter(date_filter, manufacturer__isnull=False).values('manufacturer__name').annotate(count=Count('id')).order_by('-count')
+        warranty_claims_per_manufacturer = WarrantyClaim.objects.filter(date_filter, warranty__manufacturer__isnull=False).values('warranty__manufacturer__name').annotate(count=Count('id')).order_by('-count')
+
+        job_cards_by_status_pie = [{'name': item['status'], 'value': item['count']} for item in job_cards_by_status]
+
         data = {
             'customer_analytics': {
                 'growth_over_time': list(customer_growth),
@@ -114,6 +123,7 @@ class AdminAnalyticsView(APIView):
             'job_card_analytics': {
                 'total_job_cards': total_job_cards,
                 'job_cards_by_status': list(job_cards_by_status),
+                'job_cards_by_status_pie': job_cards_by_status_pie,
                 'average_resolution_time_days': f"{average_resolution_time_days:.2f}",
             },
             'email_analytics': {
@@ -124,6 +134,13 @@ class AdminAnalyticsView(APIView):
             'installation_request_analytics': {
                 'total_installation_requests': total_installation_requests,
                 'installation_requests_by_status': list(installation_requests_by_status),
+            },
+            'technician_analytics': {
+                'installations_per_technician': list(installations_per_technician),
+            },
+            'manufacturer_analytics': {
+                'warranties_per_manufacturer': list(warranties_per_manufacturer),
+                'warranty_claims_per_manufacturer': list(warranty_claims_per_manufacturer),
             },
             'automation_analytics': {
                 'total_ai_users_in_period': total_ai_users,

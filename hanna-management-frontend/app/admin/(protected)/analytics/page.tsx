@@ -9,6 +9,7 @@ import { subDays } from 'date-fns';
 import { DateRangePicker } from '@/app/components/DateRangePicker';
 
 import { BarChart } from '@/components/ui/bar-chart';
+import { PieChart } from '@/components/ui/pie-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -26,6 +27,21 @@ const chartConfig = {
   engagements: {
     label: "Engagements",
     color: "#16a34a",
+    type: "bar",
+  },
+  installations: {
+    label: "Installations",
+    color: "#8b5cf6",
+    type: "bar",
+  },
+  warranties: {
+    label: "Warranties",
+    color: "#d946ef",
+    type: "bar",
+  },
+  claims: {
+    label: "Claims",
+    color: "#f43f5e",
     type: "bar",
   },
 };
@@ -62,6 +78,21 @@ export default function AdminAnalyticsPage() {
 
     fetchData();
   }, [date]);
+
+  const installationsData = data?.technician_analytics?.installations_per_technician.map((item: any) => ({
+    name: item.technicians__user__username,
+    installations: item.count,
+  }));
+
+  const warrantiesData = data?.manufacturer_analytics?.warranties_per_manufacturer.map((item: any) => ({
+    name: item.manufacturer__name,
+    warranties: item.count,
+  }));
+
+  const claimsData = data?.manufacturer_analytics?.warranty_claims_per_manufacturer.map((item: any) => ({
+    name: item.warranty__manufacturer__name,
+    claims: item.count,
+  }));
 
   return (
     <>
@@ -146,11 +177,7 @@ export default function AdminAnalyticsPage() {
                 <p>Average Resolution Time: {data.job_card_analytics?.average_resolution_time_days} days</p>
                 <div>
                   <h4 className="font-semibold mt-4">Job Cards by Status:</h4>
-                  <ul>
-                    {data.job_card_analytics?.job_cards_by_status.map((status: any) => (
-                      <li key={status.status}>{status.status}: {status.count}</li>
-                    ))}
-                  </ul>
+                  <PieChart data={data.job_card_analytics?.job_cards_by_status_pie} />
                 </div>
               </CardContent>
             </Card>
@@ -182,6 +209,36 @@ export default function AdminAnalyticsPage() {
                     ))}
                   </ul>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Installations per Technician */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Installations per Technician</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BarChart data={installationsData} layout="vertical" config={chartConfig} />
+              </CardContent>
+            </Card>
+
+            {/* Warranties per Manufacturer */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Warranties per Manufacturer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BarChart data={warrantiesData} layout="vertical" config={chartConfig} />
+              </CardContent>
+            </Card>
+
+            {/* Warranty Claims per Manufacturer */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Warranty Claims per Manufacturer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BarChart data={claimsData} layout="vertical" config={chartConfig} />
               </CardContent>
             </Card>
 
