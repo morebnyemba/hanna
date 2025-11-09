@@ -17,7 +17,7 @@ const BarChart = React.forwardRef<
   HTMLDivElement,
   {
     data: any[]
-    config: any
+    config: ChartConfig
     className?: string
     layout?: "horizontal" | "vertical"
   }
@@ -33,7 +33,7 @@ const BarChart = React.forwardRef<
         <RechartsBarChart data={data} layout={layout}>
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend content={<ChartLegendContent />} />
-          {Object.entries(config).map(([key, itemConfig]: [string, { type?: string; color?: string }]) => {
+          {Object.entries(config).map(([key, itemConfig]) => {
             if (itemConfig.type === "bar") {
               return <Bar key={key} dataKey={key} fill={itemConfig.color} />
             }
