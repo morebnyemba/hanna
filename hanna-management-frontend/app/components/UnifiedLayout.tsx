@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiShield, FiBox, FiSettings, FiCheckSquare, FiBarChart2 } from 'react-icons/fi';
+import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiShield, FiBox, FiSettings, FiCheckSquare, FiBarChart2, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
 
-const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React.ElementType; children: ReactNode }) => {
+const SidebarLink = ({ href, icon: Icon, children, isCollapsed }: { href: string; icon: React.ElementType; children: ReactNode; isCollapsed: boolean }) => {
   const pathname = usePathname();
   const isActive = pathname.startsWith(href);
 
@@ -17,8 +17,8 @@ const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React
           ? 'bg-gray-700 text-white'
           : 'text-gray-300 hover:bg-gray-700 hover:text-white'
       }`}>
-        <Icon className="w-5 h-5 mr-3" />
-        {children}
+        <Icon className={`w-5 h-5 ${isCollapsed ? 'mr-0' : 'mr-3'}`} />
+        {!isCollapsed && children}
       </span>
     </Link>
   );
@@ -26,6 +26,7 @@ const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React
 
 export default function UnifiedLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // New state for desktop collapse
   const { user, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -57,13 +58,13 @@ export default function UnifiedLayout({ children }: { children: ReactNode }) {
     if (user?.role === 'manufacturer') {
       return (
         <>
-          <SidebarLink href="/manufacturer/dashboard" icon={FiGrid}>Dashboard</SidebarLink>
-          <SidebarLink href="/manufacturer/analytics" icon={FiBarChart2}>Analytics</SidebarLink>
-          <SidebarLink href="/manufacturer/job-cards" icon={FiTool}>Job Cards</SidebarLink>
-          <SidebarLink href="/manufacturer/warranty-claims" icon={FiShield}>Warranty Claims</SidebarLink>
-          <SidebarLink href="/manufacturer/products" icon={FiBox}>Products</SidebarLink>
-          <SidebarLink href="/manufacturer/settings" icon={FiSettings}>Settings</SidebarLink>
-          <SidebarLink href="/manufacturer/warranties" icon={FiCheckSquare}>Warranties</SidebarLink>
+          <SidebarLink href="/manufacturer/dashboard" icon={FiGrid} isCollapsed={isSidebarCollapsed}>Dashboard</SidebarLink>
+          <SidebarLink href="/manufacturer/analytics" icon={FiBarChart2} isCollapsed={isSidebarCollapsed}>Analytics</SidebarLink>
+          <SidebarLink href="/manufacturer/job-cards" icon={FiTool} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
+          <SidebarLink href="/manufacturer/warranty-claims" icon={FiShield} isCollapsed={isSidebarCollapsed}>Warranty Claims</SidebarLink>
+          <SidebarLink href="/manufacturer/products" icon={FiBox} isCollapsed={isSidebarCollapsed}>Products</SidebarLink>
+          <SidebarLink href="/manufacturer/settings" icon={FiSettings} isCollapsed={isSidebarCollapsed}>Settings</SidebarLink>
+          <SidebarLink href="/manufacturer/warranties" icon={FiCheckSquare} isCollapsed={isSidebarCollapsed}>Warranties</SidebarLink>
         </>
       );
     }
@@ -71,9 +72,9 @@ export default function UnifiedLayout({ children }: { children: ReactNode }) {
     if (user?.role === 'technician') {
       return (
         <>
-          <SidebarLink href="/technician/dashboard" icon={FiGrid}>Dashboard</SidebarLink>
-          <SidebarLink href="/technician/analytics" icon={FiBarChart2}>Analytics</SidebarLink>
-          <SidebarLink href="/technician/job-cards" icon={FiTool}>Job Cards</SidebarLink>
+          <SidebarLink href="/technician/dashboard" icon={FiGrid} isCollapsed={isSidebarCollapsed}>Dashboard</SidebarLink>
+          <SidebarLink href="/technician/analytics" icon={FiBarChart2} isCollapsed={isSidebarCollapsed}>Analytics</SidebarLink>
+          <SidebarLink href="/technician/job-cards" icon={FiTool} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
         </>
       );
     }
@@ -84,27 +85,30 @@ export default function UnifiedLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
       {/* Sidebar */}
-      <aside className={`z-30 fixed inset-y-0 left-0 w-64 px-2 py-4 overflow-y-auto bg-gray-800 text-white transition-transform duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
-        <div className="flex justify-between items-center px-4 mb-6">
-          <h2 className="text-2xl font-semibold">Hanna Mgt.</h2>
+      <aside className={`z-30 fixed inset-y-0 left-0 ${isSidebarCollapsed ? 'w-16' : 'w-64'} px-2 py-4 overflow-y-auto bg-gray-800 text-white transition-all duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
+        <div className="flex items-center justify-between px-4 mb-6">
+          {!isSidebarCollapsed && <h2 className="text-2xl font-semibold">Hanna Mgt.</h2>}
           <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white">
             <FiX size={24} />
           </button>
+          <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="hidden md:block text-gray-400 hover:text-white">
+            {isSidebarCollapsed ? <FiChevronRight size={24} /> : <FiChevronLeft size={24} />}
+          </button>
         </div>
-        <p className="text-sm text-center text-gray-400 capitalize">{user?.role}</p>
+        {!isSidebarCollapsed && <p className="text-sm text-center text-gray-400 capitalize">{user?.role}</p>}
         <nav className="space-y-2">
             {renderSidebarLinks()}
         </nav>
         <div className="absolute bottom-0 w-full left-0 px-2 pb-4">
            <button onClick={handleLogout} className="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white">
-             <FiLogOut className="w-5 h-5 mr-3" />
-             Logout
+             <FiLogOut className={`w-5 h-5 ${isSidebarCollapsed ? 'mr-0' : 'mr-3'}`} />
+             {!isSidebarCollapsed && 'Logout'}
            </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 w-full overflow-y-auto max-w-full overflow-x-hidden">
+      <div className={`flex flex-col flex-1 w-full overflow-y-auto max-w-full overflow-x-hidden md:ml-${isSidebarCollapsed ? '16' : '64'}`}>
         <header className="z-10 py-4 bg-white shadow-md md:hidden">
           <div className="container flex items-center justify-between h-full px-6 mx-auto text-purple-600">
             <button

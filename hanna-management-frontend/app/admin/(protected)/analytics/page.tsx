@@ -114,7 +114,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Customer Growth</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total new customers in period: {data.customer_analytics?.total_customers_in_period}</p>
                 <p>Lead Conversion Rate: {data.customer_analytics?.lead_conversion_rate}</p>
                 <BarChart data={data.customer_analytics?.growth_over_time} config={chartConfig} />
@@ -126,7 +126,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Sales Revenue</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <BarChart data={data.sales_analytics?.revenue_over_time} config={chartConfig} />
               </CardContent>
             </Card>
@@ -136,7 +136,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Sales Details</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total Orders: {data.sales_analytics?.total_orders}</p>
                 <p>Average Order Value: ${data.sales_analytics?.average_order_value}</p>
               </CardContent>
@@ -172,7 +172,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Job Card Analytics</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total Job Cards: {data.job_card_analytics?.total_job_cards}</p>
                 <p>Average Resolution Time: {data.job_card_analytics?.average_resolution_time_days} days</p>
                 <div>
@@ -187,7 +187,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Email Analytics</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total Incoming Emails: {data.email_analytics?.total_incoming_emails}</p>
                 <p>Processed Emails: {data.email_analytics?.processed_emails}</p>
                 <p>Unprocessed Emails: {data.email_analytics?.unprocessed_emails}</p>
@@ -199,7 +199,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Installation Request Analytics</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total Installation Requests: {data.installation_request_analytics?.total_installation_requests}</p>
                 <div>
                   <h4 className="font-semibold mt-4">Requests by Status:</h4>
@@ -213,7 +213,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Installations per Technician</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <BarChart data={installationsData} layout="vertical" config={chartConfig} />
               </CardContent>
             </Card>
@@ -223,7 +223,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Warranties per Manufacturer</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <BarChart data={warrantiesData} layout="vertical" config={chartConfig} />
               </CardContent>
             </Card>
@@ -233,7 +233,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Warranty Claims per Manufacturer</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <BarChart data={claimsData} layout="vertical" config={chartConfig} />
               </CardContent>
             </Card>
@@ -243,7 +243,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Site Assessment Request Analytics</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total Site Assessment Requests: {data.site_assessment_request_analytics?.total_site_assessment_requests}</p>
                 <div>
                   <h4 className="font-semibold mt-4">Requests by Status:</h4>
@@ -257,7 +257,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Solar Cleaning Request Analytics</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total Solar Cleaning Requests: {data.solar_cleaning_request_analytics?.total_solar_cleaning_requests}</p>
                 <div>
                   <h4 className="font-semibold mt-4">Requests by Status:</h4>
@@ -271,7 +271,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Payment Analytics</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total Payments: {data.payment_analytics?.total_payments}</p>
                 <p>Total Revenue: ${data.payment_analytics?.total_revenue_from_payments}</p>
                 <div>
@@ -286,7 +286,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Automation & AI</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <p>Total AI Users in period: {data.automation_analytics?.total_ai_users_in_period}</p>
                 <BarChart data={data.automation_analytics?.most_active_flows} config={chartConfig} />
               </CardContent>
