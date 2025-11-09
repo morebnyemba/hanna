@@ -203,11 +203,7 @@ export default function AdminAnalyticsPage() {
                 <p>Total Installation Requests: {data.installation_request_analytics?.total_installation_requests}</p>
                 <div>
                   <h4 className="font-semibold mt-4">Requests by Status:</h4>
-                  <ul>
-                    {data.installation_request_analytics?.installation_requests_by_status.map((status: any) => (
-                      <li key={status.status}>{status.status}: {status.count}</li>
-                    ))}
-                  </ul>
+                  <PieChart data={data.installation_request_analytics?.installation_requests_by_status_pie} />
                 </div>
               </CardContent>
             </Card>

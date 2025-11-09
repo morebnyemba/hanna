@@ -58,6 +58,7 @@ export default function UnifiedLayout({ children }: { children: ReactNode }) {
       return (
         <>
           <SidebarLink href="/manufacturer/dashboard" icon={FiGrid}>Dashboard</SidebarLink>
+          <SidebarLink href="/manufacturer/analytics" icon={FiBarChart2}>Analytics</SidebarLink>
           <SidebarLink href="/manufacturer/job-cards" icon={FiTool}>Job Cards</SidebarLink>
           <SidebarLink href="/manufacturer/warranty-claims" icon={FiShield}>Warranty Claims</SidebarLink>
           <SidebarLink href="/manufacturer/products" icon={FiBox}>Products</SidebarLink>
@@ -71,6 +72,7 @@ export default function UnifiedLayout({ children }: { children: ReactNode }) {
       return (
         <>
           <SidebarLink href="/technician/dashboard" icon={FiGrid}>Dashboard</SidebarLink>
+          <SidebarLink href="/technician/analytics" icon={FiBarChart2}>Analytics</SidebarLink>
           <SidebarLink href="/technician/job-cards" icon={FiTool}>Job Cards</SidebarLink>
         </>
       );

@@ -98,6 +98,7 @@ class AdminAnalyticsView(APIView):
         installation_requests = InstallationRequest.objects.filter(date_filter)
         total_installation_requests = installation_requests.count()
         installation_requests_by_status = installation_requests.values('status').annotate(count=Count('status'))
+        installation_requests_by_status_pie = [{'name': item['status'], 'value': item['count']} for item in installation_requests_by_status]
 
         # --- Technician Analytics ---
         installations_per_technician = InstallationRequest.objects.filter(date_filter, technicians__isnull=False).values('technicians__user__username').annotate(count=Count('id')).order_by('-count')
@@ -134,6 +135,7 @@ class AdminAnalyticsView(APIView):
             'installation_request_analytics': {
                 'total_installation_requests': total_installation_requests,
                 'installation_requests_by_status': list(installation_requests_by_status),
+                'installation_requests_by_status_pie': installation_requests_by_status_pie,
             },
             'technician_analytics': {
                 'installations_per_technician': list(installations_per_technician),
