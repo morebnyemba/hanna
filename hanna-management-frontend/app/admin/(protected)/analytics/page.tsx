@@ -238,6 +238,49 @@ export default function AdminAnalyticsPage() {
               </CardContent>
             </Card>
 
+            {/* Site Assessment Request Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Site Assessment Request Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Total Site Assessment Requests: {data.site_assessment_request_analytics?.total_site_assessment_requests}</p>
+                <div>
+                  <h4 className="font-semibold mt-4">Requests by Status:</h4>
+                  <PieChart data={data.site_assessment_request_analytics?.site_assessment_requests_by_status_pie} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Solar Cleaning Request Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Solar Cleaning Request Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Total Solar Cleaning Requests: {data.solar_cleaning_request_analytics?.total_solar_cleaning_requests}</p>
+                <div>
+                  <h4 className="font-semibold mt-4">Requests by Status:</h4>
+                  <PieChart data={data.solar_cleaning_request_analytics?.solar_cleaning_requests_by_status_pie} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Total Payments: {data.payment_analytics?.total_payments}</p>
+                <p>Total Revenue: ${data.payment_analytics?.total_revenue_from_payments}</p>
+                <div>
+                  <h4 className="font-semibold mt-4">Payments by Status:</h4>
+                  <PieChart data={data.payment_analytics?.payments_by_status_pie} />
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Automation Analytics */}
             <Card>
               <CardHeader>

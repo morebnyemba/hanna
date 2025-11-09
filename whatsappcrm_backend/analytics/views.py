@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from django.utils.dateparse import parse_date
 
-from customer_data.models import CustomerProfile, Order, JobCard, InstallationRequest, LeadStatus, OrderItem
+from customer_data.models import CustomerProfile, Order, JobCard, InstallationRequest, LeadStatus, OrderItem, SiteAssessmentRequest, SolarCleaningRequest, Payment
 from conversations.models import Contact
 from warranty.models import WarrantyClaim, Technician, Warranty, Manufacturer
 from flows.models import ContactFlowState, Flow
@@ -109,6 +109,25 @@ class AdminAnalyticsView(APIView):
 
         job_cards_by_status_pie = [{'name': item['status'], 'value': item['count']} for item in job_cards_by_status]
 
+        # --- Site Assessment Request Analytics ---
+        site_assessment_requests = SiteAssessmentRequest.objects.filter(date_filter)
+        total_site_assessment_requests = site_assessment_requests.count()
+        site_assessment_requests_by_status = site_assessment_requests.values('status').annotate(count=Count('status'))
+        site_assessment_requests_by_status_pie = [{'name': item['status'], 'value': item['count']} for item in site_assessment_requests_by_status]
+
+        # --- Solar Cleaning Request Analytics ---
+        solar_cleaning_requests = SolarCleaningRequest.objects.filter(date_filter)
+        total_solar_cleaning_requests = solar_cleaning_requests.count()
+        solar_cleaning_requests_by_status = solar_cleaning_requests.values('status').annotate(count=Count('status'))
+        solar_cleaning_requests_by_status_pie = [{'name': item['status'], 'value': item['count']} for item in solar_cleaning_requests_by_status]
+
+        # --- Payment Analytics ---
+        payments = Payment.objects.filter(date_filter)
+        total_payments = payments.count()
+        payments_by_status = payments.values('status').annotate(count=Count('status'))
+        payments_by_status_pie = [{'name': item['status'], 'value': item['count']} for item in payments_by_status]
+        total_revenue_from_payments = payments.filter(status='successful').aggregate(total=Sum('amount'))['total'] or 0
+
         data = {
             'customer_analytics': {
                 'growth_over_time': list(customer_growth),
@@ -136,6 +155,22 @@ class AdminAnalyticsView(APIView):
                 'total_installation_requests': total_installation_requests,
                 'installation_requests_by_status': list(installation_requests_by_status),
                 'installation_requests_by_status_pie': installation_requests_by_status_pie,
+            },
+            'site_assessment_request_analytics': {
+                'total_site_assessment_requests': total_site_assessment_requests,
+                'site_assessment_requests_by_status': list(site_assessment_requests_by_status),
+                'site_assessment_requests_by_status_pie': site_assessment_requests_by_status_pie,
+            },
+            'solar_cleaning_request_analytics': {
+                'total_solar_cleaning_requests': total_solar_cleaning_requests,
+                'solar_cleaning_requests_by_status': list(solar_cleaning_requests_by_status),
+                'solar_cleaning_requests_by_status_pie': solar_cleaning_requests_by_status_pie,
+            },
+            'payment_analytics': {
+                'total_payments': total_payments,
+                'payments_by_status': list(payments_by_status),
+                'payments_by_status_pie': payments_by_status_pie,
+                'total_revenue_from_payments': f"{total_revenue_from_payments:.2f}",
             },
             'technician_analytics': {
                 'installations_per_technician': list(installations_per_technician),
