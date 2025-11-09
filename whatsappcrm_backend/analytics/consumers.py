@@ -46,17 +46,20 @@ class AnalyticsConsumer(AsyncWebsocketConsumer):
             analytics_view = AdminAnalyticsView()
             # We need to create a mock request object for the view
             from django.test import RequestFactory
+            from rest_framework.request import Request
             factory = RequestFactory()
             
             url = '/crm-api/analytics/admin/'
             if start_date and end_date:
                 url += f'?start_date={start_date}&end_date={end_date}'
 
-            request = factory.get(url)
-            request.user = self.user
+            # Create a standard Django request and then wrap it in a DRF Request
+            wsgi_request = factory.get(url)
+            wsgi_request.user = self.user
+            drf_request = Request(wsgi_request)
             
             # The view's get method is synchronous, so we run it in a thread
-            response = await sync_to_async(analytics_view.get)(request)
+            response = await sync_to_async(analytics_view.get)(drf_request)
             data = response.data
             
             await self.send(text_data=json.dumps({
