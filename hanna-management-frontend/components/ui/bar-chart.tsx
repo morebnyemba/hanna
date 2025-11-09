@@ -33,7 +33,7 @@ const BarChart = React.forwardRef<
         <RechartsBarChart data={data} layout={layout}>
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend content={<ChartLegendContent />} />
-          {(Object.entries(config) as [string, ChartConfig[string]][]).map(([key, itemConfig]) => {
+          {Object.entries(config).map(([key, itemConfig]: [string, { type?: string; color?: string }]) => {
             if (itemConfig.type === "bar") {
               return <Bar key={key} dataKey={key} fill={itemConfig.color} />
             }
