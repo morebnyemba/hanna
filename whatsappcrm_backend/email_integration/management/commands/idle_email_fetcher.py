@@ -49,7 +49,11 @@ class Command(BaseCommand):
                     # Inner loop for each account to handle reconnects
                     while True:
                         try:
-                            server = IMAPClient(host_to_connect, ssl=True, timeout=300)
+                            # --- NEW: Use STARTTLS for more compatibility ---
+                            # Connect on the standard port, then upgrade to TLS.
+                            server = IMAPClient(host_to_connect, ssl=False, timeout=300)
+                            server.starttls()
+                            # --- END NEW ---
                             server.login(account.imap_user, account.imap_password)
                             server.select_folder('INBOX')
                             logger.info(f"Successfully connected and selected INBOX for '{account.name}'.")
