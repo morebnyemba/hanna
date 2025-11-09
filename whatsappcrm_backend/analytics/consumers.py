@@ -56,7 +56,8 @@ class AnalyticsConsumer(AsyncWebsocketConsumer):
             request.user = self.user
             
             # The view's get method is synchronous, so we run it in a thread
-            data = await sync_to_async(analytics_view.get)(request).data
+            response = await sync_to_async(analytics_view.get)(request)
+            data = response.data
             
             await self.send(text_data=json.dumps({
                 'type': 'analytics_update',
