@@ -432,6 +432,12 @@ class InstallationRequest(models.Model):
     alternative_contact_name = models.CharField(_("Alternative Contact Name"), max_length=255, blank=True, null=True)
     alternative_contact_number = models.CharField(_("Alternative Contact Number"), max_length=20, blank=True, null=True)
     notes = models.TextField(_("Installation Notes"), blank=True, null=True)
+    technicians = models.ManyToManyField(
+        'warranty.Technician',
+        related_name='installation_requests',
+        blank=True,
+        help_text=_("The technician(s) assigned to this installation.")
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
