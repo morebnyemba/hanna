@@ -416,9 +416,13 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
         installation_date = timezone.now() + timedelta(hours=72)
         InstallationRequest.objects.create(
             customer=customer_profile,
-            order=order,
+            associated_order=order,
             status='pending',
-            preferred_date=installation_date.date(),
+            installation_type='residential', # Defaulting to residential
+            full_name=customer_profile.get_full_name() or "N/A",
+            address=customer_profile.address_line_1 or "N/A",
+            contact_phone=customer_profile.contact.whatsapp_id,
+            preferred_datetime=installation_date.strftime('%Y-%m-%d %H:%M:%S'),
             notes=f"Automatically generated from processed invoice '{attachment.filename}'."
         )
         logger.info(f"{log_prefix} Automatically created InstallationRequest for order '{invoice_number}'.")
