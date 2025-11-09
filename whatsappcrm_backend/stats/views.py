@@ -128,7 +128,7 @@ class DashboardSummaryStatsAPIView(APIView):
         recent_new_contacts = Contact.objects.order_by('-first_seen')[:3]
         recent_updated_flows = Flow.objects.order_by('-updated_at')[:2]
         recent_handovers = Contact.objects.filter(needs_human_intervention=True).order_by('-intervention_requested_at')[:2]
-        recent_claims = WarrantyClaim.objects.select_related('warranty__product').order_by('-created_at')[:2]
+        recent_claims = WarrantyClaim.objects.select_related('warranty__serialized_item__product').order_by('-created_at')[:2]
         
         activity_log_for_frontend = []
         for contact_activity in recent_new_contacts:
@@ -158,7 +158,7 @@ class DashboardSummaryStatsAPIView(APIView):
         for claim in recent_claims:
             activity_log_for_frontend.append({
                 "id": f"claim_{claim.id}",
-                "text": f"New claim #{claim.claim_id} for {claim.warranty.product.name}.",
+                "text": f"New claim #{claim.claim_id} for {claim.warranty.serialized_item.product.name}.",
 
                 "timestamp": claim.created_at.isoformat(),
                 "iconName": "FiShield",

@@ -47,7 +47,7 @@ class AdminAnalyticsView(APIView):
         date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
 
         # --- Customer Analytics ---
-        customer_growth = CustomerProfile.objects.filter(date_filter).annotate(date=TruncDate('created_at')).values('date').annotate(count=Count('id')).order_by('date')
+        customer_growth = CustomerProfile.objects.filter(date_filter).annotate(date=TruncDate('created_at')).values('date').annotate(count=Count('contact_id')).order_by('date')
         
         total_leads = CustomerProfile.objects.filter(date_filter).count()
         won_leads = CustomerProfile.objects.filter(date_filter, lead_status=LeadStatus.WON).count()
