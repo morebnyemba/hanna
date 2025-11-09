@@ -1,9 +1,12 @@
+# Environment variables
+.env
+.env.*
+*.env
+
 *.pyc
 __pycache__/
 node_modules/
 .vscode/
-.env
 .DS_Store
-.env.prod
 .gemini/
 gha-creds-*.json

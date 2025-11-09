@@ -1,7 +1,20 @@
 from django.db import models
 from django.utils.timezone import now
 
+class EmailAccount(models.Model):
+    name = models.CharField(max_length=100, help_text="A friendly name for the email account, e.g., 'Sales Inbox'")
+    imap_host = models.CharField(max_length=255)
+    imap_user = models.CharField(max_length=255)
+    imap_password = models.CharField(max_length=255)  # Consider using a more secure way to store this
+    is_active = models.BooleanField(default=True, help_text="Enable or disable fetching from this account.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
 class EmailAttachment(models.Model):
+    account = models.ForeignKey(EmailAccount, on_delete=models.SET_NULL, null=True, blank=True, related_name='attachments')
     file = models.FileField(upload_to='attachments/')
     filename = models.CharField(max_length=255)
     sender = models.CharField(max_length=255, blank=True, null=True)

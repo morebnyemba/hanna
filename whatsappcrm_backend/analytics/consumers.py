@@ -6,11 +6,14 @@ from .views import AdminAnalyticsView
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import AnonymousUser
 import datetime
+from decimal import Decimal
 
-class DateEncoder(json.JSONEncoder):
+class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime.date):
+        if isinstance(obj, (datetime.date, datetime.datetime)):
             return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return str(obj)
         return super().default(obj)
 
 class AnalyticsConsumer(AsyncWebsocketConsumer):
@@ -67,7 +70,7 @@ class AnalyticsConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({
                 'type': 'analytics_update',
                 'data': data
-            }, cls=DateEncoder))
+            }, cls=CustomJSONEncoder))
         except Exception as e:
             await self.send(text_data=json.dumps({
                 'type': 'error',

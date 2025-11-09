@@ -361,6 +361,9 @@ def _get_or_create_customer_profile(customer_data: dict, log_prefix: str) -> Cus
 def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log_prefix: str):
     """Creates or updates an Order and its items from extracted invoice data."""
     from django.forms.models import model_to_dict
+    from django.utils import timezone
+    from datetime import timedelta
+
     logger.info(f"{log_prefix} Starting to create Order from extracted data.")
     
     customer_profile = _get_or_create_customer_profile(data.get('recipient', {}), log_prefix)
@@ -407,6 +410,19 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     )
 
     logger.info(f"{log_prefix} Created new Order with order_number '{invoice_number}'.")
+
+    # --- NEW: Automatically create an InstallationRequest ---
+    if customer_profile:
+        installation_date = timezone.now() + timedelta(hours=72)
+        InstallationRequest.objects.create(
+            customer=customer_profile,
+            order=order,
+            status='pending',
+            preferred_date=installation_date.date(),
+            notes=f"Automatically generated from processed invoice '{attachment.filename}'."
+        )
+        logger.info(f"{log_prefix} Automatically created InstallationRequest for order '{invoice_number}'.")
+
 
     line_items = data.get('line_items', [])
     if isinstance(line_items, list):
@@ -455,6 +471,20 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                     'attachment': attachment_dict, 'order': order_dict, 'customer': customer_dict
                 }
             )
+            
+            # --- NEW: Send WhatsApp notification to the customer ---
+            queue_notifications_to_users(
+                template_name='customer_invoice_confirmation', # New template for customers
+                contact_ids=[customer_profile.contact.id],
+                related_contact=customer_profile.contact,
+                template_context={
+                    'customer_name': customer_profile.get_full_name(),
+                    'order_number': order.order_number,
+                    'total_amount': f"{order.amount:.2f}" if order.amount is not None else "N/A",
+                    'invoice_date': order.expected_close_date.strftime('%Y-%m-%d') if order.expected_close_date else "N/A",
+                }
+            )
+            logger.info(f"{log_prefix} Queued WhatsApp notification for customer {customer_profile.contact.whatsapp_id} for order '{order.order_number}'.")
 
 @transaction.atomic
 def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_prefix: str):
