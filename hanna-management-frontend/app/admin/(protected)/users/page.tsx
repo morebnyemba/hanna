@@ -43,7 +43,7 @@ export default function AdminUsersPage() {
       setError(null);
       try {
         const response = await apiClient.get('/crm-api/users/');
-        setUsers(response.data);
+        setUsers(response.data.results);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch users.');
       } finally {
@@ -64,7 +64,7 @@ export default function AdminUsersPage() {
       setInviteDialogOpen(false);
       // Refresh users list
       const response = await apiClient.get('/crm-api/users/');
-      setUsers(response.data);
+      setUsers(response.data.results);
     } catch (err: any) {
       alert('Failed to invite user: ' + (err.response?.data?.detail || err.message));
     }
