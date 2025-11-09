@@ -1,62 +1,192 @@
-=> => naming to docker.io/library/hanna-email_idle_fetcher                                                                                                                               0.0s
- => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      28.1s
- => [frontend] resolving provenance for metadata file                                                                                                                                     0.0s
- => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
- => [celery_io_worker] resolving provenance for metadata file                                                                                                                             0.1s
- => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.0s
- => [backend] resolving provenance for metadata file                                                                                                                                      0.0s
- => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.0s
-------
- > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.599 
-0.599 > hanna-management-frontend@0.1.0 build
-0.599 > next build
-0.599 
-2.342 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-2.342 This information is used to shape Next.js' roadmap and prioritize features.
-2.342 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-2.342 https://nextjs.org/telemetry
-2.342 
-2.354    ▲ Next.js 16.0.1 (Turbopack)
-2.355 
-2.465    Creating an optimized production build ...
-27.83 
-27.83 > Build error occurred
-27.84 Error: Turbopack build failed with 1 errors:
-27.84 ./app/admin/(protected)/analytics/page.tsx:256:24
-27.84 Parsing ecmascript source code failed
-27.84   254 |               <CardHeader>
-27.84   255 |                 <CardTitle>Warranties per Manufacturer</CardTitle>
-27.84 > 256 |               </Header>
-27.84       |                        ^
-27.84 > 257 |               <CardContent className="overflow-x-auto">
-27.84       | ^^^^^^^^^^^^^^^
-27.84   258 |                 <BarChart data={warrantiesData} layout="vertical" config={chartConfig} />
-27.84   259 |               </CardContent>
-27.84   260 |             </Card>
-27.84 
-27.84 Expected '</', got 'jsx text (
-27.84               )'
-27.84 
-27.84 
-27.84     at <unknown> (./app/admin/(protected)/analytics/page.tsx:256:24)
-------
-Dockerfile:20
+6b103c0271bba598.js:1 WebSocket connection to 'wss://hanna.co.zw/ws/analytics/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.…WwuY29tIiwicm9sZSI6ImFkbWluIn0.zblEVWRZtqmW-zhVO8HaWgllRbBskHCteLnDTjauRP4' failed: 
+(anonymous)	@	6b103c0271bba598.js:1
+ic	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+ua	@	ff07fd46409b0e0a.js:19
+uo	@	ff07fd46409b0e0a.js:19
+sy	@	ff07fd46409b0e0a.js:19
+sv	@	ff07fd46409b0e0a.js:19
+sA	@	ff07fd46409b0e0a.js:19
+sM	@	ff07fd46409b0e0a.js:19
+sh	@	ff07fd46409b0e0a.js:19
+sc	@	ff07fd46409b0e0a.js:19
+u4	@	ff07fd46409b0e0a.js:19
+u3	@	ff07fd46409b0e0a.js:19
+sR	@	ff07fd46409b0e0a.js:19
+O	@	ff07fd46409b0e0a.js:19
 
---------------------
+installHook.js:1 WebSocket error: 
+Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+overrideMethod	@	installHook.js:1
+r.onerror	@	6b103c0271bba598.js:1
+6b103c0271bba598.js:1 WebSocket connection closed
+﻿
 
-  18 |     # Build the Next.js application
-
-  19 |     # 'next build' creates an optimized production build in the .next directory
-
-  20 | >>> RUN npm run build
-
-  21 |     
-
-  22 |     # Stage 2: Serve the application with a lightweight Node.js runtime
-
---------------------
-
-target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
-
-root@srv967860:~/HANNA# 

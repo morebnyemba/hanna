@@ -57,8 +57,7 @@ export default function AdminAnalyticsPage() {
   const token = useAuthStore.getState().accessToken;
 
   useEffect(() => {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let wsUrl = `${wsProtocol}//${window.location.host}/ws/analytics/`;
+    const wsUrl = `wss://backend.hanna.co.zw/ws/analytics/`;
     if (token) {
       wsUrl += `?token=${token}`;
     }
