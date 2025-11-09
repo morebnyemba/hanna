@@ -11,10 +11,11 @@ import re
 from collections import Counter
 from django.utils.dateparse import parse_date
 
-from customer_data.models import CustomerProfile, Order, JobCard, InstallationRequest, LeadStatus
+from customer_data.models import CustomerProfile, Order, JobCard, InstallationRequest, LeadStatus, OrderItem
 from conversations.models import Contact
 from warranty.models import WarrantyClaim, Technician
 from flows.models import ContactFlowState, Flow
+from products_and_services.models import Product
 
 def get_date_range(request):
     """
@@ -54,7 +55,13 @@ class AdminAnalyticsView(APIView):
         lead_conversion_rate = (won_leads / total_leads * 100) if total_leads > 0 else 0
 
         # --- Sales Analytics ---
-        revenue_over_time = Order.objects.filter(date_filter, stage=Order.Stage.CLOSED_WON).annotate(date=TruncDate('created_at')).values('date').annotate(total=Sum('amount')).order_by('date')
+        orders = Order.objects.filter(date_filter, stage=Order.Stage.CLOSED_WON)
+        revenue_over_time = orders.annotate(date=TruncDate('created_at')).values('date').annotate(total=Sum('amount')).order_by('date')
+        total_orders = orders.count()
+        total_revenue = orders.aggregate(total=Sum('amount'))['total'] or 0
+        average_order_value = total_revenue / total_orders if total_orders > 0 else 0
+
+        top_selling_products = OrderItem.objects.filter(order__in=orders).values('product__name').annotate(total_sold=Sum('quantity')).order_by('-total_sold')[:5]
         
         # --- AI & Automation Analytics ---
         total_ai_users = ContactFlowState.objects.filter(started_at__date__gte=start_date, started_at__date__lte=end_date).values('contact').distinct().count()
@@ -68,6 +75,9 @@ class AdminAnalyticsView(APIView):
             },
             'sales_analytics': {
                 'revenue_over_time': list(revenue_over_time),
+                'total_orders': total_orders,
+                'average_order_value': f"{average_order_value:.2f}",
+                'top_selling_products': list(top_selling_products),
             },
             'automation_analytics': {
                 'total_ai_users_in_period': total_ai_users,

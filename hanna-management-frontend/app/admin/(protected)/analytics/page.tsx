@@ -10,6 +10,7 @@ import { DateRangePicker } from '@/app/components/DateRangePicker';
 
 import { BarChart } from '@/components/ui/bar-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const chartConfig = {
   customers: {
@@ -40,15 +41,17 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!date?.from || !date?.to) return;
-
       setLoading(true);
       setError(null);
       try {
-        const startDate = date.from.toISOString().split('T')[0];
-        const endDate = date.to.toISOString().split('T')[0];
+        let url = '/crm-api/analytics/admin/';
+        if (date?.from && date?.to) {
+          const startDate = date.from.toISOString().split('T')[0];
+          const endDate = date.to.toISOString().split('T')[0];
+          url += `?start_date=${startDate}&end_date=${endDate}`;
+        }
         
-        const response = await apiClient.get(`/crm-api/analytics/admin/?start_date=${startDate}&end_date=${endDate}`);
+        const response = await apiClient.get(url);
         setData(response.data);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch analytics data.');
@@ -94,6 +97,42 @@ export default function AdminAnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <BarChart data={data.sales_analytics?.revenue_over_time} config={chartConfig} />
+              </CardContent>
+            </Card>
+
+            {/* Sales Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Total Orders: {data.sales_analytics?.total_orders}</p>
+                <p>Average Order Value: ${data.sales_analytics?.average_order_value}</p>
+              </CardContent>
+            </Card>
+
+            {/* Top Selling Products */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Top Selling Products</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Total Sold</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.sales_analytics?.top_selling_products.map((product: any) => (
+                      <TableRow key={product.product__name}>
+                        <TableCell>{product.product__name}</TableCell>
+                        <TableCell>{product.total_sold}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
 
