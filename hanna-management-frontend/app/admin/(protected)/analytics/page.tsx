@@ -1,13 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FiBarChart2 } from 'react-icons/fi';
-import apiClient from '@/lib/apiClient';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 
 import { DateRangePicker } from '@/app/components/DateRangePicker';
-
 import { BarChart } from '@/components/ui/bar-chart';
 import { PieChart } from '@/components/ui/pie-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,29 +52,62 @@ export default function AdminAnalyticsPage() {
     from: subDays(new Date(), 29),
     to: new Date(),
   });
+  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        let url = '/crm-api/analytics/admin/';
-        if (date?.from && date?.to) {
-          const startDate = date.from.toISOString().split('T')[0];
-          const endDate = date.to.toISOString().split('T')[0];
-          url += `?start_date=${startDate}&end_date=${endDate}`;
-        }
-        
-        const response = await apiClient.get(url);
-        setData(response.data);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch analytics data.');
-      } finally {
-        setLoading(false);
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/analytics/`;
+
+    const socket = new WebSocket(wsUrl);
+    socketRef.current = socket;
+
+    socket.onopen = () => {
+      console.log('WebSocket connection established');
+      setLoading(false);
+      // Send initial date range
+      if (date?.from && date?.to) {
+        const message = {
+          type: 'date_range_change',
+          start_date: date.from.toISOString().split('T')[0],
+          end_date: date.to.toISOString().split('T')[0],
+        };
+        socket.send(JSON.stringify(message));
       }
     };
 
-    fetchData();
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'analytics_update') {
+        setData(message.data);
+      } else if (message.type === 'error') {
+        setError(message.message);
+      }
+    };
+
+    socket.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setError('WebSocket connection error.');
+      setLoading(false);
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && date?.from && date?.to) {
+      const message = {
+        type: 'date_range_change',
+        start_date: date.from.toISOString().split('T')[0],
+        end_date: date.to.toISOString().split('T')[0],
+      };
+      socketRef.current.send(JSON.stringify(message));
+    }
   }, [date]);
 
   const installationsData = data?.technician_analytics?.installations_per_technician.map((item: any) => ({
@@ -108,7 +139,7 @@ export default function AdminAnalyticsPage() {
       {error && <p className="text-red-500">Error: {error}</p>}
 
       {data && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {/* Customer Analytics */}
             <Card>
               <CardHeader>
@@ -222,7 +253,7 @@ export default function AdminAnalyticsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Warranties per Manufacturer</CardTitle>
-              </CardHeader>
+              </Header>
               <CardContent className="overflow-x-auto">
                 <BarChart data={warrantiesData} layout="vertical" config={chartConfig} />
               </CardContent>
@@ -242,7 +273,7 @@ export default function AdminAnalyticsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Site Assessment Request Analytics</CardTitle>
-              </CardHeader>
+              </Header>
               <CardContent className="overflow-x-auto">
                 <p>Total Site Assessment Requests: {data.site_assessment_request_analytics?.total_site_assessment_requests}</p>
                 <div>

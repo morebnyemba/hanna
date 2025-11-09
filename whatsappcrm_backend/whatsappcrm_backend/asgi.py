@@ -16,6 +16,7 @@ from whatsappcrm_backend.middleware import TokenAuthMiddleware
 
 import stats.routing
 import conversations.routing
+import analytics.routing
 
 application = ProtocolTypeRouter({
     # Django's ASGI application to handle traditional HTTP requests
@@ -24,7 +25,9 @@ application = ProtocolTypeRouter({
     # WebSocket chat handler
     "websocket": AllowedHostsOriginValidator(
         TokenAuthMiddleware(URLRouter(
-            stats.routing.websocket_urlpatterns + conversations.routing.websocket_urlpatterns
+            stats.routing.websocket_urlpatterns + 
+            conversations.routing.websocket_urlpatterns +
+            analytics.routing.websocket_urlpatterns
         ))
     ),
 })

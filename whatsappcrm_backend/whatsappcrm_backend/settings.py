@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'notifications.apps.NotificationsConfig',
     'customer_data.apps.CustomerDataConfig',
     'ai_integration.apps.AiIntegrationConfig',
+    'analytics.apps.AnalyticsConfig',
     
     'warranty.apps.WarrantyConfig',
 ]
