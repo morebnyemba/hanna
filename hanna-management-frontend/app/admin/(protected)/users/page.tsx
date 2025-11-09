@@ -133,7 +133,7 @@ export default function AdminUsersPage() {
               <TableRow key={user.id}>
                 <TableCell>{user.first_name} {user.last_name}</TableCell>
                 <TableCell>{user.email}</TableCell>
-                <TableCell>{user.groups.join(', ')}</TableCell>
+                <TableCell>{Array.isArray(user.groups) ? user.groups.join(', ') : ''}</TableCell>
                 <TableCell>
                   <Button variant="outline" size="sm">Edit</Button>
                 </TableCell>
