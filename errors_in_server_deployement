@@ -1,32 +1,43 @@
+ => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      27.3s
+ => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.1s
+ => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.1s
+ => [celery_io_worker] resolving provenance for metadata file                                                                                                                             0.0s
+ => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
+ => [frontend] resolving provenance for metadata file                                                                                                                                     0.0s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.528 
-0.528 > hanna-management-frontend@0.1.0 build
-0.528 > next build
-0.528 
-1.800 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.800 This information is used to shape Next.js' roadmap and prioritize features.
-1.800 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.800 https://nextjs.org/telemetry
-1.800 
-1.813    ▲ Next.js 16.0.1 (Turbopack)
-1.813 
-1.934    Creating an optimized production build ...
-29.35  ✓ Compiled successfully in 26.8s
-29.37    Running TypeScript ...
-37.99 Failed to compile.
-37.99 
-37.99 ./components/ui/bar-chart.tsx:36:17
-37.99 Type error: 'itemConfig' is of type 'unknown'.
-37.99 
-37.99   34 |           <ChartLegend content={<ChartLegendContent />} />
-37.99   35 |           {Object.entries(config).map(([key, itemConfig]) => {
-37.99 > 36 |             if (itemConfig.type === "bar") {
-37.99      |                 ^
-37.99   37 |               return <Bar key={key} dataKey={key} fill={itemConfig.color} />
-37.99   38 |             }
-37.99   39 |             return null
-38.06 Next.js build worker exited with code: 1 and signal: null
+0.533 
+0.533 > hanna-management-frontend@0.1.0 build
+0.533 > next build
+0.533 
+1.754 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.754 This information is used to shape Next.js' roadmap and prioritize features.
+1.754 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.754 https://nextjs.org/telemetry
+1.754 
+1.788    ▲ Next.js 16.0.1 (Turbopack)
+1.788 
+2.022    Creating an optimized production build ...
+27.10 
+27.10 > Build error occurred
+27.10 Error: Turbopack build failed with 1 errors:
+27.10 ./app/admin/(protected)/analytics/page.tsx:256:24
+27.10 Parsing ecmascript source code failed
+27.10   254 |               <CardHeader>
+27.10   255 |                 <CardTitle>Warranties per Manufacturer</CardTitle>
+27.10 > 256 |               </Header>
+27.10       |                        ^
+27.10 > 257 |               <CardContent className="overflow-x-auto">
+27.10       | ^^^^^^^^^^^^^^^
+27.10   258 |                 <BarChart data={warrantiesData} layout="vertical" config={chartConfig} />
+27.10   259 |               </CardContent>
+27.10   260 |             </Card>
+27.10 
+27.10 Expected '</', got 'jsx text (
+27.10               )'
+27.10 
+27.10 
+27.10     at <unknown> (./app/admin/(protected)/analytics/page.tsx:256:24)
 ------
 Dockerfile:20
 
@@ -43,3 +54,11 @@ Dockerfile:20
   22 |     # Stage 2: Serve the application with a lightweight Node.js runtime
 
 --------------------
+
+target hanna-management-frontend: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+
+root@srv967860:~/HANNA# git pull origin main
+From https://github.com/morebnyemba/HANNA
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+root@srv967860:~/HANNA# 

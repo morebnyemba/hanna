@@ -253,7 +253,7 @@ export default function AdminAnalyticsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Warranties per Manufacturer</CardTitle>
-              </Header>
+              </CardHeader>
               <CardContent className="overflow-x-auto">
                 <BarChart data={warrantiesData} layout="vertical" config={chartConfig} />
               </CardContent>
@@ -273,7 +273,7 @@ export default function AdminAnalyticsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Site Assessment Request Analytics</CardTitle>
-              </Header>
+              </CardHeader>
               <CardContent className="overflow-x-auto">
                 <p>Total Site Assessment Requests: {data.site_assessment_request_analytics?.total_site_assessment_requests}</p>
                 <div>
