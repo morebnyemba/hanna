@@ -44,9 +44,11 @@ class AdminAnalyticsView(APIView):
         
         if start_date and end_date:
             date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+            email_date_filter = Q(saved_at__date__gte=start_date, saved_at__date__lte=end_date)
             started_at_date_filter = Q(started_at__date__gte=start_date, started_at__date__lte=end_date)
         else:
             date_filter = Q()
+            email_date_filter = Q()
             started_at_date_filter = Q()
 
         # --- Customer Analytics ---
@@ -78,7 +80,7 @@ class AdminAnalyticsView(APIView):
         average_resolution_time_days = average_resolution_time_agg['avg_time'].days if average_resolution_time_agg['avg_time'] else 0
 
         # --- Email Analytics ---
-        emails = EmailAttachment.objects.filter(date_filter)
+        emails = EmailAttachment.objects.filter(email_date_filter)
         total_incoming_emails = emails.count()
         processed_emails = emails.filter(processed=True).count()
         unprocessed_emails = total_incoming_emails - processed_emails

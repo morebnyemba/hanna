@@ -1,21 +1,52 @@
-[2025-11-09 07:40:39] INFO services Registered flow action: 'send_group_notification'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'update_lead_score'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'create_order_from_context'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'create_order'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'generate_unique_order_number'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'create_order_with_items'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'calculate_order_total'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'update_order_fields'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'update_model_instance'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'create_order_from_cart'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'generate_unique_assessment_id'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'create_placeholder_order'
-[2025-11-09 07:40:39] INFO services Registered flow action: 'normalize_order_number'
-[2025-11-09 07:40:39] INFO cli Starting server at tcp:port=8000:interface=0.0.0.0
-[2025-11-09 07:40:39] INFO server HTTP/2 support not enabled (install the http2 and tls Twisted extras)
-[2025-11-09 07:40:39] INFO server Configuring endpoint tcp:port=8000:interface=0.0.0.0
-[2025-11-09 07:40:39] INFO server Listening on TCP address 0.0.0.0:8000
-[2025-11-09 07:40:48] ERROR log Internal Server Error: /crm-api/analytics/admin/
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 42, in inner
+    response = await get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 253, in _get_response_async
+    response = await wrapped_callback(
+  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 502, in __call__
+    ret = await asyncio.shield(exec_coro)
+  File "/usr/local/lib/python3.10/site-packages/asgiref/current_thread_executor.py", line 40, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 556, in thread_handler
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/generic/base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/analytics/views.py", line 81, in get
+    emails = EmailAttachment.objects.filter(date_filter)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1495, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1513, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1523, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1503, in build_filter
+    return self._add_q(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: email_date, extracted_data, file, filename, id, parsed_invoice, processed, saved_at, sender, subject, updated_at
+172.18.0.11:46266 - - [09/Nov/2025:11:50:52] "GET /crm-api/analytics/admin/?start_date=2025-10-11&end_date=2025-11-09" 500 145
+[2025-11-09 11:50:52] ERROR log Internal Server Error: /crm-api/analytics/admin/
 Traceback (most recent call last):
   File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 552, in thread_handler
     raise exc_info[1]
@@ -41,8 +72,8 @@ Traceback (most recent call last):
     raise exc
   File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
     response = handler(request, *args, **kwargs)
-  File "/app/analytics/views.py", line 61, in get
-    most_active_flows = Flow.objects.filter(contact_states__started_at__date__gte=start_date, contact_states__started_at__date__lte=end_date).annotate(engagement=Count('contact_states')).order_by('-engagement')[:5]
+  File "/app/analytics/views.py", line 81, in get
+    emails = EmailAttachment.objects.filter(date_filter)
   File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
     return getattr(self.get_queryset(), name)(*args, **kwargs)
   File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1495, in filter
@@ -55,55 +86,8 @@ Traceback (most recent call last):
     clause, _ = self._add_q(q_object, can_reuse)
   File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
     child_clause, needed_inner = self.build_filter(
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1526, in build_filter
-    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1333, in solve_lookup_type
-    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
-    raise FieldError(
-django.core.exceptions.FieldError: Cannot resolve keyword 'contact_states' into field. Choices are: contactflowstate, created_at, description, friendly_name, id, is_active, name, related_notifications, steps, trigger_config, trigger_keywords, updated_at
-172.18.0.11:37338 - - [09/Nov/2025:07:40:48] "GET /crm-api/analytics/admin/?start_date=2025-10-11&end_date=2025-11-09" 500 145
-172.18.0.11:43524 - - [09/Nov/2025:07:40:52] "GET /crm-api/admin/dashboard-stats/" 200 1812
-172.18.0.11:58876 - - [09/Nov/2025:07:41:18] "OPTIONS /crm-api/customer-data/profiles/" 200 -
-172.18.0.11:58892 - - [09/Nov/2025:07:41:19] "GET /crm-api/customer-data/profiles/" 200 52
-[2025-11-09 07:41:21] ERROR log Internal Server Error: /crm-api/analytics/admin/
-Traceback (most recent call last):
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 552, in thread_handler
-    raise exc_info[1]
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 42, in inner
-    response = await get_response(request)
-  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 253, in _get_response_async
-    response = await wrapped_callback(
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 502, in __call__
-    ret = await asyncio.shield(exec_coro)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/current_thread_executor.py", line 40, in run
-    result = self.fn(*self.args, **self.kwargs)
-  File "/usr/local/lib/python3.10/site-packages/asgiref/sync.py", line 556, in thread_handler
-    return func(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
-    return view_func(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/views/generic/base.py", line 105, in view
-    return self.dispatch(request, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
-    response = self.handle_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
-    self.raise_uncaught_exception(exc)
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
-    raise exc
-  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
-    response = handler(request, *args, **kwargs)
-  File "/app/analytics/views.py", line 61, in get
-    most_active_flows = Flow.objects.filter(contact_states__started_at__date__gte=start_date, contact_states__started_at__date__lte=end_date).annotate(engagement=Count('contact_states')).order_by('-engagement')[:5]
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
-    return getattr(self.get_queryset(), name)(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1495, in filter
-    return self._filter_or_exclude(False, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1513, in _filter_or_exclude
-    clone._filter_or_exclude_inplace(negate, args, kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1523, in _filter_or_exclude_inplace
-    self._query.add_q(Q(*args, **kwargs))
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1646, in add_q
-    clause, _ = self._add_q(q_object, can_reuse)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1503, in build_filter
+    return self._add_q(
   File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
     child_clause, needed_inner = self.build_filter(
   File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1526, in build_filter
@@ -112,5 +96,5 @@ Traceback (most recent call last):
     _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
   File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
     raise FieldError(
-django.core.exceptions.FieldError: Cannot resolve keyword 'contact_states' into field. Choices are: contactflowstate, created_at, description, friendly_name, id, is_active, name, related_notifications, steps, trigger_config, trigger_keywords, updated_at
-172.18.0.11:47200 - - [09/Nov/2025:07:41:21] "GET /crm-api/analytics/admin/?start_date=2025-10-11&end_date=2025-11-09" 500 145
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: email_date, extracted_data, file, filename, id, parsed_invoice, processed, saved_at, sender, subject, updated_at
+172.18.0.11:46280 - - [09/Nov/2025:11:50:52] "GET /crm-api/analytics/admin/?start_date=2025-10-11&end_date=2025-11-09" 500 145
