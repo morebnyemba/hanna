@@ -116,7 +116,7 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Top Selling Products</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -133,6 +133,55 @@ export default function AdminAnalyticsPage() {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+
+            {/* Job Card Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Job Card Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Total Job Cards: {data.job_card_analytics?.total_job_cards}</p>
+                <p>Average Resolution Time: {data.job_card_analytics?.average_resolution_time_days} days</p>
+                <div>
+                  <h4 className="font-semibold mt-4">Job Cards by Status:</h4>
+                  <ul>
+                    {data.job_card_analytics?.job_cards_by_status.map((status: any) => (
+                      <li key={status.status}>{status.status}: {status.count}</li>
+                    ))}
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Email Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Email Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Total Incoming Emails: {data.email_analytics?.total_incoming_emails}</p>
+                <p>Processed Emails: {data.email_analytics?.processed_emails}</p>
+                <p>Unprocessed Emails: {data.email_analytics?.unprocessed_emails}</p>
+              </CardContent>
+            </Card>
+
+            {/* Installation Request Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Installation Request Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Total Installation Requests: {data.installation_request_analytics?.total_installation_requests}</p>
+                <div>
+                  <h4 className="font-semibold mt-4">Requests by Status:</h4>
+                  <ul>
+                    {data.installation_request_analytics?.installation_requests_by_status.map((status: any) => (
+                      <li key={status.status}>{status.status}: {status.count}</li>
+                    ))}
+                  </ul>
+                </div>
               </CardContent>
             </Card>
 

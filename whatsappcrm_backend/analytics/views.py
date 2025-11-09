@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Count, Q, Sum, Avg
+from django.db.models import Count, Q, Sum, Avg, ExpressionWrapper, F, DurationField
 from django.db.models.functions import TruncDate
 import re
 from collections import Counter
@@ -16,26 +16,22 @@ from conversations.models import Contact
 from warranty.models import WarrantyClaim, Technician
 from flows.models import ContactFlowState, Flow
 from products_and_services.models import Product
+from email_integration.models import EmailAttachment
 
 def get_date_range(request):
     """
     Helper function to parse start and end dates from request query params.
-    Defaults to the last 30 days.
+    If no dates are provided, returns None, None to signify a 'lifetime' range.
     """
     end_date_str = request.query_params.get('end_date')
     start_date_str = request.query_params.get('start_date')
 
-    if end_date_str:
-        end_date = parse_date(end_date_str)
-    else:
-        end_date = timezone.now().date()
-
-    if start_date_str:
+    if start_date_str and end_date_str:
         start_date = parse_date(start_date_str)
-    else:
-        start_date = end_date - timedelta(days=30)
+        end_date = parse_date(end_date_str)
+        return start_date, end_date
     
-    return start_date, end_date
+    return None, None
 
 class AdminAnalyticsView(APIView):
     """
@@ -45,7 +41,13 @@ class AdminAnalyticsView(APIView):
 
     def get(self, request, *args, **kwargs):
         start_date, end_date = get_date_range(request)
-        date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        
+        if start_date and end_date:
+            date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+            started_at_date_filter = Q(started_at__date__gte=start_date, started_at__date__lte=end_date)
+        else:
+            date_filter = Q()
+            started_at_date_filter = Q()
 
         # --- Customer Analytics ---
         customer_growth = CustomerProfile.objects.filter(date_filter).annotate(date=TruncDate('created_at')).values('date').annotate(count=Count('contact_id')).order_by('date')
@@ -63,9 +65,37 @@ class AdminAnalyticsView(APIView):
 
         top_selling_products = OrderItem.objects.filter(order__in=orders).values('product__name').annotate(total_sold=Sum('quantity')).order_by('-total_sold')[:5]
         
+        # --- Job Card Analytics ---
+        job_cards = JobCard.objects.filter(date_filter)
+        total_job_cards = job_cards.count()
+        job_cards_by_status = job_cards.values('status').annotate(count=Count('status'))
+
+        resolved_job_cards = job_cards.filter(status__in=[JobCard.Status.RESOLVED, JobCard.Status.CLOSED])
+        
+        average_resolution_time_agg = resolved_job_cards.aggregate(
+            avg_time=Avg(ExpressionWrapper(F('updated_at') - F('created_at'), output_field=DurationField()))
+        )
+        average_resolution_time_days = average_resolution_time_agg['avg_time'].days if average_resolution_time_agg['avg_time'] else 0
+
+        # --- Email Analytics ---
+        emails = EmailAttachment.objects.filter(date_filter)
+        total_incoming_emails = emails.count()
+        processed_emails = emails.filter(processed=True).count()
+        unprocessed_emails = total_incoming_emails - processed_emails
+
         # --- AI & Automation Analytics ---
-        total_ai_users = ContactFlowState.objects.filter(started_at__date__gte=start_date, started_at__date__lte=end_date).values('contact').distinct().count()
-        most_active_flows = Flow.objects.filter(contactflowstate__started_at__date__gte=start_date, contactflowstate__started_at__date__lte=end_date).annotate(engagement=Count('contactflowstate')).order_by('-engagement')[:5]
+        total_ai_users = ContactFlowState.objects.filter(started_at_date_filter).values('contact').distinct().count()
+        
+        most_active_flows_query = Flow.objects.all()
+        if start_date and end_date:
+            most_active_flows_query = most_active_flows_query.filter(contactflowstate__started_at__date__gte=start_date, contactflowstate__started_at__date__lte=end_date)
+        
+        most_active_flows = most_active_flows_query.annotate(engagement=Count('contactflowstate')).order_by('-engagement')[:5]
+
+        # --- Installation Request Analytics ---
+        installation_requests = InstallationRequest.objects.filter(date_filter)
+        total_installation_requests = installation_requests.count()
+        installation_requests_by_status = installation_requests.values('status').annotate(count=Count('status'))
 
         data = {
             'customer_analytics': {
@@ -78,6 +108,20 @@ class AdminAnalyticsView(APIView):
                 'total_orders': total_orders,
                 'average_order_value': f"{average_order_value:.2f}",
                 'top_selling_products': list(top_selling_products),
+            },
+            'job_card_analytics': {
+                'total_job_cards': total_job_cards,
+                'job_cards_by_status': list(job_cards_by_status),
+                'average_resolution_time_days': f"{average_resolution_time_days:.2f}",
+            },
+            'email_analytics': {
+                'total_incoming_emails': total_incoming_emails,
+                'processed_emails': processed_emails,
+                'unprocessed_emails': unprocessed_emails,
+            },
+            'installation_request_analytics': {
+                'total_installation_requests': total_installation_requests,
+                'installation_requests_by_status': list(installation_requests_by_status),
             },
             'automation_analytics': {
                 'total_ai_users_in_period': total_ai_users,
