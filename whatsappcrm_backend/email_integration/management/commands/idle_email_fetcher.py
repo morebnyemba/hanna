@@ -4,6 +4,7 @@ import email
 import time
 import logging
 import imaplib
+import socket # Import socket for address resolution
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 from django.core.management.base import BaseCommand
@@ -35,10 +36,20 @@ class Command(BaseCommand):
                 logger.info(f"Attempting to connect to IMAP server for account: {account.name}")
 
                 try:
+                    # --- NEW: Force IPv4 resolution to bypass potential IPv6 issues ---
+                    try:
+                        ipv4_address = socket.getaddrinfo(account.imap_host, None, socket.AF_INET)[0][4][0]
+                        host_to_connect = ipv4_address
+                        self.stdout.write(self.style.SUCCESS(f"Resolved '{account.imap_host}' to IPv4: {host_to_connect}"))
+                    except socket.gaierror:
+                        self.stderr.write(self.style.ERROR(f"Could not resolve IPv4 address for '{account.imap_host}'. Using original hostname."))
+                        host_to_connect = account.imap_host
+                    # --- END NEW ---
+
                     # Inner loop for each account to handle reconnects
                     while True:
                         try:
-                            server = IMAPClient(account.imap_host, ssl=True, timeout=300)
+                            server = IMAPClient(host_to_connect, ssl=True, timeout=300)
                             server.login(account.imap_user, account.imap_password)
                             server.select_folder('INBOX')
                             logger.info(f"Successfully connected and selected INBOX for '{account.name}'.")
