@@ -1,41 +1,43 @@
- => ERROR [hanna-management-frontend builder 6/6] RUN npm run build                                                                                                                      36.1s
- => [celery_cpu_worker] resolving provenance for metadata file                                                                                                                            0.1s
- => [backend] resolving provenance for metadata file                                                                                                                                      0.1s
- => [email_idle_fetcher] resolving provenance for metadata file                                                                                                                           0.0s
- => [celery_beat] resolving provenance for metadata file                                                                                                                                  0.0s
 ------
  > [hanna-management-frontend builder 6/6] RUN npm run build:
-0.544 
-0.544 > hanna-management-frontend@0.1.0 build
-0.544 > next build
-0.544 
-1.904 Attention: Next.js now collects completely anonymous telemetry regarding usage.
-1.904 This information is used to shape Next.js' roadmap and prioritize features.
-1.904 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-1.904 https://nextjs.org/telemetry
-1.904 
-1.921    ▲ Next.js 16.0.1 (Turbopack)
-1.921 
-2.067    Creating an optimized production build ...
-26.69  ✓ Compiled successfully in 23.8s
-26.71    Running TypeScript ...
-35.81 Failed to compile.
-35.81 
-35.81 ./components/ui/bar-chart.tsx:36:39
-35.81 Type error: Argument of type '([key, itemConfig]: [string, { type?: string; color?: string; }]) => JSX.Element | null' is not assignable to parameter of type '(value: [string, unknown], index: number, array: [string, unknown][]) => Element | null'.
-35.81   Types of parameters '__0' and 'value' are incompatible.
-35.81     Type '[string, unknown]' is not assignable to type '[string, { type?: string | undefined; color?: string | undefined; }]'.
-35.81       Type at position 1 in source is not compatible with type at position 1 in target.
-35.81         Type 'unknown' is not assignable to type '{ type?: string | undefined; color?: string | undefined; }'.
-35.81 
-35.81   34 |           <ChartTooltip content={<ChartTooltipContent />} />
-35.81   35 |           <ChartLegend content={<ChartLegendContent />} />
-35.81 > 36 |           {Object.entries(config).map(([key, itemConfig]: [string, { type?: string; color?: string }]) => {
-35.81      |                                       ^
-35.81   37 |             if (itemConfig.type === "bar") {
-35.81   38 |               return <Bar key={key} dataKey={key} fill={itemConfig.color} />
-35.81   39 |             }
-35.89 Next.js build worker exited with code: 1 and signal: null
+0.455 
+0.455 > hanna-management-frontend@0.1.0 build
+0.455 > next build
+0.455 
+1.971 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+1.975 This information is used to shape Next.js' roadmap and prioritize features.
+1.975 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+1.975 https://nextjs.org/telemetry
+1.975 
+1.984    ▲ Next.js 16.0.1 (Turbopack)
+1.984 
+2.115    Creating an optimized production build ...
+26.33 
+26.33 > Build error occurred
+26.34 Error: Turbopack build failed with 1 errors:
+26.34 ./app/admin/(protected)/analytics/page.tsx:62:7
+26.34 Ecmascript file had an error
+26.34   60 |     const wsUrl = `wss://backend.hanna.co.zw/ws/analytics/`;
+26.34   61 |     if (token) {
+26.34 > 62 |       wsUrl += `?token=${token}`;
+26.34      |       ^^^^^
+26.34   63 |     }
+26.34   64 |
+26.34   65 |     const socket = new WebSocket(wsUrl);
+26.34 
+26.34 cannot reassign to a variable declared with `const`
+26.34 
+26.34 Import traces:
+26.34   Client Component Browser:
+26.34     ./app/admin/(protected)/analytics/page.tsx [Client Component Browser]
+26.34     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+26.34 
+26.34   Client Component SSR:
+26.34     ./app/admin/(protected)/analytics/page.tsx [Client Component SSR]
+26.34     ./app/admin/(protected)/analytics/page.tsx [Server Component]
+26.34 
+26.34 
+26.34     at <unknown> (./app/admin/(protected)/analytics/page.tsx:62:7)
 ------
 Dockerfile:20
 
