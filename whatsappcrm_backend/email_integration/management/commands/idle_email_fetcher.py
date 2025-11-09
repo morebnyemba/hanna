@@ -56,7 +56,7 @@ class Command(BaseCommand):
                                         messages = server.search(['UNSEEN'])
                                         for uid, message_data in server.fetch(messages, 'RFC822').items():
                                             self.process_message(account, message_data) # Pass the account object
-                                except (IMAPClientError, OSError, imaplib.error) as idle_error:
+                                except (IMAPClientError, OSError, imaplib.IMAP4.error) as idle_error:
                                     logger.error(f"Error during IDLE for '{account.name}': {idle_error}. Reconnecting...")
                                     break # Exit inner IDLE loop to reconnect
                                 except Exception as e:
@@ -67,7 +67,7 @@ class Command(BaseCommand):
                             server.logout()
                             logger.info(f"Disconnected from IMAP server for '{account.name}'.")
                             break # Exit inner reconnect loop if graceful disconnect
-                        except (IMAPClientError, OSError, imaplib.error) as e:
+                        except (IMAPClientError, OSError, imaplib.IMAP4.error) as e:
                             self.stderr.write(self.style.ERROR(f"IMAP connection error for '{account.name}': {e}. Reconnecting in 30 seconds..."))
                             logger.exception(f"Connection error for '{account.name}' occurred:")
                             time.sleep(30) # Wait before attempting to reconnect
