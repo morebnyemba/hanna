@@ -1,99 +1,99 @@
-[2025-11-09 19:59:26] INFO services Registered flow action: 'send_group_notification'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'update_lead_score'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'create_order_from_context'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'create_order'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'generate_unique_order_number'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'create_order_with_items'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'calculate_order_total'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'update_order_fields'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'update_model_instance'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'create_order_from_cart'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'generate_unique_assessment_id'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'create_placeholder_order'
-[2025-11-09 19:59:26] INFO services Registered flow action: 'normalize_order_number'
-/usr/local/lib/python3.10/site-packages/google/api_core/_python_version_support.py:266: FutureWarning: You are using a Python version (3.10.19) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
-  warnings.warn(message, FutureWarning)
-[2025-11-09 19:59:29] INFO idle_email_fetcher Starting IMAP IDLE worker for all accounts...
-IMAP IDLE worker started.
---- Processing account: Installations at Hanna (installations@hanna.co.zw) ---
-[2025-11-09 19:59:30] INFO idle_email_fetcher Attempting to connect to IMAP server for account: Installations at Hanna
-Resolved 'mail.hanna.co.zw' to IPv4: 72.60.191.89
-IMAP connection error for 'Installations at Hanna': [Errno 110] Connection timed out. Reconnecting in 30 seconds...
-[2025-11-09 20:01:45] ERROR idle_email_fetcher Connection error for 'Installations at Hanna' occurred:
+  . media_manager.tasks.trigger_media_asset_sync_task
+  . meta_integration.download_whatsapp_media_task
+  . meta_integration.tasks.send_read_receipt_task
+  . meta_integration.tasks.send_whatsapp_message_task
+  . notifications.tasks.check_and_send_24h_window_reminders
+  . notifications.tasks.dispatch_notification_task
+  . paynow_integration.poll_paynow_transaction_status
+  . paynow_integration.process_paynow_ipn_task
+  . paynow_integration.send_giving_confirmation_whatsapp
+  . paynow_integration.send_payment_failure_notification_task
+  . stats.broadcast_activity_log
+  . stats.broadcast_human_intervention_notification
+  . stats.check_handover_timeout
+  . stats.update_dashboard_stats
+  . warranty.send_manufacturer_notification_task
+  . whatsappcrm_backend.celery.debug_task
+[2025-11-09 20:07:23,839: INFO/MainProcess] Connected to redis://:**@redis:6379/0
+[2025-11-09 20:07:23,858: INFO/MainProcess] mingle: searching for neighbors
+[2025-11-09 20:07:24,894: INFO/MainProcess] mingle: all alone
+[2025-11-09 20:07:24,910: INFO/MainProcess] celery@1a4aac78a7ce ready.
+[2025-11-09 20:07:27,192: INFO/MainProcess] sync with celery@67f13de4905f
+[2025-11-09 20:07:36,875: INFO/MainProcess] Task email_integration.process_attachment_with_gemini[5058d259-a194-4954-b86f-3b086fea664d] received
+[2025-11-09 20:07:36,882: INFO/MainProcess] Task email_integration.process_attachment_with_gemini[ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] received
+[2025-11-09 20:07:36,933: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] Starting Gemini processing for attachment ID: 83
+[2025-11-09 20:07:37,003: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] Uploading file to Gemini: /app/mediafiles/attachments/attachments/mailu_786062dc7b2f4c9dae84c5e42ceec850_Sales_Inv_EqzyL8t.20250920-124747.pdf
+[2025-11-09 20:07:37,341: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files "HTTP/1.1 200 OK"
+[2025-11-09 20:07:38,624: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=AOCedOGMdheQcmTpy_FHFRtO_bU9bpy0ZDhESpiqC7Ql639iyVw-clT-u2aJdglxeK4GhoZ8_oloCaSqklVc4KuFzV4-w-TdmtUh1LSNV22CrA&upload_protocol=resumable "HTTP/1.1 200 OK"
+[2025-11-09 20:07:38,625: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] File uploaded successfully. URI: https://generativelanguage.googleapis.com/v1beta/files/69x62hgvdjd3
+[2025-11-09 20:07:38,625: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] Sending request to Gemini model for analysis.
+[2025-11-09 20:07:38,626: INFO/ForkPoolWorker-1] AFC is enabled with max remote calls: 10.
+[2025-11-09 20:07:58,898: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+[2025-11-09 20:07:58,900: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] Gemini identified document as type: 'invoice'
+[2025-11-09 20:07:58,900: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] Starting to create Order from extracted data.
+[2025-11-09 20:07:58,926: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] Created new CustomerProfile for 'RAMBAKUDZIMBGWA'.
+[2025-11-09 20:07:58,947: INFO/ForkPoolWorker-1] Logged creation of placeholder order ID 7783d13c-541e-4698-891e-4c7fe643995c (no customer attached).
+[2025-11-09 20:07:58,953: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] Created new Order with order_number 'VE01/0028564'.
+[2025-11-09 20:07:58,953: ERROR/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] An unexpected error occurred during Gemini processing for attachment 83: name 'InstallationRequest' is not defined
 Traceback (most recent call last):
-  File "/app/email_integration/management/commands/idle_email_fetcher.py", line 51, in handle
-    server = IMAPClient(host_to_connect, ssl=False, timeout=300)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 288, in __init__
-    self._imap = self._create_IMAP4()
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 332, in _create_IMAP4
-    return imap4.IMAP4WithTimeout(self.host, self.port, connect_timeout)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imap4.py", line 13, in __init__
-    imaplib.IMAP4.__init__(self, address, port)
-  File "/usr/local/lib/python3.10/imaplib.py", line 205, in __init__
-    self.open(host, port, timeout)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imap4.py", line 21, in open
-    self.sock = self._create_socket(timeout)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imap4.py", line 25, in _create_socket
-    return socket.create_connection(
-  File "/usr/local/lib/python3.10/socket.py", line 857, in create_connection
-    raise err
-  File "/usr/local/lib/python3.10/socket.py", line 845, in create_connection
-    sock.connect(sa)
-TimeoutError: [Errno 110] Connection timed out
-Upgrading connection to TLS for 'Installations at Hanna'...
-IMAP connection error for 'Installations at Hanna': [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017). Reconnecting in 30 seconds...
-[2025-11-09 20:02:15] ERROR idle_email_fetcher Connection error for 'Installations at Hanna' occurred:
+  File "/app/email_integration/tasks.py", line 285, in process_attachment_with_gemini
+    _create_order_from_invoice_data(attachment, data, log_prefix)
+  File "/usr/local/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/app/email_integration/tasks.py", line 417, in _create_order_from_invoice_data
+    InstallationRequest.objects.create(
+NameError: name 'InstallationRequest' is not defined. Did you mean: 'installation_date'?
+[2025-11-09 20:07:58,959: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 5058d259-a194-4954-b86f-3b086fea664d] Deleting temporary file from Gemini service: files/69x62hgvdjd3
+[2025-11-09 20:08:00,138: INFO/ForkPoolWorker-1] HTTP Request: DELETE https://generativelanguage.googleapis.com/v1beta/files/69x62hgvdjd3 "HTTP/1.1 200 OK"
+[2025-11-09 20:08:00,142: INFO/ForkPoolWorker-1] Task email_integration.process_attachment_with_gemini[5058d259-a194-4954-b86f-3b086fea664d] succeeded in 23.266205941996304s: None
+[2025-11-09 20:08:00,159: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] Starting Gemini processing for attachment ID: 84
+[2025-11-09 20:08:00,175: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] Uploading file to Gemini: /app/mediafiles/attachments/attachments/mailu_6c2b0fe1e0f740c19fba213aaeb7e405_Sales_Inv_l4Ln1Gx.20251008-140937.pdf
+[2025-11-09 20:08:00,613: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files "HTTP/1.1 200 OK"
+[2025-11-09 20:08:01,771: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=AOCedOFSWXzU96Wp_CSxLEEBMoIbhm4nTArEgZHrET0z9p6p-APXOieB1eQUyiYSJ9mQD11shjhFKsuQaaXs0Aeg4IP3aSn72yCw91FKqeH6W_8&upload_protocol=resumable "HTTP/1.1 200 OK"
+[2025-11-09 20:08:01,772: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] File uploaded successfully. URI: https://generativelanguage.googleapis.com/v1beta/files/aa47ttfhxogp
+[2025-11-09 20:08:01,772: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] Sending request to Gemini model for analysis.
+[2025-11-09 20:08:01,772: INFO/ForkPoolWorker-1] AFC is enabled with max remote calls: 10.
+[2025-11-09 20:08:10,542: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+[2025-11-09 20:08:10,543: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] Gemini identified document as type: 'invoice'
+[2025-11-09 20:08:10,543: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] Starting to create Order from extracted data.
+[2025-11-09 20:08:10,553: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] Created new CustomerProfile for 'TASA NEWMAN'.
+[2025-11-09 20:08:10,559: INFO/ForkPoolWorker-1] Logged creation of placeholder order ID 56b9f0bf-9d1a-4a05-8de9-19d4ff967ee4 (no customer attached).
+[2025-11-09 20:08:10,565: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] Created new Order with order_number 'IC01/0014739'.
+[2025-11-09 20:08:10,567: ERROR/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] An unexpected error occurred during Gemini processing for attachment 84: name 'InstallationRequest' is not defined
 Traceback (most recent call last):
-  File "/app/email_integration/management/commands/idle_email_fetcher.py", line 53, in handle
-    server.starttls(ssl_context=ssl.create_default_context())
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 179, in wrapper
-    return func(client, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 386, in starttls
-    self._imap.sock = tls.wrap_socket(self._imap.sock, ssl_context, self.host)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/tls.py", line 26, in wrap_socket
-    return ssl_context.wrap_socket(sock, server_hostname=host)
-  File "/usr/local/lib/python3.10/ssl.py", line 513, in wrap_socket
-    return self.sslsocket_class._create(
-  File "/usr/local/lib/python3.10/ssl.py", line 1104, in _create
-    self.do_handshake()
-  File "/usr/local/lib/python3.10/ssl.py", line 1375, in do_handshake
-    self._sslobj.do_handshake()
-ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017)
-Upgrading connection to TLS for 'Installations at Hanna'...
-IMAP connection error for 'Installations at Hanna': [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017). Reconnecting in 30 seconds...
-[2025-11-09 20:02:45] ERROR idle_email_fetcher Connection error for 'Installations at Hanna' occurred:
+  File "/app/email_integration/tasks.py", line 285, in process_attachment_with_gemini
+    _create_order_from_invoice_data(attachment, data, log_prefix)
+  File "/usr/local/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/app/email_integration/tasks.py", line 417, in _create_order_from_invoice_data
+    InstallationRequest.objects.create(
+NameError: name 'InstallationRequest' is not defined. Did you mean: 'installation_date'?
+[2025-11-09 20:08:10,574: INFO/ForkPoolWorker-1] [Gemini File API Task ID: ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] Deleting temporary file from Gemini service: files/aa47ttfhxogp
+[2025-11-09 20:08:11,802: INFO/ForkPoolWorker-1] HTTP Request: DELETE https://generativelanguage.googleapis.com/v1beta/files/aa47ttfhxogp "HTTP/1.1 200 OK"
+[2025-11-09 20:08:11,806: INFO/ForkPoolWorker-1] Task email_integration.process_attachment_with_gemini[ae7ebb13-e2e8-4ec3-90f7-a8e5745af91b] succeeded in 11.662804487998073s: None
+[2025-11-09 20:09:17,026: INFO/MainProcess] Task email_integration.process_attachment_with_gemini[f90f303e-e821-4c34-a79e-0ed81148946f] received
+[2025-11-09 20:09:17,044: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] Starting Gemini processing for attachment ID: 85
+[2025-11-09 20:09:17,062: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] Uploading file to Gemini: /app/mediafiles/attachments/attachments/mailu_4bb2f86e7b0647538a9367028c2a7fbd_Sales_Inv_tXTucLo.20251008-140937.pdf
+[2025-11-09 20:09:17,372: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files "HTTP/1.1 200 OK"
+[2025-11-09 20:09:18,635: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=AOCedOHciaayg5ZlJ3A2CD-601gmtSv24P6XRpKM7lQtf0NYAH15A8qU58B5ISzIwV3BM706IDUIhkXoRIr-kXqvlj6C7uNhI_98ztBav_P861k&upload_protocol=resumable "HTTP/1.1 200 OK"
+[2025-11-09 20:09:18,636: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] File uploaded successfully. URI: https://generativelanguage.googleapis.com/v1beta/files/0iwmw67rcj00
+[2025-11-09 20:09:18,636: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] Sending request to Gemini model for analysis.
+[2025-11-09 20:09:18,636: INFO/ForkPoolWorker-1] AFC is enabled with max remote calls: 10.
+[2025-11-09 20:09:27,834: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+[2025-11-09 20:09:27,835: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] Gemini identified document as type: 'invoice'
+[2025-11-09 20:09:27,836: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] Starting to create Order from extracted data.
+[2025-11-09 20:09:27,850: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] Created new CustomerProfile for 'TASA NEWMAN'.
+[2025-11-09 20:09:27,857: INFO/ForkPoolWorker-1] Logged creation of placeholder order ID df47ae2d-7456-4e03-93e0-6b4997da8b37 (no customer attached).
+[2025-11-09 20:09:27,861: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] Created new Order with order_number 'IC01/0014739'.
+[2025-11-09 20:09:27,862: ERROR/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] An unexpected error occurred during Gemini processing for attachment 85: name 'InstallationRequest' is not defined
 Traceback (most recent call last):
-  File "/app/email_integration/management/commands/idle_email_fetcher.py", line 53, in handle
-    server.starttls(ssl_context=ssl.create_default_context())
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 179, in wrapper
-    return func(client, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 386, in starttls
-    self._imap.sock = tls.wrap_socket(self._imap.sock, ssl_context, self.host)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/tls.py", line 26, in wrap_socket
-    return ssl_context.wrap_socket(sock, server_hostname=host)
-  File "/usr/local/lib/python3.10/ssl.py", line 513, in wrap_socket
-    return self.sslsocket_class._create(
-  File "/usr/local/lib/python3.10/ssl.py", line 1104, in _create
-    self.do_handshake()
-  File "/usr/local/lib/python3.10/ssl.py", line 1375, in do_handshake
-    self._sslobj.do_handshake()
-ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017)
-Upgrading connection to TLS for 'Installations at Hanna'...
-IMAP connection error for 'Installations at Hanna': [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017). Reconnecting in 30 seconds...
-[2025-11-09 20:03:15] ERROR idle_email_fetcher Connection error for 'Installations at Hanna' occurred:
-Traceback (most recent call last):
-  File "/app/email_integration/management/commands/idle_email_fetcher.py", line 53, in handle
-    server.starttls(ssl_context=ssl.create_default_context())
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 179, in wrapper
-    return func(client, *args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/imapclient.py", line 386, in starttls
-    self._imap.sock = tls.wrap_socket(self._imap.sock, ssl_context, self.host)
-  File "/usr/local/lib/python3.10/site-packages/imapclient/tls.py", line 26, in wrap_socket
-    return ssl_context.wrap_socket(sock, server_hostname=host)
-  File "/usr/local/lib/python3.10/ssl.py", line 513, in wrap_socket
-    return self.sslsocket_class._create(
-  File "/usr/local/lib/python3.10/ssl.py", line 1104, in _create
-    self.do_handshake()
-  File "/usr/local/lib/python3.10/ssl.py", line 1375, in do_handshake
-    self._sslobj.do_handshake()
-ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: IP address mismatch, certificate is not valid for '72.60.191.89'. (_ssl.c:1017)
+  File "/app/email_integration/tasks.py", line 285, in process_attachment_with_gemini
+    _create_order_from_invoice_data(attachment, data, log_prefix)
+  File "/usr/local/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/app/email_integration/tasks.py", line 417, in _create_order_from_invoice_data
+    InstallationRequest.objects.create(
+NameError: name 'InstallationRequest' is not defined. Did you mean: 'installation_date'?
+[2025-11-09 20:09:27,869: INFO/ForkPoolWorker-1] [Gemini File API Task ID: f90f303e-e821-4c34-a79e-0ed81148946f] Deleting temporary file from Gemini service: files/0iwmw67rcj00
+[2025-11-09 20:09:29,339: INFO/ForkPoolWorker-1] HTTP Request: DELETE https://generativelanguage.googleapis.com/v1beta/files/0iwmw67rcj00 "HTTP/1.1 200 OK"
+[2025-11-09 20:09:29,344: INFO/ForkPoolWorker-1] Task email_integration.process_attachment_with_gemini[f90f303e-e821-4c34-a79e-0ed81148946f] succeeded in 12.31660029199702s: None

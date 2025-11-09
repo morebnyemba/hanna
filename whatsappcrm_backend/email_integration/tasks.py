@@ -14,7 +14,7 @@ from google.genai import errors as genai_errors
 from .models import EmailAttachment, ParsedInvoice
 from decimal import Decimal, InvalidOperation
 # --- ADD JobCard to imports ---
-from customer_data.models import CustomerProfile, Order, OrderItem, JobCard
+from customer_data.models import CustomerProfile, Order, OrderItem, JobCard, InstallationRequest
 from conversations.models import Contact
 from products_and_services.models import Product, SerializedItem
 from notifications.services import queue_notifications_to_users
