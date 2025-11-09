@@ -5,6 +5,13 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from .views import AdminAnalyticsView
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import AnonymousUser
+import datetime
+
+class DateEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.date):
+            return obj.isoformat()
+        return super().default(obj)
 
 class AnalyticsConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -40,11 +47,8 @@ class AnalyticsConsumer(AsyncWebsocketConsumer):
         """
         Fetches analytics data and sends it to the client.
         """
-        # This is a simplified example. In a real app, you'd pass a mock request
-        # to the view or refactor the view's logic into a separate function.
         try:
             analytics_view = AdminAnalyticsView()
-            # We need to create a mock request object for the view
             from django.test import RequestFactory
             from rest_framework.request import Request
             factory = RequestFactory()
@@ -53,19 +57,17 @@ class AnalyticsConsumer(AsyncWebsocketConsumer):
             if start_date and end_date:
                 url += f'?start_date={start_date}&end_date={end_date}'
 
-            # Create a standard Django request and then wrap it in a DRF Request
             wsgi_request = factory.get(url)
             wsgi_request.user = self.user
             drf_request = Request(wsgi_request)
             
-            # The view's get method is synchronous, so we run it in a thread
             response = await sync_to_async(analytics_view.get)(drf_request)
             data = response.data
             
             await self.send(text_data=json.dumps({
                 'type': 'analytics_update',
                 'data': data
-            }))
+            }, cls=DateEncoder))
         except Exception as e:
             await self.send(text_data=json.dumps({
                 'type': 'error',
