@@ -51,6 +51,7 @@ services:
   hanna-management-frontend:
     build: ./hanna-management-frontend
     container_name: hanna_management_frontend_nextjs
+    command: npm start
     depends_on:
       - backend
     restart: unless-stopped
