@@ -26,7 +26,8 @@ from .serializers import (
     CustomerProfileSerializer, 
     InteractionSerializer, 
     MyTokenObtainPairSerializer,
-    UserRegistrationSerializer
+    UserRegistrationSerializer,
+    LoanApplicationSerializer
 )
 
 # Still need Contact for get_or_create logic
@@ -146,7 +147,7 @@ class InstallationRequestViewSet(viewsets.ModelViewSet):
     search_fields = ['order_number', 'full_name', 'address', 'contact_phone']
 
 from .models import LoanApplication
-from .serializers import LoanApplicationSerializer
+
 
 class LoanApplicationViewSet(viewsets.ModelViewSet):
     queryset = LoanApplication.objects.select_related('customer').all()
