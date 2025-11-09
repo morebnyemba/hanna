@@ -5,6 +5,7 @@ import { FiBarChart2 } from 'react-icons/fi';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 
+import { useAuthStore } from '@/app/store/authStore';
 import { DateRangePicker } from '@/app/components/DateRangePicker';
 import { BarChart } from '@/components/ui/bar-chart';
 import { PieChart } from '@/components/ui/pie-chart';
@@ -53,10 +54,14 @@ export default function AdminAnalyticsPage() {
     to: new Date(),
   });
   const socketRef = useRef<WebSocket | null>(null);
+  const token = useAuthStore.getState().accessToken;
 
   useEffect(() => {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws/analytics/`;
+    let wsUrl = `${wsProtocol}//${window.location.host}/ws/analytics/`;
+    if (token) {
+      wsUrl += `?token=${token}`;
+    }
 
     const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
@@ -97,7 +102,7 @@ export default function AdminAnalyticsPage() {
     return () => {
       socket.close();
     };
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && date?.from && date?.to) {
