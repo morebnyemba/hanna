@@ -9,7 +9,7 @@ import {
   ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-  ChartConfig, // Import ChartConfig
+  ChartConfig,
 } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 
