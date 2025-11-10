@@ -55,6 +55,13 @@ class MetaAppConfig(models.Model):
         verbose_name="WhatsApp Business Account ID (WABA ID)",
         help_text="Your WhatsApp Business Account ID."
     )
+    catalog_id = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name="WhatsApp Catalog ID",
+        help_text="The ID of the WhatsApp Catalog to use for this configuration."
+    )
     api_version = models.CharField(
         max_length=10,
         default="v19.0",

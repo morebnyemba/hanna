@@ -5,16 +5,16 @@ from .models import MetaAppConfig, WebhookEventLog
 
 @admin.register(MetaAppConfig)
 class MetaAppConfigAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone_number_id', 'waba_id', 'api_version', 'is_active', 'updated_at')
+    list_display = ('name', 'phone_number_id', 'waba_id', 'catalog_id', 'api_version', 'is_active', 'updated_at')
     list_filter = ('is_active', 'api_version')
-    search_fields = ('name', 'phone_number_id', 'waba_id')
+    search_fields = ('name', 'phone_number_id', 'waba_id', 'catalog_id')
     readonly_fields = ('created_at', 'updated_at')
     fieldsets = (
         (None, {
             'fields': ('name', 'is_active')
         }),
         ('API Credentials & Identifiers (Keep these confidential)', {
-            'fields': ('verify_token', 'access_token', 'app_secret', 'phone_number_id', 'waba_id', 'api_version'),
+            'fields': ('verify_token', 'access_token', 'app_secret', 'phone_number_id', 'waba_id', 'catalog_id', 'api_version'),
             'description': "These details are used to connect to the Meta (WhatsApp) Cloud API. Ensure they are correct and kept secure."
         }),
         ('Timestamps', {

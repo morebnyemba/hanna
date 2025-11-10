@@ -1,16 +1,25 @@
-import os
 import requests
 from django.conf import settings
+from .models import MetaAppConfig
 
 class MetaCatalogService:
     def __init__(self):
-        self.api_version = "v18.0"
-        self.whatsapp_business_account_id = os.environ.get("WHATSAPP_BUSINESS_ACCOUNT_ID")
-        self.access_token = os.environ.get("META_ACCESS_TOKEN")
-        self.catalog_id = os.environ.get("WHATSAPP_CATALOG_ID")
+        try:
+            active_config = MetaAppConfig.objects.get_active_config()
+            self.api_version = active_config.api_version
+            self.access_token = active_config.access_token
+            self.catalog_id = active_config.catalog_id
+        except MetaAppConfig.DoesNotExist:
+            # Handle case where no active config is found
+            self.api_version = "v18.0" # Default or fallback
+            self.access_token = None
+            self.catalog_id = None
+
         self.base_url = f"https://graph.facebook.com/{self.api_version}"
 
     def _get_headers(self):
+        if not self.access_token:
+            raise ValueError("Meta access token is not configured.")
         return {
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json",
@@ -38,6 +47,8 @@ class MetaCatalogService:
         }
 
     def create_product_in_catalog(self, product):
+        if not self.catalog_id:
+            raise ValueError("WhatsApp Catalog ID is not configured.")
         url = f"{self.base_url}/{self.catalog_id}/products"
         data = self._get_product_data(product)
         
