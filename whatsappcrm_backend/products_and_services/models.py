@@ -48,7 +48,7 @@ class Product(models.Model):
     category = models.ForeignKey(
         ProductCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='products'
     )
-    price = models.DecimalField(_("Price"), max_digits=12, decimal_places=2)
+    price = models.DecimalField(_("Price"), max_digits=12, decimal_places=2, null=True, blank=True)
     currency = models.CharField(_("Currency"), max_length=3, default='USD')
     is_active = models.BooleanField(_("Is Active"), default=True, help_text=_("Whether this item is available for sale."))
     website_url = models.URLField(_("Website URL"), blank=True, null=True)
