@@ -1,95 +1,100 @@
-[2025-11-10 05:56:38] INFO services Registered flow action: 'send_group_notification'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'update_lead_score'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'create_order_from_context'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'create_order'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'generate_unique_order_number'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'create_order_with_items'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'calculate_order_total'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'update_order_fields'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'update_model_instance'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'create_order_from_cart'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'generate_unique_assessment_id'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'create_placeholder_order'
-[2025-11-10 05:56:38] INFO services Registered flow action: 'normalize_order_number'
-/usr/local/lib/python3.10/site-packages/google/api_core/_python_version_support.py:266: FutureWarning: You are using a Python version (3.10.19) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
-  warnings.warn(message, FutureWarning)
-/usr/local/lib/python3.10/site-packages/celery/platforms.py:841: SecurityWarning: You're running the worker with superuser privileges: this is
-absolutely not recommended!
-Please specify a different user using the --uid option.
-User information: uid=0 euid=0 gid=0 egid=0
-  warnings.warn(SecurityWarning(ROOT_DISCOURAGED.format(
- 
- -------------- celery@4f25db14c4b8 v5.5.3 (immunity)
---- ***** ----- 
--- ******* ---- Linux-6.8.0-87-generic-x86_64-with-glibc2.41 2025-11-10 05:56:41
-- *** --- * --- 
-- ** ---------- [config]
-- ** ---------- .> app:         whatsappcrm_backend:0x7042666bf040
-- ** ---------- .> transport:   redis://:**@redis:6379/0
-- ** ---------- .> results:     
-- *** --- * --- .> concurrency: 1 (prefork)
--- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
---- ***** ----- 
- -------------- [queues]
-                .> cpu_heavy        exchange=celery(direct) key=cpu_heavy
-                
-[tasks]
-  . conversations.tasks.dispatch_broadcast_task
-  . email_integration.fetch_email_attachments_task
-  . email_integration.process_attachment_with_gemini
-  . email_integration.send_duplicate_invoice_email
-  . email_integration.send_receipt_confirmation_email
-  . flows.cleanup_idle_conversations_task
-  . flows.handle_ai_conversation_task
-  . flows.tasks.process_flow_for_message_task
-  . media_manager.tasks.check_and_resync_whatsapp_media
-  . media_manager.tasks.trigger_media_asset_sync_task
-  . meta_integration.download_whatsapp_media_task
-  . meta_integration.tasks.send_read_receipt_task
-  . meta_integration.tasks.send_whatsapp_message_task
-  . notifications.tasks.check_and_send_24h_window_reminders
-  . notifications.tasks.dispatch_notification_task
-  . paynow_integration.poll_paynow_transaction_status
-  . paynow_integration.process_paynow_ipn_task
-  . paynow_integration.send_giving_confirmation_whatsapp
-  . paynow_integration.send_payment_failure_notification_task
-  . stats.broadcast_activity_log
-  . stats.broadcast_human_intervention_notification
-  . stats.check_handover_timeout
-  . stats.update_dashboard_stats
-  . warranty.send_manufacturer_notification_task
-  . whatsappcrm_backend.celery.debug_task
-[2025-11-10 05:56:42,188: INFO/MainProcess] Connected to redis://:**@redis:6379/0
-[2025-11-10 05:56:42,193: INFO/MainProcess] mingle: searching for neighbors
-[2025-11-10 05:56:43,211: INFO/MainProcess] mingle: all alone
-[2025-11-10 05:56:43,236: INFO/MainProcess] celery@4f25db14c4b8 ready.
-[2025-11-10 05:56:46,592: INFO/MainProcess] sync with celery@9581e20983a7
-[2025-11-10 05:57:48,409: INFO/MainProcess] Task email_integration.process_attachment_with_gemini[b0f91320-0fd0-402e-833f-3eca33234aea] received
-[2025-11-10 05:57:48,446: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Starting Gemini processing for attachment ID: 88
-[2025-11-10 05:57:48,509: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Uploading file to Gemini: /app/mediafiles/attachments/attachments/mailu_b0dec33963034a71b88847266f255caf_Sales_Inv_BT8TA7a.20251008-140937.pdf
-[2025-11-10 05:57:48,992: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files "HTTP/1.1 200 OK"
-[2025-11-10 05:57:49,755: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=AOCedOEpsE-_vjtf7fwMniTvhsEzbsj6s8zExKVR0vB7nCkyLI8wtHHFoDliEegxWuy-QfhshYhzzwjQGWFxj1WYnila8IdL2GUkBYzZi7wpmm8&upload_protocol=resumable "HTTP/1.1 200 OK"
-[2025-11-10 05:57:49,756: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] File uploaded successfully. URI: https://generativelanguage.googleapis.com/v1beta/files/khbqnkqrqcwi
-[2025-11-10 05:57:49,756: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Sending request to Gemini model for analysis.
-[2025-11-10 05:57:49,757: INFO/ForkPoolWorker-1] AFC is enabled with max remote calls: 10.
-[2025-11-10 05:57:56,932: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
-[2025-11-10 05:57:56,935: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Gemini identified document as type: 'invoice'
-[2025-11-10 05:57:56,935: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Starting to create Order from extracted data.
-[2025-11-10 05:57:56,962: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Created new CustomerProfile for 'TASA NEWMAN'.
-[2025-11-10 05:57:56,994: INFO/ForkPoolWorker-1] Logged creation of placeholder order ID 1022db32-52bf-4769-a7a0-3e0ebe268e65 (no customer attached).
-[2025-11-10 05:57:57,004: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Created new Order with order_number 'IC01/0014739'.
-[2025-11-10 05:57:57,015: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Automatically created InstallationRequest for order 'IC01/0014739'.
-[2025-11-10 05:57:57] INFO signals [Order Signal for ID: 1022db32-52bf-4769-a7a0-3e0ebe268e65] Order marked as paid. Checking for items to create warranties for.
-[2025-11-10 05:57:57,043: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Created 1 OrderItem(s) for Order 'IC01/0014739'.
-[2025-11-10 05:57:57,080: INFO/ForkPoolWorker-1] Bulk created 5 internal notifications for template 'invoice_processed_successfully'.
-[2025-11-10 05:57:57,080: INFO/ForkPoolWorker-1] Notifications: Queued Notification ID 212 for user 'mainadmin'.
-[2025-11-10 05:57:57,080: INFO/ForkPoolWorker-1] Notifications: Queued Notification ID 213 for user 'Allan'.
-[2025-11-10 05:57:57,080: INFO/ForkPoolWorker-1] Notifications: Queued Notification ID 214 for user 'kudzanaidos5'.
-[2025-11-10 05:57:57,080: INFO/ForkPoolWorker-1] Notifications: Queued Notification ID 215 for user 'johnson'.
-[2025-11-10 05:57:57,081: INFO/ForkPoolWorker-1] Notifications: Queued Notification ID 216 for user 'test'.
-[2025-11-10 05:57:57,082: ERROR/ForkPoolWorker-1] Notification template 'customer_invoice_confirmation' not found. Cannot queue notifications.
-[2025-11-10 05:57:57,082: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Queued WhatsApp notification for customer 0775117149 for order 'IC01/0014739'.
-[2025-11-10 05:57:57,101: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Successfully processed attachment 88.
-[2025-11-10 05:57:57,103: INFO/ForkPoolWorker-1] [Gemini File API Task ID: b0f91320-0fd0-402e-833f-3eca33234aea] Deleting temporary file from Gemini service: files/khbqnkqrqcwi
-[2025-11-10 05:57:57,806: INFO/ForkPoolWorker-1] HTTP Request: DELETE https://generativelanguage.googleapis.com/v1beta/files/khbqnkqrqcwi "HTTP/1.1 200 OK"
-[2025-11-10 05:57:57,811: INFO/ForkPoolWorker-1] Task email_integration.process_attachment_with_gemini[b0f91320-0fd0-402e-833f-3eca33234aea] succeeded in 9.40040809099446s: 'Successfully processed attachment 88 with Gemini.'
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/app/./whatsappcrm_backend/asgi.py", line 12, in <module>
+    django_asgi_app = get_asgi_application()
+  File "/usr/local/lib/python3.10/site-packages/django/core/asgi.py", line 12, in get_asgi_application
+    django.setup(set_prefix=False)
+  File "/usr/local/lib/python3.10/site-packages/django/__init__.py", line 24, in setup
+    apps.populate(settings.INSTALLED_APPS)
+  File "/usr/local/lib/python3.10/site-packages/django/apps/registry.py", line 124, in populate
+    app_config.ready()
+  File "/app/stats/apps.py", line 9, in ready
+    import stats.signals  # noqa
+  File "/app/stats/signals.py", line 11, in <module>
+    from .tasks import (
+  File "/app/stats/tasks.py", line 13, in <module>
+    from meta_integration.tasks import send_whatsapp_message_task
+  File "/app/meta_integration/tasks.py", line 13, in <module>
+    from .signals import message_send_failed
+  File "/app/meta_integration/signals.py", line 5, in <module>
+    from .tasks import create_whatsapp_catalog_product, update_whatsapp_catalog_product, delete_whatsapp_catalog_product
+ImportError: cannot import name 'create_whatsapp_catalog_product' from partially initialized module 'meta_integration.tasks' (most likely due to a circular import) (/app/meta_integration/tasks.py)
+Traceback (most recent call last):
+  File "/usr/local/bin/daphne", line 8, in <module>
+    sys.exit(CommandLineInterface.entrypoint())
+  File "/usr/local/lib/python3.10/site-packages/daphne/cli.py", line 171, in entrypoint
+    cls().run(sys.argv[1:])
+  File "/usr/local/lib/python3.10/site-packages/daphne/cli.py", line 239, in run
+    application = self.load_asgi_app(args.application)
+  File "/usr/local/lib/python3.10/site-packages/daphne/cli.py", line 208, in load_asgi_app
+    return import_by_path(asgi_app_path)
+  File "/usr/local/lib/python3.10/site-packages/daphne/utils.py", line 17, in import_by_path
+    target = importlib.import_module(module_path)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/app/./whatsappcrm_backend/asgi.py", line 12, in <module>
+    django_asgi_app = get_asgi_application()
+  File "/usr/local/lib/python3.10/site-packages/django/core/asgi.py", line 12, in get_asgi_application
+    django.setup(set_prefix=False)
+  File "/usr/local/lib/python3.10/site-packages/django/__init__.py", line 24, in setup
+    apps.populate(settings.INSTALLED_APPS)
+  File "/usr/local/lib/python3.10/site-packages/django/apps/registry.py", line 124, in populate
+    app_config.ready()
+  File "/app/stats/apps.py", line 9, in ready
+    import stats.signals  # noqa
+  File "/app/stats/signals.py", line 11, in <module>
+    from .tasks import (
+  File "/app/stats/tasks.py", line 13, in <module>
+    from meta_integration.tasks import send_whatsapp_message_task
+  File "/app/meta_integration/tasks.py", line 13, in <module>
+    from .signals import message_send_failed
+  File "/app/meta_integration/signals.py", line 5, in <module>
+    from .tasks import create_whatsapp_catalog_product, update_whatsapp_catalog_product, delete_whatsapp_catalog_product
+ImportError: cannot import name 'create_whatsapp_catalog_product' from partially initialized module 'meta_integration.tasks' (most likely due to a circular import) (/app/meta_integration/tasks.py)
+Traceback (most recent call last):
+  File "/usr/local/bin/daphne", line 8, in <module>
+    sys.exit(CommandLineInterface.entrypoint())
+  File "/usr/local/lib/python3.10/site-packages/daphne/cli.py", line 171, in entrypoint
+    cls().run(sys.argv[1:])
+  File "/usr/local/lib/python3.10/site-packages/daphne/cli.py", line 239, in run
+    application = self.load_asgi_app(args.application)
+  File "/usr/local/lib/python3.10/site-packages/daphne/cli.py", line 208, in load_asgi_app
+    return import_by_path(asgi_app_path)
+  File "/usr/local/lib/python3.10/site-packages/daphne/utils.py", line 17, in import_by_path
+    target = importlib.import_module(module_path)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/app/./whatsappcrm_backend/asgi.py", line 12, in <module>
+    django_asgi_app = get_asgi_application()
+  File "/usr/local/lib/python3.10/site-packages/django/core/asgi.py", line 12, in get_asgi_application
+    django.setup(set_prefix=False)
+  File "/usr/local/lib/python3.10/site-packages/django/__init__.py", line 24, in setup
+    apps.populate(settings.INSTALLED_APPS)
+  File "/usr/local/lib/python3.10/site-packages/django/apps/registry.py", line 124, in populate
+    app_config.ready()
+  File "/app/stats/apps.py", line 9, in ready
+    import stats.signals  # noqa
+  File "/app/stats/signals.py", line 11, in <module>
+    from .tasks import (
+  File "/app/stats/tasks.py", line 13, in <module>
+    from meta_integration.tasks import send_whatsapp_message_task
+  File "/app/meta_integration/tasks.py", line 13, in <module>
+    from .signals import message_send_failed
+  File "/app/meta_integration/signals.py", line 5, in <module>
+    from .tasks import create_whatsapp_catalog_product, update_whatsapp_catalog_product, delete_whatsapp_catalog_product
+ImportError: cannot import name 'create_whatsapp_catalog_product' from partially initialized module 'meta_integration.tasks' (most likely due to a circular import) (/app/meta_integration/tasks.py)

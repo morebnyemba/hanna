@@ -10,7 +10,6 @@ from datetime import timedelta
 
 from .utils import send_whatsapp_message, send_read_receipt_api, download_whatsapp_media
 from .models import MetaAppConfig
-from .signals import message_send_failed
 from conversations.models import Message, Contact # To update message status
 from products_and_services.models import Product
 from .catalog_service import MetaCatalogService
@@ -28,6 +27,7 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
         outgoing_message_id (int): The ID of the outgoing Message object to send.
         active_config_id (int): The ID of the active MetaAppConfig to use for sending.
     """
+    
     try:
         outgoing_msg = Message.objects.select_related('contact').get(pk=outgoing_message_id)
         active_config = MetaAppConfig.objects.get(pk=active_config_id)
