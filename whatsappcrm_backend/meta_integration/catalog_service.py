@@ -1,6 +1,7 @@
 import requests
 from django.conf import settings
 from .models import MetaAppConfig
+from datetime import datetime, timedelta
 
 class MetaCatalogService:
     def __init__(self):
@@ -32,18 +33,22 @@ class MetaCatalogService:
         # Get the first image URL, if available
         first_image = product.images.first()
         image_url = first_image.image.url if first_image else None
+        
+        # Calculate expiration date (1 year from now)
+        expiration_date = (datetime.now() + timedelta(days=365)).isoformat()
 
         return {
             "name": product.name,
             "description": product.description,
             "price": str(product.price),
             "currency": product.currency,
-            "sku": product.sku,
-            "url": product.website_url,
-            "image_url": image_url,
+            "retailer_id": product.sku,
+            "link": product.website_url,
+            "image_link": image_url,
             "brand": product.brand,
-            "country_of_origin": product.country_of_origin,
+            "condition": "new",
             "availability": 'in stock' if product.stock_quantity > 0 else 'out of stock',
+            "expiration_date": expiration_date,
         }
 
     def create_product_in_catalog(self, product):
@@ -51,9 +56,6 @@ class MetaCatalogService:
             raise ValueError("WhatsApp Catalog ID is not configured.")
         url = f"{self.base_url}/{self.catalog_id}/products"
         data = self._get_product_data(product)
-        
-        # The API expects 'retailer_id' for creation, which we map from SKU
-        data['retailer_id'] = product.sku
         
         response = requests.post(url, headers=self._get_headers(), json=data)
         response.raise_for_status()
