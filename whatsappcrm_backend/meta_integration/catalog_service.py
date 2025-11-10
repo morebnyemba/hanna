@@ -28,28 +28,36 @@ class MetaCatalogService:
 
     def _get_product_data(self, product):
         """
-        Constructs the product data payload from a Product instance.
+        Constructs a robust product data payload from a Product instance,
+        omitting fields that are null or empty to prevent '400 Bad Request' errors.
         """
-        # Get the first image URL, if available
-        first_image = product.images.first()
-        image_url = first_image.image.url if first_image else None
-        
-        # Calculate expiration date (1 year from now)
-        expiration_date = (datetime.now() + timedelta(days=365)).isoformat()
+        # SKU is mandatory for the retailer_id
+        if not product.sku:
+            raise ValueError(f"Product '{product.name}' (ID: {product.id}) is missing an SKU, which is required for 'retailer_id'.")
 
-        return {
-            "name": product.name,
-            "description": product.description,
-            "price": str(product.price),
-            "currency": product.currency,
+        data = {
             "retailer_id": product.sku,
-            "link": product.website_url,
-            "image_link": image_url,
-            "brand": product.brand,
+            "name": product.name,
+            "price": str(product.price) if product.price is not None else "0",
+            "currency": product.currency,
             "condition": "new",
             "availability": 'in stock' if product.stock_quantity > 0 else 'out of stock',
-            "expiration_date": expiration_date,
+            # Provide a default link if not set, as it's often required.
+            "link": product.website_url or "https://www.hanna-installations.com/product-not-available"
         }
+
+        if product.description:
+            data["description"] = product.description
+
+        if product.brand:
+            data["brand"] = product.brand
+
+        # Get the first image URL, if available
+        first_image = product.images.first()
+        if first_image and hasattr(first_image.image, 'url'):
+            data["image_link"] = first_image.image.url
+
+        return data
 
     def create_product_in_catalog(self, product):
         if not self.catalog_id:
