@@ -243,6 +243,23 @@ An invoice from *{{ attachment.sender }}* (Filename: *{{ attachment.filename }}*
 
 The new order has been created in the system."""
     },
+    {
+        "name": "customer_invoice_confirmation",
+        "description": "Sent to a customer via WhatsApp after their emailed invoice has been successfully processed and an order created.",
+        "template_type": "whatsapp",
+        "body": """Hello {{ customer_name }}! 👋
+
+This is a confirmation that your invoice has been successfully processed.
+
+*Order Details:*
+- Order #: *{{ order_number }}*
+- Invoice Date: {{ invoice_date }}
+- Total Amount: *${{ total_amount }}*
+
+An installation has been provisionally scheduled and our team will be in touch shortly to confirm the details.
+
+Thank you for choosing Hanna Installations!"""
+    },
 ]
 
 
