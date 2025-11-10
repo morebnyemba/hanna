@@ -33,8 +33,11 @@ def create_warranties_on_paid_order(sender, instance: Order, created, **kwargs):
         log_prefix = f"[Order Signal for ID: {instance.id}]"
         logger.info(f"{log_prefix} Order marked as paid. Checking for items to create warranties for.")
 
-        # Eagerly load related product and warranty info
-        order_items = instance.items.select_related('product').filter(product__warranty_duration_months__gt=0)
+        # Corrected Filter: Find hardware products that have a manufacturer.
+        order_items = instance.items.select_related('product').filter(
+            product__product_type='hardware', 
+            product__manufacturer__isnull=False
+        )
 
         for item in order_items:
             # For simplicity, we assume one serial number per quantity.
@@ -43,7 +46,8 @@ def create_warranties_on_paid_order(sender, instance: Order, created, **kwargs):
                 # The flawed `exists()` check is removed. We will create a warranty for each unit.
                 # The generated serial number ensures uniqueness for each item.
                 start_date = timezone.now().date()
-                end_date = start_date + relativedelta(months=item.product.warranty_duration_months)
+                # Corrected: Use a default 12-month warranty as the duration is not stored on the product model.
+                end_date = start_date + relativedelta(months=12)
 
                 # This is a placeholder. In a real system, you'd need a mechanism
                 # to get and assign unique serial numbers for each unit.

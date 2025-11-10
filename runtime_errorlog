@@ -1,32 +1,3 @@
-[2025-11-09 20:15:12] INFO services Registered flow action: 'create_order'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'generate_unique_order_number'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'create_order_with_items'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'calculate_order_total'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'update_order_fields'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'update_model_instance'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'create_order_from_cart'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'generate_unique_assessment_id'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'create_placeholder_order'
-[2025-11-09 20:15:12] INFO services Registered flow action: 'normalize_order_number'
-/usr/local/lib/python3.10/site-packages/google/api_core/_python_version_support.py:266: FutureWarning: You are using a Python version (3.10.19) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
-  warnings.warn(message, FutureWarning)
-/usr/local/lib/python3.10/site-packages/celery/platforms.py:841: SecurityWarning: You're running the worker with superuser privileges: this is
-absolutely not recommended!
-Please specify a different user using the --uid option.
-User information: uid=0 euid=0 gid=0 egid=0
-  warnings.warn(SecurityWarning(ROOT_DISCOURAGED.format(
- 
- -------------- celery@f068201d72ad v5.5.3 (immunity)
---- ***** ----- 
--- ******* ---- Linux-6.8.0-87-generic-x86_64-with-glibc2.41 2025-11-09 20:15:15
-- *** --- * --- 
-- ** ---------- [config]
-- ** ---------- .> app:         whatsappcrm_backend:0x7924a1293040
-- ** ---------- .> transport:   redis://:**@redis:6379/0
-- ** ---------- .> results:     
-- *** --- * --- .> concurrency: 1 (prefork)
--- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
---- ***** ----- 
  -------------- [queues]
                 .> cpu_heavy        exchange=celery(direct) key=cpu_heavy
                 
@@ -56,41 +27,72 @@ User information: uid=0 euid=0 gid=0 egid=0
   . stats.update_dashboard_stats
   . warranty.send_manufacturer_notification_task
   . whatsappcrm_backend.celery.debug_task
-[2025-11-09 20:15:15,888: INFO/MainProcess] Connected to redis://:**@redis:6379/0
-[2025-11-09 20:15:15,903: INFO/MainProcess] mingle: searching for neighbors
-[2025-11-09 20:15:16,926: INFO/MainProcess] mingle: all alone
-[2025-11-09 20:15:16,942: INFO/MainProcess] celery@f068201d72ad ready.
-[2025-11-09 20:15:19,374: INFO/MainProcess] sync with celery@6ee13b36a295
-[2025-11-09 20:23:08,884: INFO/MainProcess] Task email_integration.process_attachment_with_gemini[9b283e2a-e0ec-4ff6-b224-6c2a5d292561] received
-[2025-11-09 20:23:08,919: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] Starting Gemini processing for attachment ID: 86
-[2025-11-09 20:23:08,973: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] Uploading file to Gemini: /app/mediafiles/attachments/attachments/mailu_209e3f7e105c4c0e8f15594cba4d9692_Sales_Inv_V72vv3U.20251008-140937.pdf
-[2025-11-09 20:23:09,651: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files "HTTP/1.1 200 OK"
-[2025-11-09 20:23:11,223: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=AOCedOE9FHtwKx6LeRY7t7lL9kvyOFbhLUYUXm5mPe6Bjdf0qh_FwDOmWygh9VG2dpekcNmbuynUm6PyM-n0wSViAiL1ZGajHsKrBzmGq-gS9g&upload_protocol=resumable "HTTP/1.1 200 OK"
-[2025-11-09 20:23:11,225: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] File uploaded successfully. URI: https://generativelanguage.googleapis.com/v1beta/files/kg91q4k0j7z4
-[2025-11-09 20:23:11,225: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] Sending request to Gemini model for analysis.
-[2025-11-09 20:23:11,225: INFO/ForkPoolWorker-1] AFC is enabled with max remote calls: 10.
-[2025-11-09 20:23:21,884: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
-[2025-11-09 20:23:21,886: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] Gemini identified document as type: 'invoice'
-[2025-11-09 20:23:21,886: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] Starting to create Order from extracted data.
-[2025-11-09 20:23:21,908: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] Created new CustomerProfile for 'TASA NEWMAN'.
-[2025-11-09 20:23:21,930: INFO/ForkPoolWorker-1] Logged creation of placeholder order ID c6b83c78-ea91-40fd-9088-547e0afa4aef (no customer attached).
-[2025-11-09 20:23:21,936: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] Created new Order with order_number 'IC01/0014739'.
-
-[2025-11-09 20:23:21,938: ERROR/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] An unexpected error occurred during Gemini processing for attachment 86: InstallationRequest() got unexpected keyword arguments: 'order', 'preferred_date'
+[2025-11-10 05:43:30,851: INFO/MainProcess] Connected to redis://:**@redis:6379/0
+[2025-11-10 05:43:30,886: INFO/MainProcess] mingle: searching for neighbors
+[2025-11-10 05:43:31,986: INFO/MainProcess] mingle: all alone
+[2025-11-10 05:43:32,029: INFO/MainProcess] celery@0c24c2d5c7d5 ready.
+[2025-11-10 05:43:38,722: INFO/MainProcess] sync with celery@acd0ee8a7ca2
+[2025-11-10 05:52:03,964: INFO/MainProcess] Task email_integration.process_attachment_with_gemini[55503d73-f338-4cac-8ece-7486067988fa] received
+[2025-11-10 05:52:03,993: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Starting Gemini processing for attachment ID: 87
+[2025-11-10 05:52:04,066: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Uploading file to Gemini: /app/mediafiles/attachments/attachments/mailu_6c1eea7dea4849248577979047f56fbf_Sales_Inv_tEbh1wQ.20250920-124747.pdf
+[2025-11-10 05:52:04,442: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files "HTTP/1.1 200 OK"
+[2025-11-10 05:52:05,294: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=AOCedOHFtPoxgNr1NVJ2Tz4wfrxYrk1GsPjMCDbF-npKAsJzGyyH6Ms4PYYX_BJFv9rYzue-zNfe9k-hpoV2f5mnH-cPw6F5RkOpSvgz9EcZlg&upload_protocol=resumable "HTTP/1.1 200 OK"
+[2025-11-10 05:52:05,296: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] File uploaded successfully. URI: https://generativelanguage.googleapis.com/v1beta/files/mg5xdf99fxtx
+[2025-11-10 05:52:05,296: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Sending request to Gemini model for analysis.
+[2025-11-10 05:52:05,296: INFO/ForkPoolWorker-1] AFC is enabled with max remote calls: 10.
+[2025-11-10 05:52:27,492: INFO/ForkPoolWorker-1] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+[2025-11-10 05:52:27,495: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Gemini identified document as type: 'invoice'
+[2025-11-10 05:52:27,495: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Starting to create Order from extracted data.
+[2025-11-10 05:52:27,520: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Created new CustomerProfile for 'RAMBAKUDZIMBGWA'.
+[2025-11-10 05:52:27,546: INFO/ForkPoolWorker-1] Logged creation of placeholder order ID a7f70ca7-2bfd-4f7f-baee-6391e77b554a (no customer attached).
+[2025-11-10 05:52:27,551: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Created new Order with order_number 'VE01/0028564'.
+[2025-11-10 05:52:27,563: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Automatically created InstallationRequest for order 'VE01/0028564'.
+[2025-11-10 05:52:27] INFO signals [Order Signal for ID: a7f70ca7-2bfd-4f7f-baee-6391e77b554a] Order marked as paid. Checking for items to create warranties for.
+[2025-11-10 05:52:27,594: ERROR/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] An unexpected error occurred during Gemini processing for attachment 87: Unsupported lookup 'warranty_duration_months__gt' for ForeignKey or join on the field not permitted.
 Traceback (most recent call last):
   File "/app/email_integration/tasks.py", line 285, in process_attachment_with_gemini
     _create_order_from_invoice_data(attachment, data, log_prefix)
   File "/usr/local/lib/python3.10/contextlib.py", line 79, in inner
     return func(*args, **kwds)
-  File "/app/email_integration/tasks.py", line 417, in _create_order_from_invoice_data
-    InstallationRequest.objects.create(
+  File "/app/email_integration/tasks.py", line 451, in _create_order_from_invoice_data
+    OrderItem.objects.create(
   File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
     return getattr(self.get_queryset(), name)(*args, **kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 663, in create
-    obj = self.model(**kwargs)
-  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 569, in __init__
-    raise TypeError(
-TypeError: InstallationRequest() got unexpected keyword arguments: 'order', 'preferred_date'
-[2025-11-09 20:23:21,943: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 9b283e2a-e0ec-4ff6-b224-6c2a5d292561] Deleting temporary file from Gemini service: files/kg91q4k0j7z4
-[2025-11-09 20:23:23,283: INFO/ForkPoolWorker-1] HTTP Request: DELETE https://generativelanguage.googleapis.com/v1beta/files/kg91q4k0j7z4 "HTTP/1.1 200 OK"
-[2025-11-09 20:23:23,292: INFO/ForkPoolWorker-1] Task email_integration.process_attachment_with_gemini[9b283e2a-e0ec-4ff6-b224-6c2a5d292561] succeeded in 14.405084862002695s: None
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 665, in create
+    obj.save(force_insert=True, using=self.db)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 902, in save
+    self.save_base(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 1023, in save_base
+    post_save.send(
+  File "/usr/local/lib/python3.10/site-packages/django/dispatch/dispatcher.py", line 189, in send
+    response = receiver(signal=self, sender=sender, **named)
+  File "/app/customer_data/signals.py", line 22, in update_order_amount
+    order.save(update_fields=['amount'])
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 902, in save
+    self.save_base(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 1023, in save_base
+    post_save.send(
+  File "/usr/local/lib/python3.10/site-packages/django/dispatch/dispatcher.py", line 189, in send
+    response = receiver(signal=self, sender=sender, **named)
+  File "/app/customer_data/signals.py", line 37, in create_warranties_on_paid_order
+    order_items = instance.items.select_related('product').filter(product__warranty_duration_months__gt=0)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1495, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1513, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1523, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1588, in build_filter
+    condition = self.build_lookup(lookups, col, value)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1402, in build_lookup
+    lhs = self.try_transform(lhs, name, lookups)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/query.py", line 1458, in try_transform
+    raise FieldError(
+django.core.exceptions.FieldError: Unsupported lookup 'warranty_duration_months__gt' for ForeignKey or join on the field not permitted.
+[2025-11-10 05:52:27,600: INFO/ForkPoolWorker-1] [Gemini File API Task ID: 55503d73-f338-4cac-8ece-7486067988fa] Deleting temporary file from Gemini service: files/mg5xdf99fxtx
+[2025-11-10 05:52:28,733: INFO/ForkPoolWorker-1] HTTP Request: DELETE https://generativelanguage.googleapis.com/v1beta/files/mg5xdf99fxtx "HTTP/1.1 200 OK"
+[2025-11-10 05:52:28,737: INFO/ForkPoolWorker-1] Task email_integration.process_attachment_with_gemini[55503d73-f338-4cac-8ece-7486067988fa] succeeded in 24.77170655899681s: None
