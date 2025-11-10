@@ -51,7 +51,13 @@ class Product(models.Model):
     price = models.DecimalField(_("Price"), max_digits=12, decimal_places=2)
     currency = models.CharField(_("Currency"), max_length=3, default='USD')
     is_active = models.BooleanField(_("Is Active"), default=True, help_text=_("Whether this item is available for sale."))
-    image = models.ImageField(_("Product Image"), upload_to='products/', blank=True, null=True)
+    website_url = models.URLField(_("Website URL"), blank=True, null=True)
+    whatsapp_catalog_id = models.CharField(_("WhatsApp Catalog ID"), max_length=255, blank=True, null=True)
+    country_of_origin = models.CharField(_("Country of Origin"), max_length=2, blank=True, null=True, help_text=_("The two-letter country code (e.g., US, GB) required by WhatsApp."))
+    brand = models.CharField(_("Brand"), max_length=255, blank=True, null=True, help_text=_("The brand name of the product, required for WhatsApp Catalog."))
+    
+    # --- Inventory ---
+    stock_quantity = models.PositiveIntegerField(_("Stock Quantity"), default=0, help_text=_("The number of items available in stock. Used for WhatsApp Catalog inventory management."))
     
     # Software-specific fields
     license_type = models.CharField(_("License Type"), max_length=20, choices=LicenseType.choices, default=LicenseType.SUBSCRIPTION)
@@ -72,6 +78,29 @@ class Product(models.Model):
         verbose_name = _("Product")
         verbose_name_plural = _("Products")
         ordering = ['name']
+
+
+class ProductImage(models.Model):
+    """
+    An image associated with a product. Products can have multiple images.
+    """
+    product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(_("Image"), upload_to='product_images/')
+    alt_text = models.CharField(
+        _("Alt Text"),
+        max_length=255,
+        blank=True, null=True,
+        help_text=_("A brief description of the image for accessibility.")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image for {self.product.name}"
+
+    class Meta:
+        verbose_name = _("Product Image")
+        verbose_name_plural = _("Product Images")
+        ordering = ['created_at']
 
 
 class SerializedItem(models.Model):

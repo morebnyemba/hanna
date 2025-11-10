@@ -8,5 +8,5 @@ class MetaIntegrationConfig(AppConfig):
     verbose_name = "Meta Integration"
 
     def ready(self):
-        # You can import signals or other setup code here if needed
-        pass
+        # Import signals to ensure they are connected
+        import meta_integration.signals

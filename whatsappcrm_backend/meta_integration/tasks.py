@@ -12,6 +12,9 @@ from .utils import send_whatsapp_message, send_read_receipt_api, download_whatsa
 from .models import MetaAppConfig
 from .signals import message_send_failed
 from conversations.models import Message, Contact # To update message status
+from products_and_services.models import Product
+from .catalog_service import MetaCatalogService
+
 
 logger = logging.getLogger(__name__)
 
@@ -206,3 +209,50 @@ def download_whatsapp_media_task(media_id: str, config_id: int) -> str | None:
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred during media download: {e}", exc_info=True)
         return None
+
+@shared_task
+def create_whatsapp_catalog_product(product_id):
+    """
+    Celery task to create a product in the WhatsApp catalog.
+    """
+    try:
+        product = Product.objects.get(id=product_id)
+        service = MetaCatalogService()
+        response = service.create_product_in_catalog(product)
+        product.whatsapp_catalog_id = response.get("id")
+        product.save(update_fields=["whatsapp_catalog_id"])
+        logger.info(f"Product {product.name} created in WhatsApp catalog with ID {product.whatsapp_catalog_id}")
+    except Product.DoesNotExist:
+        logger.error(f"Product with ID {product_id} not found.")
+    except Exception as e:
+        logger.error(f"Failed to create product {product_id} in WhatsApp catalog: {e}")
+
+@shared_task
+def update_whatsapp_catalog_product(product_id):
+    """
+    Celery task to update a product in the WhatsApp catalog.
+    """
+    try:
+        product = Product.objects.get(id=product_id)
+        service = MetaCatalogService()
+        service.update_product_in_catalog(product)
+        logger.info(f"Product {product.name} updated in WhatsApp catalog.")
+    except Product.DoesNotExist:
+        logger.error(f"Product with ID {product_id} not found.")
+    except Exception as e:
+        logger.error(f"Failed to update product {product_id} in WhatsApp catalog: {e}")
+
+@shared_task
+def delete_whatsapp_catalog_product(product_id):
+    """
+    Celery task to delete a product from the WhatsApp catalog.
+    """
+    try:
+        product = Product.objects.get(id=product_id)
+        service = MetaCatalogService()
+        service.delete_product_from_catalog(product)
+        logger.info(f"Product {product.name} deleted from WhatsApp catalog.")
+    except Product.DoesNotExist:
+        logger.error(f"Product with ID {product_id} not found.")
+    except Exception as e:
+        logger.error(f"Failed to delete product {product_id} from WhatsApp catalog: {e}")
