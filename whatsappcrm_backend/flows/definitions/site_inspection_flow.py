@@ -89,7 +89,7 @@ SITE_INSPECTION_FLOW = {
                         "action_type": "send_group_notification",
                         "params_template": {
                             "group_names": ["Technical Admin", "Sales Team"],
-                            "template_name": "new_site_assessment_request"
+                            "template_name": "hanna_new_site_assessment_request"
                         }
                     }
                 ]

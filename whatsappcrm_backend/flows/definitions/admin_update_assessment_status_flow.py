@@ -100,7 +100,7 @@ ADMIN_UPDATE_ASSESSMENT_STATUS_FLOW = {
                     {
                         "action_type": "send_group_notification",
                         "params_template": {
-                            "template_name": "assessment_status_updated",
+                            "template_name": "hanna_assessment_status_updated",
                             "contact_ids": ["{{ assessment_contact.0.id }}"],
                             "template_context": {
                                 "assessment_id": "{{ found_assessment.0.assessment_id }}",

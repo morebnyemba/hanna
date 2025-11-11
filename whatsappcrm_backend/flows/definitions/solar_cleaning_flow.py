@@ -192,7 +192,7 @@ SOLAR_CLEANING_FLOW = {
                         "action_type": "send_group_notification",
                         "params_template": {
                             "group_names": ["Pfungwa Staff", "System Admins"],
-                            "template_name": "new_solar_cleaning_request"
+                            "template_name": "hanna_new_solar_cleaning_request"
                         }
                     }
                 ]

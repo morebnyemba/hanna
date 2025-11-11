@@ -9,7 +9,7 @@ These definitions are used by:
 
 NOTIFICATION_TEMPLATES = [
     {
-        "name": "new_order_created",
+        "name": "hanna_new_order_created",
         "description": "Sent to admins when a new order is created via a signal.",
         "body": """New Order Created! 📦
 
@@ -22,7 +22,7 @@ A new order has been created for customer *{{ order.customer.get_full_name or or
 Please see the admin panel for full details."""
     },
     {
-        "name": "new_online_order_placed",
+        "name": "hanna_new_online_order_placed",
         "description": "Sent to admins when a customer places a new order through the 'Purchase Product' flow.",
         "body": """New Online Order Placed! 🛍️
 
@@ -45,7 +45,7 @@ A new order has been placed via WhatsApp by *{{ contact.name or contact.whatsapp
 Please follow up with the customer to arrange payment."""
     },
     {
-        "name": "order_payment_status_updated",
+        "name": "hanna_order_payment_status_updated",
         "description": "Sent to a customer when an admin updates their order's payment status.",
         "body": """Hello! 👋
 
@@ -54,7 +54,7 @@ The status for your order '{{ order_name }}' (#{{ order_number }}) has been upda
 Thank you for choosing us!"""
     },
     {
-        "name": "assessment_status_updated",
+        "name": "hanna_assessment_status_updated",
         "description": "Sent to a customer when an admin updates their site assessment status.",
         "body": """Hello! 👋
 
@@ -63,7 +63,7 @@ The status for your Site Assessment Request (#{{ assessment_id }}) has been upda
 Our team will be in touch with the next steps. Thank you!"""
     },
     {
-        "name": "new_installation_request",
+        "name": "hanna_new_installation_request",
         "description": "Sent to admins when a customer submits a new solar installation request.",
         "body": """New Installation Request 🛠️
 
@@ -87,7 +87,7 @@ A new installation request has been submitted by *{{ contact.name or contact.wha
 Please review and schedule the installation."""
     },
     {
-        "name": "new_starlink_installation_request",
+        "name": "hanna_new_starlink_installation_request",
         "description": "Sent to admins when a customer submits a new Starlink installation request.",
         "body": """New Starlink Installation Request 🛰️
 
@@ -109,7 +109,7 @@ A new Starlink installation request has been submitted by *{{ contact.name or co
 Please follow up to confirm the schedule."""
     },
     {
-        "name": "new_solar_cleaning_request",
+        "name": "hanna_new_solar_cleaning_request",
         "description": "Sent to admins when a customer submits a new solar panel cleaning request.",
         "body": """New Solar Cleaning Request 💧
 
@@ -129,7 +129,7 @@ A new cleaning request has been submitted by *{{ contact.name or contact.whatsap
 Please follow up to provide a quote and schedule the service."""
     },
     {
-        "name": "admin_order_and_install_created",
+        "name": "hanna_admin_order_and_install_created",
         "description": "Sent to admins when another admin creates a new order and installation request via the admin flow.",
         "body": """Admin Action: New Order & Install Created 📝
 
@@ -141,7 +141,7 @@ Admin *{{ contact.name or contact.username }}* has created a new order and insta
 Please see the admin panel for full details."""
     },
     {
-        "name": "new_site_assessment_request",
+        "name": "hanna_new_site_assessment_request",
         "description": "Sent to admins when a customer books a new site assessment.",
         "body": """New Site Assessment Request 📋
 
@@ -157,7 +157,7 @@ A new site assessment has been requested by *{{ contact.name or contact.whatsapp
 Please follow up to schedule the assessment."""
     },
     {
-        "name": "job_card_created_successfully",
+        "name": "hanna_job_card_created_successfully",
         "description": "Sent to admins when a job card is successfully created from an email attachment.",
         "body": """New Job Card Created ⚙️
 
@@ -172,7 +172,7 @@ A new job card has been automatically created from an email attachment.
 Please review the job card in the admin panel and assign it to a technician."""
     },
     {
-        "name": "human_handover_flow",
+        "name": "hanna_human_handover_flow",
         "description": "Sent to admins when a user is handed over to a human agent by the flow engine.",
         "body": """Human Intervention Required ⚠️
 
@@ -184,7 +184,7 @@ Contact *{{ related_contact.name or related_contact.whatsapp_id }}* requires ass
 Please respond to them in the main inbox."""
     },
     {
-        "name": "new_placeholder_order_created",
+        "name": "hanna_new_placeholder_order_created",
         "description": "Sent to admins when a placeholder order is created via the order receiver number.",
         "body": """New Placeholder Order Created 📦
 
@@ -195,7 +195,7 @@ A new placeholder order has been created by *{{ contact.name or contact.whatsapp
 Please update the order details in the admin panel as soon as possible."""
     },
     {
-        "name": "message_send_failure",
+        "name": "hanna_message_send_failure",
         "description": "Sent to admins when a WhatsApp message fails to send.",
         "body": """Message Send Failure ⚠️
 
@@ -206,7 +206,7 @@ Failed to send a message to *{{ related_contact.name or related_contact.whatsapp
 Please check the system logs for more details."""
     },
     {
-        "name": "admin_24h_window_reminder",
+        "name": "hanna_admin_24h_window_reminder",
         "description": "Sent to an admin user when their 24-hour interaction window is about to close.",
         "body": """Hi {{ recipient.first_name or recipient.username }},
 
@@ -215,7 +215,7 @@ This is an automated reminder. Your 24-hour interaction window for receiving sys
 Please reply with "status" or any other command to keep the window open."""
     },
     {
-        "name": "invoice_processed_successfully",
+        "name": "hanna_invoice_processed_successfully",
         "description": "Sent to admins when an invoice from an email has been successfully processed into an order.",
         "body": """Invoice Processed Successfully ✅
 

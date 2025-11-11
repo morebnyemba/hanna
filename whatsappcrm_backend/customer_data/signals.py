@@ -8,8 +8,25 @@ from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 import logging
 
+from notifications.services import queue_notifications_to_users
+
 logger = logging.getLogger(__name__)
-# --- END NEW IMPORTS ---
+
+
+@receiver(post_save, sender=Order)
+def on_new_order_created(sender, instance, created, **kwargs):
+    """
+    When a new Order is created, send a notification to the admin group.
+    """
+    if created:
+        logger.info(f"New order created (ID: {instance.id}), queueing admin notification.")
+        queue_notifications_to_users(
+            template_name='hanna_new_order_created',
+            group_names=["System Admins", "Sales Team"],
+            related_contact=instance.customer.contact if instance.customer else None,
+            template_context={'order': instance}
+        )
+
 
 @receiver([post_save, post_delete], sender=OrderItem)
 def update_order_amount(sender, instance, **kwargs):

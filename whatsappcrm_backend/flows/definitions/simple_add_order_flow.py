@@ -94,7 +94,7 @@ SIMPLE_ADD_ORDER_FLOW = {
                     "action_type": "send_group_notification",
                     "params_template": {
                         "group_names": ["System Admins", "Sales Team"],
-                        "template_name": "new_placeholder_order_created"
+                        "template_name": "hanna_new_placeholder_order_created"
                     }
                 }]
             },

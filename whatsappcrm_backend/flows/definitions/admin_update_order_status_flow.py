@@ -117,7 +117,7 @@ ADMIN_UPDATE_ORDER_STATUS_FLOW = {
                     {
                         "action_type": "send_group_notification",
                         "params_template": {
-                            "template_name": "order_payment_status_updated",
+                            "template_name": "hanna_order_payment_status_updated",
                             "contact_ids": ["{{ order_contact.0.id }}"],
                             "template_context": {
                                 "order_name": "{{ found_order.0.name }}",

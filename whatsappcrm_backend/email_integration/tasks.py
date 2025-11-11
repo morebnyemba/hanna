@@ -571,7 +571,7 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             }
 
             queue_notifications_to_users(
-                template_name='invoice_processed_successfully',
+                template_name='hanna_invoice_processed_successfully',
                 group_names=settings.INVOICE_PROCESSED_NOTIFICATION_GROUPS,
                 related_contact=customer_profile.contact,
                 template_context={
@@ -581,7 +581,7 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             
             # --- NEW: Send WhatsApp notification to the customer ---
             queue_notifications_to_users(
-                template_name='customer_invoice_confirmation', # New template for customers
+                template_name='hanna_customer_invoice_confirmation', # New template for customers
                 contact_ids=[customer_profile.contact.id],
                 related_contact=customer_profile.contact,
                 template_context={
@@ -674,7 +674,7 @@ def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_pref
             }
 
         queue_notifications_to_users(
-            template_name='job_card_created_successfully',
+            template_name='hanna_job_card_created_successfully',
             # You might want to create a specific group setting for this
             group_names=settings.INVOICE_PROCESSED_NOTIFICATION_GROUPS,
             related_contact=customer_profile.contact if customer_profile else None,
