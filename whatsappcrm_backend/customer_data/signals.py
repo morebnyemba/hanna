@@ -20,11 +20,28 @@ def on_new_order_created(sender, instance, created, **kwargs):
     """
     if created:
         logger.info(f"New order created (ID: {instance.id}), queueing admin notification.")
+        
+        # Construct a serializable context dictionary
+        context = {
+            'order': {
+                'id': instance.id,
+                'name': instance.name,
+                'order_number': instance.order_number,
+                'amount': float(instance.amount) if instance.amount is not None else 0.0,
+                'customer': {
+                    'get_full_name': instance.customer.get_full_name() if instance.customer else '',
+                    'contact': {
+                        'name': instance.customer.contact.name if instance.customer and instance.customer.contact else ''
+                    }
+                }
+            }
+        }
+        
         queue_notifications_to_users(
             template_name='hanna_new_order_created',
             group_names=["System Admins", "Sales Team"],
             related_contact=instance.customer.contact if instance.customer else None,
-            template_context={'order': instance}
+            template_context=context
         )
 
 
