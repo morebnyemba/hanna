@@ -1,7 +1,14 @@
 from django.contrib import admin
 from django.utils.html import format_html
 import json
-from .models import EmailAttachment, ParsedInvoice, EmailAccount
+from .models import EmailAttachment, ParsedInvoice, EmailAccount, AdminEmailRecipient
+
+@admin.register(AdminEmailRecipient)
+class AdminEmailRecipientAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'email')
+    list_editable = ('is_active',)
 
 @admin.register(EmailAccount)
 class EmailAccountAdmin(admin.ModelAdmin):

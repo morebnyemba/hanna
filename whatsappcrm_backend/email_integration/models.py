@@ -43,3 +43,24 @@ class ParsedInvoice(models.Model):
 
     def __str__(self):
         return f"Invoice {self.invoice_number or 'N/A'} from {self.attachment.filename}"
+
+class AdminEmailRecipient(models.Model):
+    """
+    Stores the email addresses of administrators who should receive critical error notifications.
+    """
+    name = models.CharField(max_length=100, help_text="Name of the administrator.")
+    email = models.EmailField(unique=True, help_text="Email address to send notifications to.")
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Uncheck this to disable notifications for this recipient without deleting them."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} <{self.email}>"
+
+    class Meta:
+        verbose_name = "Admin Email Recipient"
+        verbose_name_plural = "Admin Email Recipients"
+        ordering = ['name']

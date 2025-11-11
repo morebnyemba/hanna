@@ -11,7 +11,7 @@ from celery import shared_task
 from google import genai
 from google.genai import types as genai_types
 from google.genai import errors as genai_errors
-from .models import EmailAttachment, ParsedInvoice
+from .models import EmailAttachment, ParsedInvoice, AdminEmailRecipient
 from decimal import Decimal, InvalidOperation
 # --- ADD JobCard to imports ---
 from customer_data.models import CustomerProfile, Order, OrderItem, JobCard, InstallationRequest
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
     name="email_integration.send_receipt_confirmation_email",
     # Automatically retry for connection errors, which are common for email servers.
     autoretry_for=(ConnectionRefusedError, smtplib.SMTPException),
-    retry_backoff=True,
+    retry_backbackoff=True,
     retry_kwargs={'max_retries': 3}
 )
 def send_receipt_confirmation_email(self, attachment_id):
@@ -142,6 +142,86 @@ def send_duplicate_invoice_email(self, attachment_id, order_number):
         logger.error(f"{log_prefix} An unexpected error occurred while sending duplicate notification for attachment {attachment_id}: {e}", exc_info=True)
         raise
 
+@shared_task(name="email_integration.send_error_notification_email")
+def send_error_notification_email(task_name, attachment_id, error_message, raw_response=None):
+    """
+    Sends a standardized email notification to the admin when a critical task fails.
+    """
+    subject = f"URGENT: Critical Task Failure in {task_name}"
+    
+    # Obfuscate part of the attachment ID if it's sensitive, though it's a UUID.
+    safe_attachment_id = str(attachment_id)[:8] + "..." if attachment_id else "N/A"
+
+    html_message = f"""
+    <html>
+        <head>
+            <style>
+                body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; color: #333; }}
+                .container {{ max-width: 700px; margin: 20px auto; padding: 25px; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }}
+                .header {{ background-color: #d9534f; color: #ffffff; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .header h1 {{ margin: 0; font-size: 24px; }}
+                .content {{ padding: 20px; }}
+                .content h2 {{ color: #d9534f; font-size: 20px; border-bottom: 2px solid #eeeeee; padding-bottom: 10px; }}
+                .error-details {{ background-color: #f9f2f2; border: 1px solid #e6b8b8; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; word-wrap: break-word; }}
+                .raw-response {{ background-color: #f0f0f0; border: 1px solid #ccc; padding: 15px; border-radius: 5px; margin-top: 15px; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; word-wrap: break-word; }}
+                .footer {{ margin-top: 25px; text-align: center; font-size: 12px; color: #888; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Critical Task Failure</h1>
+                </div>
+                <div class="content">
+                    <h2>Error Summary</h2>
+                    <p>A critical error occurred in the background processing system. Manual intervention may be required.</p>
+                    
+                    <h3>Task Details:</h3>
+                    <ul>
+                        <li><strong>Task Name:</strong> {task_name}</li>
+                        <li><strong>Attachment ID:</strong> {safe_attachment_id}</li>
+                        <li><strong>Timestamp:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC</li>
+                    </ul>
+
+                    <h2>Error Message</h2>
+                    <div class="error-details">
+                        <p>{error_message}</p>
+                    </div>
+"""
+    if raw_response:
+        html_message += f"""
+                    <h2>Raw AI Response</h2>
+                    <div class="raw-response">
+                        <p>{raw_response}</p>
+                    </div>
+"""
+    html_message += """
+                </div>
+                <div class="footer">
+                    <p>This is an automated notification from the Hanna Installations CRM.</p>
+                </div>
+            </div>
+        </body>
+    </html>
+    """
+    
+    try:
+        send_mail(
+            subject=subject,
+            message=f"Critical task failure in {task_name} for attachment {attachment_id}. Error: {error_message}", # Plain text fallback
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=settings.ADMIN_EMAIL_RECIPIENTS, # Expects ADMIN_EMAIL_RECIPIENTS in settings.py
+            html_message=html_message,
+            fail_silently=False,
+        )
+        logger.info(f"Successfully sent error notification email for task {task_name} and attachment {attachment_id}.")
+    except Exception as e:
+        logger.critical(
+            f"FATAL: Could not send error notification email for task {task_name}. "
+            f"Original error: {error_message}. Email sending error: {e}",
+            exc_info=True
+        )
+
 @shared_task(
     bind=True,
     name="email_integration.process_attachment_with_gemini",
@@ -153,12 +233,14 @@ def process_attachment_with_gemini(self, attachment_id):
     """
     Fetches an attachment, asks Gemini to classify it (invoice or job_card),
     extracts structured data based on the type, and saves it to the correct model.
+    On failure, it sends a notification to the admin.
     """
     log_prefix = f"[Gemini File API Task ID: {self.request.id}]"
     logger.info(f"{log_prefix} Starting Gemini processing for attachment ID: {attachment_id}")
 
     attachment = None
     uploaded_file = None
+    client = None
 
     try:
         # 1. Fetch the attachment record and check processing status
@@ -177,6 +259,8 @@ def process_attachment_with_gemini(self, attachment_id):
             attachment.processed = True
             attachment.extracted_data = {"error": error_message, "status": "failed"}
             attachment.save(update_fields=['processed', 'extracted_data'])
+            # Trigger admin notification for this critical configuration error
+            send_error_notification_email.delay(self.name, attachment_id, error_message)
             return f"Failed: {error_message}"
 
         # 2. Upload the local file to the Gemini API
@@ -266,18 +350,22 @@ def process_attachment_with_gemini(self, attachment_id):
                 raise json.JSONDecodeError("Empty response from Gemini", "", 0)
             extracted_data = json.loads(cleaned_text)
         except json.JSONDecodeError as e:
-            logger.error(f"{log_prefix} Failed to decode JSON from Gemini response for attachment {attachment_id}. Error: {e}. Raw response text: '{response.text}'")
+            error_message = f"Failed to decode JSON from Gemini response. Error: {e}."
+            logger.error(f"{log_prefix} {error_message} Raw response text: '{response.text}'")
             attachment.processed = True
-            attachment.extracted_data = {"error": "Invalid JSON response from Gemini", "status": "failed", "raw_response": response.text}
+            attachment.extracted_data = {"error": error_message, "status": "failed", "raw_response": response.text}
             attachment.save(update_fields=['processed', 'extracted_data'])
-            return f"Failed: Gemini returned non-JSON response for attachment {attachment_id}."
+            # Trigger admin notification
+            send_error_notification_email.delay(self.name, attachment_id, error_message, raw_response=response.text)
+            return f"Failed: {error_message}"
 
         # --- NEW: Conditional Logic Based on Document Type ---
         document_type = extracted_data.get("document_type")
         data = extracted_data.get("data")
 
         if not document_type or not data:
-            raise ValueError("AI response missing 'document_type' or 'data' key.")
+            error_message = "AI response missing 'document_type' or 'data' key."
+            raise ValueError(error_message)
 
         logger.info(f"{log_prefix} Gemini identified document as type: '{document_type}'")
 
@@ -299,23 +387,29 @@ def process_attachment_with_gemini(self, attachment_id):
 
     except EmailAttachment.DoesNotExist:
         logger.error(f"{log_prefix} Attachment with ID {attachment_id} not found.")
+        # No notification needed if the attachment doesn't exist, as it's a state issue.
     except (core_exceptions.ResourceExhausted, core_exceptions.DeadlineExceeded, genai_errors.ServerError) as e:
         logger.warning(f"{log_prefix} Gemini API rate limit or timeout error for attachment {attachment_id}: {e}. Task will be retried by Celery.")
-        raise
+        raise # Re-raise to let Celery handle the retry
     except Exception as e:
-        logger.error(f"{log_prefix} An unexpected error occurred during Gemini processing for attachment {attachment_id}: {e}", exc_info=True)
+        error_message = f"An unexpected error occurred: {e}"
+        logger.error(f"{log_prefix} {error_message}", exc_info=True)
         if attachment:
             attachment.processed = True
             attachment.extracted_data = {"error": str(e), "status": "failed"}
             attachment.save(update_fields=['processed', 'extracted_data'])
+        # Trigger admin notification for any other unexpected error
+        send_error_notification_email.delay(self.name, attachment_id, error_message)
     finally:
         # 9. Clean up: Delete the file from the Gemini service
-        if uploaded_file:
+        if uploaded_file and client:
             try:
                 logger.info(f"{log_prefix} Deleting temporary file from Gemini service: {uploaded_file.name}")
                 client.files.delete(name=uploaded_file.name)
             except Exception as e:
+                # This failure is not critical enough to stop the process, but it should be logged.
                 logger.error(f"{log_prefix} Failed to delete uploaded Gemini file {uploaded_file.name}: {e}")
+
 
 
 def _get_or_create_customer_profile(customer_data: dict, log_prefix: str) -> CustomerProfile | None:

@@ -5,7 +5,8 @@ import time
 import logging
 import imaplib
 import socket
-import ssl # Import the ssl module
+import ssl
+import threading
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 from django.core.management.base import BaseCommand
@@ -18,104 +19,125 @@ from email_integration.models import EmailAttachment, EmailAccount
 
 logger = logging.getLogger(__name__)
 
+def process_message(account, message_data):
+    """Processes a single email message, extracting attachments."""
+    msg = email.message_from_bytes(message_data[b'RFC822'])
+    sender = msg.get('From', '')
+    subject = msg.get('Subject', '')
+    date_str = msg.get('Date', '')
+    email_date_obj = parsedate_to_datetime(date_str) if date_str else None
+
+    for part in msg.walk():
+        if part.get_content_maintype() == 'multipart' or part.get('Content-Disposition') is None:
+            continue
+        
+        filename = part.get_filename()
+        if filename:
+            unique_name = f"mailu_{uuid.uuid4().hex}_{filename}"
+            file_content = part.get_payload(decode=True)
+            
+            if file_content is None:
+                logger.warning(f"Skipping attachment '{filename}' from '{account.name}' due to empty content.")
+                continue
+
+            attachment = EmailAttachment.objects.create(
+                account=account,
+                file=ContentFile(file_content, name="attachments/" + unique_name),
+                filename=filename,
+                sender=sender,
+                subject=subject,
+                email_date=email_date_obj
+            )
+            logger.info(f"Saved attachment: {filename} (DB id: {attachment.id}) from account '{account.name}'")
+            
+            process_attachment_with_gemini.delay(attachment.id)
+            logger.info(f"Triggered Gemini processing for attachment id: {attachment.id}")
+
+def monitor_account(account):
+    """
+    The main worker function for a single email account.
+    Connects to the IMAP server and enters a persistent IDLE loop.
+    """
+    logger.info(f"[{account.name}] Starting monitoring thread.")
+    
+    while True:
+        try:
+            server = IMAPClient(account.imap_host, ssl=True, timeout=300)
+            server.login(account.imap_user, account.imap_password)
+            server.select_folder('INBOX')
+            logger.info(f"[{account.name}] Successfully connected and selected INBOX.")
+
+            # Main IDLE loop for the connection
+            while True:
+                try:
+                    server.idle()
+                    # Wait for up to 29 minutes for new messages
+                    responses = server.idle_check(timeout=29 * 60)
+                    server.idle_done()
+
+                    if responses:
+                        logger.info(f"[{account.name}] New email activity detected. Fetching unseen messages...")
+                        messages = server.search(['UNSEEN'])
+                        for uid, message_data in server.fetch(messages, 'RFC822').items():
+                            process_message(account, message_data)
+                
+                except (IMAPClientError, OSError, imaplib.IMAP4.error) as idle_error:
+                    logger.error(f"[{account.name}] Error during IDLE: {idle_error}. Reconnecting...")
+                    # Break from the inner IDLE loop to force a reconnection
+                    break 
+                except Exception as e:
+                    logger.exception(f"[{account.name}] Unexpected error in IDLE loop: {e}. Reconnecting...")
+                    break
+
+        except (IMAPClientError, OSError, imaplib.IMAP4.error, socket.gaierror) as e:
+            logger.error(f"[{account.name}] IMAP connection error: {e}. Retrying in 60 seconds...")
+            time.sleep(60)
+        except Exception as e:
+            logger.exception(f"[{account.name}] An unrecoverable error occurred: {e}. Thread will exit and be restarted by the main loop.")
+            # The thread will die, and the main loop will restart it.
+            return
+
 class Command(BaseCommand):
-    help = "Runs a persistent IMAP IDLE worker to listen for new emails across all active email accounts and triggers processing."
+    help = "Runs a persistent IMAP IDLE worker to listen for new emails across all active email accounts concurrently."
 
     def handle(self, *args, **kwargs):
-        logger.info("Starting IMAP IDLE worker for all accounts...")
-        self.stdout.write(self.style.SUCCESS("IMAP IDLE worker started."))
+        logger.info("Starting IMAP IDLE worker manager...")
+        self.stdout.write(self.style.SUCCESS("IMAP IDLE worker manager started."))
+        
+        active_threads = {}
 
-        while True:
-            accounts = EmailAccount.objects.filter(is_active=True)
-            if not accounts.exists():
-                self.stdout.write(self.style.WARNING("No active email accounts found in the database. Sleeping for 60 seconds."))
+        try:
+            while True:
+                # Fetch all currently active accounts from the database
+                active_accounts = {acc.id: acc for acc in EmailAccount.objects.filter(is_active=True)}
+                
+                # --- Start threads for new or inactive accounts ---
+                for account_id, account in active_accounts.items():
+                    if account_id not in active_threads or not active_threads[account_id].is_alive():
+                        if account_id in active_threads:
+                            self.stdout.write(self.style.WARNING(f"Thread for '{account.name}' was found dead. Restarting..."))
+                        else:
+                            self.stdout.write(self.style.SUCCESS(f"Found new active account '{account.name}'. Starting listener thread..."))
+                        
+                        thread = threading.Thread(target=monitor_account, args=(account,))
+                        thread.daemon = True
+                        thread.start()
+                        active_threads[account_id] = thread
+
+                # --- Stop threads for accounts that are no longer active ---
+                stale_thread_ids = set(active_threads.keys()) - set(active_accounts.keys())
+                for account_id in stale_thread_ids:
+                    # The threads are daemonized, so we don't need to explicitly stop them.
+                    # We just remove them from our tracking dictionary.
+                    self.stdout.write(self.style.WARNING(f"Account with ID {account_id} is no longer active. Thread will be discarded."))
+                    del active_threads[account_id]
+
+                # Sleep for a while before checking the accounts and threads again
                 time.sleep(60)
-                continue
 
-            for account in accounts:
-                self.stdout.write(f"--- Processing account: {account.name} ({account.imap_user}) ---")
-                logger.info(f"Attempting to connect to IMAP server for account: {account.name}")
+        except KeyboardInterrupt:
+            self.stdout.write(self.style.WARNING("IMAP worker manager stopped by user."))
+        except Exception as e:
+            logger.exception("An unhandled error occurred in the main worker manager loop.")
+            self.stderr.write(self.style.ERROR(f"Unhandled error in main loop: {e}"))
 
-                try:
-                    while True:
-                        try:
-                            # Using the hostname directly as requested by the user.
-                            server = IMAPClient(account.imap_host, ssl=True, timeout=300)
-                            server.login(account.imap_user, account.imap_password)
-                            server.select_folder('INBOX')
-                            logger.info(f"Successfully connected and selected INBOX for '{account.name}'.")
-                            self.stdout.write(self.style.SUCCESS(f"Account '{account.name}' connected. Listening for new emails via IDLE..."))
-
-                            while True:
-                                try:
-                                    server.idle()
-                                    responses = server.idle_check(timeout=29 * 60) 
-                                    server.idle_done()
-
-                                    if responses:
-                                        logger.info(f"New email activity detected for '{account.name}'.")
-                                        self.stdout.write(self.style.SUCCESS(f"New email activity detected for '{account.name}'. Fetching unseen messages..."))
-                                        messages = server.search(['UNSEEN'])
-                                        for uid, message_data in server.fetch(messages, 'RFC822').items():
-                                            self.process_message(account, message_data)
-                                except (IMAPClientError, OSError, imaplib.IMAP4.error) as idle_error:
-                                    logger.error(f"Error during IDLE for '{account.name}': {idle_error}. Reconnecting...")
-                                    break
-                                except Exception as e:
-                                    logger.exception(f"Unexpected error in IDLE loop for '{account.name}': {e}")
-                                    break
-
-                            server.close_folder()
-                            server.logout()
-                            logger.info(f"Disconnected from IMAP server for '{account.name}'.")
-                            break
-                        except (IMAPClientError, OSError, imaplib.IMAP4.error) as e:
-                            self.stderr.write(self.style.ERROR(f"IMAP connection error for '{account.name}': {e}. Reconnecting in 30 seconds..."))
-                            logger.exception(f"Connection error for '{account.name}' occurred:")
-                            time.sleep(30)
-                        except Exception as e:
-                            self.stderr.write(self.style.ERROR(f"An unexpected error occurred for '{account.name}': {e}. Skipping account for now."))
-                            logger.exception(f"Unexpected error for '{account.name}':")
-                            break
-                except KeyboardInterrupt:
-                    self.stdout.write(self.style.WARNING("IMAP worker stopped by user."))
-                    return
-                except Exception as e:
-                    self.stderr.write(self.style.ERROR(f"Unhandled error processing account '{account.name}': {e}"))
-                    logger.exception(f"Unhandled error for account '{account.name}':")
-            
-            time.sleep(5) 
-
-    def process_message(self, account, message_data):
-        msg = email.message_from_bytes(message_data[b'RFC822'])
-        sender = msg.get('From', '')  
-        subject = msg.get('Subject', '')
-        date_str = msg.get('Date', '')
-        email_date_obj = parsedate_to_datetime(date_str) if date_str else None
-
-        for part in msg.walk():
-            if part.get_content_maintype() == 'multipart' or part.get('Content-Disposition') is None:
-                continue
-            
-            filename = part.get_filename()
-            if filename:
-                unique_name = f"mailu_{uuid.uuid4().hex}_{filename}"
-                
-                file_content = part.get_payload(decode=True)
-                
-                if file_content is None:
-                    logger.warning(f"Skipping attachment '{filename}' from '{account.name}' due to empty content.")
-                    continue
-
-                attachment = EmailAttachment.objects.create(
-                    account=account,
-                    file=ContentFile(file_content, name="attachments/"+unique_name),
-                    filename=filename, 
-                    sender=sender, 
-                    subject=subject, 
-                    email_date=email_date_obj
-                )
-                self.stdout.write(self.style.SUCCESS(f"Saved attachment: {filename} (DB id: {attachment.id}) from account '{account.name}'"))
-                
-                process_attachment_with_gemini.delay(attachment.id)
-                self.stdout.write(self.style.WARNING(f"Triggered Gemini processing for attachment id: {attachment.id}"))
