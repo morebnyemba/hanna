@@ -85,7 +85,7 @@ class Command(BaseCommand):
 
             if body_parameters_map:
                 # Create example values based on the variable names
-                example_values = [f"[{var_name.split('.')[-1]}]" for var_name in body_parameters_map.values()]
+                example_values = [[f"[{var_name.split('.')[-1]}]"] for var_name in body_parameters_map.values()]
                 components[0]["example"] = {"body_text": example_values}
             
             # Note: Buttons are not part of the NotificationTemplate model in this version.
