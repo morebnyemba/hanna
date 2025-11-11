@@ -175,9 +175,10 @@ class EmailAccountEncryptionTests(TestCase):
         self.assertEqual(account.imap_password, plain_password)
         
         # Query the database directly to verify it's encrypted
+        table_name = EmailAccount._meta.db_table
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT imap_password FROM email_integration_emailaccount WHERE id = %s",
+                f"SELECT imap_password FROM {table_name} WHERE id = %s",
                 [account.id]
             )
             row = cursor.fetchone()
