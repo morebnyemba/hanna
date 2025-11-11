@@ -4,7 +4,6 @@ import json
 from django.core.management.base import BaseCommand, CommandError
 from notifications.models import NotificationTemplate
 from meta_integration.models import MetaAppConfig
-from jinja2 import Environment, meta as jinja_meta
 
 
 class Command(BaseCommand):
@@ -58,13 +57,17 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.NOTICE(f"  Skipping disabled template: '{template_name}'"))
                 continue
 
-            env = Environment()
-            try:
-                ast = env.parse(original_body)
-                jinja_variables = sorted(list(jinja_meta.find_undeclared_variables(ast)))
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"  Jinja2 parsing error in template '{template_name}': {e}"))
-                jinja_variables = []
+            # Extract Jinja2 variables with full paths (e.g., contact.name, order.number)
+            # Using regex instead of jinja_meta.find_undeclared_variables which only extracts root names
+            jinja_pattern = r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}'
+            jinja_matches = re.findall(jinja_pattern, original_body)
+            # Preserve order of first occurrence and remove duplicates
+            jinja_variables = []
+            seen = set()
+            for var in jinja_matches:
+                if var not in seen:
+                    jinja_variables.append(var)
+                    seen.add(var)
 
             meta_body = original_body
             body_parameters_map = {}
@@ -83,7 +86,7 @@ class Command(BaseCommand):
             if body_parameters_map:
                 # Create example values based on the variable names
                 example_values = [f"[{var_name.split('.')[-1]}]" for var_name in body_parameters_map.values()]
-                components[0]["example"] = {"body_text": [example_values]}
+                components[0]["example"] = {"body_text": example_values}
             
             # Note: Buttons are not part of the NotificationTemplate model in this version.
             # This part of the original script is preserved in case the model is extended.
@@ -108,18 +111,25 @@ class Command(BaseCommand):
                             # Find all Jinja2 variables in the URL
                             jinja_vars_in_url = re.findall(r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}', original_url)
                             
+                            url_example_values = []
                             for jinja_var in jinja_vars_in_url:
                                 if jinja_var not in url_parameters_map:
                                     url_param_counter += 1
                                     url_parameters_map[jinja_var] = url_param_counter
                                 # Replace Jinja2 var with Meta placeholder
                                 processed_url = processed_url.replace(f'{{{{ {jinja_var} }}}}', f'{{{{{url_parameters_map[jinja_var]}}}}}')
+                                # Add example value for this parameter
+                                url_example_values.append(f"[{jinja_var.split('.')[-1]}]")
 
-                            button_payloads.append({
+                            button_payload = {
                                 "type": "URL",
                                 "text": text,
                                 "url": processed_url
-                            })
+                            }
+                            # Add example values if URL has parameters
+                            if url_example_values:
+                                button_payload["example"] = url_example_values
+                            button_payloads.append(button_payload)
                         else:  # Default to QUICK_REPLY
                             button_payloads.append({
                                 "type": "QUICK_REPLY",
