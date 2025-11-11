@@ -119,11 +119,16 @@ def monitor_account(account):
     
     # Create a default SSL context using certifi for up-to-date CAs
     ssl_context = ssl.create_default_context(cafile=certifi.where())
+    if account.ssl_protocol == 'tls_v1_2':
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
+    elif account.ssl_protocol == 'tls_v1_3':
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
 
     while True:
         try:
-            logger.info(f"[{account.name}] Attempting to connect to {account.imap_host} with SSL using certifi CAs.")
-            server = IMAPClient(account.imap_host, ssl_context=ssl_context, timeout=300)
+            logger.info(f"[{account.name}] Attempting to connect to {account.imap_host}:{account.port} with SSL protocol {account.ssl_protocol}.")
+            server = IMAPClient(account.imap_host, port=account.port, ssl_context=ssl_context, timeout=300)
             logger.info(f"[{account.name}] Connection to {account.imap_host} successful. Logging in...")
             server.login(account.imap_user, account.imap_password)
             server.select_folder('INBOX')

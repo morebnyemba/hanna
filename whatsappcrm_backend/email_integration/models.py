@@ -6,6 +6,17 @@ class EmailAccount(models.Model):
     imap_host = models.CharField(max_length=255)
     imap_user = models.CharField(max_length=255)
     imap_password = models.CharField(max_length=255)  # Consider using a more secure way to store this
+    port = models.PositiveIntegerField(default=993, help_text="IMAP server port. Default is 993 for SSL.")
+    ssl_protocol = models.CharField(
+        max_length=20,
+        choices=[
+            ('auto', 'Auto (default)'),
+            ('tls_v1_2', 'TLSv1.2'),
+            ('tls_v1_3', 'TLSv1.3'),
+        ],
+        default='auto',
+        help_text="Specify the SSL/TLS protocol version."
+    )
     is_active = models.BooleanField(default=True, help_text="Enable or disable fetching from this account.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
