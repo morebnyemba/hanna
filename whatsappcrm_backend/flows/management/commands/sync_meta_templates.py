@@ -58,15 +58,31 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.NOTICE(f"  Skipping disabled template: '{template_name}'"))
                 continue
 
-            jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', original_body)
+            env = Environment()
+            try:
+                ast = env.parse(original_body)
+                jinja_variables = sorted(list(jinja_meta.find_undeclared_variables(ast)))
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"  Jinja2 parsing error in template '{template_name}': {e}"))
+                jinja_variables = []
+
             meta_body = original_body
-            for idx, part in enumerate(jinja_parts):
-                meta_body = meta_body.replace(part, f'{{{{{idx + 1}}}}}', 1)
+            body_parameters_map = {}
+            if jinja_variables:
+                for idx, var_name in enumerate(jinja_variables):
+                    # Create a regex to find the specific Jinja2 variable, accounting for whitespace
+                    var_regex = r'\{\{\s*' + re.escape(var_name) + r'\s*\}\}'
+                    # Replace only the first occurrence to handle variables used multiple times correctly
+                    meta_body = re.sub(var_regex, f'{{{{{idx + 1}}}}}', meta_body, 1)
+                    body_parameters_map[str(idx + 1)] = var_name
+            
+            template.body_parameters = body_parameters_map
 
             components = [{"type": "BODY", "text": meta_body}]
 
-            if jinja_parts:
-                example_values = [f"[Example {i+1}]" for i in range(len(jinja_parts))]
+            if body_parameters_map:
+                # Create example values based on the variable names
+                example_values = [f"[{var_name.split('.')[-1]}]" for var_name in body_parameters_map.values()]
                 components[0]["example"] = {"body_text": [example_values]}
             
             # Note: Buttons are not part of the NotificationTemplate model in this version.

@@ -66,10 +66,8 @@ def dispatch_notification_task(self, notification_id: int):
                 render_context = template_context.copy()
                 render_context['recipient'] = recipient
                 
-                # --- FIX: Fetch the original template to get the correct variable structure ---
                 try:
                     template_model = NotificationTemplate.objects.get(name=notification.template_name)
-                    original_template_body = template_model.message_body
                 except NotificationTemplate.DoesNotExist:
                     error_msg = f"Cannot send template notification {notification.id}: Template '{notification.template_name}' not found in database."
                     logger.error(error_msg)
@@ -78,19 +76,57 @@ def dispatch_notification_task(self, notification_id: int):
                     notification.save(update_fields=['status', 'error_message'])
                     return
 
-                # 2. Find all the Jinja2 variables/expressions from the *original* template content.
-                jinja_parts = re.findall(r'(\{%\s*(?:if|for).*?%\}[\s\S]*?\{%\s*end(?:if|for)\s*%\}|\{\{.*?\}\})', original_template_body)
-                
-                parameters = []
-                for idx, part in enumerate(jinja_parts):
-                    # 3. Render each individual part to get its final value.
-                    rendered_value = render_template_string(part, render_context)
-                    parameters.append({"type": "text", "text": str(rendered_value)})
-                # --- END FIX ---
+                template_components = []
 
-                components = []
-                if parameters:
-                    components.append({"type": "body", "parameters": parameters})
+                # --- Handle BODY parameters ---
+                if hasattr(template_model, 'body_parameters') and template_model.body_parameters:
+                    body_params_list = []
+                    # Sort by the integer value of the key (e.g., '1', '2')
+                    sorted_body_params = sorted(template_model.body_parameters.items(), key=lambda item: int(item[0]))
+                    
+                    for index, jinja_var_path in sorted_body_params:
+                        try:
+                            param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
+                            body_params_list.append({"type": "text", "text": str(param_value)})
+                        except Exception as e:
+                            logger.error(f"Error rendering body parameter '{jinja_var_path}' for template '{template_model.name}': {e}")
+                            body_params_list.append({"type": "text", "text": ""}) # Fallback
+
+                    if body_params_list:
+                        template_components.append({
+                            "type": "BODY",
+                            "parameters": body_params_list
+                        })
+
+                # --- Handle BUTTONS (including URL parameters) ---
+                if hasattr(template_model, 'buttons') and template_model.buttons:
+                    url_button_params_list = []
+                    if hasattr(template_model, 'url_parameters') and template_model.url_parameters:
+                        # Sort by the integer value of the key (e.g., '1', '2')
+                        sorted_url_params = sorted(template_model.url_parameters.items(), key=lambda item: int(item[0]))
+
+                        for index, jinja_var_path in sorted_url_params:
+                            try:
+                                param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
+                                url_button_params_list.append({"type": "text", "text": str(param_value)})
+                            except Exception as e:
+                                logger.error(f"Error rendering URL parameter '{jinja_var_path}' for template '{template_model.name}': {e}")
+                                url_button_params_list.append({"type": "text", "text": ""}) # Fallback
+
+                    if url_button_params_list:
+                        url_button_index = -1
+                        for i, button_def in enumerate(template_model.buttons):
+                            if isinstance(button_def, dict) and button_def.get("type") == "URL":
+                                url_button_index = i
+                                break
+                        
+                        if url_button_index != -1:
+                            template_components.append({
+                                "type": "BUTTON",
+                                "sub_type": "url",
+                                "index": str(url_button_index),
+                                "parameters": url_button_params_list
+                            })
 
                 content_payload = {
                     "name": notification.template_name,

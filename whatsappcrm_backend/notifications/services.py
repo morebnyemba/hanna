@@ -112,34 +112,62 @@ def queue_notifications_to_users(
             message_type = 'text'
             content_payload = {'body': final_message_body}
             
-            # If the template has buttons, we need to send a template message
-            if hasattr(template, 'buttons') and template.buttons:
+            # If the template has buttons or body/url parameters, we must send a template message
+            if (hasattr(template, 'buttons') and template.buttons) or \
+               (hasattr(template, 'body_parameters') and template.body_parameters) or \
+               (hasattr(template, 'url_parameters') and template.url_parameters):
                 message_type = 'template'
                 template_components = []
 
-                # Handle URL button parameters
-                if hasattr(template, 'url_parameters') and template.url_parameters:
-                    url_button_parameters = []
-                    # Sort parameters by their index to ensure correct order for Meta API
-                    sorted_url_params = sorted(template.url_parameters.items(), key=lambda item: int(item[1]))
+                # --- Handle BODY parameters ---
+                if hasattr(template, 'body_parameters') and template.body_parameters:
+                    body_params_list = []
+                    # Sort by the integer value of the key (e.g., '1', '2')
+                    sorted_body_params = sorted(template.body_parameters.items(), key=lambda item: int(item[0]))
                     
-                    for jinja_var_path, meta_index in sorted_url_params:
+                    for index, jinja_var_path in sorted_body_params:
                         try:
-                            # Render the Jinja2 variable path to get the actual value
                             param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
-                            url_button_parameters.append({"type": "text", "text": str(param_value)})
+                            body_params_list.append({"type": "text", "text": str(param_value)})
                         except Exception as e:
-                            logger.error(f"Error rendering URL parameter '{jinja_var_path}' for template '{template_name}': {e}")
-                            # Fallback or skip this parameter if rendering fails
-                            url_button_parameters.append({"type": "text", "text": ""}) # Send empty string
+                            logger.error(f"Error rendering body parameter '{jinja_var_path}' for template '{template_name}': {e}")
+                            body_params_list.append({"type": "text", "text": ""}) # Fallback
 
-                    if url_button_parameters:
+                    if body_params_list:
                         template_components.append({
-                            "type": "BUTTONS",
-                            "sub_type": "url",
-                            "index": 0, # Assuming only one URL button component for now
-                            "parameters": url_button_parameters
+                            "type": "BODY",
+                            "parameters": body_params_list
                         })
+
+                # --- Handle BUTTONS (including URL parameters) ---
+                if hasattr(template, 'buttons') and template.buttons:
+                    url_button_params_list = []
+                    if hasattr(template, 'url_parameters') and template.url_parameters:
+                        # Sort by the integer value of the key (e.g., '1', '2')
+                        sorted_url_params = sorted(template.url_parameters.items(), key=lambda item: int(item[0]))
+
+                        for index, jinja_var_path in sorted_url_params:
+                            try:
+                                param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
+                                url_button_params_list.append({"type": "text", "text": str(param_value)})
+                            except Exception as e:
+                                logger.error(f"Error rendering URL parameter '{jinja_var_path}' for template '{template_name}': {e}")
+                                url_button_params_list.append({"type": "text", "text": ""}) # Fallback
+
+                    if url_button_params_list:
+                        url_button_index = -1
+                        for i, button_def in enumerate(template.buttons):
+                            if isinstance(button_def, dict) and button_def.get("type") == "URL":
+                                url_button_index = i
+                                break
+                        
+                        if url_button_index != -1:
+                            template_components.append({
+                                "type": "BUTTON",
+                                "sub_type": "url",
+                                "index": str(url_button_index),
+                                "parameters": url_button_params_list
+                            })
                 
                 content_payload = {
                     "name": template_name,

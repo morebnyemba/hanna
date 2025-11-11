@@ -312,6 +312,7 @@ class Command(BaseCommand):
                 defaults={
                     'description': template_def.get('description', ''),
                     'message_body': template_def.get('body', ''),
+                    'buttons': template_def.get('buttons', []),
                 }
             )
 

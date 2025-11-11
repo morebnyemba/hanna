@@ -60,6 +60,12 @@ class NotificationTemplate(models.Model):
         blank=True,
         help_text="Mapping of Meta URL parameter index to Jinja2 variable path (e.g., {'1': 'order.id'})."
     )
+    body_parameters = models.JSONField(
+        _("Body Parameters Mapping"),
+        default=dict,
+        blank=True,
+        help_text="Mapping of Meta body parameter index to Jinja2 variable path (e.g., {'1': 'contact.name'})."
+    )
     meta_template_id = models.CharField(max_length=255, blank=True, null=True, help_text="The ID of the template on Meta's systems.")
     sync_status = models.CharField(
         max_length=20,
