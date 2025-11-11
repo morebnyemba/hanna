@@ -25,10 +25,16 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-fallback-key-for-de
 
 # Field encryption key for encrypted model fields (e.g., IMAP passwords)
 # This must be a valid Fernet key (32 url-safe base64-encoded bytes)
-# If not provided, we derive one from SECRET_KEY
+# 
+# SECURITY WARNING: In production, ALWAYS set FIELD_ENCRYPTION_KEY explicitly
+# to a securely generated Fernet key. Do not rely on the fallback derivation.
+# Generate a key with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#
 _field_encryption_key = os.getenv('FIELD_ENCRYPTION_KEY')
 if not _field_encryption_key:
-    # Derive a Fernet key from SECRET_KEY by hashing and encoding
+    # Development fallback: Derive a Fernet key from SECRET_KEY
+    # WARNING: This is less secure than a dedicated key and should not be used in production
+    # TODO: In production, require FIELD_ENCRYPTION_KEY to be explicitly set
     key_material = hashlib.sha256(SECRET_KEY.encode()).digest()
     _field_encryption_key = base64.urlsafe_b64encode(key_material).decode()
 FIELD_ENCRYPTION_KEY = _field_encryption_key

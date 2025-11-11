@@ -24,22 +24,33 @@ When you save an `EmailAccount` with a password:
 
 ### Configuration
 
-The encryption key is configured in Django settings:
+The encryption key is configured in Django settings. The application uses a Fernet key for symmetric encryption:
 
 ```python
-# Derived from DJANGO_SECRET_KEY by default
-FIELD_ENCRYPTION_KEY = os.getenv('FIELD_ENCRYPTION_KEY', SECRET_KEY)
+# In development: derived from SECRET_KEY using SHA256 + base64 encoding
+# In production: should be explicitly set via FIELD_ENCRYPTION_KEY env var
+FIELD_ENCRYPTION_KEY = os.getenv('FIELD_ENCRYPTION_KEY')
+if not FIELD_ENCRYPTION_KEY:
+    # Fallback for development only
+    key_material = hashlib.sha256(SECRET_KEY.encode()).digest()
+    FIELD_ENCRYPTION_KEY = base64.urlsafe_b64encode(key_material).decode()
 ```
 
 #### Environment Variables
 
-- `FIELD_ENCRYPTION_KEY` (optional): Custom Fernet key for encryption. If not provided, a key is derived from `DJANGO_SECRET_KEY`
-- `DJANGO_SECRET_KEY` (required): Django's secret key, also used to derive the encryption key if `FIELD_ENCRYPTION_KEY` is not set
+- `FIELD_ENCRYPTION_KEY` (required for production): A securely generated Fernet key for encryption
+  - Generate with: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+- `DJANGO_SECRET_KEY` (required): Django's secret key
 
-**Important**: For production deployments:
-1. Ensure `DJANGO_SECRET_KEY` is set to a strong, unique value
-2. Optionally, set `FIELD_ENCRYPTION_KEY` to a separate Fernet key for added security
-3. Generate a Fernet key using: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+**CRITICAL - Production Deployment:**
+
+⚠️ **DO NOT rely on the development fallback in production!** The fallback derives a key from `SECRET_KEY` using simple SHA256 hashing, which is less secure than a dedicated encryption key.
+
+**Required steps for production:**
+1. Generate a dedicated Fernet key: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+2. Set `FIELD_ENCRYPTION_KEY` environment variable to the generated key
+3. Ensure `DJANGO_SECRET_KEY` is also set to a strong, unique value
+4. Keep both keys secret and never commit them to version control
 
 ### Database Schema Change
 
