@@ -72,9 +72,49 @@ class Command(BaseCommand):
             # Note: Buttons are not part of the NotificationTemplate model in this version.
             # This part of the original script is preserved in case the model is extended.
             if hasattr(template, 'buttons') and template.buttons:
-                button_payloads = [{"type": "QUICK_REPLY", "text": text} for text in template.buttons[:10]]
-                components.append({"type": "BUTTONS", "buttons": button_payloads})
+                button_payloads = []
+                url_parameters_map = {}
+                url_param_counter = 0
 
+                for button_data in template.buttons[:3]:  # Max 3 buttons
+                    if isinstance(button_data, dict):
+                        button_type = button_data.get("type", "QUICK_REPLY").upper()
+                        text = button_data.get("text")
+                        if not text:
+                            continue
+
+                        if button_type == "URL":
+                            original_url = button_data.get("url")
+                            if not original_url:
+                                continue
+                            
+                            processed_url = original_url
+                            # Find all Jinja2 variables in the URL
+                            jinja_vars_in_url = re.findall(r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}', original_url)
+                            
+                            for jinja_var in jinja_vars_in_url:
+                                if jinja_var not in url_parameters_map:
+                                    url_param_counter += 1
+                                    url_parameters_map[jinja_var] = url_param_counter
+                                # Replace Jinja2 var with Meta placeholder
+                                processed_url = processed_url.replace(f'{{{{ {jinja_var} }}}}', f'{{{{{url_parameters_map[jinja_var]}}}}}')
+
+                            button_payloads.append({
+                                "type": "URL",
+                                "text": text,
+                                "url": processed_url
+                            })
+                        else:  # Default to QUICK_REPLY
+                            button_payloads.append({
+                                "type": "QUICK_REPLY",
+                                "text": text
+                            })
+                if button_payloads:
+                    components.append({"type": "BUTTONS", "buttons": button_payloads})
+                
+                # Save the extracted URL parameters mapping to the template object
+                template.url_parameters = url_parameters_map
+            
             payload = {
                 "name": template_name,
                 "language": "en_US",

@@ -109,12 +109,50 @@ def queue_notifications_to_users(
             
         recipient_contacts = Contact.objects.filter(id__in=contact_ids)
         for recipient_contact in recipient_contacts:
+            message_type = 'text'
+            content_payload = {'body': final_message_body}
+            
+            # If the template has buttons, we need to send a template message
+            if hasattr(template, 'buttons') and template.buttons:
+                message_type = 'template'
+                template_components = []
+
+                # Handle URL button parameters
+                if hasattr(template, 'url_parameters') and template.url_parameters:
+                    url_button_parameters = []
+                    # Sort parameters by their index to ensure correct order for Meta API
+                    sorted_url_params = sorted(template.url_parameters.items(), key=lambda item: int(item[1]))
+                    
+                    for jinja_var_path, meta_index in sorted_url_params:
+                        try:
+                            # Render the Jinja2 variable path to get the actual value
+                            param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
+                            url_button_parameters.append({"type": "text", "text": str(param_value)})
+                        except Exception as e:
+                            logger.error(f"Error rendering URL parameter '{jinja_var_path}' for template '{template_name}': {e}")
+                            # Fallback or skip this parameter if rendering fails
+                            url_button_parameters.append({"type": "text", "text": ""}) # Send empty string
+
+                    if url_button_parameters:
+                        template_components.append({
+                            "type": "BUTTONS",
+                            "sub_type": "url",
+                            "index": 0, # Assuming only one URL button component for now
+                            "parameters": url_button_parameters
+                        })
+                
+                content_payload = {
+                    "name": template_name,
+                    "language": { "code": "en_US" },
+                    "components": template_components
+                }
+
             outgoing_msg = Message.objects.create(
                 contact=recipient_contact, 
                 app_config=active_config, 
                 direction='out', 
-                message_type='text',
-                content_payload={'body': final_message_body}, 
+                message_type=message_type,
+                content_payload=content_payload, 
                 status='pending_dispatch', 
                 related_flow=related_flow
             )
