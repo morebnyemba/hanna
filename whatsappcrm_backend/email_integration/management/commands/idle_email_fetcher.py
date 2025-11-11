@@ -58,11 +58,13 @@ def monitor_account(account):
     The main worker function for a single email account.
     Connects to the IMAP server and enters a persistent IDLE loop.
     """
-    logger.info(f"[{account.name}] Starting monitoring thread.")
+    logger.info(f"[{account.name}] Starting monitoring thread for host {account.imap_host} and user {account.imap_user}.")
     
     while True:
         try:
+            logger.info(f"[{account.name}] Attempting to connect to {account.imap_host} with SSL.")
             server = IMAPClient(account.imap_host, ssl=True, timeout=300)
+            logger.info(f"[{account.name}] Connection to {account.imap_host} successful. Logging in...")
             server.login(account.imap_user, account.imap_password)
             server.select_folder('INBOX')
             logger.info(f"[{account.name}] Successfully connected and selected INBOX.")
@@ -90,10 +92,10 @@ def monitor_account(account):
                     break
 
         except (IMAPClientError, OSError, imaplib.IMAP4.error, socket.gaierror) as e:
-            logger.error(f"[{account.name}] IMAP connection error: {e}. Retrying in 60 seconds...")
+            logger.error(f"[{account.name}] IMAP connection error for host {account.imap_host}: {e}. Retrying in 60 seconds...")
             time.sleep(60)
         except Exception as e:
-            logger.exception(f"[{account.name}] An unrecoverable error occurred: {e}. Thread will exit and be restarted by the main loop.")
+            logger.exception(f"[{account.name}] An unrecoverable error occurred for host {account.imap_host}: {e}. Thread will exit and be restarted by the main loop.")
             # The thread will die, and the main loop will restart it.
             return
 

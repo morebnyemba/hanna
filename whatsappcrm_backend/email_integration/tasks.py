@@ -523,10 +523,14 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
 
 
     line_items = data.get('line_items', [])
+    number_of_panels = 0
     if isinstance(line_items, list):
         for item_data in line_items:
             product_code = item_data.get('product_code')
             product_description = item_data.get('description', 'Unknown Product')
+            
+            if 'panel' in product_description.lower():
+                number_of_panels += item_data.get('quantity', 0)
             
             # More robust product lookup: Try SKU first, then name.
             product = None
@@ -557,9 +561,14 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             attachment_dict = model_to_dict(attachment, fields=['sender', 'filename'])
             # --- FIX: Explicitly convert Decimal to float for JSON serialization ---
             order_dict = {
-                'order_number': order.order_number, 'amount': float(order.amount) if order.amount is not None else 0.0
+                'order_number': order.order_number, 'amount': float(order.amount) if order.amount is not None else 0.0,
+                'number_of_panels': number_of_panels
             }
-            customer_dict = {'full_name': customer_profile.get_full_name(), 'contact_name': getattr(customer_profile.contact, 'name', None)}
+            customer_dict = {
+                'full_name': customer_profile.get_full_name(), 
+                'contact_name': getattr(customer_profile.contact, 'name', None),
+                'client_number': customer_profile.contact.whatsapp_id
+            }
 
             queue_notifications_to_users(
                 template_name='invoice_processed_successfully',
