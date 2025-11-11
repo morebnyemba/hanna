@@ -48,6 +48,18 @@ class NotificationTemplate(models.Model):
         _("Message Body"),
         help_text="The template content. Can use Jinja2 variables like {{ contact.name }}."
     )
+    meta_template_id = models.CharField(max_length=255, blank=True, null=True, help_text="The ID of the template on Meta's systems.")
+    sync_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('synced', 'Synced'),
+            ('pending', 'Pending Sync'),
+            ('failed', 'Sync Failed'),
+            ('disabled', 'Disabled'),
+        ],
+        default='pending',
+        db_index=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
