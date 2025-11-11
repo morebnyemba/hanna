@@ -43,9 +43,7 @@ FIELD_ENCRYPTION_KEY = os.getenv('FIELD_ENCRYPTION_KEY', SECRET_KEY)
 
 ### Migration from Plain Text Passwords
 
-If you have existing email accounts with plain text passwords, they will be automatically encrypted when you:
-1. Apply the migration: `python manage.py migrate email_integration`
-2. Save each account (the field will encrypt on save)
+If you have existing email accounts with plain text passwords, they will be automatically encrypted when you save each account. The field will encrypt on save.
 
 Existing code that reads `account.imap_password` will continue to work without changes.
 
