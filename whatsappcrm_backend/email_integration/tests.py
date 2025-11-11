@@ -151,3 +151,82 @@ class CreateOrderFromInvoiceDataTests(TestCase):
 
         # Notification should not be sent if there's no customer profile
         mock_queue_notifications.assert_not_called()
+
+
+class EmailAccountEncryptionTests(TestCase):
+    """Tests for EmailAccount model password encryption."""
+
+    def test_password_is_encrypted_in_database(self):
+        """Test that the password is encrypted when stored in the database."""
+        from .models import EmailAccount
+        from django.db import connection
+        
+        # Create an EmailAccount with a plain text password
+        plain_password = "my_secret_password_123"
+        account = EmailAccount.objects.create(
+            name="Test Account",
+            imap_host="imap.example.com",
+            imap_user="test@example.com",
+            imap_password=plain_password,
+            port=993
+        )
+        
+        # Read the password from the model instance (should be decrypted automatically)
+        self.assertEqual(account.imap_password, plain_password)
+        
+        # Query the database directly to verify it's encrypted
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT imap_password FROM email_integration_emailaccount WHERE id = %s",
+                [account.id]
+            )
+            row = cursor.fetchone()
+            encrypted_password = row[0]
+        
+        # The stored value should NOT be the plain text password
+        self.assertNotEqual(encrypted_password, plain_password)
+        # The encrypted value should not be empty
+        self.assertTrue(len(encrypted_password) > 0)
+        
+    def test_password_decryption_on_read(self):
+        """Test that the password is decrypted when read from the database."""
+        from .models import EmailAccount
+        
+        plain_password = "another_secret_password"
+        account = EmailAccount.objects.create(
+            name="Test Account 2",
+            imap_host="imap.example.com",
+            imap_user="test2@example.com",
+            imap_password=plain_password,
+            port=993
+        )
+        
+        # Retrieve the account from the database
+        retrieved_account = EmailAccount.objects.get(id=account.id)
+        
+        # The password should be decrypted and match the original
+        self.assertEqual(retrieved_account.imap_password, plain_password)
+        
+    def test_password_update_preserves_encryption(self):
+        """Test that updating the password maintains encryption."""
+        from .models import EmailAccount
+        
+        original_password = "original_password"
+        new_password = "new_password"
+        
+        account = EmailAccount.objects.create(
+            name="Test Account 3",
+            imap_host="imap.example.com",
+            imap_user="test3@example.com",
+            imap_password=original_password,
+            port=993
+        )
+        
+        # Update the password
+        account.imap_password = new_password
+        account.save()
+        
+        # Retrieve and verify the new password
+        retrieved_account = EmailAccount.objects.get(id=account.id)
+        self.assertEqual(retrieved_account.imap_password, new_password)
+        self.assertNotEqual(retrieved_account.imap_password, original_password)

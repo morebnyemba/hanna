@@ -1,11 +1,12 @@
 from django.db import models
 from django.utils.timezone import now
+from encrypted_model_fields.fields import EncryptedCharField
 
 class EmailAccount(models.Model):
     name = models.CharField(max_length=100, help_text="A friendly name for the email account, e.g., 'Sales Inbox'")
     imap_host = models.CharField(max_length=255)
     imap_user = models.CharField(max_length=255)
-    imap_password = models.CharField(max_length=255)  # Consider using a more secure way to store this
+    imap_password = EncryptedCharField(max_length=255, help_text="IMAP password (stored encrypted)")
     port = models.PositiveIntegerField(default=993, help_text="IMAP server port. Default is 993 for SSL.")
     ssl_protocol = models.CharField(
         max_length=20,
