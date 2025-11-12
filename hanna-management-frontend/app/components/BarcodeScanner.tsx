@@ -29,6 +29,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   const [inputMode, setInputMode] = useState<'camera' | 'device' | null>(null);
   const [scanning, setScanning] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
   const html5QrcodeScannerRef = useRef<Html5QrcodeScanner | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,13 +63,30 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       return; // Scanner already initialized
     }
 
+    // Wait for DOM element to be available
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const containerElement = document.getElementById("barcode-scanner-container");
+    if (!containerElement) {
+      console.error('Barcode scanner container element not found');
+      const errorMsg = 'Scanner initialization failed. Please try again.';
+      setError(errorMsg);
+      if (onScanError) {
+        onScanError(new Error(errorMsg));
+      }
+      return;
+    }
+
     // Request camera permission explicitly first
     try {
       await navigator.mediaDevices.getUserMedia({ video: true });
+      setError(null); // Clear any previous errors
     } catch (permissionError) {
       console.error('Camera permission denied:', permissionError);
+      const errorMsg = 'Camera permission denied. Please allow camera access to scan barcodes.';
+      setError(errorMsg);
       if (onScanError) {
-        onScanError(new Error('Camera permission denied. Please allow camera access to scan barcodes.'));
+        onScanError(new Error(errorMsg));
       }
       return;
     }
@@ -77,21 +95,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       fps: 10,
       qrbox: { width: 250, height: 250 },
       aspectRatio: 1.0,
-      supportedScanTypes: [
-        // Support various barcode formats
-        0, // QR_CODE
-        1, // UPC_A
-        2, // UPC_E
-        3, // UPC_EAN_EXTENSION
-        4, // EAN_8
-        5, // EAN_13
-        6, // CODE_128
-        7, // CODE_39
-        8, // CODE_93
-        9, // CODABAR
-        10, // ITF
-        11, // RSS_14
-      ],
       rememberLastUsedCamera: true,
     };
 
@@ -119,6 +122,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       setScanning(true);
     } catch (error) {
       console.error('Error starting scanner:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to start scanner';
+      setError(errorMsg);
       if (onScanError) {
         onScanError(error as Error);
       }
@@ -141,6 +146,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     stopScanner();
     setInputMode(null);
     setManualBarcode('');
+    setError(null);
     if (onClose) {
       onClose();
     }
@@ -217,6 +223,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
         {inputMode === 'camera' && (
           <div>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
             <div className="mb-4">
               <p className="text-sm text-gray-600">
                 Position the barcode within the frame to scan. 
