@@ -78,56 +78,63 @@ class Command(BaseCommand):
 
             # Only add an example if there are variables in the body.
             if body_parameters_map:
-                example_values = [[f"[{var_name.split('.')[-1]}]"] for var_name in body_parameters_map.values()]
-                components[0]["example"] = {"body_text": example_values}
+                example_values = [f"[{var_name.split('.')[-1]}]" for var_name in body_parameters_map.values()]
+                if example_values:
+                    components[0]["example"] = {"body_text": [example_values]}
 
-            if hasattr(template, 'buttons') and template.buttons:
-                button_payloads = []
-                url_parameters_map = {}
-                url_param_counter = 0
+            # Add a footer for non-disclosure
+            components.append({
+                "type": "FOOTER",
+                "text": "This is a confidential message intended for the recipient only."
+            })
 
-                for button_data in template.buttons[:3]:  # Max 3 buttons
-                    if isinstance(button_data, dict):
-                        button_type = button_data.get("type", "QUICK_REPLY").upper()
-                        text = button_data.get("text")
-                        if not text:
-                            continue
+            # if hasattr(template, 'buttons') and template.buttons:
+            #     button_payloads = []
+            #     url_parameters_map = {}
+            #     url_param_counter = 0
 
-                        if button_type == "URL":
-                            original_url = button_data.get("url")
-                            if not original_url:
-                                continue
+            #     for button_data in template.buttons[:3]:  # Max 3 buttons
+            #         if isinstance(button_data, dict):
+            #             button_type = button_data.get("type", "QUICK_REPLY").upper()
+            #             text = button_data.get("text")
+            #             if not text:
+            #                 continue
+
+            #             if button_type == "URL":
+            #                 original_url = button_data.get("url")
+            #                 if not original_url:
+            #                     continue
                             
-                            processed_url = original_url
-                            jinja_vars_in_url = re.findall(r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}', original_url)
+            #                 processed_url = original_url
+            #                 jinja_vars_in_url = re.findall(r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}', original_url)
                             
-                            url_example_values = []
-                            for jinja_var in jinja_vars_in_url:
-                                if jinja_var not in url_parameters_map:
-                                    url_param_counter += 1
-                                    url_parameters_map[jinja_var] = url_param_counter
+            #                 url_example_values = []
+            #                 for jinja_var in jinja_vars_in_url:
+            #                     if jinja_var not in url_parameters_map:
+            #                         url_param_counter += 1
+            #                         url_parameters_map[jinja_var] = url_param_counter
                                 
-                                var_regex = r'\{\{\s*' + re.escape(jinja_var) + r'\s*\}\}'
-                                processed_url = re.sub(var_regex, f'{{{{{url_parameters_map[jinja_var]}}}}}', processed_url, 1)
-                                url_example_values.append(f"https://www.example.com/d/{jinja_var.split('.')[-1]}") # Correct example format
+            #                     var_regex = r'\{\{\s*' + re.escape(jinja_var) + r'\s*\}\}'
+            #                     processed_url = re.sub(var_regex, f'{{{{{url_parameters_map[jinja_var]}}}}}', processed_url, 1)
+            #                     url_example_values.append(f"https://www.example.com/d/{jinja_var.split('.')[-1]}") # Correct example format
 
-                            button_payload = {
-                                "type": "URL",
-                                "text": text,
-                                "url": processed_url
-                            }
-                            if url_example_values:
-                                button_payload["example"] = url_example_values # Correctly formatted example
-                            button_payloads.append(button_payload)
-                        else:  # Default to QUICK_REPLY
-                            button_payloads.append({
-                                "type": "QUICK_REPLY",
-                                "text": text
-                            })
-                if button_payloads:
-                    components.append({"type": "BUTTONS", "buttons": button_payloads})
+            #                 button_payload = {
+            #                     "type": "URL",
+            #                     "text": text,
+            #                     "url": processed_url
+            #                 }
+            #                 if url_example_values:
+            #                     button_payload["example"] = url_example_values # Correctly formatted example
+            #                 button_payloads.append(button_payload)
+            #             else:  # Default to QUICK_REPLY
+            #                 button_payloads.append({
+            #                     "type": "QUICK_REPLY",
+            #                     "text": text
+            #                 })
+            #     if button_payloads:
+            #         components.append({"type": "BUTTONS", "buttons": button_payloads})
                 
-                template.url_parameters = url_parameters_map
+            #     template.url_parameters = url_parameters_map
             
             # Determine if we are creating or updating
             if template.meta_template_id:

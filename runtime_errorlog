@@ -1,5 +1,206 @@
-root@srv967860:~/HANNA# ^C
-root@srv967860:~/HANNA# telnet mail.hanna.co.zw 993
-Trying 2a02:4780:28:52fa::1...
-Connected to mail.hanna.co.zw.
-Escape character is '^]'.
+Processing template: 'hanna_admin_24h_window_reminder'...
+^[[2~  SKIPPED: Template 'hanna_admin_24h_window_reminder' cannot be updated because it is in a non-editable status (e.g., pending, rejected).
+
+Processing template: 'hanna_admin_order_and_install_created'...
+  FAILED to update template 'hanna_admin_order_and_install_created'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 0) has invalid format",
+    "fbtrace_id": "AHH-RqOz-ZjUms7llNzcCmz"
+  }
+}
+
+Processing template: 'hanna_assessment_status_updated'...
+  FAILED to update template 'hanna_assessment_status_updated'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388043,
+    "is_transient": false,
+    "error_user_title": "Message template \"components\" param is missing expected field(s)",
+    "error_user_msg": "component of type BODY is missing expected field(s) (example)",
+    "fbtrace_id": "AKfAOZQFg_0eSv8Iq1Dn9G5"
+  }
+}
+
+Processing template: 'hanna_customer_invoice_confirmation'...
+  FAILED to update template 'hanna_customer_invoice_confirmation'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388043,
+    "is_transient": false,
+    "error_user_title": "Message template \"components\" param is missing expected field(s)",
+    "error_user_msg": "component of type BODY is missing expected field(s) (example)",
+    "fbtrace_id": "AGFLKXvR3NcLcf8L7ABMlvf"
+  }
+}
+
+Processing template: 'hanna_human_handover_flow'...
+  FAILED to update template 'hanna_human_handover_flow'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 1) has invalid format",
+    "fbtrace_id": "AbxXpVbw9_WRKNB4oOhptmx"
+  }
+}
+
+Processing template: 'hanna_invoice_processed_successfully'...
+  FAILED to update template 'hanna_invoice_processed_successfully'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388043,
+    "is_transient": false,
+    "error_user_title": "Message template \"components\" param is missing expected field(s)",
+    "error_user_msg": "component of type BODY is missing expected field(s) (example)",
+    "fbtrace_id": "AKJFTUDLdrRFfIhmvQUGjyh"
+  }
+}
+
+Processing template: 'hanna_job_card_created_successfully'...
+  FAILED to update template 'hanna_job_card_created_successfully'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 0) has invalid format",
+    "fbtrace_id": "AW1ImIehjc8KEvwZU1ZVZib"
+  }
+}
+
+Processing template: 'hanna_message_send_failure'...
+  SKIPPED: Template 'hanna_message_send_failure' cannot be updated because it is in a non-editable status (e.g., pending, rejected).
+
+Processing template: 'hanna_new_installation_request'...
+  FAILED to update template 'hanna_new_installation_request'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 0) has invalid format",
+    "fbtrace_id": "AFluBv5F3s_pNg78Afmq1H9"
+  }
+}
+
+Processing template: 'hanna_new_online_order_placed'...
+  FAILED to update template 'hanna_new_online_order_placed'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 0) has invalid format",
+    "fbtrace_id": "ADEjQY1SoEsc8RpSZkTBrAy"
+  }
+}
+
+Processing template: 'hanna_new_order_created'...
+  FAILED to update template 'hanna_new_order_created'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 0) has invalid format",
+    "fbtrace_id": "AapJ6FJnmjAgpl9cXg6fP5s"
+  }
+}
+
+Processing template: 'hanna_new_placeholder_order_created'...
+  SKIPPED: Template 'hanna_new_placeholder_order_created' cannot be updated because it is in a non-editable status (e.g., pending, rejected).
+
+Processing template: 'hanna_new_site_assessment_request'...
+  FAILED to update template 'hanna_new_site_assessment_request'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 0) has invalid format",
+    "fbtrace_id": "AjKsPyWNvmSS0uFvDSzo0t2"
+  }
+}
+
+Processing template: 'hanna_new_solar_cleaning_request'...
+  FAILED to update template 'hanna_new_solar_cleaning_request'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 0) has invalid format",
+    "fbtrace_id": "AwwG6PVUs7995AVgknct0Xa"
+  }
+}
+
+Processing template: 'hanna_new_starlink_installation_request'...
+  FAILED to update template 'hanna_new_starlink_installation_request'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388052,
+    "is_transient": false,
+    "error_user_title": "Message template button has invalid URL format",
+    "error_user_msg": "Button URL (at index 0) has invalid format",
+    "fbtrace_id": "AOZfIaLQenifoE6smJxAhvU"
+  }
+}
+
+Processing template: 'hanna_order_payment_status_updated'...
+  FAILED to update template 'hanna_order_payment_status_updated'. Status: 400
+  Full Error Response: {
+  "error": {
+    "message": "Invalid parameter",
+    "type": "OAuthException",
+    "code": 100,
+    "error_subcode": 2388043,
+    "is_transient": false,
+    "error_user_title": "Message template \"components\" param is missing expected field(s)",
+    "error_user_msg": "component of type BODY is missing expected field(s) (example)",
+    "fbtrace_id": "AACBszRzeat75Jq_LBJQf4O"
+  }
+}
+
+--- Template Sync Finished ---
+root@srv967860:~/HANNA# 
