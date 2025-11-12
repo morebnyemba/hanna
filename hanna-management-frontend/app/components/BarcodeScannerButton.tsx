@@ -20,7 +20,7 @@ const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({
   className = '',
   variant = 'icon'
 }) => {
-  const [scanType, setScanType] = useState<'product' | 'serialized_item'>('product');
+  const [scanType] = useState<'product' | 'serialized_item'>('product');
   const router = useRouter();
   const pathname = usePathname();
 

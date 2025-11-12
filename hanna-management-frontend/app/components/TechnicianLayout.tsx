@@ -44,6 +44,8 @@ export default function TechnicianLayout({ children }: { children: ReactNode }) 
   }, [user, router]);
 
   useEffect(() => {
+    // Close sidebar on navigation - intentional for UX
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSidebarOpen(false);
   }, [pathname]);
 
