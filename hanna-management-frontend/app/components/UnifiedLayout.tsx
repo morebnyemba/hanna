@@ -16,9 +16,9 @@ const SidebarLink = ({ href, icon: Icon, children, isCollapsed }: { href: string
         isActive
           ? 'bg-gray-700 text-white'
           : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-      }`}>
-        <Icon className={`w-5 h-5 ${isCollapsed ? 'mr-0' : 'mr-3'}`} />
-        {!isCollapsed && children}
+      } ${isCollapsed ? 'justify-center md:justify-center' : ''}`}>
+        <Icon className={`w-5 h-5 ${isCollapsed ? 'md:mr-0 mr-3' : 'mr-3'}`} />
+        <span className={isCollapsed ? 'md:hidden' : ''}>{children}</span>
       </span>
     </Link>
   );
