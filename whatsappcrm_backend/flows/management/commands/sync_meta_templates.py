@@ -76,10 +76,12 @@ class Command(BaseCommand):
 
             components = [{"type": "BODY", "text": meta_body}]
 
+            # The 'example' field is required by the API for the BODY component, even if empty.
+            example_values = []
             if body_parameters_map:
                 # Create example values based on the variable names
                 example_values = [[f"[{var_name.split('.')[-1]}]"] for var_name in body_parameters_map.values()]
-                components[0]["example"] = {"body_text": example_values}
+            components[0]["example"] = {"body_text": example_values}
             
             if hasattr(template, 'buttons') and template.buttons:
                 button_payloads = []
@@ -107,8 +109,10 @@ class Command(BaseCommand):
                                 if jinja_var not in url_parameters_map:
                                     url_param_counter += 1
                                     url_parameters_map[jinja_var] = url_param_counter
-                                # Replace Jinja2 var with Meta placeholder
-                                processed_url = processed_url.replace(f'{{{{ {jinja_var} }}}}', f'{{{{{url_parameters_map[jinja_var]}}}}}')
+                                # Use re.sub for safer replacement that handles whitespace
+                                var_regex = r'\{\{\s*' + re.escape(jinja_var) + r'\s*\}\}'
+                                # Replace only the first occurrence in case the same variable is used multiple times
+                                processed_url = re.sub(var_regex, f'{{{{{url_parameters_map[jinja_var]}}}}}', processed_url, 1)
                                 # Add example value for this parameter
                                 url_example_values.append(f"[{jinja_var.split('.')[-1]}]")
 
@@ -165,10 +169,16 @@ class Command(BaseCommand):
                     template.sync_status = 'synced'
                     template.save()
                 else:
-                    # Print the full error response for detailed debugging
-                    self.stdout.write(self.style.ERROR(f"  FAILED to {action} template '{template_name}'. Status: {response.status_code}"))
-                    self.stdout.write(self.style.ERROR(f"  Full Error Response: {json.dumps(response_data, indent=2)}"))
-                    template.sync_status = 'failed'
+                    error = response_data.get('error', {})
+                    error_subcode = error.get('error_subcode')
+
+                    if error_subcode == 2388039:
+                        self.stdout.write(self.style.WARNING(f"  SKIPPED: Template '{template_name}' cannot be updated because it is in a non-editable status (e.g., pending, rejected)."))
+                        template.sync_status = 'failed' # Or a new status like 'non_editable'
+                    else:
+                        self.stdout.write(self.style.ERROR(f"  FAILED to {action} template '{template_name}'. Status: {response.status_code}"))
+                        self.stdout.write(self.style.ERROR(f"  Full Error Response: {json.dumps(response_data, indent=2)}"))
+                        template.sync_status = 'failed'
                     template.save()
 
             except requests.exceptions.RequestException as e:
