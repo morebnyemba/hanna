@@ -6,6 +6,7 @@ router = DefaultRouter()
 router.register(r'products', views.ProductViewSet, basename='product')
 router.register(r'categories', views.ProductCategoryViewSet, basename='productcategory')
 router.register(r'serialized-items', views.SerializedItemViewSet, basename='serializeditem')
+router.register(r'barcode', views.BarcodeScanViewSet, basename='barcode')
 
 app_name = 'products_and_services_api'
 

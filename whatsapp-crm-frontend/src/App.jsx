@@ -26,6 +26,7 @@ import EventsPage from './pages/EventsPage';
 import EventFormPage from './pages/EventFormPage';
 import MinistriesPage from './pages/MinistriesPage';
 import MinistryFormPage from './pages/MinistryFormPage';
+import BarcodeScannerPage from './pages/BarcodeScannerPage';
 
 const NotFoundPage = () => (
   <div className="p-10 text-center">
@@ -66,6 +67,7 @@ const router = createBrowserRouter([
   { path: 'media-library', element: <MediaLibraryPage /> },
   { path: 'contacts', element: <ContactsPage /> },
   { path: 'analytics', element: <AnalyticsPage />},
+  { path: 'barcode-scanner', element: <BarcodeScannerPage /> },
   { path: 'installation-requests', element: <InstallationRequestsPage /> },
   { path: 'orders', element: <OrdersPage /> },
   { path: 'site-assessments', element: <SiteAssessmentsPage /> },

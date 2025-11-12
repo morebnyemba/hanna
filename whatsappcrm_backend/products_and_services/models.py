@@ -43,6 +43,7 @@ class Product(models.Model):
 
     name = models.CharField(_("Product Name"), max_length=255)
     sku = models.CharField(_("SKU / Product Code"), max_length=100, unique=True, blank=True, null=True)
+    barcode = models.CharField(_("Barcode"), max_length=100, unique=True, blank=True, null=True, db_index=True, help_text=_("Barcode value for product identification"))
     description = models.TextField(_("Description"), blank=True, null=True)
     product_type = models.CharField(_("Product Type"), max_length=20, choices=ProductType.choices, db_index=True)
     category = models.ForeignKey(
@@ -127,6 +128,7 @@ class SerializedItem(models.Model):
         db_index=True,
         help_text=_("The unique serial number for this specific item.")
     )
+    barcode = models.CharField(_("Barcode"), max_length=100, unique=True, blank=True, null=True, db_index=True, help_text=_("Barcode value for item identification"))
     status = models.CharField(
         _("Status"),
         max_length=20,
