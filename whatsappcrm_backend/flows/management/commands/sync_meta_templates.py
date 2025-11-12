@@ -76,13 +76,11 @@ class Command(BaseCommand):
 
             components = [{"type": "BODY", "text": meta_body}]
 
-            # The 'example' field is required by the API for the BODY component, even if empty.
-            example_values = []
+            # Only add an example if there are variables in the body.
             if body_parameters_map:
-                # Create example values based on the variable names
                 example_values = [[f"[{var_name.split('.')[-1]}]"] for var_name in body_parameters_map.values()]
-            components[0]["example"] = {"body_text": example_values}
-            
+                components[0]["example"] = {"body_text": example_values}
+
             if hasattr(template, 'buttons') and template.buttons:
                 button_payloads = []
                 url_parameters_map = {}
@@ -101,7 +99,6 @@ class Command(BaseCommand):
                                 continue
                             
                             processed_url = original_url
-                            # Find all Jinja2 variables in the URL
                             jinja_vars_in_url = re.findall(r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}', original_url)
                             
                             url_example_values = []
@@ -109,21 +106,18 @@ class Command(BaseCommand):
                                 if jinja_var not in url_parameters_map:
                                     url_param_counter += 1
                                     url_parameters_map[jinja_var] = url_param_counter
-                                # Use re.sub for safer replacement that handles whitespace
+                                
                                 var_regex = r'\{\{\s*' + re.escape(jinja_var) + r'\s*\}\}'
-                                # Replace only the first occurrence in case the same variable is used multiple times
                                 processed_url = re.sub(var_regex, f'{{{{{url_parameters_map[jinja_var]}}}}}', processed_url, 1)
-                                # Add example value for this parameter
-                                url_example_values.append(f"[{jinja_var.split('.')[-1]}]")
+                                url_example_values.append(f"https://www.example.com/d/{jinja_var.split('.')[-1]}") # Correct example format
 
                             button_payload = {
                                 "type": "URL",
                                 "text": text,
                                 "url": processed_url
                             }
-                            # Add example values if URL has parameters
                             if url_example_values:
-                                button_payload["example"] = url_example_values
+                                button_payload["example"] = url_example_values # Correctly formatted example
                             button_payloads.append(button_payload)
                         else:  # Default to QUICK_REPLY
                             button_payloads.append({
