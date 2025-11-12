@@ -1,6 +1,6 @@
-import ManufacturerLayout from '@/app/components/ManufacturerLayout';
+import UnifiedLayout from '@/app/components/UnifiedLayout';
 import { ReactNode } from 'react';
 
-export default function ManufacturerProtectedLayout({ children }: { children: ReactNode }) {
-  return <ManufacturerLayout>{children}</ManufacturerLayout>;
+export default function ManufacturerLayout({ children }: { children: ReactNode }) {
+  return <UnifiedLayout>{children}</UnifiedLayout>;
 }

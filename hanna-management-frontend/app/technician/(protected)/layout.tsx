@@ -1,7 +1,7 @@
-import TechnicianLayout from '@/app/components/TechnicianLayout';
+import UnifiedLayout from '@/app/components/UnifiedLayout';
 import { ReactNode } from 'react';
 
-export default function TechnicianProtectedLayout({ children }: { children: ReactNode }) {
-  return <TechnicianLayout>{children}</TechnicianLayout>;
+export default function TechnicianLayout({ children }: { children: ReactNode }) {
+  return <UnifiedLayout>{children}</UnifiedLayout>;
 }
 
