@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiPackage, FiPlus } from 'react-icons/fi';
+import { FiPackage, FiPlus, FiEdit, FiEye } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 
@@ -14,6 +14,7 @@ interface Product {
     id: number;
     name: string;
   };
+  is_active: boolean;
 }
 
 const SkeletonRow = () => (
@@ -26,6 +27,12 @@ const SkeletonRow = () => (
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
             <div className="h-4 bg-gray-200 rounded w-1/4"></div>
@@ -56,8 +63,8 @@ export default function ProductsPage() {
 
         const result = await response.json();
         setProducts(result.results);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch products');
       } finally {
         setLoading(false);
       }
@@ -96,6 +103,8 @@ export default function ProductsPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -109,11 +118,29 @@ export default function ProductsPage() {
                     </>
                 ) : (
                     products.map((product) => (
-                        <tr key={product.id}>
+                        <tr key={product.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.sku}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category?.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.price}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category?.name || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.price || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            product.is_active 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {product.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex gap-2">
+                            <Link href={`/admin/products/${product.id}`}>
+                              <span className="text-purple-600 hover:text-purple-900 flex items-center" title="Edit">
+                                <FiEdit className="w-4 h-4" />
+                              </span>
+                            </Link>
+                          </div>
+                        </td>
                         </tr>
                     ))
                 )}
