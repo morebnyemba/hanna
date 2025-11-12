@@ -47,16 +47,27 @@ const BarcodeScanner = ({
     }
   }, [inputMode]);
 
-  const selectInputMode = (mode) => {
+  const selectInputMode = async (mode) => {
     setInputMode(mode);
     if (mode === 'camera') {
-      startScanner();
+      await startScanner();
     }
   };
 
-  const startScanner = () => {
+  const startScanner = async () => {
     if (html5QrcodeScannerRef.current) {
       return; // Scanner already initialized
+    }
+
+    // Request camera permission explicitly first
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true });
+    } catch (permissionError) {
+      console.error('Camera permission denied:', permissionError);
+      if (onScanError) {
+        onScanError(new Error('Camera permission denied. Please allow camera access to scan barcodes.'));
+      }
+      return;
     }
 
     const config = {
@@ -77,7 +88,8 @@ const BarcodeScanner = ({
         9, // CODABAR
         10, // ITF
         11, // RSS_14
-      ]
+      ],
+      rememberLastUsedCamera: true,
     };
 
     try {

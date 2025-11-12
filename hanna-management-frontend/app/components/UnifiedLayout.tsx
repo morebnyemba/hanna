@@ -85,31 +85,39 @@ export default function UnifiedLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`z-30 fixed inset-y-0 left-0 ${isSidebarCollapsed ? 'w-16' : 'w-64'} px-2 py-4 overflow-y-auto bg-gray-800 text-white transition-all duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
+      <aside className={`z-30 fixed inset-y-0 left-0 w-64 px-2 py-4 overflow-y-auto bg-gray-800 text-white transition-all duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 ${isSidebarCollapsed ? 'md:w-16' : 'md:w-64'}`}>
         <div className="flex items-center justify-between px-4 mb-6">
-          {!isSidebarCollapsed && <h2 className="text-2xl font-semibold">Hanna Mgt.</h2>}
+          <h2 className={`text-2xl font-semibold ${isSidebarCollapsed ? 'hidden md:block' : ''}`}>Hanna Mgt.</h2>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white">
             <FiX size={24} />
           </button>
-          <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="hidden md:block text-gray-400 hover:text-white">
+          <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="hidden md:block text-gray-400 hover:text-white ml-auto">
             {isSidebarCollapsed ? <FiChevronRight size={24} /> : <FiChevronLeft size={24} />}
           </button>
         </div>
-        {!isSidebarCollapsed && <p className="text-sm text-center text-gray-400 capitalize">{user?.role}</p>}
+        <p className={`text-sm text-center text-gray-400 capitalize mb-4 ${isSidebarCollapsed ? 'hidden md:block' : ''}`}>{user?.role}</p>
         <nav className="space-y-2">
             {renderSidebarLinks()}
         </nav>
         <div className="absolute bottom-0 w-full left-0 px-2 pb-4">
-           <button onClick={handleLogout} className="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white">
-             <FiLogOut className={`w-5 h-5 ${isSidebarCollapsed ? 'mr-0' : 'mr-3'}`} />
-             {!isSidebarCollapsed && 'Logout'}
+           <button onClick={handleLogout} className={`flex items-center w-full px-4 py-3 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white ${isSidebarCollapsed ? 'md:justify-center' : ''}`}>
+             <FiLogOut className={`w-5 h-5 ${isSidebarCollapsed ? 'md:mr-0 mr-3' : 'mr-3'}`} />
+             <span className={isSidebarCollapsed ? 'md:hidden' : ''}>Logout</span>
            </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className={`flex flex-col flex-1 w-full overflow-y-auto max-w-full overflow-x-hidden md:ml-${isSidebarCollapsed ? '16' : '64'}`}>
+      <div className="flex flex-col flex-1 w-full overflow-y-auto max-w-full overflow-x-hidden">
         <header className="z-10 py-4 bg-white shadow-md md:hidden">
           <div className="container flex items-center justify-between h-full px-6 mx-auto text-purple-600">
             <button
