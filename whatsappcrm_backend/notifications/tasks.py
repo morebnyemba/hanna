@@ -16,6 +16,19 @@ from .utils import render_template_string
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+def serialize_user_for_template(user) -> dict:
+    """
+    Serializes a User model instance into a dictionary for use in template rendering.
+    """
+    return {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email or '',
+        'first_name': user.first_name or '',
+        'last_name': user.last_name or '',
+        'get_full_name': user.get_full_name() if hasattr(user, 'get_full_name') else f"{user.first_name or ''} {user.last_name or ''}".strip(),
+    }
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=120)
 def dispatch_notification_task(self, notification_id: int):
     """
@@ -64,7 +77,7 @@ def dispatch_notification_task(self, notification_id: int):
                 template_context = notification.template_context or {}
                 # Create a copy to avoid modifying the stored context
                 render_context = template_context.copy()
-                render_context['recipient'] = recipient
+                render_context['recipient'] = serialize_user_for_template(recipient)
                 
                 try:
                     template_model = NotificationTemplate.objects.get(name=notification.template_name)
@@ -131,7 +144,7 @@ def dispatch_notification_task(self, notification_id: int):
                 content_payload = {
                     "name": notification.template_name,
                     "language": {"code": "en_US"},
-                    "components": components
+                    "components": template_components
                 }
                 logger.info(f"Dispatching template '{notification.template_name}' with payload: {content_payload}")
             else:
