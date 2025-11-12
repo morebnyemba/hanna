@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { FiCamera } from 'react-icons/fi';
 import BarcodeScanner from './BarcodeScanner';
 import { useBarcodeScanner } from '@/app/hooks/useBarcodeScanner';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface BarcodeScannerButtonProps {
   className?: string;
@@ -14,6 +14,7 @@ interface BarcodeScannerButtonProps {
 /**
  * A reusable barcode scanner button that can be placed anywhere in the app
  * Opens a modal barcode scanner and handles scan results
+ * Automatically detects the current portal and navigates accordingly
  */
 const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({ 
   className = '',
@@ -21,6 +22,15 @@ const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({
 }) => {
   const [scanType, setScanType] = useState<'product' | 'serialized_item'>('product');
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Determine the current portal from the path
+  const getPortalPrefix = () => {
+    if (pathname.startsWith('/admin')) return '/admin';
+    if (pathname.startsWith('/manufacturer')) return '/manufacturer';
+    if (pathname.startsWith('/technician')) return '/technician';
+    return '/admin'; // default fallback
+  };
 
   const {
     isOpen,
@@ -34,12 +44,14 @@ const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({
     onSuccess: (data) => {
       console.log('Barcode scanned successfully:', data);
       
+      const portalPrefix = getPortalPrefix();
+      
       // Navigate to appropriate page based on scan result
       if (data.found) {
         if (data.item_type === 'product' && data.data?.id) {
-          router.push(`/admin/products/${data.data.id}`);
+          router.push(`${portalPrefix}/products/${data.data.id}`);
         } else if (data.item_type === 'serialized_item' && data.data?.id) {
-          router.push(`/admin/serialized-items/${data.data.id}`);
+          router.push(`${portalPrefix}/serialized-items/${data.data.id}`);
         }
       }
     },
