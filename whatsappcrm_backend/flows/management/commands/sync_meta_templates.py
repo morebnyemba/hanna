@@ -165,9 +165,9 @@ class Command(BaseCommand):
                     template.sync_status = 'synced'
                     template.save()
                 else:
-                    error = response_data.get('error', {})
-                    error_message = error.get('message')
-                    self.stdout.write(self.style.ERROR(f"  FAILED to {action} template '{template_name}'. Status: {response.status_code}, Error: {error_message}"))
+                    # Print the full error response for detailed debugging
+                    self.stdout.write(self.style.ERROR(f"  FAILED to {action} template '{template_name}'. Status: {response.status_code}"))
+                    self.stdout.write(self.style.ERROR(f"  Full Error Response: {json.dumps(response_data, indent=2)}"))
                     template.sync_status = 'failed'
                     template.save()
 
