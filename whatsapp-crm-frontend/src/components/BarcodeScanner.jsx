@@ -26,6 +26,7 @@ const BarcodeScanner = ({
   const [inputMode, setInputMode] = useState(null); // 'camera' or 'device'
   const [scanning, setScanning] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
+  const [error, setError] = useState(null);
   const scannerRef = useRef(null);
   const html5QrcodeScannerRef = useRef(null);
   const inputRef = useRef(null);
@@ -47,37 +48,51 @@ const BarcodeScanner = ({
     }
   }, [inputMode]);
 
-  const selectInputMode = (mode) => {
+  const selectInputMode = async (mode) => {
     setInputMode(mode);
     if (mode === 'camera') {
-      startScanner();
+      await startScanner();
     }
   };
 
-  const startScanner = () => {
+  const startScanner = async () => {
     if (html5QrcodeScannerRef.current) {
       return; // Scanner already initialized
+    }
+
+    // Wait for DOM element to be available
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const containerElement = document.getElementById("barcode-scanner-container");
+    if (!containerElement) {
+      console.error('Barcode scanner container element not found');
+      const errorMsg = 'Scanner initialization failed. Please try again.';
+      setError(errorMsg);
+      if (onScanError) {
+        onScanError(new Error(errorMsg));
+      }
+      return;
+    }
+
+    // Request camera permission explicitly first
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      setError(null); // Clear any previous errors
+    } catch (permissionError) {
+      console.error('Camera permission denied:', permissionError);
+      const errorMsg = 'Camera permission denied. Please allow camera access to scan barcodes.';
+      setError(errorMsg);
+      if (onScanError) {
+        onScanError(new Error(errorMsg));
+      }
+      return;
     }
 
     const config = {
       fps: 10,
       qrbox: { width: 250, height: 250 },
       aspectRatio: 1.0,
-      supportedScanTypes: [
-        // Support various barcode formats
-        0, // QR_CODE
-        1, // UPC_A
-        2, // UPC_E
-        3, // UPC_EAN_EXTENSION
-        4, // EAN_8
-        5, // EAN_13
-        6, // CODE_128
-        7, // CODE_39
-        8, // CODE_93
-        9, // CODABAR
-        10, // ITF
-        11, // RSS_14
-      ]
+      rememberLastUsedCamera: true,
     };
 
     try {
@@ -104,6 +119,8 @@ const BarcodeScanner = ({
       setScanning(true);
     } catch (error) {
       console.error('Error starting scanner:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to start scanner';
+      setError(errorMsg);
       if (onScanError) {
         onScanError(error);
       }
@@ -126,6 +143,7 @@ const BarcodeScanner = ({
     stopScanner();
     setInputMode(null);
     setManualBarcode('');
+    setError(null);
     if (onClose) {
       onClose();
     }
@@ -202,6 +220,11 @@ const BarcodeScanner = ({
 
         {inputMode === 'camera' && (
           <div>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
             <div className="mb-4">
               <p className="text-sm text-gray-600">
                 Position the barcode within the frame to scan. 
