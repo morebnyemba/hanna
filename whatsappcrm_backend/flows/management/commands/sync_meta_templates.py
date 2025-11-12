@@ -16,12 +16,7 @@ class Command(BaseCommand):
             help="Prints the API payloads that would be sent without actually sending them.",
         )
 
-    def _delete_template(self, template_name, headers, dry_run=False):
-        delete_url = f"https://graph.facebook.com/v20.0/{self.active_config.waba_id}/message_templates?name={template_name}"
-        self.stdout.write(f"  Attempting to delete existing template '{template_name}'...")
-        if not dry_run:
-            return requests.delete(delete_url, headers=headers)
-        return None
+
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
@@ -37,7 +32,6 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(self.style.WARNING("--- DRY RUN MODE: No requests will be sent to Meta. ---"))
 
-        create_api_url = f"https://graph.facebook.com/v20.0/{self.active_config.waba_id}/message_templates"
         headers = {
             "Authorization": f"Bearer {self.active_config.access_token}",
             "Content-Type": "application/json",
@@ -58,7 +52,6 @@ class Command(BaseCommand):
                 continue
 
             # Extract Jinja2 variables with full paths (e.g., contact.name, order.number)
-            # Using regex instead of jinja_meta.find_undeclared_variables which only extracts root names
             jinja_pattern = r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}'
             jinja_matches = re.findall(jinja_pattern, original_body)
             # Preserve order of first occurrence and remove duplicates
@@ -88,8 +81,6 @@ class Command(BaseCommand):
                 example_values = [[f"[{var_name.split('.')[-1]}]"] for var_name in body_parameters_map.values()]
                 components[0]["example"] = {"body_text": example_values}
             
-            # Note: Buttons are not part of the NotificationTemplate model in this version.
-            # This part of the original script is preserved in case the model is extended.
             if hasattr(template, 'buttons') and template.buttons:
                 button_payloads = []
                 url_parameters_map = {}
@@ -138,79 +129,55 @@ class Command(BaseCommand):
                 if button_payloads:
                     components.append({"type": "BUTTONS", "buttons": button_payloads})
                 
-                # Save the extracted URL parameters mapping to the template object
                 template.url_parameters = url_parameters_map
             
-            payload = {
-                "name": template_name,
-                "language": "en_US",
-                "category": "UTILITY",
-                "components": components,
-            }
+            # Determine if we are creating or updating
+            if template.meta_template_id:
+                # UPDATE existing template
+                api_url = f"https://graph.facebook.com/v20.0/{template.meta_template_id}"
+                payload = {"components": components}
+                action = "update"
+            else:
+                # CREATE new template
+                api_url = f"https://graph.facebook.com/v20.0/{self.active_config.waba_id}/message_templates"
+                payload = {
+                    "name": template_name,
+                    "language": "en_US",
+                    "category": "UTILITY",
+                    "components": components,
+                }
+                action = "create"
 
             if dry_run:
+                self.stdout.write(self.style.NOTICE(f"  [Dry Run] Action: {action.upper()}, URL: {api_url}"))
                 self.stdout.write(self.style.NOTICE(f"  [Dry Run] Payload for '{template_name}':"))
                 self.stdout.write(json.dumps(payload, indent=2))
                 continue
 
             try:
-                response = requests.post(create_api_url, headers=headers, json=payload)
+                response = requests.post(api_url, headers=headers, json=payload)
                 response_data = response.json()
 
                 if response.status_code in [200, 201]:
-                    template_id = response_data.get('id')
-                    self.stdout.write(self.style.SUCCESS(f"  SUCCESS: Template '{template_name}' created successfully. ID: {template_id}"))
-                    if hasattr(template, 'meta_template_id'):
-                        template.meta_template_id = template_id
-                    if hasattr(template, 'sync_status'):
-                        template.sync_status = 'synced'
+                    if action == "create":
+                        template.meta_template_id = response_data.get('id')
+                    self.stdout.write(self.style.SUCCESS(f"  SUCCESS: Template '{template_name}' {action}d successfully. ID: {template.meta_template_id}"))
+                    template.sync_status = 'synced'
                     template.save()
                 else:
                     error = response_data.get('error', {})
                     error_message = error.get('message')
-                    error_code = error.get('code')
-
-                    if error_code == 100 and 'already exists' in str(error_message):
-                        self.stdout.write(self.style.WARNING(f"  INFO: Template '{template_name}' already exists. Attempting to replace it."))
-                        delete_response = self._delete_template(template_name, headers, dry_run)
-                        
-                        if delete_response and delete_response.json().get('success'):
-                            self.stdout.write(self.style.SUCCESS(f"  SUCCESS: Deleted existing template '{template_name}'. Re-creating..."))
-                            retry_response = requests.post(create_api_url, headers=headers, json=payload)
-                            retry_response_data = retry_response.json()
-                            if retry_response.status_code in [200, 201]:
-                                new_template_id = retry_response_data.get('id')
-                                self.stdout.write(self.style.SUCCESS(f"  SUCCESS: Re-created template '{template_name}' successfully. New ID: {new_template_id}"))
-                                if hasattr(template, 'meta_template_id'):
-                                    template.meta_template_id = new_template_id
-                                if hasattr(template, 'sync_status'):
-                                    template.sync_status = 'synced'
-                                template.save()
-                            else:
-                                self.stdout.write(self.style.ERROR(f"  FAILED to re-create template '{template_name}' after deletion. Error: {retry_response.text}"))
-                                if hasattr(template, 'sync_status'):
-                                    template.sync_status = 'failed'
-                                    template.save()
-                        else:
-                            self.stdout.write(self.style.ERROR(f"  FAILED to delete existing template '{template_name}'. It may be in use or have an unchangeable status. Error: {delete_response.text if delete_response else 'N/A'}"))
-                            if hasattr(template, 'sync_status'):
-                                template.sync_status = 'failed'
-                                template.save()
-                    else:
-                        self.stdout.write(self.style.ERROR(f"  FAILED to create template '{template_name}'. Status: {response.status_code}, Error: {error_message}"))
-                        if hasattr(template, 'sync_status'):
-                            template.sync_status = 'failed'
-                            template.save()
+                    self.stdout.write(self.style.ERROR(f"  FAILED to {action} template '{template_name}'. Status: {response.status_code}, Error: {error_message}"))
+                    template.sync_status = 'failed'
+                    template.save()
 
             except requests.exceptions.RequestException as e:
                 self.stdout.write(self.style.ERROR(f"  NETWORK ERROR for template '{template_name}': {e}"))
-                if hasattr(template, 'sync_status'):
-                    template.sync_status = 'failed'
-                    template.save()
+                template.sync_status = 'failed'
+                template.save()
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"  UNEXPECTED ERROR for template '{template_name}': {e}"))
-                if hasattr(template, 'sync_status'):
-                    template.sync_status = 'failed'
-                    template.save()
+                template.sync_status = 'failed'
+                template.save()
 
         self.stdout.write(self.style.SUCCESS("\n--- Template Sync Finished ---"))
