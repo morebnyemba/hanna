@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from './ui/button';
 import { X, Camera, Keyboard } from 'lucide-react';
 import { Input } from './ui/input';
@@ -74,49 +74,39 @@ const BarcodeScanner = ({
       return;
     }
 
-    // Request camera permission explicitly first
-    try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      setError(null); // Clear any previous errors
-    } catch (permissionError) {
-      console.error('Camera permission denied:', permissionError);
-      const errorMsg = 'Camera permission denied. Please allow camera access to scan barcodes.';
-      setError(errorMsg);
-      if (onScanError) {
-        onScanError(new Error(errorMsg));
-      }
-      return;
-    }
-
     const config = {
       fps: 10,
       qrbox: { width: 250, height: 250 },
       aspectRatio: 1.0,
-      rememberLastUsedCamera: true,
+      formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], // All barcode formats
     };
 
     try {
-      html5QrcodeScannerRef.current = new Html5QrcodeScanner(
-        "barcode-scanner-container",
-        config,
-        false
-      );
+      html5QrcodeScannerRef.current = new Html5Qrcode("barcode-scanner-container");
 
-      html5QrcodeScannerRef.current.render(
-        (decodedText, decodedResult) => {
-          console.log('Barcode scanned:', decodedText);
-          onScanSuccess(decodedText, decodedResult);
-          stopScanner();
-        },
-        (errorMessage) => {
-          // Scanner errors are frequent and expected, only log critical ones
-          if (onScanError && !errorMessage.includes('No MultiFormat Readers')) {
-            onScanError(errorMessage);
-          }
+      const handleScanSuccess = (decodedText, decodedResult) => {
+        console.log('Barcode scanned:', decodedText);
+        onScanSuccess(decodedText, decodedResult);
+        stopScanner();
+      };
+
+      const handleScanFailure = (error) => {
+        // Scanning errors are frequent, only log critical ones
+        if (!error.includes('NotFoundException') && !error.includes('No MultiFormat Readers')) {
+          console.warn('Scan error:', error);
         }
+      };
+
+      // Start camera with rear camera preference
+      await html5QrcodeScannerRef.current.start(
+        { facingMode: "environment" },
+        config,
+        handleScanSuccess,
+        handleScanFailure
       );
 
       setScanning(true);
+      setError(null);
     } catch (error) {
       console.error('Error starting scanner:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to start scanner';
@@ -127,10 +117,10 @@ const BarcodeScanner = ({
     }
   };
 
-  const stopScanner = () => {
+  const stopScanner = async () => {
     if (html5QrcodeScannerRef.current) {
       try {
-        html5QrcodeScannerRef.current.clear();
+        await html5QrcodeScannerRef.current.stop();
         html5QrcodeScannerRef.current = null;
         setScanning(false);
       } catch (error) {
@@ -236,7 +226,7 @@ const BarcodeScanner = ({
             <div 
               id="barcode-scanner-container" 
               ref={scannerRef}
-              className="w-full"
+              className="w-full min-h-[300px] flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden"
             />
           </div>
         )}
