@@ -448,90 +448,18 @@ class MetaWebhookAPIView(View):
     def _handle_flow_response(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog):
         """
         Handles WhatsApp Flow response messages (nfm_reply type).
+        Delegates processing to flows.services.process_whatsapp_flow_response.
         """
-        from flows.models import WhatsAppFlow
-        from flows.whatsapp_flow_response_processor import WhatsAppFlowResponseProcessor
+        from flows.services import process_whatsapp_flow_response
         
-        try:
-            interactive_data = msg_data.get("interactive", {})
-            nfm_reply = interactive_data.get("nfm_reply", {})
-            
-            response_json = nfm_reply.get("response_json")
-            flow_token = nfm_reply.get("flow_token", "")
-            
-            if not response_json:
-                logger.warning(f"Flow response has no response_json: {msg_data}")
-                self._save_log(log_entry, 'ignored', 'No response_json in flow response')
-                return
-            
-            # Parse the response JSON
-            import json
-            try:
-                response_data = json.loads(response_json) if isinstance(response_json, str) else response_json
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse flow response JSON: {e}")
-                self._save_log(log_entry, 'failed', f'Invalid JSON: {e}')
-                return
-            
-            # Try to identify which flow this is for
-            # You might need to store flow_id in the flow_token when sending the flow
-            # For now, we'll try to match based on the response structure or flow_token
-            
-            # Get all active WhatsApp flows for this config
-            whatsapp_flows = WhatsAppFlow.objects.filter(
-                meta_app_config=active_config,
-                is_active=True,
-                sync_status='published'
-            )
-            
-            # Try to find the matching flow
-            # This is a simplified approach - in production you might want to encode
-            # the flow ID in the flow_token when sending the flow
-            whatsapp_flow = None
-            
-            # Try to extract flow name from response or use heuristics
-            # For now, just take the first active flow as a fallback
-            # In a real implementation, you'd want better flow identification
-            if whatsapp_flows.exists():
-                # Try to match by checking which fields are in the response
-                response_fields = set(response_data.keys()) if isinstance(response_data, dict) else set()
-                
-                # Simple heuristic matching
-                if 'kit_type' in response_fields:
-                    whatsapp_flow = whatsapp_flows.filter(name='starlink_installation_whatsapp').first()
-                elif 'panel_count' in response_fields and 'roof_type' in response_fields:
-                    whatsapp_flow = whatsapp_flows.filter(name='solar_cleaning_whatsapp').first()
-                elif 'order_number' in response_fields:
-                    whatsapp_flow = whatsapp_flows.filter(name='solar_installation_whatsapp').first()
-                
-                if not whatsapp_flow:
-                    whatsapp_flow = whatsapp_flows.first()
-            
-            if not whatsapp_flow:
-                logger.error("No active WhatsApp flow found to process response")
-                self._save_log(log_entry, 'failed', 'No matching WhatsApp flow found')
-                return
-            
-            # Process the response
-            logger.info(f"Processing flow response for {whatsapp_flow.name}")
-            
-            flow_response = WhatsAppFlowResponseProcessor.process_response(
-                whatsapp_flow=whatsapp_flow,
-                contact=contact,
-                response_data=response_data
-            )
-            
-            if flow_response and flow_response.is_processed:
-                self._save_log(log_entry, 'processed', f'Flow response processed: {flow_response.processing_notes}')
-                logger.info(f"Successfully processed flow response {flow_response.id}")
-            else:
-                error_note = flow_response.processing_notes if flow_response else "Unknown error"
-                self._save_log(log_entry, 'failed', f'Flow processing failed: {error_note}')
-                logger.error(f"Flow response processing failed: {error_note}")
-                
-        except Exception as e:
-            logger.error(f"Error handling flow response: {e}", exc_info=True)
-            self._save_log(log_entry, 'failed', f'Exception processing flow: {str(e)[:200]}')
+        success, notes = process_whatsapp_flow_response(msg_data, contact, active_config)
+        
+        if success:
+            self._save_log(log_entry, 'processed', notes)
+            logger.info(f"Flow response processed successfully: {notes}")
+        else:
+            self._save_log(log_entry, 'failed', notes)
+            logger.error(f"Flow response processing failed: {notes}")
 
     def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig, show_typing_indicator: bool = True):
         """
