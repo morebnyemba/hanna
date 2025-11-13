@@ -26,15 +26,15 @@ class ProductAdmin(admin.ModelAdmin):
     """
     Admin interface for the Product model.
     """
-    list_display = ('name', 'sku', 'product_type', 'category', 'price', 'is_active', 'stock_quantity', 'country_of_origin', 'brand')
-    search_fields = ('name', 'sku', 'description', 'brand', 'barcode')
+    list_display = ('name', 'sku', 'barcode', 'product_type', 'category', 'price', 'is_active', 'stock_quantity', 'country_of_origin', 'brand')
+    search_fields = ('name', 'sku', 'barcode', 'description', 'brand')
     list_filter = ('product_type', 'category', 'is_active', 'country_of_origin', 'brand')
     ordering = ('name',)
     inlines = [ProductImageInline]
     
     fieldsets = (
         (None, {
-            'fields': ('name', 'sku', 'description', 'product_type', 'category', 'brand')
+            'fields': ('name', 'sku', 'barcode', 'description', 'product_type', 'category', 'brand')
         }),
         ('Pricing & Availability', {
             'fields': ('price', 'currency', 'is_active')
@@ -60,7 +60,12 @@ class SerializedItemAdmin(admin.ModelAdmin):
     """
     Admin interface for the SerializedItem model.
     """
-    list_display = ('serial_number', 'product', 'status')
-    search_fields = ('serial_number', 'product__name', 'barcode')
+    list_display = ('serial_number', 'barcode', 'product', 'status')
+    search_fields = ('serial_number', 'barcode', 'product__name')
     list_filter = ('status', 'product__category')
     autocomplete_fields = ('product',)
+    fieldsets = (
+        (None, {
+            'fields': ('product', 'serial_number', 'barcode', 'status')
+        }),
+    )
