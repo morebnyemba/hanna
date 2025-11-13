@@ -124,10 +124,10 @@ const BarcodeScanner = ({
     try {
       html5QrcodeScannerRef.current = new Html5Qrcode("barcode-scanner-container");
 
-      const handleScanSuccess = (decodedText, decodedResult) => {
+      const handleScanSuccess = async (decodedText, decodedResult) => {
         console.log('Barcode scanned:', decodedText);
         onScanSuccess(decodedText, decodedResult);
-        stopScanner();
+        await stopScanner();
       };
 
       const handleScanFailure = (error) => {
