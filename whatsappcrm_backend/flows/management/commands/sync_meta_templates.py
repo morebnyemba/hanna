@@ -85,7 +85,7 @@ class Command(BaseCommand):
             # Add a footer for non-disclosure
             components.append({
                 "type": "FOOTER",
-                "text": "This is a confidential message intended for the recipient only."
+                "text": "Confidential message for recipient only."
             })
 
             # if hasattr(template, 'buttons') and template.buttons:
