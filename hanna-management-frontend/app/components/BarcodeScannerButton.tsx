@@ -48,10 +48,21 @@ const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({
       
       // Navigate to appropriate page based on scan result
       if (data.found) {
-        if (data.item_type === 'product' && data.data?.id) {
-          router.push(`${portalPrefix}/products/${data.data.id}`);
-        } else if (data.item_type === 'serialized_item' && data.data?.id) {
-          router.push(`${portalPrefix}/serialized-items/${data.data.id}`);
+        // Type guard: check if this is a BarcodeScanResponse (has item_type)
+        if ('item_type' in data && data.item_type) {
+          if (data.item_type === 'product' && data.data?.id) {
+            router.push(`${portalPrefix}/products/${data.data.id}`);
+          } else if (data.item_type === 'serialized_item' && data.data?.id) {
+            router.push(`${portalPrefix}/serialized-items/${data.data.id}`);
+          }
+        } else if ('results' in data && data.results.length > 0) {
+          // Handle BarcodeLookupResponse
+          const firstResult = data.results[0];
+          if (firstResult.type === 'product' && firstResult.data?.id) {
+            router.push(`${portalPrefix}/products/${firstResult.data.id}`);
+          } else if (firstResult.type === 'serialized_item' && firstResult.data?.id) {
+            router.push(`${portalPrefix}/serialized-items/${firstResult.data.id}`);
+          }
         }
       }
     },
