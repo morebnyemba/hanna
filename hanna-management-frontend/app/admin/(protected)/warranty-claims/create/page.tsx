@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FiShield, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
 
 const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '' }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; }) => (
     <div>
@@ -56,6 +57,13 @@ export default function CreateWarrantyClaimPage() {
     }));
   };
 
+  const handleBarcodeScanned = (barcode: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      serial_number: barcode,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -101,8 +109,9 @@ export default function CreateWarrantyClaimPage() {
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 flex items-end">
                 <InputField id="serial_number" label="Serial Number" value={formData.serial_number} onChange={handleChange} placeholder="e.g., 12345-ABCDE" required />
+                <BarcodeScannerButton onScanSuccess={handleBarcodeScanned} />
             </div>
             <div className="md:col-span-2">
                 <TextAreaField id="description_of_fault" label="Description of Fault" value={formData.description_of_fault} onChange={handleChange} placeholder="Describe the issue with the product in detail." required />

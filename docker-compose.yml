@@ -52,6 +52,8 @@ services:
     build: ./hanna-management-frontend
     container_name: hanna_management_frontend_nextjs
     command: npm start
+    devices:
+      - "/dev/video0:/dev/video0"
     depends_on:
       - backend
     restart: unless-stopped
