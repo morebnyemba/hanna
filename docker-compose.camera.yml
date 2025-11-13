@@ -1,0 +1,19 @@
+# Optional Docker Compose override file for server-side camera device access
+# 
+# This file is NOT needed for normal operation. The frontend uses browser-based
+# WebRTC APIs (navigator.mediaDevices.getUserMedia) to access client cameras.
+#
+# Use this override ONLY if you need server-side video device access for
+# special purposes like:
+# - CI/CD testing with virtual camera devices
+# - Server-side video processing
+# - Emulation environments
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.camera.yml up
+#
+version: '3.8'
+
+services:
+  hanna-management-frontend:
+    devices:
+      - "/dev/video0:/dev/video0"

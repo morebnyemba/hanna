@@ -52,8 +52,8 @@ services:
     build: ./hanna-management-frontend
     container_name: hanna_management_frontend_nextjs
     command: npm start
-    devices:
-      - "/dev/video0:/dev/video0"
+    # Note: Camera/barcode scanning features use browser WebRTC APIs (navigator.mediaDevices)
+    # and do not require server-side device access
     depends_on:
       - backend
     restart: unless-stopped
