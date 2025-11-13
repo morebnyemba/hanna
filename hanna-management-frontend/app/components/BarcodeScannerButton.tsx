@@ -9,18 +9,22 @@ import { useRouter, usePathname } from 'next/navigation';
 interface BarcodeScannerButtonProps {
   className?: string;
   variant?: 'icon' | 'button';
+  onScanSuccess?: (barcode: string) => void;
 }
 
 /**
  * A reusable barcode scanner button that can be placed anywhere in the app
  * Opens a modal barcode scanner and handles scan results
  * Automatically detects the current portal and navigates accordingly
+ * If onScanSuccess is provided, it will use that instead of the default navigation behavior
  */
 const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({ 
   className = '',
-  variant = 'icon'
+  variant = 'icon',
+  onScanSuccess
 }) => {
   const [scanType] = useState<'product' | 'serialized_item'>('product');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -71,11 +75,37 @@ const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({
     }
   });
 
+  // Handle direct barcode scan when custom onScanSuccess is provided
+  const handleDirectScan = (barcode: string) => {
+    if (onScanSuccess) {
+      onScanSuccess(barcode);
+      setIsModalOpen(false);
+    } else {
+      handleScanSuccess(barcode);
+    }
+  };
+
+  const openDirectScanner = () => {
+    if (onScanSuccess) {
+      setIsModalOpen(true);
+    } else {
+      openScanner();
+    }
+  };
+
+  const closeDirectScanner = () => {
+    if (onScanSuccess) {
+      setIsModalOpen(false);
+    } else {
+      closeScanner();
+    }
+  };
+
   if (variant === 'button') {
     return (
       <>
         <button
-          onClick={openScanner}
+          onClick={openDirectScanner}
           disabled={isLoading}
           className={`flex items-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-md hover:bg-gray-100 transition-colors duration-200 shadow-sm ${className}`}
         >
@@ -84,9 +114,9 @@ const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({
         </button>
         
         <BarcodeScanner
-          isOpen={isOpen}
-          onClose={closeScanner}
-          onScanSuccess={handleScanSuccess}
+          isOpen={onScanSuccess ? isModalOpen : isOpen}
+          onClose={closeDirectScanner}
+          onScanSuccess={handleDirectScan}
           onScanError={handleScanError}
           scanType={scanType}
         />
@@ -97,7 +127,7 @@ const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({
   return (
     <>
       <button
-        onClick={openScanner}
+        onClick={openDirectScanner}
         disabled={isLoading}
         aria-label="Scan Barcode"
         className={`p-2 text-white rounded-md hover:bg-white/20 transition-colors duration-200 ${className}`}
@@ -107,9 +137,9 @@ const BarcodeScannerButton: React.FC<BarcodeScannerButtonProps> = ({
       </button>
       
       <BarcodeScanner
-        isOpen={isOpen}
-        onClose={closeScanner}
-        onScanSuccess={handleScanSuccess}
+        isOpen={onScanSuccess ? isModalOpen : isOpen}
+        onClose={closeDirectScanner}
+        onScanSuccess={handleDirectScan}
         onScanError={handleScanError}
         scanType={scanType}
       />
