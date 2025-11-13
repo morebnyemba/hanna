@@ -27,7 +27,7 @@ class ProductAdmin(admin.ModelAdmin):
     Admin interface for the Product model.
     """
     list_display = ('name', 'sku', 'product_type', 'category', 'price', 'is_active', 'stock_quantity', 'country_of_origin', 'brand')
-    search_fields = ('name', 'sku', 'description', 'brand')
+    search_fields = ('name', 'sku', 'description', 'brand', 'barcode')
     list_filter = ('product_type', 'category', 'is_active', 'country_of_origin', 'brand')
     ordering = ('name',)
     inlines = [ProductImageInline]
@@ -61,6 +61,6 @@ class SerializedItemAdmin(admin.ModelAdmin):
     Admin interface for the SerializedItem model.
     """
     list_display = ('serial_number', 'product', 'status')
-    search_fields = ('serial_number', 'product__name')
+    search_fields = ('serial_number', 'product__name', 'barcode')
     list_filter = ('status', 'product__category')
     autocomplete_fields = ('product',)
