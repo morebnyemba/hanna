@@ -13,7 +13,6 @@ const BarcodeScannerPage = () => {
   const {
     isOpen,
     isLoading,
-    scannedData,
     openScanner,
     closeScanner,
     handleScanSuccess,

@@ -39,6 +39,7 @@ const BarcodeScanner = ({
     return () => {
       stopScanner();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, inputMode]);
 
   useEffect(() => {
