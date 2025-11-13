@@ -379,10 +379,17 @@ class MetaWebhookAPIView(View):
         from conversations.models import Contact
 
         whatsapp_message_id = msg_data.get("id")
+        message_type = msg_data.get("type", "unknown")
+        
         logger.info(
             f"Handling message WAMID: {whatsapp_message_id} for Contact ID: {contact.id} "
-            f"({contact.whatsapp_id})."
+            f"({contact.whatsapp_id}), Type: {message_type}."
         )
+        
+        # Check if this is a flow response message
+        if message_type == "interactive" and msg_data.get("interactive", {}).get("type") == "nfm_reply":
+            self._handle_flow_response(msg_data, contact, active_config, log_entry)
+            return
 
         # --- Start of _handle_message logic (ensure this aligns with your intent) ---
         message_timestamp_str = msg_data.get("timestamp")
@@ -437,6 +444,22 @@ class MetaWebhookAPIView(View):
         
         # --- Send Read Receipt ---
         self._send_read_receipt(whatsapp_message_id, active_config)
+
+    def _handle_flow_response(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog):
+        """
+        Handles WhatsApp Flow response messages (nfm_reply type).
+        Delegates processing to flows.services.process_whatsapp_flow_response.
+        """
+        from flows.services import process_whatsapp_flow_response
+        
+        success, notes = process_whatsapp_flow_response(msg_data, contact, active_config)
+        
+        if success:
+            self._save_log(log_entry, 'processed', notes)
+            logger.info(f"Flow response processed successfully: {notes}")
+        else:
+            self._save_log(log_entry, 'failed', notes)
+            logger.error(f"Flow response processing failed: {notes}")
 
     def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig, show_typing_indicator: bool = True):
         """
