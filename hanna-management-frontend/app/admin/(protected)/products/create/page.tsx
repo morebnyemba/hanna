@@ -12,6 +12,7 @@ interface ProductCategory {
 }
 
 import { InputField, SelectField, TextAreaField } from '@/app/components/forms/FormComponents';
+import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
 
 export default function CreateProductPage() {
   const [formData, setFormData] = useState({
@@ -72,6 +73,13 @@ export default function CreateProductPage() {
     }));
   };
 
+  const handleBarcodeScanned = (barcode: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      sku: barcode,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -119,7 +127,10 @@ export default function CreateProductPage() {
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputField id="name" label="Product Name" value={formData.name} onChange={handleChange} placeholder="e.g., Solar Panel" required error={errors.name} />
-            <InputField id="sku" label="SKU" value={formData.sku} onChange={handleChange} placeholder="e.g., SP-001" required error={errors.sku} />
+            <div className="flex items-end">
+              <InputField id="sku" label="SKU" value={formData.sku} onChange={handleChange} placeholder="e.g., SP-001" required error={errors.sku} />
+              <BarcodeScannerButton onScanSuccess={handleBarcodeScanned} />
+            </div>
             <div className="md:col-span-2">
                 <TextAreaField id="description" label="Description" value={formData.description} onChange={handleChange} placeholder="A short description of the product." />
             </div>

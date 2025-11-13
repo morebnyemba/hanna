@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FiArchive, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
 
 interface Product {
   id: number;
@@ -95,6 +96,13 @@ export default function CreateSerializedItemPage() {
     }));
   };
 
+  const handleBarcodeScanned = (barcode: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      serial_number: barcode,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -141,7 +149,10 @@ export default function CreateSerializedItemPage() {
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InputField id="serial_number" label="Serial Number" value={formData.serial_number} onChange={handleChange} placeholder="e.g., 12345-ABCDE" required error={errors.serial_number} />
+            <div className="flex items-end">
+              <InputField id="serial_number" label="Serial Number" value={formData.serial_number} onChange={handleChange} placeholder="e.g., 12345-ABCDE" required error={errors.serial_number} />
+              <BarcodeScannerButton onScanSuccess={handleBarcodeScanned} />
+            </div>
             <SelectField id="product" label="Product" value={formData.product} onChange={handleChange} error={errors.product}>
                 <option value="">Select a product</option>
                 {products.map((prod) => (
