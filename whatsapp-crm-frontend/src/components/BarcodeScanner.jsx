@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from './ui/button';
 import { X, Camera, Keyboard } from 'lucide-react';
@@ -39,8 +39,7 @@ const BarcodeScanner = ({
     return () => {
       stopScanner();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, inputMode]);
+  }, [isOpen, inputMode, scanning, startScanner, stopScanner]);
 
   useEffect(() => {
     // Focus on input when device mode is selected
@@ -49,14 +48,19 @@ const BarcodeScanner = ({
     }
   }, [inputMode]);
 
-  const selectInputMode = async (mode) => {
-    setInputMode(mode);
-    if (mode === 'camera') {
-      await startScanner();
+  const stopScanner = useCallback(async () => {
+    if (html5QrcodeScannerRef.current) {
+      try {
+        await html5QrcodeScannerRef.current.stop();
+        html5QrcodeScannerRef.current = null;
+        setScanning(false);
+      } catch (error) {
+        console.error('Error stopping scanner:', error);
+      }
     }
-  };
+  }, []);
 
-  const startScanner = async () => {
+  const startScanner = useCallback(async () => {
     if (html5QrcodeScannerRef.current) {
       return; // Scanner already initialized
     }
@@ -116,17 +120,12 @@ const BarcodeScanner = ({
         onScanError(error);
       }
     }
-  };
+  }, [onScanSuccess, onScanError, stopScanner]);
 
-  const stopScanner = async () => {
-    if (html5QrcodeScannerRef.current) {
-      try {
-        await html5QrcodeScannerRef.current.stop();
-        html5QrcodeScannerRef.current = null;
-        setScanning(false);
-      } catch (error) {
-        console.error('Error stopping scanner:', error);
-      }
+  const selectInputMode = async (mode) => {
+    setInputMode(mode);
+    if (mode === 'camera') {
+      await startScanner();
     }
   };
 
