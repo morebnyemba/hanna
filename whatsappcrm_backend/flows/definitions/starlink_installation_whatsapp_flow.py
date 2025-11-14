@@ -42,13 +42,7 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Customer Information",
             "data": {
                 "full_name": {
-                    "type": "string",
-                    "__example__": "John Doe"
-                },
-                "contact_phone": {
-                    "type": "string",
-                    "__example__": "+263771234567"
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",
@@ -92,13 +86,7 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Starlink Kit Details",
             "data": {
                 "kit_type": {
-                    "type": "string",
-                    "__example__": "standard"
-                },
-                "mount_location": {
-                    "type": "string",
-                    "__example__": "On the roof"
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",
@@ -145,13 +133,7 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Installation Schedule",
             "data": {
                 "preferred_date": {
-                    "type": "string",
-                    "__example__": "2024-12-25"
-                },
-                "availability": {
-                    "type": "string",
-                    "__example__": "morning"
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",
@@ -195,9 +177,7 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Installation Location",
             "data": {
                 "address": {
-                    "type": "string",
-                    "__example__": "123 Main Street, Harare"
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",

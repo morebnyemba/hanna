@@ -42,13 +42,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Your Information",
             "data": {
                 "full_name": {
-                    "type": "string",
-                    "__example__": "Jane Smith"
-                },
-                "contact_phone": {
-                    "type": "string",
-                    "__example__": "+263771234567"
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",
@@ -91,9 +85,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Roof Information",
             "data": {
                 "roof_type": {
-                    "type": "string",
-                    "__example__": "tile"
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",
@@ -133,13 +125,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Solar Panel Information",
             "data": {
                 "panel_type": {
-                    "type": "string",
-                    "__example__": "monocrystalline"
-                },
-                "panel_count": {
-                    "type": "number",
-                    "__example__": 8
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",
@@ -186,13 +172,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Service Schedule",
             "data": {
                 "preferred_date": {
-                    "type": "string",
-                    "__example__": "2024-12-25"
-                },
-                "availability": {
-                    "type": "string",
-                    "__example__": "morning"
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",
@@ -236,9 +216,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Service Location",
             "data": {
                 "address": {
-                    "type": "string",
-                    "__example__": "456 Solar Avenue, Bulawayo"
-                }
+                    "type": "string"
             },
             "layout": {
                 "type": "SingleColumnLayout",
