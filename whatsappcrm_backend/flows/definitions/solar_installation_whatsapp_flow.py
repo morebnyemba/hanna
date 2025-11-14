@@ -625,7 +625,20 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                         "type": "Footer",
                         "label": "Submit Request",
                         "on-click-action": {
-                            "name": "complete"
+                            "name": "complete",
+                            "payload": {
+                                "installation_type": "${data.installation_type}",
+                                "order_number": "${data.order_number}",
+                                "branch": "${data.branch}",
+                                "sales_person": "${data.sales_person}",
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "alt_contact_name": "${data.alt_contact_name}",
+                                "alt_contact_phone": "${data.alt_contact_phone}",
+                                "preferred_date": "${data.preferred_date}",
+                                "availability": "${data.availability}",
+                                "address": "${form.address}"
+                            }
                         }
                     }
                 ]

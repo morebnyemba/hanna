@@ -367,7 +367,16 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                         "type": "Footer",
                         "label": "Submit Request",
                         "on-click-action": {
-                            "name": "complete"
+                            "name": "complete",
+                            "payload": {
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "kit_type": "${data.kit_type}",
+                                "mount_location": "${data.mount_location}",
+                                "preferred_date": "${data.preferred_date}",
+                                "availability": "${data.availability}",
+                                "address": "${form.address}"
+                            }
                         }
                     }
                 ]
