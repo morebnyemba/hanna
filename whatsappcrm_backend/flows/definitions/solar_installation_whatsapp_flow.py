@@ -86,6 +86,10 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "id": "ORDER_INFO",
             "title": "Order Information",
             "data": {
+                "installation_type": {
+                    "type": "string",
+                    "__example__": "residential"
+                },
                 "order_number": {
                     "type": "string",
                     "__example__": "HAN-12345"
@@ -145,6 +149,18 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "id": "SALES_INFO",
             "title": "Sales Information",
             "data": {
+                "installation_type": {
+                    "type": "string",
+                    "__example__": "residential"
+                },
+                "order_number": {
+                    "type": "string",
+                    "__example__": "HAN-12345"
+                },
+                "branch": {
+                    "type": "string",
+                    "__example__": "Harare"
+                },
                 "sales_person": {
                     "type": "string",
                     "__example__": "John Smith"
@@ -189,6 +205,22 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "id": "CUSTOMER_INFO",
             "title": "Customer Information",
             "data": {
+                "installation_type": {
+                    "type": "string",
+                    "__example__": "residential"
+                },
+                "order_number": {
+                    "type": "string",
+                    "__example__": "HAN-12345"
+                },
+                "branch": {
+                    "type": "string",
+                    "__example__": "Harare"
+                },
+                "sales_person": {
+                    "type": "string",
+                    "__example__": "John Smith"
+                },
                 "full_name": {
                     "type": "string",
                     "__example__": "Jane Doe"
@@ -273,6 +305,38 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "id": "SCHEDULE",
             "title": "Installation Schedule",
             "data": {
+                "installation_type": {
+                    "type": "string",
+                    "__example__": "residential"
+                },
+                "order_number": {
+                    "type": "string",
+                    "__example__": "HAN-12345"
+                },
+                "branch": {
+                    "type": "string",
+                    "__example__": "Harare"
+                },
+                "sales_person": {
+                    "type": "string",
+                    "__example__": "John Smith"
+                },
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "alt_contact_name": {
+                    "type": "string",
+                    "__example__": "John Doe"
+                },
+                "alt_contact_phone": {
+                    "type": "string",
+                    "__example__": "+263779876543"
+                },
                 "preferred_date": {
                     "type": "string",
                     "__example__": "2025-12-25"
@@ -339,6 +403,46 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "id": "LOCATION",
             "title": "Installation Location",
             "data": {
+                "installation_type": {
+                    "type": "string",
+                    "__example__": "residential"
+                },
+                "order_number": {
+                    "type": "string",
+                    "__example__": "HAN-12345"
+                },
+                "branch": {
+                    "type": "string",
+                    "__example__": "Harare"
+                },
+                "sales_person": {
+                    "type": "string",
+                    "__example__": "John Smith"
+                },
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "alt_contact_name": {
+                    "type": "string",
+                    "__example__": "John Doe"
+                },
+                "alt_contact_phone": {
+                    "type": "string",
+                    "__example__": "+263779876543"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
+                },
                 "address": {
                     "type": "string",
                     "__example__": "123 Main Street, Harare"

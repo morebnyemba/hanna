@@ -96,6 +96,14 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "id": "KIT_DETAILS",
             "title": "Starlink Kit Details",
             "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
                 "kit_type": {
                     "type": "string",
                     "__example__": "standard"
@@ -155,6 +163,22 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "id": "INSTALLATION_SCHEDULE",
             "title": "Installation Schedule",
             "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "kit_type": {
+                    "type": "string",
+                    "__example__": "standard"
+                },
+                "mount_location": {
+                    "type": "string",
+                    "__example__": "On the roof"
+                },
                 "preferred_date": {
                     "type": "string",
                     "__example__": "2025-12-25"
@@ -213,6 +237,30 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "id": "LOCATION_INFO",
             "title": "Installation Location",
             "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "kit_type": {
+                    "type": "string",
+                    "__example__": "standard"
+                },
+                "mount_location": {
+                    "type": "string",
+                    "__example__": "On the roof"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
+                },
                 "address": {
                     "type": "string",
                     "__example__": "123 Main Street, Harare"
