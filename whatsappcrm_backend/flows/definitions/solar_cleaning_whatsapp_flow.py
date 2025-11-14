@@ -31,7 +31,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "CUSTOMER_INFO"
-                            }
+                            },
+                            "payload": {}
                         }
                     }
                 ]
@@ -80,6 +81,10 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "ROOF_DETAILS"
+                            },
+                            "payload": {
+                                "full_name": "${form.full_name}",
+                                "contact_phone": "${form.contact_phone}"
                             }
                         }
                     }
@@ -122,6 +127,11 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "PANEL_DETAILS"
+                            },
+                            "payload": {
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "roof_type": "${form.roof_type}"
                             }
                         }
                     }
@@ -175,6 +185,13 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "SCHEDULE"
+                            },
+                            "payload": {
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "roof_type": "${data.roof_type}",
+                                "panel_type": "${form.panel_type}",
+                                "panel_count": "${form.panel_count}"
                             }
                         }
                     }
@@ -225,6 +242,15 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "LOCATION"
+                            },
+                            "payload": {
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "roof_type": "${data.roof_type}",
+                                "panel_type": "${data.panel_type}",
+                                "panel_count": "${data.panel_count}",
+                                "preferred_date": "${form.preferred_date}",
+                                "availability": "${form.availability}"
                             }
                         }
                     }

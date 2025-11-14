@@ -32,7 +32,8 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "INSTALLATION_TYPE"
-                            }
+                            },
+                            "payload": {}
                         }
                     }
                 ]
@@ -72,6 +73,9 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "ORDER_INFO"
+                            },
+                            "payload": {
+                                "installation_type": "${form.installation_type}"
                             }
                         }
                     }
@@ -126,6 +130,11 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "SALES_INFO"
+                            },
+                            "payload": {
+                                "installation_type": "${data.installation_type}",
+                                "order_number": "${form.order_number}",
+                                "branch": "${form.branch}"
                             }
                         }
                     }
@@ -164,6 +173,12 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "CUSTOMER_INFO"
+                            },
+                            "payload": {
+                                "installation_type": "${data.installation_type}",
+                                "order_number": "${data.order_number}",
+                                "branch": "${data.branch}",
+                                "sales_person": "${form.sales_person}"
                             }
                         }
                     }
@@ -238,6 +253,16 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "SCHEDULE"
+                            },
+                            "payload": {
+                                "installation_type": "${data.installation_type}",
+                                "order_number": "${data.order_number}",
+                                "branch": "${data.branch}",
+                                "sales_person": "${data.sales_person}",
+                                "full_name": "${form.full_name}",
+                                "contact_phone": "${form.contact_phone}",
+                                "alt_contact_name": "${form.alt_contact_name}",
+                                "alt_contact_phone": "${form.alt_contact_phone}"
                             }
                         }
                     }
@@ -292,6 +317,18 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "LOCATION"
+                            },
+                            "payload": {
+                                "installation_type": "${data.installation_type}",
+                                "order_number": "${data.order_number}",
+                                "branch": "${data.branch}",
+                                "sales_person": "${data.sales_person}",
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "alt_contact_name": "${data.alt_contact_name}",
+                                "alt_contact_phone": "${data.alt_contact_phone}",
+                                "preferred_date": "${form.preferred_date}",
+                                "availability": "${form.availability}"
                             }
                         }
                     }
