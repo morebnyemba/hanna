@@ -178,6 +178,7 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "address": {
                     "type": "string"
+                }
             },
             "layout": {
                 "type": "SingleColumnLayout",
