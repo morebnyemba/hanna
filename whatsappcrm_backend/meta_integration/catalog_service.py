@@ -1,7 +1,11 @@
 import requests
+import logging
 from django.conf import settings
 from .models import MetaAppConfig
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
+
 
 class MetaCatalogService:
     def __init__(self):
@@ -30,6 +34,22 @@ class MetaCatalogService:
         """
         Constructs a robust product data payload from a Product instance,
         omitting fields that are null or empty to prevent '400 Bad Request' errors.
+        
+        Reference: https://developers.facebook.com/docs/marketing-api/catalog
+        
+        Required fields per Meta API:
+        - retailer_id: Unique product identifier (mapped from SKU)
+        - name: Product name
+        - availability: in stock | out of stock | available for order
+        - condition: new | refurbished | used
+        - price: Price as string with decimal (e.g., "100.00")
+        - currency: ISO 4217 currency code (e.g., "USD")
+        - link: Product URL
+        
+        Optional fields:
+        - description: Product description
+        - brand: Brand name
+        - image_link: URL to product image
         """
         # SKU is mandatory for the retailer_id
         if not product.sku:
@@ -65,9 +85,15 @@ class MetaCatalogService:
         url = f"{self.base_url}/{self.catalog_id}/products"
         data = self._get_product_data(product)
         
+        logger.info(f"Creating product in Meta Catalog: {product.name} (SKU: {product.sku})")
+        logger.debug(f"Payload: {data}")
+        
         response = requests.post(url, headers=self._get_headers(), json=data)
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        
+        logger.info(f"Successfully created product in catalog. Response: {result}")
+        return result
 
     def update_product_in_catalog(self, product):
         if not product.whatsapp_catalog_id:
@@ -76,15 +102,27 @@ class MetaCatalogService:
         url = f"{self.base_url}/{product.whatsapp_catalog_id}"
         data = self._get_product_data(product)
         
+        logger.info(f"Updating product in Meta Catalog: {product.name} (Catalog ID: {product.whatsapp_catalog_id})")
+        logger.debug(f"Payload: {data}")
+        
         response = requests.post(url, headers=self._get_headers(), json=data)
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        
+        logger.info(f"Successfully updated product in catalog. Response: {result}")
+        return result
 
     def delete_product_from_catalog(self, product):
         if not product.whatsapp_catalog_id:
             raise ValueError("Product does not have a WhatsApp Catalog ID.")
         
         url = f"{self.base_url}/{product.whatsapp_catalog_id}"
+        
+        logger.info(f"Deleting product from Meta Catalog: {product.name} (Catalog ID: {product.whatsapp_catalog_id})")
+        
         response = requests.delete(url, headers=self._get_headers())
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        
+        logger.info(f"Successfully deleted product from catalog. Response: {result}")
+        return result
