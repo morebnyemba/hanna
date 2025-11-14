@@ -321,9 +321,9 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "roof_type": "${data.roof_type}",
                                 "panel_type": "${form.panel_type}",
                                 "panel_count": "${form.panel_count}",
-                                "preferred_date": "${data.preferred_date}",
-                                "availability": "${data.availability}",
-                                "address": "${data.address}"
+                                "preferred_date": "",
+                                "availability": "",
+                                "address": ""
                             }
                         }
                     }
@@ -407,7 +407,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "panel_count": "${data.panel_count}",
                                 "preferred_date": "${form.preferred_date}",
                                 "availability": "${form.availability}",
-                                "address": "${data.address}"
+                                "address": ""
                             }
                         }
                     }

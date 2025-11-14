@@ -305,8 +305,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                                 "loan_national_id": "${data.loan_national_id}",
                                 "loan_employment_status": "${form.loan_employment_status}",
                                 "loan_monthly_income": "${form.loan_monthly_income}",
-                                "loan_request_amount": "${data.loan_request_amount}",
-                                "loan_product_interest": "${data.loan_product_interest}"
+                                "loan_request_amount": 0,
+                                "loan_product_interest": ""
                             }
                         }
                     }
