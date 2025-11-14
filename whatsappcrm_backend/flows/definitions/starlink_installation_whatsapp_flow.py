@@ -11,7 +11,16 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
         {
             "id": "WELCOME",
             "title": "Starlink Installation",
-            "data": {},
+            "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -32,7 +41,10 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                                 "type": "screen",
                                 "name": "CUSTOMER_INFO"
                             },
-                            "payload": {}
+                            "payload": {
+                                "full_name": "",
+                                "contact_phone": ""
+                            }
                         }
                     }
                 ]
@@ -49,6 +61,14 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                 "contact_phone": {
                     "type": "string",
                     "__example__": "+263771234567"
+                },
+                "kit_type": {
+                    "type": "string",
+                    "__example__": "standard"
+                },
+                "mount_location": {
+                    "type": "string",
+                    "__example__": "On the roof"
                 }
             },
             "layout": {
@@ -85,7 +105,9 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                             },
                             "payload": {
                                 "full_name": "${form.full_name}",
-                                "contact_phone": "${form.contact_phone}"
+                                "contact_phone": "${form.contact_phone}",
+                                "kit_type": "",
+                                "mount_location": ""
                             }
                         }
                     }
@@ -111,6 +133,14 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                 "mount_location": {
                     "type": "string",
                     "__example__": "On the roof"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
                 }
             },
             "layout": {
@@ -152,7 +182,9 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                                 "full_name": "${data.full_name}",
                                 "contact_phone": "${data.contact_phone}",
                                 "kit_type": "${form.kit_type}",
-                                "mount_location": "${form.mount_location}"
+                                "mount_location": "${form.mount_location}",
+                                "preferred_date": "",
+                                "availability": ""
                             }
                         }
                     }
@@ -186,6 +218,10 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                 "availability": {
                     "type": "string",
                     "__example__": "morning"
+                },
+                "address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
@@ -226,7 +262,8 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                                 "kit_type": "${data.kit_type}",
                                 "mount_location": "${data.mount_location}",
                                 "preferred_date": "${form.preferred_date}",
-                                "availability": "${form.availability}"
+                                "availability": "${form.availability}",
+                                "address": ""
                             }
                         }
                     }

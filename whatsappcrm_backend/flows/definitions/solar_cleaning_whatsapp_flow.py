@@ -11,7 +11,16 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
         {
             "id": "WELCOME",
             "title": "Solar Panel Cleaning",
-            "data": {},
+            "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -32,7 +41,10 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "type": "screen",
                                 "name": "CUSTOMER_INFO"
                             },
-                            "payload": {}
+                            "payload": {
+                                "full_name": "",
+                                "contact_phone": ""
+                            }
                         }
                     }
                 ]
@@ -49,6 +61,10 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                 "contact_phone": {
                     "type": "string",
                     "__example__": "+263771234567"
+                },
+                "roof_type": {
+                    "type": "string",
+                    "__example__": "tile"
                 }
             },
             "layout": {
@@ -84,7 +100,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                             },
                             "payload": {
                                 "full_name": "${form.full_name}",
-                                "contact_phone": "${form.contact_phone}"
+                                "contact_phone": "${form.contact_phone}",
+                                "roof_type": ""
                             }
                         }
                     }
@@ -106,6 +123,14 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                 "roof_type": {
                     "type": "string",
                     "__example__": "tile"
+                },
+                "panel_type": {
+                    "type": "string",
+                    "__example__": "monocrystalline"
+                },
+                "panel_count": {
+                    "type": "string",
+                    "__example__": "10"
                 }
             },
             "layout": {
@@ -139,7 +164,9 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                             "payload": {
                                 "full_name": "${data.full_name}",
                                 "contact_phone": "${data.contact_phone}",
-                                "roof_type": "${form.roof_type}"
+                                "roof_type": "${form.roof_type}",
+                                "panel_type": "",
+                                "panel_count": ""
                             }
                         }
                     }
@@ -169,6 +196,14 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                 "panel_count": {
                     "type": "string",
                     "__example__": "10"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
                 }
             },
             "layout": {
@@ -211,7 +246,9 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "contact_phone": "${data.contact_phone}",
                                 "roof_type": "${data.roof_type}",
                                 "panel_type": "${form.panel_type}",
-                                "panel_count": "${form.panel_count}"
+                                "panel_count": "${form.panel_count}",
+                                "preferred_date": "",
+                                "availability": ""
                             }
                         }
                     }
@@ -249,6 +286,10 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                 "availability": {
                     "type": "string",
                     "__example__": "morning"
+                },
+                "address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
@@ -290,7 +331,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "panel_type": "${data.panel_type}",
                                 "panel_count": "${data.panel_count}",
                                 "preferred_date": "${form.preferred_date}",
-                                "availability": "${form.availability}"
+                                "availability": "${form.availability}",
+                                "address": ""
                             }
                         }
                     }
