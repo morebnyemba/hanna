@@ -43,7 +43,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "data": {
                 "full_name": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -86,7 +86,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "data": {
                 "roof_type": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -126,7 +126,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "data": {
                 "panel_type": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -173,7 +173,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "data": {
                 "preferred_date": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -217,7 +217,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "data": {
                 "address": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [

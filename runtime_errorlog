@@ -1,206 +1,61 @@
-Processing template: 'hanna_admin_24h_window_reminder'...
-^[[2~  SKIPPED: Template 'hanna_admin_24h_window_reminder' cannot be updated because it is in a non-editable status (e.g., pending, rejected).
-
-Processing template: 'hanna_admin_order_and_install_created'...
-  FAILED to update template 'hanna_admin_order_and_install_created'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 0) has invalid format",
-    "fbtrace_id": "AHH-RqOz-ZjUms7llNzcCmz"
-  }
-}
-
-Processing template: 'hanna_assessment_status_updated'...
-  FAILED to update template 'hanna_assessment_status_updated'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388043,
-    "is_transient": false,
-    "error_user_title": "Message template \"components\" param is missing expected field(s)",
-    "error_user_msg": "component of type BODY is missing expected field(s) (example)",
-    "fbtrace_id": "AKfAOZQFg_0eSv8Iq1Dn9G5"
-  }
-}
-
-Processing template: 'hanna_customer_invoice_confirmation'...
-  FAILED to update template 'hanna_customer_invoice_confirmation'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388043,
-    "is_transient": false,
-    "error_user_title": "Message template \"components\" param is missing expected field(s)",
-    "error_user_msg": "component of type BODY is missing expected field(s) (example)",
-    "fbtrace_id": "AGFLKXvR3NcLcf8L7ABMlvf"
-  }
-}
-
-Processing template: 'hanna_human_handover_flow'...
-  FAILED to update template 'hanna_human_handover_flow'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 1) has invalid format",
-    "fbtrace_id": "AbxXpVbw9_WRKNB4oOhptmx"
-  }
-}
-
-Processing template: 'hanna_invoice_processed_successfully'...
-  FAILED to update template 'hanna_invoice_processed_successfully'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388043,
-    "is_transient": false,
-    "error_user_title": "Message template \"components\" param is missing expected field(s)",
-    "error_user_msg": "component of type BODY is missing expected field(s) (example)",
-    "fbtrace_id": "AKJFTUDLdrRFfIhmvQUGjyh"
-  }
-}
-
-Processing template: 'hanna_job_card_created_successfully'...
-  FAILED to update template 'hanna_job_card_created_successfully'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 0) has invalid format",
-    "fbtrace_id": "AW1ImIehjc8KEvwZU1ZVZib"
-  }
-}
-
-Processing template: 'hanna_message_send_failure'...
-  SKIPPED: Template 'hanna_message_send_failure' cannot be updated because it is in a non-editable status (e.g., pending, rejected).
-
-Processing template: 'hanna_new_installation_request'...
-  FAILED to update template 'hanna_new_installation_request'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 0) has invalid format",
-    "fbtrace_id": "AFluBv5F3s_pNg78Afmq1H9"
-  }
-}
-
-Processing template: 'hanna_new_online_order_placed'...
-  FAILED to update template 'hanna_new_online_order_placed'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 0) has invalid format",
-    "fbtrace_id": "ADEjQY1SoEsc8RpSZkTBrAy"
-  }
-}
-
-Processing template: 'hanna_new_order_created'...
-  FAILED to update template 'hanna_new_order_created'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 0) has invalid format",
-    "fbtrace_id": "AapJ6FJnmjAgpl9cXg6fP5s"
-  }
-}
-
-Processing template: 'hanna_new_placeholder_order_created'...
-  SKIPPED: Template 'hanna_new_placeholder_order_created' cannot be updated because it is in a non-editable status (e.g., pending, rejected).
-
-Processing template: 'hanna_new_site_assessment_request'...
-  FAILED to update template 'hanna_new_site_assessment_request'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 0) has invalid format",
-    "fbtrace_id": "AjKsPyWNvmSS0uFvDSzo0t2"
-  }
-}
-
-Processing template: 'hanna_new_solar_cleaning_request'...
-  FAILED to update template 'hanna_new_solar_cleaning_request'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 0) has invalid format",
-    "fbtrace_id": "AwwG6PVUs7995AVgknct0Xa"
-  }
-}
-
-Processing template: 'hanna_new_starlink_installation_request'...
-  FAILED to update template 'hanna_new_starlink_installation_request'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388052,
-    "is_transient": false,
-    "error_user_title": "Message template button has invalid URL format",
-    "error_user_msg": "Button URL (at index 0) has invalid format",
-    "fbtrace_id": "AOZfIaLQenifoE6smJxAhvU"
-  }
-}
-
-Processing template: 'hanna_order_payment_status_updated'...
-  FAILED to update template 'hanna_order_payment_status_updated'. Status: 400
-  Full Error Response: {
-  "error": {
-    "message": "Invalid parameter",
-    "type": "OAuthException",
-    "code": 100,
-    "error_subcode": 2388043,
-    "is_transient": false,
-    "error_user_title": "Message template \"components\" param is missing expected field(s)",
-    "error_user_msg": "component of type BODY is missing expected field(s) (example)",
-    "fbtrace_id": "AACBszRzeat75Jq_LBJQf4O"
-  }
-}
-
---- Template Sync Finished ---
-root@srv967860:~/HANNA# 
+root@srv967860:~/HANNA# git pull origin main
+remote: Enumerating objects: 13, done.
+remote: Counting objects: 100% (13/13), done.
+remote: Compressing objects: 100% (1/1), done.
+remote: Total 8 (delta 7), reused 8 (delta 7), pack-reused 0 (from 0)
+Unpacking objects: 100% (8/8), 2.57 KiB | 527.00 KiB/s, done.
+From https://github.com/morebnyemba/HANNA
+ * branch            main       -> FETCH_HEAD
+   783879e..344da48  main       -> origin/main
+Updating 783879e..344da48
+Fast-forward
+ whatsappcrm_backend/flows/definitions/solar_cleaning_whatsapp_flow.py        | 10 +++++-----
+ whatsappcrm_backend/flows/definitions/solar_installation_whatsapp_flow.py    | 12 ++++++------
+ whatsappcrm_backend/flows/definitions/starlink_installation_whatsapp_flow.py |  1 +
+ 3 files changed, 12 insertions(+), 11 deletions(-)
+root@srv967860:~/HANNA# docker compose exec backend python manage.py sync_whatsapp_flows --publish
+WARN[0000] /root/HANNA/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[2025-11-14 07:16:49] INFO services Registered flow action: 'send_group_notification'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'update_lead_score'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'create_order_from_context'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'create_order'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'generate_unique_order_number'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'create_order_with_items'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'calculate_order_total'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'update_order_fields'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'update_model_instance'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'create_order_from_cart'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'generate_unique_assessment_id'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'create_placeholder_order'
+[2025-11-14 07:16:49] INFO services Registered flow action: 'normalize_order_number'
+Traceback (most recent call last):
+  File "/app/manage.py", line 22, in <module>
+    main()
+  File "/app/manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/__init__.py", line 275, in fetch_command
+    klass = load_command_class(app_name, subcommand)
+  File "/usr/local/lib/python3.10/site-packages/django/core/management/__init__.py", line 48, in load_command_class
+    module = import_module("%s.management.commands.%s" % (app_name, name))
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/app/flows/management/commands/sync_whatsapp_flows.py", line 13, in <module>
+    from flows.definitions.starlink_installation_whatsapp_flow import (
+  File "/app/flows/definitions/starlink_installation_whatsapp_flow.py", line 214
+    ]
+    ^
+SyntaxError: closing parenthesis ']' does not match opening parenthesis '{' on line 131
+root@srv967860:~/HANNA# git pull origin main
+From https://github.com/morebnyemba/HANNA
+ * branch            main       -> FETCH_HEAD
+Already up to date.

@@ -44,7 +44,7 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "installation_type": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -82,7 +82,7 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "order_number": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -130,7 +130,7 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "sales_person": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -166,7 +166,7 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "full_name": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -226,7 +226,7 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "preferred_date": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -274,7 +274,7 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "address": {
                     "type": "string"
-                },
+                }},
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
