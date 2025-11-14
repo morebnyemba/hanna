@@ -43,7 +43,8 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Installation Type",
             "data": {
                 "installation_type": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "residential"
                 }
             },
             "layout": {
@@ -82,10 +83,12 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Order Information",
             "data": {
                 "order_number": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "HAN-12345"
                 },
                 "branch": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "Harare"
                 }
             },
             "layout": {
@@ -134,7 +137,8 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Sales Information",
             "data": {
                 "sales_person": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "John Smith"
                 }
             },
             "layout": {
@@ -171,16 +175,20 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Customer Information",
             "data": {
                 "full_name": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "Jane Doe"
                 },
                 "contact_phone": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "+263771234567"
                 },
                 "alt_contact_name": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "John Doe"
                 },
                 "alt_contact_phone": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "+263779876543"
                 }
             },
             "layout": {
@@ -241,10 +249,12 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Installation Schedule",
             "data": {
                 "preferred_date": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "2025-12-25"
                 },
                 "availability": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "morning"
                 }
             },
             "layout": {
@@ -293,7 +303,8 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "title": "Installation Location",
             "data": {
                 "address": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
