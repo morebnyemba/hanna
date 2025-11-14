@@ -12,7 +12,24 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
         {
             "id": "WELCOME",
             "title": "Solar Installation",
-            "data": {},
+            "data": {
+                "installation_type": {
+                    "type": "string",
+                    "__example__": "residential"
+                },
+                "order_number": {
+                    "type": "string",
+                    "__example__": "HAN-12345"
+                },
+                "branch": {
+                    "type": "string",
+                    "__example__": "Harare"
+                },
+                "sales_person": {
+                    "type": "string",
+                    "__example__": "John Smith"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -33,7 +50,16 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                                 "type": "screen",
                                 "name": "INSTALLATION_TYPE"
                             },
-                            "payload": {}
+                            "payload": {
+                                "installation_type": "",
+                                "order_number": "",
+                                "branch": "",
+                                "sales_person": "",
+                                "full_name": "",
+                                "contact_phone": "",
+                                "alt_contact_name": "",
+                                "alt_contact_phone": ""
+                            }
                         }
                     }
                 ]
@@ -46,6 +72,34 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                 "installation_type": {
                     "type": "string",
                     "__example__": "residential"
+                },
+                "order_number": {
+                    "type": "string",
+                    "__example__": "HAN-12345"
+                },
+                "branch": {
+                    "type": "string",
+                    "__example__": "Harare"
+                },
+                "sales_person": {
+                    "type": "string",
+                    "__example__": "John Smith"
+                },
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "alt_contact_name": {
+                    "type": "string",
+                    "__example__": "John Doe"
+                },
+                "alt_contact_phone": {
+                    "type": "string",
+                    "__example__": "+263779876543"
                 }
             },
             "layout": {
@@ -75,7 +129,16 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "ORDER_INFO"
                             },
                             "payload": {
-                                "installation_type": "${form.installation_type}"
+                                "installation_type": "${form.installation_type}",
+                                "order_number": "",
+                                "branch": "",
+                                "sales_person": "",
+                                "full_name": "",
+                                "contact_phone": "",
+                                "alt_contact_name": "",
+                                "alt_contact_phone": "",
+                                "preferred_date": "",
+                                "availability": ""
                             }
                         }
                     }
@@ -97,6 +160,34 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                 "branch": {
                     "type": "string",
                     "__example__": "Harare"
+                },
+                "sales_person": {
+                    "type": "string",
+                    "__example__": "John Smith"
+                },
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "alt_contact_name": {
+                    "type": "string",
+                    "__example__": "John Doe"
+                },
+                "alt_contact_phone": {
+                    "type": "string",
+                    "__example__": "+263779876543"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
                 }
             },
             "layout": {
@@ -138,7 +229,15 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                             "payload": {
                                 "installation_type": "${data.installation_type}",
                                 "order_number": "${form.order_number}",
-                                "branch": "${form.branch}"
+                                "branch": "${form.branch}",
+                                "sales_person": "",
+                                "full_name": "",
+                                "contact_phone": "",
+                                "alt_contact_name": "",
+                                "alt_contact_phone": "",
+                                "preferred_date": "",
+                                "availability": "",
+                                "address": ""
                             }
                         }
                     }
@@ -164,6 +263,34 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                 "sales_person": {
                     "type": "string",
                     "__example__": "John Smith"
+                },
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "alt_contact_name": {
+                    "type": "string",
+                    "__example__": "John Doe"
+                },
+                "alt_contact_phone": {
+                    "type": "string",
+                    "__example__": "+263779876543"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
+                },
+                "address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
@@ -194,7 +321,14 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                                 "installation_type": "${data.installation_type}",
                                 "order_number": "${data.order_number}",
                                 "branch": "${data.branch}",
-                                "sales_person": "${form.sales_person}"
+                                "sales_person": "${form.sales_person}",
+                                "full_name": "",
+                                "contact_phone": "",
+                                "alt_contact_name": "",
+                                "alt_contact_phone": "",
+                                "preferred_date": "",
+                                "availability": "",
+                                "address": ""
                             }
                         }
                     }
@@ -236,6 +370,18 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                 "alt_contact_phone": {
                     "type": "string",
                     "__example__": "+263779876543"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
+                },
+                "address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
@@ -294,7 +440,10 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                                 "full_name": "${form.full_name}",
                                 "contact_phone": "${form.contact_phone}",
                                 "alt_contact_name": "${form.alt_contact_name}",
-                                "alt_contact_phone": "${form.alt_contact_phone}"
+                                "alt_contact_phone": "${form.alt_contact_phone}",
+                                "preferred_date": "",
+                                "availability": "",
+                                "address": ""
                             }
                         }
                     }
@@ -344,6 +493,10 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                 "availability": {
                     "type": "string",
                     "__example__": "morning"
+                },
+                "address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
@@ -392,7 +545,8 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
                                 "alt_contact_name": "${data.alt_contact_name}",
                                 "alt_contact_phone": "${data.alt_contact_phone}",
                                 "preferred_date": "${form.preferred_date}",
-                                "availability": "${form.availability}"
+                                "availability": "${form.availability}",
+                                "address": ""
                             }
                         }
                     }
