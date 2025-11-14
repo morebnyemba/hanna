@@ -3,7 +3,7 @@
 LOAN_APPLICATION_FLOW = {
     "name": "loan_application_flow",
     "friendly_name": "Loan Application",
-    "description": "Guides a user through applying for a cash or product loan.",
+    "description": "Initiates the WhatsApp interactive flow for loan applications.",
     "trigger_keywords": ["loan", "apply for loan"],
     "is_active": True,
     "steps": [
@@ -18,8 +18,66 @@ LOAN_APPLICATION_FLOW = {
                 }]
             },
             "transitions": [
-                {"to_step": "start_loan_application", "condition_config": {"type": "always_true"}}
+                {"to_step": "check_whatsapp_flow", "condition_config": {"type": "always_true"}}
             ]
+        },
+        {
+            "name": "check_whatsapp_flow",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "flows",
+                    "model_name": "WhatsAppFlow",
+                    "variable_name": "loan_application_whatsapp_flow",
+                    "filters_template": {
+                        "name": "loan_application_whatsapp",
+                        "sync_status": "published"
+                    },
+                    "fields_to_return": ["flow_id", "friendly_name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "send_whatsapp_flow", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "loan_application_whatsapp_flow.0"}},
+                {"to_step": "fallback_to_legacy", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "send_whatsapp_flow",
+            "type": "send_message",
+            "config": {
+                "message_type": "interactive",
+                "interactive": {
+                    "type": "flow",
+                    "body": {
+                        "text": "Please complete our loan application form to get started."
+                    },
+                    "action": {
+                        "name": "flow",
+                        "parameters": {
+                            "flow_message_version": "3",
+                            "flow_token": "{{ contact.id }}-loan-application-{{ 'now'|date:'U' }}",
+                            "flow_id": "{{ loan_application_whatsapp_flow.0.flow_id }}",
+                            "flow_cta": "Start Application",
+                            "flow_action": "navigate",
+                            "flow_action_payload": {
+                                "screen": "WELCOME"
+                            }
+                        }
+                    }
+                }
+            },
+            "transitions": [{"to_step": "end_flow_success_interactive", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "fallback_to_legacy",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {"body": "Sorry, the interactive form is currently unavailable. Please contact our support team to apply for a loan."}
+            },
+            "transitions": [{"to_step": "end_flow_cancelled", "condition_config": {"type": "always_true"}}]
         },
         {
             "name": "start_loan_application",
@@ -221,6 +279,16 @@ LOAN_APPLICATION_FLOW = {
                 "message_config": {
                     "message_type": "text",
                     "text": {"body": "Your loan application has been cancelled. Type 'menu' to see other options."}
+                }
+            }
+        },
+        {
+            "name": "end_flow_success_interactive",
+            "type": "end_flow",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {"body": "Thank you! Please complete the form to submit your loan application. Our finance team will contact you within 24-48 hours with the next steps."}
                 }
             }
         }
