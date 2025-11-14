@@ -49,7 +49,7 @@ class MetaCatalogService:
         Optional fields:
         - description: Product description
         - brand: Brand name
-        - image_link: URL to product image
+        - image_link: URL to product image (must be absolute URL)
         """
         # SKU is mandatory for the retailer_id
         if not product.sku:
@@ -73,9 +73,17 @@ class MetaCatalogService:
             data["brand"] = product.brand
 
         # Get the first image URL, if available
+        # Meta API requires absolute URLs, not relative paths
         first_image = product.images.first()
         if first_image and hasattr(first_image.image, 'url'):
-            data["image_link"] = first_image.image.url
+            image_url = first_image.image.url
+            # If the URL is relative, convert it to absolute
+            if image_url.startswith('/'):
+                # Get the backend domain from settings
+                backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
+                # Use https as the application is behind an HTTPS proxy
+                image_url = f"https://{backend_domain}{image_url}"
+            data["image_link"] = image_url
 
         return data
 

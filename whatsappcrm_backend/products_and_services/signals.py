@@ -5,11 +5,15 @@ These signals automatically trigger catalog operations when products are
 created, updated, or deleted in the local database.
 """
 import logging
+import threading
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Product
 
 logger = logging.getLogger(__name__)
+
+# Thread-local storage to prevent recursive signal calls
+_thread_locals = threading.local()
 
 
 @receiver(post_save, sender=Product)
@@ -23,6 +27,23 @@ def sync_product_to_meta_catalog(sender, instance, created, **kwargs):
         created: Boolean indicating if this is a new instance
         **kwargs: Additional keyword arguments
     """
+    # Prevent recursive calls - check if we're already processing this product
+    processing_key = f"syncing_product_{instance.pk}"
+    if getattr(_thread_locals, processing_key, False):
+        logger.debug(
+            f"Skipping recursive signal for Product '{instance.name}' (ID: {instance.id})"
+        )
+        return
+    
+    # Skip sync if this is an internal update (e.g., only updating whatsapp_catalog_id)
+    update_fields = kwargs.get('update_fields')
+    if update_fields is not None and 'whatsapp_catalog_id' in update_fields and len(update_fields) == 1:
+        logger.debug(
+            f"Skipping Meta sync for Product '{instance.name}' (ID: {instance.id}) - "
+            "internal catalog_id update only"
+        )
+        return
+    
     # Import here to avoid circular imports
     from meta_integration.catalog_service import MetaCatalogService
     
@@ -40,6 +61,9 @@ def sync_product_to_meta_catalog(sender, instance, created, **kwargs):
             "Skipping Meta Catalog sync."
         )
         return
+    
+    # Set processing flag to prevent recursion
+    setattr(_thread_locals, processing_key, True)
     
     try:
         catalog_service = MetaCatalogService()
@@ -111,6 +135,9 @@ def sync_product_to_meta_catalog(sender, instance, created, **kwargs):
             f"to Meta Catalog: {str(e)}",
             exc_info=True
         )
+    finally:
+        # Always clear the processing flag
+        setattr(_thread_locals, processing_key, False)
 
 
 @receiver(post_delete, sender=Product)
