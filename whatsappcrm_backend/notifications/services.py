@@ -113,8 +113,7 @@ def queue_notifications_to_users(
             content_payload = {'body': final_message_body}
             
             # If the template has buttons or body/url parameters, we must send a template message
-            if (hasattr(template, 'buttons') and template.buttons) or \
-               (hasattr(template, 'body_parameters') and template.body_parameters) or \
+            if (hasattr(template, 'body_parameters') and template.body_parameters) or \
                (hasattr(template, 'url_parameters') and template.url_parameters):
                 message_type = 'template'
                 template_components = []
@@ -139,35 +138,7 @@ def queue_notifications_to_users(
                             "parameters": body_params_list
                         })
 
-                # --- Handle BUTTONS (including URL parameters) ---
-                if hasattr(template, 'buttons') and template.buttons:
-                    url_button_params_list = []
-                    if hasattr(template, 'url_parameters') and template.url_parameters:
-                        # Sort by the integer value of the key (e.g., '1', '2')
-                        sorted_url_params = sorted(template.url_parameters.items(), key=lambda item: int(item[0]))
-
-                        for index, jinja_var_path in sorted_url_params:
-                            try:
-                                param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
-                                url_button_params_list.append({"type": "text", "text": str(param_value)})
-                            except Exception as e:
-                                logger.error(f"Error rendering URL parameter '{jinja_var_path}' for template '{template_name}': {e}")
-                                url_button_params_list.append({"type": "text", "text": ""}) # Fallback
-
-                    if url_button_params_list:
-                        url_button_index = -1
-                        for i, button_def in enumerate(template.buttons):
-                            if isinstance(button_def, dict) and button_def.get("type") == "URL":
-                                url_button_index = i
-                                break
-                        
-                        if url_button_index != -1:
-                            template_components.append({
-                                "type": "BUTTON",
-                                "sub_type": "url",
-                                "index": str(url_button_index),
-                                "parameters": url_button_params_list
-                            })
+ 
                 
                 content_payload = {
                     "name": template_name,

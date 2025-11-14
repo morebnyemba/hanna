@@ -49,17 +49,7 @@ def dispatch_notification_task(self, notification_id: int):
             # --- MODIFICATION: Always use template messages for notifications ---
             # This logic now runs regardless of the 24-hour window status.
             if notification.template_name:
-                # --- NEW LOGIC: Window is closed, so we MUST use a pre-approved template. ---
                 logger.info(f"Attempting to send notification {notification.id} as a template message.")
-                
-                if not notification.template_name:
-                    error_msg = f"Cannot send notification {notification.id}: 24-hour window is closed and no template_name is set on the notification."
-                    logger.error(f"Cannot send notification {notification.id}: {error_msg}")
-                    notification.status = 'failed'
-                    notification.error_message = error_msg
-                    notification.save(update_fields=['status', 'error_message'])
-                    return
-
                 message_type = 'template'
                 template_context = notification.template_context or {}
                 # Create a copy to avoid modifying the stored context
@@ -98,35 +88,7 @@ def dispatch_notification_task(self, notification_id: int):
                             "parameters": body_params_list
                         })
 
-                # --- Handle BUTTONS (including URL parameters) ---
-                if hasattr(template_model, 'buttons') and template_model.buttons:
-                    url_button_params_list = []
-                    if hasattr(template_model, 'url_parameters') and template_model.url_parameters:
-                        # Sort by the integer value of the key (e.g., '1', '2')
-                        sorted_url_params = sorted(template_model.url_parameters.items(), key=lambda item: int(item[0]))
 
-                        for index, jinja_var_path in sorted_url_params:
-                            try:
-                                param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
-                                url_button_params_list.append({"type": "text", "text": str(param_value)})
-                            except Exception as e:
-                                logger.error(f"Error rendering URL parameter '{jinja_var_path}' for template '{template_model.name}': {e}")
-                                url_button_params_list.append({"type": "text", "text": ""}) # Fallback
-
-                    if url_button_params_list:
-                        url_button_index = -1
-                        for i, button_def in enumerate(template_model.buttons):
-                            if isinstance(button_def, dict) and button_def.get("type") == "URL":
-                                url_button_index = i
-                                break
-                        
-                        if url_button_index != -1:
-                            template_components.append({
-                                "type": "BUTTON",
-                                "sub_type": "url",
-                                "index": str(url_button_index),
-                                "parameters": url_button_params_list
-                            })
 
                 content_payload = {
                     "name": notification.template_name,
