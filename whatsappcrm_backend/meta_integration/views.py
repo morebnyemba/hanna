@@ -451,6 +451,7 @@ class MetaWebhookAPIView(View):
         Delegates processing to flows.services.process_whatsapp_flow_response.
         """
         from flows.services import process_whatsapp_flow_response
+        from meta_integration.utils import send_whatsapp_message
         
         success, notes = process_whatsapp_flow_response(msg_data, contact, active_config)
         
@@ -460,6 +461,24 @@ class MetaWebhookAPIView(View):
         else:
             self._save_log(log_entry, 'failed', notes)
             logger.error(f"Flow response processing failed: {notes}")
+            
+            # Send error message to user
+            error_message = (
+                "⚠️ We encountered an issue processing your request.\n\n"
+                "Our team has been notified and will review your submission. "
+                "We'll contact you shortly to complete your request.\n\n"
+                "If you need immediate assistance, please reply with 'help' or contact our support team."
+            )
+            
+            try:
+                send_whatsapp_message(
+                    to_phone_number=contact.whatsapp_id,
+                    message_type='text',
+                    data={'body': error_message}
+                )
+                logger.info(f"Sent error notification to user {contact.whatsapp_id}")
+            except Exception as e:
+                logger.error(f"Failed to send error notification to user: {e}", exc_info=True)
 
     def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig, show_typing_indicator: bool = True):
         """

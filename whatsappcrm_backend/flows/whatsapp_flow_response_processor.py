@@ -104,6 +104,9 @@ class WhatsAppFlowResponseProcessor:
             # or response_data['data'] depending on flow version
             data = response_data.get('data', response_data)
             
+            # Log the data structure for debugging
+            logger.info(f"Processing starlink installation flow response. Data keys: {list(data.keys())}")
+            
             full_name = data.get('full_name', '')
             contact_phone = data.get('contact_phone', '')
             kit_type = data.get('kit_type', '')
@@ -183,6 +186,9 @@ class WhatsAppFlowResponseProcessor:
         try:
             data = response_data.get('data', response_data)
             
+            # Log the data structure for debugging
+            logger.info(f"Processing solar cleaning flow response. Data keys: {list(data.keys())}")
+            
             full_name = data.get('full_name', '')
             contact_phone = data.get('contact_phone', '')
             roof_type = data.get('roof_type', '')
@@ -192,8 +198,21 @@ class WhatsAppFlowResponseProcessor:
             availability = data.get('availability', '')
             address = data.get('address', '')
             
-            if not all([full_name, contact_phone, panel_count, address]):
-                return False, "Missing required fields"
+            # More detailed validation
+            missing_fields = []
+            if not full_name:
+                missing_fields.append('full_name')
+            if not contact_phone:
+                missing_fields.append('contact_phone')
+            if not panel_count:
+                missing_fields.append('panel_count')
+            if not address:
+                missing_fields.append('address')
+            
+            if missing_fields:
+                error_msg = f"Missing required fields: {', '.join(missing_fields)}"
+                logger.error(f"Solar cleaning validation failed: {error_msg}. Data: {data}")
+                return False, error_msg
             
             # Get or create customer profile
             customer_profile, _ = CustomerProfile.objects.get_or_create(
@@ -265,6 +284,9 @@ class WhatsAppFlowResponseProcessor:
         """
         try:
             data = response_data.get('data', response_data)
+            
+            # Log the data structure for debugging
+            logger.info(f"Processing solar installation flow response. Data keys: {list(data.keys())}")
             
             installation_type = data.get('installation_type', 'residential')
             order_number = data.get('order_number', '')
@@ -386,6 +408,9 @@ class WhatsAppFlowResponseProcessor:
         try:
             data = response_data.get('data', response_data)
             
+            # Log the data structure for debugging
+            logger.info(f"Processing site inspection flow response. Data keys: {list(data.keys())}")
+            
             assessment_full_name = data.get('assessment_full_name', '')
             assessment_preferred_day = data.get('assessment_preferred_day', '')
             assessment_company_name = data.get('assessment_company_name', '')
@@ -471,6 +496,9 @@ class WhatsAppFlowResponseProcessor:
         try:
             data = response_data.get('data', response_data)
             
+            # Log the data structure for debugging
+            logger.info(f"Processing loan application flow response. Data keys: {list(data.keys())}")
+            
             loan_type = data.get('loan_type', '')
             loan_applicant_name = data.get('loan_applicant_name', '')
             loan_national_id = data.get('loan_national_id', '')
@@ -479,8 +507,19 @@ class WhatsAppFlowResponseProcessor:
             loan_request_amount = data.get('loan_request_amount', 0)
             loan_product_interest = data.get('loan_product_interest', '')
             
-            if not all([loan_type, loan_applicant_name, loan_employment_status]):
-                return False, "Missing required fields: loan_type, applicant_name, or employment_status"
+            # More detailed validation
+            missing_fields = []
+            if not loan_type:
+                missing_fields.append('loan_type')
+            if not loan_applicant_name:
+                missing_fields.append('loan_applicant_name')
+            if not loan_employment_status:
+                missing_fields.append('loan_employment_status')
+            
+            if missing_fields:
+                error_msg = f"Missing required fields: {', '.join(missing_fields)}"
+                logger.error(f"Loan application validation failed: {error_msg}. Data: {data}")
+                return False, error_msg
             
             # Get or create customer profile
             customer_profile, _ = CustomerProfile.objects.get_or_create(
