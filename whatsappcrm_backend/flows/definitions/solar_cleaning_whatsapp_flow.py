@@ -31,6 +31,18 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                 "panel_count": {
                     "type": "string",
                     "__example__": "10"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
+                },
+                "address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
@@ -60,7 +72,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "panel_type": "",
                                 "panel_count": "",
                                 "preferred_date": "",
-                                "availability": ""
+                                "availability": "",
+                                "address": ""
                             }
                         }
                     }
@@ -98,6 +111,10 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                 "availability": {
                     "type": "string",
                     "__example__": "morning"
+                },
+                "address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
