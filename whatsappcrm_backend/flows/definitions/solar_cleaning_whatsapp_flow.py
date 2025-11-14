@@ -151,12 +151,12 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                             "payload": {
                                 "full_name": "${form.full_name}",
                                 "contact_phone": "${form.contact_phone}",
-                                "roof_type": "",
-                                "panel_type": "",
-                                "panel_count": 0,
-                                "preferred_date": "",
-                                "availability": "",
-                                "address": ""
+                                "roof_type": "${data.roof_type}",
+                                "panel_type": "${data.panel_type}",
+                                "panel_count": "${data.panel_count}",
+                                "preferred_date": "${data.preferred_date}",
+                                "availability": "${data.availability}",
+                                "address": "${data.address}"
                             }
                         }
                     }
@@ -232,11 +232,11 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "full_name": "${data.full_name}",
                                 "contact_phone": "${data.contact_phone}",
                                 "roof_type": "${form.roof_type}",
-                                "panel_type": "",
-                                "panel_count": 0,
-                                "preferred_date": "",
-                                "availability": "",
-                                "address": ""
+                                "panel_type": "${data.panel_type}",
+                                "panel_count": "${data.panel_count}",
+                                "preferred_date": "${data.preferred_date}",
+                                "availability": "${data.availability}",
+                                "address": "${data.address}"
                             }
                         }
                     }
@@ -321,9 +321,9 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "roof_type": "${data.roof_type}",
                                 "panel_type": "${form.panel_type}",
                                 "panel_count": "${form.panel_count}",
-                                "preferred_date": "",
-                                "availability": "",
-                                "address": ""
+                                "preferred_date": "${data.preferred_date}",
+                                "availability": "${data.availability}",
+                                "address": "${data.address}"
                             }
                         }
                     }
@@ -407,7 +407,7 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                                 "panel_count": "${data.panel_count}",
                                 "preferred_date": "${form.preferred_date}",
                                 "availability": "${form.availability}",
-                                "address": ""
+                                "address": "${data.address}"
                             }
                         }
                     }
@@ -474,7 +474,17 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                         "type": "Footer",
                         "label": "Submit Request",
                         "on-click-action": {
-                            "name": "complete"
+                            "name": "complete",
+                            "payload": {
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "roof_type": "${data.roof_type}",
+                                "panel_type": "${data.panel_type}",
+                                "panel_count": "${data.panel_count}",
+                                "preferred_date": "${data.preferred_date}",
+                                "availability": "${data.availability}",
+                                "address": "${form.address}"
+                            }
                         }
                     }
                 ]

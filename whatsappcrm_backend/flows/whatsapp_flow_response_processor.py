@@ -12,7 +12,12 @@ from django.db import transaction
 
 from .models import WhatsAppFlow, WhatsAppFlowResponse
 from conversations.models import Contact
-from customer_data.models import InstallationRequest, SolarCleaningRequest, CustomerProfile
+from customer_data.models import (
+    InstallationRequest, SolarCleaningRequest, CustomerProfile, 
+    SiteAssessmentRequest, LoanApplication, Order
+)
+from meta_integration.utils import send_whatsapp_message
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +57,8 @@ class WhatsAppFlowResponseProcessor:
                     'starlink_installation_whatsapp': WhatsAppFlowResponseProcessor._process_starlink_installation,
                     'solar_cleaning_whatsapp': WhatsAppFlowResponseProcessor._process_solar_cleaning,
                     'solar_installation_whatsapp': WhatsAppFlowResponseProcessor._process_solar_installation,
+                    'site_inspection_whatsapp': WhatsAppFlowResponseProcessor._process_site_inspection,
+                    'loan_application_whatsapp': WhatsAppFlowResponseProcessor._process_loan_application,
                 }
                 
                 processor = processor_map.get(whatsapp_flow.name)
@@ -132,6 +139,25 @@ class WhatsAppFlowResponseProcessor:
             notes = f"Created InstallationRequest {installation_request.id} for Starlink installation"
             logger.info(notes)
             
+            # Send personalized confirmation message
+            confirmation_message = (
+                f"Thank you, {full_name}! 🙏\n\n"
+                f"Your Starlink installation request has been successfully submitted.\n\n"
+                f"*Details:*\n"
+                f"📍 Location: {address}\n"
+                f"📅 Preferred Date: {preferred_date}\n"
+                f"⏰ Time: {availability.title()}\n"
+                f"📦 Kit Type: {kit_type.replace('_', ' ').title()}\n\n"
+                f"Our team will contact you at {contact_phone} to confirm the installation schedule.\n\n"
+                f"Reference: #{installation_request.id}"
+            )
+            
+            send_whatsapp_message(
+                to_phone_number=contact.whatsapp_id,
+                message_type='text',
+                data={'body': confirmation_message}
+            )
+            
             # TODO: Queue notification to staff
             # from notifications.services import queue_notifications_to_users
             # queue_notifications_to_users(...)
@@ -199,6 +225,26 @@ class WhatsAppFlowResponseProcessor:
             notes = f"Created SolarCleaningRequest {cleaning_request.id}"
             logger.info(notes)
             
+            # Send personalized confirmation message
+            confirmation_message = (
+                f"Thank you, {full_name}! 🙏\n\n"
+                f"Your solar panel cleaning request has been successfully received.\n\n"
+                f"*Details:*\n"
+                f"📍 Location: {address}\n"
+                f"📅 Preferred Date: {preferred_date}\n"
+                f"⏰ Time: {availability.title()}\n"
+                f"☀️ Panel Count: {panel_count_int} panels\n"
+                f"🏠 Roof Type: {roof_type.replace('_', ' ').title()}\n\n"
+                f"Our team will contact you at {contact_phone} with a quote and to confirm the service date.\n\n"
+                f"Reference: #{cleaning_request.id}"
+            )
+            
+            send_whatsapp_message(
+                to_phone_number=contact.whatsapp_id,
+                message_type='text',
+                data={'body': confirmation_message}
+            )
+            
             return True, notes
             
         except Exception as e:
@@ -234,6 +280,30 @@ class WhatsAppFlowResponseProcessor:
             if not all([full_name, contact_phone, address]):
                 return False, "Missing required fields"
             
+            # Verify order number if provided
+            associated_order = None
+            order_verification_msg = ""
+            if order_number:
+                try:
+                    associated_order = Order.objects.get(order_number=order_number)
+                    order_verification_msg = f"✅ Order {order_number} verified"
+                    logger.info(f"Order {order_number} verified for installation request")
+                except Order.DoesNotExist:
+                    # Order not found - send error message to user
+                    error_message = (
+                        f"❌ Order Verification Failed\n\n"
+                        f"The order number '{order_number}' could not be found in our system.\n\n"
+                        f"Please verify the order number and try again, or contact our sales team for assistance."
+                    )
+                    
+                    send_whatsapp_message(
+                        to_phone_number=contact.whatsapp_id,
+                        message_type='text',
+                        data={'body': error_message}
+                    )
+                    
+                    return False, f"Order verification failed: Order {order_number} not found"
+            
             # Get or create customer profile
             customer_profile, _ = CustomerProfile.objects.get_or_create(
                 contact=contact,
@@ -247,6 +317,7 @@ class WhatsAppFlowResponseProcessor:
             # Create installation request
             installation_request = InstallationRequest.objects.create(
                 customer=customer_profile,
+                associated_order=associated_order,
                 installation_type=installation_type,
                 order_number=order_number,
                 branch=branch,
@@ -261,12 +332,227 @@ class WhatsAppFlowResponseProcessor:
                 status='pending'
             )
             
-            notes = f"Created InstallationRequest {installation_request.id} for solar installation"
+            notes = f"Created InstallationRequest {installation_request.id} for solar installation. {order_verification_msg}"
             logger.info(notes)
+            
+            # Send personalized confirmation message
+            confirmation_message = (
+                f"Thank you, {full_name}! 🙏\n\n"
+                f"Your solar installation request has been successfully submitted.\n\n"
+                f"*Details:*\n"
+            )
+            
+            if order_number and associated_order:
+                confirmation_message += f"📋 Order: {order_number} {order_verification_msg}\n"
+            
+            confirmation_message += (
+                f"🏢 Branch: {branch}\n"
+                f"📍 Location: {address}\n"
+                f"📅 Preferred Date: {preferred_date}\n"
+                f"⏰ Time: {availability.title()}\n"
+                f"👤 Sales Rep: {sales_person}\n\n"
+                f"Our installation team will contact you at {contact_phone} to confirm the installation schedule.\n\n"
+            )
+            
+            if alt_contact_name and alt_contact_name.lower() != 'n/a':
+                confirmation_message += f"Alternative Contact: {alt_contact_name} ({alt_contact_phone})\n\n"
+            
+            confirmation_message += f"Reference: #{installation_request.id}"
+            
+            send_whatsapp_message(
+                to_phone_number=contact.whatsapp_id,
+                message_type='text',
+                data={'body': confirmation_message}
+            )
             
             return True, notes
             
         except Exception as e:
             error_msg = f"Error creating solar installation request: {e}"
+            logger.error(error_msg, exc_info=True)
+            return False, error_msg
+    
+    @staticmethod
+    def _process_site_inspection(flow_response: WhatsAppFlowResponse, 
+                                 contact: Contact, 
+                                 response_data: Dict[str, Any]) -> tuple[bool, str]:
+        """
+        Process site inspection/assessment flow response.
+        
+        Returns:
+            tuple: (success: bool, notes: str)
+        """
+        try:
+            data = response_data.get('data', response_data)
+            
+            assessment_full_name = data.get('assessment_full_name', '')
+            assessment_preferred_day = data.get('assessment_preferred_day', '')
+            assessment_company_name = data.get('assessment_company_name', '')
+            assessment_address = data.get('assessment_address', '')
+            assessment_contact_info = data.get('assessment_contact_info', '')
+            
+            if not all([assessment_full_name, assessment_address, assessment_contact_info]):
+                return False, "Missing required fields: full_name, address, or contact_info"
+            
+            # Get or create customer profile
+            customer_profile, _ = CustomerProfile.objects.get_or_create(
+                contact=contact,
+                defaults={
+                    'first_name': assessment_full_name.split()[0] if assessment_full_name else '',
+                    'last_name': ' '.join(assessment_full_name.split()[1:]) if len(assessment_full_name.split()) > 1 else '',
+                }
+            )
+            
+            # Generate assessment ID
+            raw_id = uuid.uuid4().hex[:5].upper()
+            assessment_id = f"SA-{raw_id}"
+            
+            # Create site assessment request
+            assessment_request = SiteAssessmentRequest.objects.create(
+                customer=customer_profile,
+                assessment_id=assessment_id,
+                full_name=assessment_full_name,
+                company_name=assessment_company_name,
+                address=assessment_address,
+                contact_info=assessment_contact_info,
+                preferred_day=assessment_preferred_day,
+                status='pending'
+            )
+            
+            notes = f"Created SiteAssessmentRequest {assessment_request.id} with ID {assessment_id}"
+            logger.info(notes)
+            
+            # Send personalized confirmation message
+            confirmation_message = (
+                f"Thank you, {assessment_full_name}! 🙏\n\n"
+                f"Your site assessment request has been successfully submitted.\n\n"
+                f"*Details:*\n"
+                f"📋 Assessment ID: {assessment_id}\n"
+                f"📍 Location: {assessment_address}\n"
+                f"📅 Preferred Day: {assessment_preferred_day}\n"
+            )
+            
+            if assessment_company_name and assessment_company_name.lower() != 'n/a':
+                confirmation_message += f"🏢 Company: {assessment_company_name}\n"
+            
+            confirmation_message += (
+                f"\nOur team will contact you at {assessment_contact_info} to confirm the assessment schedule.\n\n"
+                f"Reference: {assessment_id}"
+            )
+            
+            send_whatsapp_message(
+                to_phone_number=contact.whatsapp_id,
+                message_type='text',
+                data={'body': confirmation_message}
+            )
+            
+            # TODO: Send notification to Technical Admin and Sales Team
+            # from notifications.services import queue_notifications_to_users
+            # queue_notifications_to_users(...)
+            
+            return True, notes
+            
+        except Exception as e:
+            error_msg = f"Error creating site assessment request: {e}"
+            logger.error(error_msg, exc_info=True)
+            return False, error_msg
+    
+    @staticmethod
+    def _process_loan_application(flow_response: WhatsAppFlowResponse, 
+                                  contact: Contact, 
+                                  response_data: Dict[str, Any]) -> tuple[bool, str]:
+        """
+        Process loan application flow response.
+        
+        Returns:
+            tuple: (success: bool, notes: str)
+        """
+        try:
+            data = response_data.get('data', response_data)
+            
+            loan_type = data.get('loan_type', '')
+            loan_applicant_name = data.get('loan_applicant_name', '')
+            loan_national_id = data.get('loan_national_id', '')
+            loan_employment_status = data.get('loan_employment_status', '')
+            loan_monthly_income = data.get('loan_monthly_income', 0)
+            loan_request_amount = data.get('loan_request_amount', 0)
+            loan_product_interest = data.get('loan_product_interest', '')
+            
+            if not all([loan_type, loan_applicant_name, loan_employment_status]):
+                return False, "Missing required fields: loan_type, applicant_name, or employment_status"
+            
+            # Get or create customer profile
+            customer_profile, _ = CustomerProfile.objects.get_or_create(
+                contact=contact,
+                defaults={
+                    'first_name': loan_applicant_name.split()[0] if loan_applicant_name else '',
+                    'last_name': ' '.join(loan_applicant_name.split()[1:]) if len(loan_applicant_name.split()) > 1 else '',
+                }
+            )
+            
+            # Convert monthly income to Decimal
+            try:
+                monthly_income = float(loan_monthly_income) if loan_monthly_income else 0
+            except (ValueError, TypeError):
+                monthly_income = 0
+            
+            # Handle loan amount based on type
+            try:
+                requested_amount = float(loan_request_amount) if loan_request_amount else None
+            except (ValueError, TypeError):
+                requested_amount = None
+            
+            # Create loan application
+            loan_application = LoanApplication.objects.create(
+                customer=customer_profile,
+                full_name=loan_applicant_name,
+                national_id=loan_national_id,
+                loan_type=loan_type,
+                employment_status=loan_employment_status,
+                monthly_income=monthly_income,
+                requested_amount=requested_amount,
+                product_of_interest=loan_product_interest if loan_product_interest and loan_product_interest.lower() != 'n/a' else '',
+                status='pending_review'
+            )
+            
+            notes = f"Created LoanApplication {loan_application.id} for {loan_type}"
+            logger.info(notes)
+            
+            # Send personalized confirmation message
+            loan_type_display = "Cash Loan" if loan_type == "cash_loan" else "Product Loan"
+            
+            confirmation_message = (
+                f"Thank you, {loan_applicant_name}! 🙏\n\n"
+                f"Your loan application has been successfully submitted for review.\n\n"
+                f"*Application Details:*\n"
+                f"💰 Loan Type: {loan_type_display}\n"
+            )
+            
+            if loan_type == "cash_loan" and requested_amount:
+                confirmation_message += f"💵 Amount Requested: ${requested_amount:,.2f} USD\n"
+            elif loan_type == "product_loan" and loan_product_interest:
+                confirmation_message += f"📦 Product: {loan_product_interest}\n"
+            
+            confirmation_message += (
+                f"👤 Employment: {loan_employment_status.replace('_', ' ').title()}\n"
+                f"💼 Monthly Income: ${monthly_income:,.2f} USD\n\n"
+                f"Our finance team will review your application and contact you within 24-48 hours with the next steps.\n\n"
+                f"Reference: #{loan_application.id}"
+            )
+            
+            send_whatsapp_message(
+                to_phone_number=contact.whatsapp_id,
+                message_type='text',
+                data={'body': confirmation_message}
+            )
+            
+            # TODO: Send notification to Finance Team and System Admins
+            # from notifications.services import queue_notifications_to_users
+            # queue_notifications_to_users(...)
+            
+            return True, notes
+            
+        except Exception as e:
+            error_msg = f"Error creating loan application: {e}"
             logger.error(error_msg, exc_info=True)
             return False, error_msg
