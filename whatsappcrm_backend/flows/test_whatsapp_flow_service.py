@@ -5,8 +5,6 @@ Tests that the file parameter is correctly sent as multipart/form-data.
 import json
 from unittest.mock import Mock, patch
 from django.test import TestCase
-from django.utils import timezone
-
 from flows.whatsapp_flow_service import WhatsAppFlowService
 from flows.models import WhatsAppFlow
 from meta_integration.models import MetaAppConfig
