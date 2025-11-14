@@ -6,6 +6,13 @@ This document describes the implementation of automatic synchronization between 
 ## Problem Statement
 Products created or updated in the Django backend were not being automatically synchronized with the Meta Catalog, causing the catalog to be out of sync with the local database.
 
+### Root Cause Analysis
+Upon investigation, we discovered that:
+1. **Old signal handlers existed** in `meta_integration/signals.py` that triggered async Celery tasks
+2. **These handlers were basic** - they didn't validate SKU or active status
+3. **They may have been failing silently** due to Celery configuration or task execution issues
+4. **The issue description** reported that sync wasn't happening, confirming the old approach wasn't working
+
 ## Solution Implemented
 
 ### 1. Signal Handlers (`whatsappcrm_backend/products_and_services/signals.py`)
@@ -41,7 +48,26 @@ def ready(self):
 
 This ensures signals are connected when Django starts.
 
-### 3. Enhanced Logging (`whatsappcrm_backend/meta_integration/catalog_service.py`)
+### 3. Removed Duplicate Signals (`whatsappcrm_backend/meta_integration/signals.py`)
+
+**Important**: The old signal handlers were removed to prevent duplicate API calls:
+- Old handlers triggered async Celery tasks for every product save/delete
+- New handlers make direct API calls with better validation
+- This prevents double-syncing the same product to Meta Catalog
+- The Celery tasks remain available in `tasks.py` for manual/admin use
+
+**Comparison**:
+
+| Feature | Old (meta_integration) | New (products_and_services) |
+|---------|----------------------|---------------------------|
+| Execution | Async Celery tasks | Direct API calls |
+| SKU Validation | ✗ None | ✓ Required |
+| Active Status Check | ✗ None | ✓ Required |
+| Missing Catalog ID | ✗ Not handled | ✓ Creates new entry |
+| Logging | Basic | Comprehensive |
+| Error Handling | Task-level | Signal-level with graceful fallback |
+
+### 4. Enhanced Logging (`whatsappcrm_backend/meta_integration/catalog_service.py`)
 
 Added comprehensive logging to the `MetaCatalogService`:
 - Info-level logs for all API operations
@@ -168,10 +194,34 @@ If issues occur:
 2. Products will still save to the local database
 3. To disable sync temporarily: comment out the signal import in `apps.py`
 
+## Available Celery Tasks
+
+The following Celery tasks remain available in `meta_integration/tasks.py` for manual/admin use:
+
+1. **`create_whatsapp_catalog_product(product_id)`**
+   - Creates a product in Meta Catalog
+   - Can be triggered manually or from admin actions
+
+2. **`update_whatsapp_catalog_product(product_id)`**
+   - Updates a product in Meta Catalog
+   - Can be triggered manually or from admin actions
+
+3. **`delete_whatsapp_catalog_product(product_id)`**
+   - Deletes a product from Meta Catalog
+   - Can be triggered manually or from admin actions
+
+**Usage Example**:
+```python
+from meta_integration.tasks import create_whatsapp_catalog_product
+
+# Manually trigger sync for a specific product
+create_whatsapp_catalog_product.delay(product_id=123)
+```
+
 ## Future Enhancements
 
 Potential improvements for future iterations:
-- Async task queue (Celery) for API calls to improve performance
+- Switch signal handlers to use Celery tasks for async execution (if needed)
 - Retry mechanism for failed API calls
 - Bulk sync command for existing products
 - Admin action to manually trigger sync for specific products
@@ -185,8 +235,13 @@ Potential improvements for future iterations:
 2. `whatsappcrm_backend/products_and_services/apps.py` (MODIFIED)
    - Added `ready()` method for signal registration
 
-3. `whatsappcrm_backend/meta_integration/catalog_service.py` (MODIFIED)
+3. `whatsappcrm_backend/meta_integration/signals.py` (MODIFIED)
+   - Removed duplicate Product signal handlers
+   - Kept custom `message_send_failed` signal
+   - Added documentation about migration
+
+4. `whatsappcrm_backend/meta_integration/catalog_service.py` (MODIFIED)
    - Added logging and Meta API documentation
 
-4. `whatsappcrm_backend/products_and_services/tests.py` (MODIFIED)
+5. `whatsappcrm_backend/products_and_services/tests.py` (MODIFIED)
    - Added 245 lines of comprehensive tests
