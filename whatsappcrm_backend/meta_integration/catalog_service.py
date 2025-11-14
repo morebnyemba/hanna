@@ -150,9 +150,9 @@ class MetaCatalogService:
         data = self._get_product_data(product)
         
         logger.info(f"Creating product in Meta Catalog: {product.name} (SKU: {product.sku})")
-        logger.debug(f"Payload: {data}")
+        logger.debug(f"Payload: {json.dumps(data, indent=2)}")
         
-        response = requests.post(url, headers=self._get_headers(), json=data)
+        response = requests.post(url, headers=self._get_headers(), json=data, timeout=30)
         
         # Log the full response for debugging
         try:
@@ -162,34 +162,68 @@ class MetaCatalogService:
             return result
         except requests.exceptions.HTTPError as e:
             # Log the full error response from Meta
-            error_body = ""
             error_details = {}
             try:
                 error_details = response.json()
                 error_body = json.dumps(error_details, indent=2)
+                
+                # Extract useful error information
+                error_message = error_details.get('error', {}).get('message', str(error_details))
+                error_code = error_details.get('error', {}).get('code', response.status_code)
+                error_type = error_details.get('error', {}).get('type', 'Unknown')
+                
                 logger.error(
-                    f"Meta API error response for product '{product.name}' (SKU: {product.sku}):\n"
-                    f"Status Code: {response.status_code}\n"
-                    f"Error Details: {error_body}"
+                    f"═══════════════════════════════════════════════════════\n"
+                    f"META API ERROR - Product Creation Failed\n"
+                    f"═══════════════════════════════════════════════════════\n"
+                    f"Product: {product.name} (ID: {product.id}, SKU: {product.sku})\n"
+                    f"Error Code: {error_code}\n"
+                    f"Error Type: {error_type}\n"
+                    f"Error Message: {error_message}\n"
+                    f"HTTP Status: {response.status_code}\n"
+                    f"Full Response:\n{error_body}\n"
+                    f"═══════════════════════════════════════════════════════"
                 )
                 
                 # Check if the error is related to image_link
-                error_message = str(error_details)
                 if 'image' in error_message.lower() and 'image_link' in data:
-                    logger.warning(
-                        f"The error appears to be related to image_link. "
+                    logger.error(
+                        f"⚠ IMAGE URL ISSUE DETECTED ⚠\n"
                         f"Image URL: {data['image_link']}\n"
-                        f"Please verify that this URL is publicly accessible. "
-                        f"You can test it by opening it in a browser or using: curl -I {data['image_link']}"
+                        f"This URL must be publicly accessible to Meta's servers.\n"
+                        f"Test accessibility with: curl -I {data['image_link']}\n"
+                        f"Ensure nginx is properly serving media files and the URL is not behind auth."
                     )
-            except Exception:
+                
+                # Re-raise with more context
+                raise ValueError(
+                    f"Meta API Error ({error_code}): {error_message}. "
+                    f"Check logs for full details."
+                ) from e
+                
+            except (ValueError, KeyError, json.JSONDecodeError):
+                # If we can't parse the JSON error response
                 error_body = response.text
                 logger.error(
-                    f"Meta API error response (raw) for product '{product.name}' (SKU: {product.sku}):\n"
-                    f"Status Code: {response.status_code}\n"
-                    f"Response: {error_body}"
+                    f"═══════════════════════════════════════════════════════\n"
+                    f"META API ERROR - Product Creation Failed (Raw Response)\n"
+                    f"═══════════════════════════════════════════════════════\n"
+                    f"Product: {product.name} (ID: {product.id}, SKU: {product.sku})\n"
+                    f"HTTP Status: {response.status_code}\n"
+                    f"Response Body:\n{error_body}\n"
+                    f"═══════════════════════════════════════════════════════"
                 )
-            raise
+                raise ValueError(
+                    f"Meta API Error (HTTP {response.status_code}): {error_body[:200]}..."
+                ) from e
+        except requests.exceptions.Timeout:
+            error_msg = "Request to Meta API timed out after 30 seconds"
+            logger.error(f"{error_msg} for product '{product.name}' (SKU: {product.sku})")
+            raise ValueError(error_msg)
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network error connecting to Meta API: {str(e)}"
+            logger.error(f"{error_msg} for product '{product.name}' (SKU: {product.sku})")
+            raise ValueError(error_msg) from e
 
     def update_product_in_catalog(self, product):
         if not product.whatsapp_catalog_id:
@@ -199,9 +233,9 @@ class MetaCatalogService:
         data = self._get_product_data(product)
         
         logger.info(f"Updating product in Meta Catalog: {product.name} (Catalog ID: {product.whatsapp_catalog_id})")
-        logger.debug(f"Payload: {data}")
+        logger.debug(f"Payload: {json.dumps(data, indent=2)}")
         
-        response = requests.post(url, headers=self._get_headers(), json=data)
+        response = requests.post(url, headers=self._get_headers(), json=data, timeout=30)
         
         # Log the full response for debugging
         try:
@@ -211,33 +245,66 @@ class MetaCatalogService:
             return result
         except requests.exceptions.HTTPError as e:
             # Log the full error response from Meta
-            error_body = ""
             error_details = {}
             try:
                 error_details = response.json()
                 error_body = json.dumps(error_details, indent=2)
+                
+                # Extract useful error information
+                error_message = error_details.get('error', {}).get('message', str(error_details))
+                error_code = error_details.get('error', {}).get('code', response.status_code)
+                error_type = error_details.get('error', {}).get('type', 'Unknown')
+                
                 logger.error(
-                    f"Meta API error response for product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
-                    f"Status Code: {response.status_code}\n"
-                    f"Error Details: {error_body}"
+                    f"═══════════════════════════════════════════════════════\n"
+                    f"META API ERROR - Product Update Failed\n"
+                    f"═══════════════════════════════════════════════════════\n"
+                    f"Product: {product.name} (ID: {product.id}, Catalog ID: {product.whatsapp_catalog_id})\n"
+                    f"Error Code: {error_code}\n"
+                    f"Error Type: {error_type}\n"
+                    f"Error Message: {error_message}\n"
+                    f"HTTP Status: {response.status_code}\n"
+                    f"Full Response:\n{error_body}\n"
+                    f"═══════════════════════════════════════════════════════"
                 )
                 
                 # Check if the error is related to image_link
-                error_message = str(error_details)
                 if 'image' in error_message.lower() and 'image_link' in data:
-                    logger.warning(
-                        f"The error appears to be related to image_link. "
+                    logger.error(
+                        f"⚠ IMAGE URL ISSUE DETECTED ⚠\n"
                         f"Image URL: {data['image_link']}\n"
-                        f"Please verify that this URL is publicly accessible."
+                        f"This URL must be publicly accessible to Meta's servers."
                     )
-            except Exception:
+                
+                # Re-raise with more context
+                raise ValueError(
+                    f"Meta API Error ({error_code}): {error_message}. "
+                    f"Check logs for full details."
+                ) from e
+                
+            except (ValueError, KeyError, json.JSONDecodeError):
+                # If we can't parse the JSON error response
                 error_body = response.text
                 logger.error(
-                    f"Meta API error response (raw) for product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
-                    f"Status Code: {response.status_code}\n"
-                    f"Response: {error_body}"
+                    f"═══════════════════════════════════════════════════════\n"
+                    f"META API ERROR - Product Update Failed (Raw Response)\n"
+                    f"═══════════════════════════════════════════════════════\n"
+                    f"Product: {product.name} (ID: {product.id}, Catalog ID: {product.whatsapp_catalog_id})\n"
+                    f"HTTP Status: {response.status_code}\n"
+                    f"Response Body:\n{error_body}\n"
+                    f"═══════════════════════════════════════════════════════"
                 )
-            raise
+                raise ValueError(
+                    f"Meta API Error (HTTP {response.status_code}): {error_body[:200]}..."
+                ) from e
+        except requests.exceptions.Timeout:
+            error_msg = "Request to Meta API timed out after 30 seconds"
+            logger.error(f"{error_msg} for product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id})")
+            raise ValueError(error_msg)
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network error connecting to Meta API: {str(e)}"
+            logger.error(f"{error_msg} for product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id})")
+            raise ValueError(error_msg) from e
 
     def delete_product_from_catalog(self, product):
         if not product.whatsapp_catalog_id:
