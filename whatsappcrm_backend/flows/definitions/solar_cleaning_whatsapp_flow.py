@@ -111,6 +111,10 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                 "availability": {
                     "type": "string",
                     "__example__": "morning"
+                },
+                "address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
