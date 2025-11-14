@@ -22,6 +22,14 @@ from flows.definitions.solar_installation_whatsapp_flow import (
     SOLAR_INSTALLATION_WHATSAPP_FLOW,
     SOLAR_INSTALLATION_FLOW_METADATA
 )
+from flows.definitions.site_inspection_whatsapp_flow import (
+    SITE_INSPECTION_WHATSAPP_FLOW,
+    SITE_INSPECTION_FLOW_METADATA
+)
+from flows.definitions.loan_application_whatsapp_flow import (
+    LOAN_APPLICATION_WHATSAPP_FLOW,
+    LOAN_APPLICATION_FLOW_METADATA
+)
 
 
 class Command(BaseCommand):
@@ -31,7 +39,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--flow',
             type=str,
-            choices=['starlink', 'solar_cleaning', 'solar_installation', 'all'],
+            choices=['starlink', 'solar_cleaning', 'solar_installation', 'site_inspection', 'loan_application', 'all'],
             default='all',
             help='Which flow to sync (default: all)'
         )
@@ -83,6 +91,18 @@ class Command(BaseCommand):
             flows_to_sync.append({
                 'json': SOLAR_INSTALLATION_WHATSAPP_FLOW,
                 'metadata': SOLAR_INSTALLATION_FLOW_METADATA
+            })
+        
+        if flow_choice in ['site_inspection', 'all']:
+            flows_to_sync.append({
+                'json': SITE_INSPECTION_WHATSAPP_FLOW,
+                'metadata': SITE_INSPECTION_FLOW_METADATA
+            })
+        
+        if flow_choice in ['loan_application', 'all']:
+            flows_to_sync.append({
+                'json': LOAN_APPLICATION_WHATSAPP_FLOW,
+                'metadata': LOAN_APPLICATION_FLOW_METADATA
             })
 
         # Sync each flow
