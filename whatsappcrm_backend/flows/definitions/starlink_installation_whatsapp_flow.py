@@ -31,7 +31,8 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "CUSTOMER_INFO"
-                            }
+                            },
+                            "payload": {}
                         }
                     }
                 ]
@@ -81,6 +82,10 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "KIT_DETAILS"
+                            },
+                            "payload": {
+                                "full_name": "${form.full_name}",
+                                "contact_phone": "${form.contact_phone}"
                             }
                         }
                     }
@@ -134,6 +139,12 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "INSTALLATION_SCHEDULE"
+                            },
+                            "payload": {
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "kit_type": "${form.kit_type}",
+                                "mount_location": "${form.mount_location}"
                             }
                         }
                     }
@@ -184,6 +195,14 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
                             "next": {
                                 "type": "screen",
                                 "name": "LOCATION_INFO"
+                            },
+                            "payload": {
+                                "full_name": "${data.full_name}",
+                                "contact_phone": "${data.contact_phone}",
+                                "kit_type": "${data.kit_type}",
+                                "mount_location": "${data.mount_location}",
+                                "preferred_date": "${form.preferred_date}",
+                                "availability": "${form.availability}"
                             }
                         }
                     }
