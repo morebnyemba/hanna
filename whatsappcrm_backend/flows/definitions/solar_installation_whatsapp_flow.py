@@ -44,7 +44,8 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "installation_type": {
                     "type": "string"
-                }},
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -82,7 +83,11 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "order_number": {
                     "type": "string"
-                }},
+                },
+                "branch": {
+                    "type": "string"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -130,7 +135,8 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "sales_person": {
                     "type": "string"
-                }},
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -166,7 +172,17 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "full_name": {
                     "type": "string"
-                }},
+                },
+                "contact_phone": {
+                    "type": "string"
+                },
+                "alt_contact_name": {
+                    "type": "string"
+                },
+                "alt_contact_phone": {
+                    "type": "string"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -226,7 +242,11 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "preferred_date": {
                     "type": "string"
-                }},
+                },
+                "availability": {
+                    "type": "string"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -274,7 +294,8 @@ SOLAR_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "address": {
                     "type": "string"
-                }},
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [

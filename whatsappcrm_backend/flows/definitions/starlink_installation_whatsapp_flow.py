@@ -43,7 +43,11 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "full_name": {
                     "type": "string"
-                }},
+                },
+                "contact_phone": {
+                    "type": "string"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -87,7 +91,11 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "kit_type": {
                     "type": "string"
-                }},
+                },
+                "mount_location": {
+                    "type": "string"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
@@ -134,7 +142,11 @@ STARLINK_INSTALLATION_WHATSAPP_FLOW = {
             "data": {
                 "preferred_date": {
                     "type": "string"
-                }},
+                },
+                "availability": {
+                    "type": "string"
+                }
+            },
             "layout": {
                 "type": "SingleColumnLayout",
                 "children": [
