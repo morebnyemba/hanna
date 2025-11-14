@@ -128,6 +128,5 @@ class WhatsAppFlowServiceUpdateFlowJsonTest(TestCase):
         self.assertFalse(result)
         
         # Verify sync_status was set to 'error'
-        save_calls = [call for call in self.whatsapp_flow.save.call_args_list]
         # Last save call should have set sync_status to 'error'
         self.assertEqual(self.whatsapp_flow.sync_status, 'error')
