@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
+from unittest.mock import patch, MagicMock
 from .models import Product, ProductCategory, SerializedItem
 
 User = get_user_model()
@@ -298,3 +299,247 @@ class BarcodeModelTestCase(TestCase):
         )
         
         self.assertIsNone(item.barcode)
+
+
+class ProductMetaCatalogSyncTestCase(TestCase):
+    """
+    Test cases for Product synchronization with Meta Catalog via signals.
+    """
+    
+    def setUp(self):
+        """Set up test data"""
+        self.category = ProductCategory.objects.create(
+            name='Test Category',
+            description='Test category description'
+        )
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_product_creation_triggers_catalog_sync(self, mock_service_class):
+        """Test that creating a product triggers Meta Catalog sync"""
+        # Setup mock
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.return_value = {'id': 'meta_catalog_123'}
+        
+        # Create a product
+        product = Product.objects.create(
+            name='Test Product',
+            sku='TEST-SKU-001',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True
+        )
+        
+        # Verify catalog service was called
+        mock_service.create_product_in_catalog.assert_called_once_with(product)
+        
+        # Verify the product was updated with catalog ID
+        product.refresh_from_db()
+        self.assertEqual(product.whatsapp_catalog_id, 'meta_catalog_123')
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_product_update_triggers_catalog_sync(self, mock_service_class):
+        """Test that updating a product triggers Meta Catalog update"""
+        # Setup mock
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.return_value = {'id': 'meta_catalog_123'}
+        mock_service.update_product_in_catalog.return_value = {'success': True}
+        
+        # Create a product (this triggers create signal)
+        product = Product.objects.create(
+            name='Test Product',
+            sku='TEST-SKU-002',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True,
+            whatsapp_catalog_id='meta_catalog_123'
+        )
+        
+        # Reset mock to clear creation call
+        mock_service.reset_mock()
+        
+        # Update the product (this triggers update signal)
+        product.price = 150.00
+        product.save()
+        
+        # Verify update was called
+        mock_service.update_product_in_catalog.assert_called_once_with(product)
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_product_without_sku_skips_sync(self, mock_service_class):
+        """Test that products without SKU are not synced"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        
+        # Create a product without SKU
+        product = Product.objects.create(
+            name='Test Product No SKU',
+            description='Test product description',
+            product_type='service',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            is_active=True
+        )
+        
+        # Verify catalog service was NOT called
+        mock_service.create_product_in_catalog.assert_not_called()
+        mock_service.update_product_in_catalog.assert_not_called()
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_inactive_product_skips_sync(self, mock_service_class):
+        """Test that inactive products are not synced"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        
+        # Create an inactive product
+        product = Product.objects.create(
+            name='Test Product Inactive',
+            sku='TEST-SKU-003',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            is_active=False
+        )
+        
+        # Verify catalog service was NOT called
+        mock_service.create_product_in_catalog.assert_not_called()
+        mock_service.update_product_in_catalog.assert_not_called()
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_product_update_without_catalog_id_creates_new(self, mock_service_class):
+        """Test that updating a product without catalog ID creates it in catalog"""
+        # Setup mock
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.return_value = {'id': 'meta_catalog_456'}
+        
+        # Create a product without triggering signals
+        product = Product(
+            name='Test Product',
+            sku='TEST-SKU-004',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True
+        )
+        product.save()
+        
+        # Reset mock
+        mock_service.reset_mock()
+        
+        # Update the product (should create since no catalog_id)
+        product.price = 150.00
+        product.save()
+        
+        # Verify create was called (not update)
+        mock_service.create_product_in_catalog.assert_called_once()
+        
+        # Verify the product was updated with catalog ID
+        product.refresh_from_db()
+        self.assertEqual(product.whatsapp_catalog_id, 'meta_catalog_456')
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_product_deletion_triggers_catalog_deletion(self, mock_service_class):
+        """Test that deleting a product triggers Meta Catalog deletion"""
+        # Setup mock
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.return_value = {'id': 'meta_catalog_789'}
+        mock_service.delete_product_from_catalog.return_value = {'success': True}
+        
+        # Create a product with catalog ID
+        product = Product.objects.create(
+            name='Test Product',
+            sku='TEST-SKU-005',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True,
+            whatsapp_catalog_id='meta_catalog_789'
+        )
+        
+        # Reset mock to clear creation call
+        mock_service.reset_mock()
+        
+        # Delete the product
+        product.delete()
+        
+        # Verify delete was called
+        mock_service.delete_product_from_catalog.assert_called_once()
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_product_deletion_without_catalog_id_skips_sync(self, mock_service_class):
+        """Test that deleting a product without catalog ID doesn't call API"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.return_value = {'id': 'meta_catalog_999'}
+        
+        # Create a product
+        product = Product.objects.create(
+            name='Test Product',
+            sku='TEST-SKU-006',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True
+        )
+        
+        # Manually clear the catalog ID
+        Product.objects.filter(pk=product.pk).update(whatsapp_catalog_id=None)
+        product.refresh_from_db()
+        
+        # Reset mock
+        mock_service.reset_mock()
+        
+        # Delete the product
+        product.delete()
+        
+        # Verify delete was NOT called
+        mock_service.delete_product_from_catalog.assert_not_called()
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_signal_handles_api_error_gracefully(self, mock_service_class):
+        """Test that signal handles API errors without raising exceptions"""
+        # Setup mock to raise an exception
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.side_effect = Exception("API Error")
+        
+        # Create a product - should not raise exception
+        try:
+            product = Product.objects.create(
+                name='Test Product',
+                sku='TEST-SKU-007',
+                description='Test product description',
+                product_type='hardware',
+                category=self.category,
+                price=100.00,
+                currency='USD',
+                stock_quantity=10,
+                is_active=True
+            )
+            # If we get here, the signal handled the error gracefully
+            self.assertIsNotNone(product.id)
+        except Exception as e:
+            self.fail(f"Signal should handle API errors gracefully, but raised: {e}")
