@@ -209,7 +209,7 @@ class WhatsAppFlowJSONDefinitionTest(TestCase):
         """Test that Starlink flow JSON has required structure"""
         self.assertIn("version", STARLINK_INSTALLATION_WHATSAPP_FLOW)
         self.assertIn("screens", STARLINK_INSTALLATION_WHATSAPP_FLOW)
-        self.assertEqual(STARLINK_INSTALLATION_WHATSAPP_FLOW["version"], "3.0")
+        self.assertEqual(STARLINK_INSTALLATION_WHATSAPP_FLOW["version"], "7.3")
         self.assertGreater(len(STARLINK_INSTALLATION_WHATSAPP_FLOW["screens"]), 0)
     
     def test_starlink_flow_has_welcome_screen(self):
@@ -217,3 +217,45 @@ class WhatsAppFlowJSONDefinitionTest(TestCase):
         screens = STARLINK_INSTALLATION_WHATSAPP_FLOW["screens"]
         screen_ids = [screen["id"] for screen in screens]
         self.assertIn("WELCOME", screen_ids)
+    
+    def test_starlink_flow_data_fields_have_examples(self):
+        """Test that all data fields in Starlink flow have __example__ property"""
+        from flows.definitions.starlink_installation_whatsapp_flow import STARLINK_INSTALLATION_WHATSAPP_FLOW
+        
+        screens = STARLINK_INSTALLATION_WHATSAPP_FLOW["screens"]
+        for screen in screens:
+            if "data" in screen and screen["data"]:
+                for field_name, field_spec in screen["data"].items():
+                    self.assertIn(
+                        "__example__", 
+                        field_spec, 
+                        f"Screen {screen['id']} field '{field_name}' missing __example__"
+                    )
+    
+    def test_solar_installation_flow_data_fields_have_examples(self):
+        """Test that all data fields in Solar Installation flow have __example__ property"""
+        from flows.definitions.solar_installation_whatsapp_flow import SOLAR_INSTALLATION_WHATSAPP_FLOW
+        
+        screens = SOLAR_INSTALLATION_WHATSAPP_FLOW["screens"]
+        for screen in screens:
+            if "data" in screen and screen["data"]:
+                for field_name, field_spec in screen["data"].items():
+                    self.assertIn(
+                        "__example__", 
+                        field_spec, 
+                        f"Screen {screen['id']} field '{field_name}' missing __example__"
+                    )
+    
+    def test_solar_cleaning_flow_data_fields_have_examples(self):
+        """Test that all data fields in Solar Cleaning flow have __example__ property"""
+        from flows.definitions.solar_cleaning_whatsapp_flow import SOLAR_CLEANING_WHATSAPP_FLOW
+        
+        screens = SOLAR_CLEANING_WHATSAPP_FLOW["screens"]
+        for screen in screens:
+            if "data" in screen and screen["data"]:
+                for field_name, field_spec in screen["data"].items():
+                    self.assertIn(
+                        "__example__", 
+                        field_spec, 
+                        f"Screen {screen['id']} field '{field_name}' missing __example__"
+                    )

@@ -42,10 +42,12 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Your Information",
             "data": {
                 "full_name": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "Jane Doe"
                 },
                 "contact_phone": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "+263771234567"
                 }
             },
             "layout": {
@@ -89,7 +91,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Roof Information",
             "data": {
                 "roof_type": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "tile"
                 }
             },
             "layout": {
@@ -130,10 +133,12 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Solar Panel Information",
             "data": {
                 "panel_type": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "monocrystalline"
                 },
                 "panel_count": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "10"
                 }
             },
             "layout": {
@@ -181,10 +186,12 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Service Schedule",
             "data": {
                 "preferred_date": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "2025-12-25"
                 },
                 "availability": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "morning"
                 }
             },
             "layout": {
@@ -229,7 +236,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "title": "Service Location",
             "data": {
                 "address": {
-                    "type": "string"
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
                 }
             },
             "layout": {
