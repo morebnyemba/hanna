@@ -1,5 +1,40 @@
+"""
+Meta Catalog Service for syncing products with Meta (Facebook) Product Catalog.
+
+IMPORTANT: Image URL Accessibility
+===================================
+For products to be successfully created in Meta's catalog, the image_link URL must be:
+1. Publicly accessible (no authentication required)
+2. Reachable from Meta's servers (not behind a firewall/VPN)
+3. Return a valid image with proper Content-Type header
+4. Use HTTPS protocol
+
+Infrastructure Requirements:
+- Media files must be properly served by nginx or another web server
+- The docker-compose.yml should include a shared volume for media files
+- Nginx configuration should serve media files from the correct path
+
+Example nginx configuration:
+    location /media/ {
+        alias /srv/www/media/;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+Example docker-compose volume:
+    backend:
+        volumes:
+            - media_files:/app/mediafiles
+    nginx:
+        volumes:
+            - media_files:/srv/www/media:ro
+
+If image URLs are not accessible, Meta will reject product creation with a 400 error.
+"""
+
 import requests
 import logging
+import json
 from django.conf import settings
 from .models import MetaAppConfig
 from datetime import datetime, timedelta
@@ -49,31 +84,40 @@ class MetaCatalogService:
         Optional fields:
         - description: Product description
         - brand: Brand name
-        - image_link: URL to product image (must be absolute URL)
+        - image_link: URL to product image (must be absolute URL and publicly accessible)
         """
         # SKU is mandatory for the retailer_id
         if not product.sku:
             raise ValueError(f"Product '{product.name}' (ID: {product.id}) is missing an SKU, which is required for 'retailer_id'.")
 
+        # Format price correctly - Meta expects a string with 2 decimal places
+        price_value = "0.00"
+        if product.price is not None:
+            price_value = f"{float(product.price):.2f}"
+
         data = {
             "retailer_id": product.sku,
             "name": product.name,
-            "price": str(product.price) if product.price is not None else "0",
+            "price": price_value,
             "currency": product.currency,
             "condition": "new",
-            "availability": 'in stock' if product.stock_quantity > 0 else 'out of stock',
+            "availability": "in stock" if product.stock_quantity > 0 else "out of stock",
             # Provide a default link if not set, as it's often required.
             "link": product.website_url or "https://www.hanna-installations.com/product-not-available"
         }
 
+        # Add optional description if present
         if product.description:
             data["description"] = product.description
 
+        # Add optional brand if present
         if product.brand:
             data["brand"] = product.brand
 
         # Get the first image URL, if available
         # Meta API requires absolute URLs, not relative paths
+        # IMPORTANT: The URL must be publicly accessible for Meta's servers to fetch
+        # If no valid image is available, we omit image_link rather than sending an invalid URL
         first_image = product.images.first()
         if first_image and hasattr(first_image.image, 'url'):
             image_url = first_image.image.url
@@ -83,7 +127,17 @@ class MetaCatalogService:
                 backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
                 # Use https as the application is behind an HTTPS proxy
                 image_url = f"https://{backend_domain}{image_url}"
+            
+            # Only include image_link if we have a URL
+            # Note: If the image URL is not publicly accessible, Meta will reject the product
+            # TODO: Ensure media files are properly served and accessible via nginx
             data["image_link"] = image_url
+            logger.debug(f"Product image URL for Meta: {image_url}")
+        else:
+            logger.warning(
+                f"Product '{product.name}' (ID: {product.id}) has no images. "
+                "Meta Catalog product will be created without an image."
+            )
 
         return data
 
@@ -97,11 +151,43 @@ class MetaCatalogService:
         logger.debug(f"Payload: {data}")
         
         response = requests.post(url, headers=self._get_headers(), json=data)
-        response.raise_for_status()
-        result = response.json()
         
-        logger.info(f"Successfully created product in catalog. Response: {result}")
-        return result
+        # Log the full response for debugging
+        try:
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Successfully created product in catalog. Response: {result}")
+            return result
+        except requests.exceptions.HTTPError as e:
+            # Log the full error response from Meta
+            error_body = ""
+            error_details = {}
+            try:
+                error_details = response.json()
+                error_body = json.dumps(error_details, indent=2)
+                logger.error(
+                    f"Meta API error response for product '{product.name}' (SKU: {product.sku}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Error Details: {error_body}"
+                )
+                
+                # Check if the error is related to image_link
+                error_message = str(error_details)
+                if 'image' in error_message.lower() and 'image_link' in data:
+                    logger.warning(
+                        f"The error appears to be related to image_link. "
+                        f"Image URL: {data['image_link']}\n"
+                        f"Please verify that this URL is publicly accessible. "
+                        f"You can test it by opening it in a browser or using: curl -I {data['image_link']}"
+                    )
+            except Exception:
+                error_body = response.text
+                logger.error(
+                    f"Meta API error response (raw) for product '{product.name}' (SKU: {product.sku}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Response: {error_body}"
+                )
+            raise
 
     def update_product_in_catalog(self, product):
         if not product.whatsapp_catalog_id:
@@ -114,11 +200,42 @@ class MetaCatalogService:
         logger.debug(f"Payload: {data}")
         
         response = requests.post(url, headers=self._get_headers(), json=data)
-        response.raise_for_status()
-        result = response.json()
         
-        logger.info(f"Successfully updated product in catalog. Response: {result}")
-        return result
+        # Log the full response for debugging
+        try:
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Successfully updated product in catalog. Response: {result}")
+            return result
+        except requests.exceptions.HTTPError as e:
+            # Log the full error response from Meta
+            error_body = ""
+            error_details = {}
+            try:
+                error_details = response.json()
+                error_body = json.dumps(error_details, indent=2)
+                logger.error(
+                    f"Meta API error response for product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Error Details: {error_body}"
+                )
+                
+                # Check if the error is related to image_link
+                error_message = str(error_details)
+                if 'image' in error_message.lower() and 'image_link' in data:
+                    logger.warning(
+                        f"The error appears to be related to image_link. "
+                        f"Image URL: {data['image_link']}\n"
+                        f"Please verify that this URL is publicly accessible."
+                    )
+            except Exception:
+                error_body = response.text
+                logger.error(
+                    f"Meta API error response (raw) for product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Response: {error_body}"
+                )
+            raise
 
     def delete_product_from_catalog(self, product):
         if not product.whatsapp_catalog_id:
@@ -129,8 +246,30 @@ class MetaCatalogService:
         logger.info(f"Deleting product from Meta Catalog: {product.name} (Catalog ID: {product.whatsapp_catalog_id})")
         
         response = requests.delete(url, headers=self._get_headers())
-        response.raise_for_status()
-        result = response.json()
         
-        logger.info(f"Successfully deleted product from catalog. Response: {result}")
-        return result
+        # Log the full response for debugging
+        try:
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Successfully deleted product from catalog. Response: {result}")
+            return result
+        except requests.exceptions.HTTPError as e:
+            # Log the full error response from Meta
+            error_body = ""
+            error_details = {}
+            try:
+                error_details = response.json()
+                error_body = json.dumps(error_details, indent=2)
+                logger.error(
+                    f"Meta API error response when deleting product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Error Details: {error_body}"
+                )
+            except Exception:
+                error_body = response.text
+                logger.error(
+                    f"Meta API error response (raw) when deleting product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Response: {error_body}"
+                )
+            raise
