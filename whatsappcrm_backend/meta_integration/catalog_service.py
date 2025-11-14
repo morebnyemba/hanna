@@ -1,5 +1,40 @@
+"""
+Meta Catalog Service for syncing products with Meta (Facebook) Product Catalog.
+
+IMPORTANT: Image URL Accessibility
+===================================
+For products to be successfully created in Meta's catalog, the image_link URL must be:
+1. Publicly accessible (no authentication required)
+2. Reachable from Meta's servers (not behind a firewall/VPN)
+3. Return a valid image with proper Content-Type header
+4. Use HTTPS protocol
+
+Infrastructure Requirements:
+- Media files must be properly served by nginx or another web server
+- The docker-compose.yml should include a shared volume for media files
+- Nginx configuration should serve media files from the correct path
+
+Example nginx configuration:
+    location /media/ {
+        alias /srv/www/media/;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+Example docker-compose volume:
+    backend:
+        volumes:
+            - media_files:/app/mediafiles
+    nginx:
+        volumes:
+            - media_files:/srv/www/media:ro
+
+If image URLs are not accessible, Meta will reject product creation with a 400 error.
+"""
+
 import requests
 import logging
+import json
 from django.conf import settings
 from .models import MetaAppConfig
 from datetime import datetime, timedelta
@@ -126,12 +161,32 @@ class MetaCatalogService:
         except requests.exceptions.HTTPError as e:
             # Log the full error response from Meta
             error_body = ""
+            error_details = {}
             try:
-                error_body = response.json()
-                logger.error(f"Meta API error response: {error_body}")
+                error_details = response.json()
+                error_body = json.dumps(error_details, indent=2)
+                logger.error(
+                    f"Meta API error response for product '{product.name}' (SKU: {product.sku}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Error Details: {error_body}"
+                )
+                
+                # Check if the error is related to image_link
+                error_message = str(error_details)
+                if 'image' in error_message.lower() and 'image_link' in data:
+                    logger.warning(
+                        f"The error appears to be related to image_link. "
+                        f"Image URL: {data['image_link']}\n"
+                        f"Please verify that this URL is publicly accessible. "
+                        f"You can test it by opening it in a browser or using: curl -I {data['image_link']}"
+                    )
             except Exception:
                 error_body = response.text
-                logger.error(f"Meta API error response (raw): {error_body}")
+                logger.error(
+                    f"Meta API error response (raw) for product '{product.name}' (SKU: {product.sku}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Response: {error_body}"
+                )
             raise
 
     def update_product_in_catalog(self, product):
@@ -155,12 +210,31 @@ class MetaCatalogService:
         except requests.exceptions.HTTPError as e:
             # Log the full error response from Meta
             error_body = ""
+            error_details = {}
             try:
-                error_body = response.json()
-                logger.error(f"Meta API error response: {error_body}")
+                error_details = response.json()
+                error_body = json.dumps(error_details, indent=2)
+                logger.error(
+                    f"Meta API error response for product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Error Details: {error_body}"
+                )
+                
+                # Check if the error is related to image_link
+                error_message = str(error_details)
+                if 'image' in error_message.lower() and 'image_link' in data:
+                    logger.warning(
+                        f"The error appears to be related to image_link. "
+                        f"Image URL: {data['image_link']}\n"
+                        f"Please verify that this URL is publicly accessible."
+                    )
             except Exception:
                 error_body = response.text
-                logger.error(f"Meta API error response (raw): {error_body}")
+                logger.error(
+                    f"Meta API error response (raw) for product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Response: {error_body}"
+                )
             raise
 
     def delete_product_from_catalog(self, product):
@@ -182,10 +256,20 @@ class MetaCatalogService:
         except requests.exceptions.HTTPError as e:
             # Log the full error response from Meta
             error_body = ""
+            error_details = {}
             try:
-                error_body = response.json()
-                logger.error(f"Meta API error response: {error_body}")
+                error_details = response.json()
+                error_body = json.dumps(error_details, indent=2)
+                logger.error(
+                    f"Meta API error response when deleting product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Error Details: {error_body}"
+                )
             except Exception:
                 error_body = response.text
-                logger.error(f"Meta API error response (raw): {error_body}")
+                logger.error(
+                    f"Meta API error response (raw) when deleting product '{product.name}' (Catalog ID: {product.whatsapp_catalog_id}):\n"
+                    f"Status Code: {response.status_code}\n"
+                    f"Response: {error_body}"
+                )
             raise
