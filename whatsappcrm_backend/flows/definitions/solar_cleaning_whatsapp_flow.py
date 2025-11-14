@@ -95,6 +95,14 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "id": "ROOF_DETAILS",
             "title": "Roof Information",
             "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
                 "roof_type": {
                     "type": "string",
                     "__example__": "tile"
@@ -142,6 +150,18 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "id": "PANEL_DETAILS",
             "title": "Solar Panel Information",
             "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "roof_type": {
+                    "type": "string",
+                    "__example__": "tile"
+                },
                 "panel_type": {
                     "type": "string",
                     "__example__": "monocrystalline"
@@ -202,6 +222,26 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "id": "SCHEDULE",
             "title": "Service Schedule",
             "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "roof_type": {
+                    "type": "string",
+                    "__example__": "tile"
+                },
+                "panel_type": {
+                    "type": "string",
+                    "__example__": "monocrystalline"
+                },
+                "panel_count": {
+                    "type": "string",
+                    "__example__": "10"
+                },
                 "preferred_date": {
                     "type": "string",
                     "__example__": "2025-12-25"
@@ -261,6 +301,34 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
             "id": "LOCATION",
             "title": "Service Location",
             "data": {
+                "full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "roof_type": {
+                    "type": "string",
+                    "__example__": "tile"
+                },
+                "panel_type": {
+                    "type": "string",
+                    "__example__": "monocrystalline"
+                },
+                "panel_count": {
+                    "type": "string",
+                    "__example__": "10"
+                },
+                "preferred_date": {
+                    "type": "string",
+                    "__example__": "2025-12-25"
+                },
+                "availability": {
+                    "type": "string",
+                    "__example__": "morning"
+                },
                 "address": {
                     "type": "string",
                     "__example__": "123 Main Street, Harare"
