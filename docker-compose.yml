@@ -31,6 +31,7 @@ services:
     volumes:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
+      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
     command: >
       sh -c "# python manage.py migrate &&
              daphne -b 0.0.0.0 -p 8000 whatsappcrm_backend.asgi:application"
@@ -64,6 +65,7 @@ services:
     command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=20
     volumes:
       - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
@@ -78,6 +80,7 @@ services:
     volumes:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
+      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
@@ -91,6 +94,7 @@ services:
     command: celery -A whatsappcrm_backend beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
@@ -104,6 +108,7 @@ services:
     command: python manage.py idle_email_fetcher
     volumes:
       - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
@@ -130,5 +135,6 @@ volumes:
   postgres_data:
   redis_data:
   staticfiles_volume:
+  mediafiles_volume:  # Shared volume for user-uploaded media files
   npm_data:
   npm_letsencrypt:

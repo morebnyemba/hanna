@@ -66,11 +66,12 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]
 
-# --- Serve Media Files in Development ---
-# This is not suitable for production. In production, your web server (e.g., Nginx)
-# should be configured to serve media files directly.
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# --- Serve Media Files ---
+# In this setup with Nginx Proxy Manager, media requests are proxied to Django.
+# We serve media files via Django even in production mode since NPM proxies all requests.
+# For optimal performance in production, consider configuring NPM to serve media files
+# directly from a shared volume, or use a CDN.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Note on Namespaces:
 # The 'namespace' argument in include() is useful for URL reversing 
