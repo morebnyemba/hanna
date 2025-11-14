@@ -82,6 +82,7 @@ class MetaCatalogService:
         # Get the first image URL, if available
         # Meta API requires absolute URLs, not relative paths
         # IMPORTANT: The URL must be publicly accessible for Meta's servers to fetch
+        # If no valid image is available, we omit image_link rather than sending an invalid URL
         first_image = product.images.first()
         if first_image and hasattr(first_image.image, 'url'):
             image_url = first_image.image.url
@@ -91,8 +92,17 @@ class MetaCatalogService:
                 backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
                 # Use https as the application is behind an HTTPS proxy
                 image_url = f"https://{backend_domain}{image_url}"
+            
+            # Only include image_link if we have a URL
+            # Note: If the image URL is not publicly accessible, Meta will reject the product
+            # TODO: Ensure media files are properly served and accessible via nginx
             data["image_link"] = image_url
             logger.debug(f"Product image URL for Meta: {image_url}")
+        else:
+            logger.warning(
+                f"Product '{product.name}' (ID: {product.id}) has no images. "
+                "Meta Catalog product will be created without an image."
+            )
 
         return data
 
