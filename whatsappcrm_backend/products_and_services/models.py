@@ -57,6 +57,12 @@ class Product(models.Model):
     country_of_origin = models.CharField(_("Country of Origin"), max_length=2, blank=True, null=True, help_text=_("The two-letter country code (e.g., US, GB) required by WhatsApp."))
     brand = models.CharField(_("Brand"), max_length=255, blank=True, null=True, help_text=_("The brand name of the product, required for WhatsApp Catalog."))
     
+    # Meta sync tracking fields
+    meta_sync_attempts = models.PositiveIntegerField(_("Meta Sync Attempts"), default=0, help_text=_("Number of times sync to Meta Catalog has been attempted"))
+    meta_sync_last_error = models.TextField(_("Last Meta Sync Error"), blank=True, null=True, help_text=_("Last error message from Meta API sync attempt"))
+    meta_sync_last_attempt = models.DateTimeField(_("Last Meta Sync Attempt"), blank=True, null=True, help_text=_("Timestamp of last sync attempt"))
+    meta_sync_last_success = models.DateTimeField(_("Last Meta Sync Success"), blank=True, null=True, help_text=_("Timestamp of last successful sync"))
+    
     # --- Inventory ---
     stock_quantity = models.PositiveIntegerField(_("Stock Quantity"), default=0, help_text=_("The number of items available in stock. Used for WhatsApp Catalog inventory management."))
     
@@ -74,6 +80,15 @@ class Product(models.Model):
     
     def __str__(self):
         return f"{self.name} ({self.sku or 'No SKU'})"
+    
+    def reset_meta_sync_attempts(self):
+        """
+        Reset Meta sync attempt counter and error.
+        Useful for manual retry after fixing issues.
+        """
+        self.meta_sync_attempts = 0
+        self.meta_sync_last_error = None
+        self.save(update_fields=['meta_sync_attempts', 'meta_sync_last_error'])
 
     class Meta:
         verbose_name = _("Product")
