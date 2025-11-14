@@ -3,7 +3,7 @@ Unit tests for WhatsAppFlowService update_flow_json fix.
 Tests that the file parameter is correctly sent as multipart/form-data.
 """
 import json
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from django.test import TestCase
 from django.utils import timezone
 
