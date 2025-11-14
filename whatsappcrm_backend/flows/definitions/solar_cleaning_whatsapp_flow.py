@@ -29,8 +29,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                     "__example__": "monocrystalline"
                 },
                 "panel_count": {
-                    "type": "string",
-                    "__example__": "10"
+                    "type": "number",
+                    "__example__": 10
                 },
                 "preferred_date": {
                     "type": "string",
@@ -101,8 +101,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                     "__example__": "monocrystalline"
                 },
                 "panel_count": {
-                    "type": "string",
-                    "__example__": "10"
+                    "type": "number",
+                    "__example__": 10
                 },
                 "preferred_date": {
                     "type": "string",
@@ -184,8 +184,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                     "__example__": "monocrystalline"
                 },
                 "panel_count": {
-                    "type": "string",
-                    "__example__": "10"
+                    "type": "number",
+                    "__example__": 10
                 },
                 "preferred_date": {
                     "type": "string",
@@ -264,8 +264,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                     "__example__": "monocrystalline"
                 },
                 "panel_count": {
-                    "type": "string",
-                    "__example__": "10"
+                    "type": "number",
+                    "__example__": 10
                 },
                 "preferred_date": {
                     "type": "string",
@@ -351,8 +351,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                     "__example__": "monocrystalline"
                 },
                 "panel_count": {
-                    "type": "string",
-                    "__example__": "10"
+                    "type": "number",
+                    "__example__": 10
                 },
                 "preferred_date": {
                     "type": "string",
@@ -435,8 +435,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                     "__example__": "monocrystalline"
                 },
                 "panel_count": {
-                    "type": "string",
-                    "__example__": "10"
+                    "type": "number",
+                    "__example__": 10
                 },
                 "preferred_date": {
                     "type": "string",
