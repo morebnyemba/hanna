@@ -10,3 +10,8 @@ node_modules/
 .DS_Store
 .gemini/
 gha-creds-*.json
+
+# Test databases
+*.sqlite3
+db.sqlite3
+test_db.sqlite3
