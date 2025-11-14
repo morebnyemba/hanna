@@ -82,47 +82,39 @@ The admin list view shows color-coded sync status:
 
 **Cause**: Meta's servers cannot fetch the product image
 
-**Default Behavior**: Images are DISABLED by default to prevent sync failures
+**Solution**: Configure NPM (Nginx Proxy Manager) to serve media files publicly
 
-**Solution Option 1 - Keep Images Disabled (Recommended)**:
-```python
-# In Django settings (default):
-META_CATALOG_INCLUDE_IMAGES = False  # Images will not be sent to Meta
+**Complete Configuration Guide**: See `NPM_MEDIA_CONFIGURATION.md` in the repository root
 
-# Products will sync without images, which is acceptable for Meta Catalog
-# This prevents sync failures when images aren't publicly accessible
-```
+**Quick Summary**:
 
-**Solution Option 2 - Enable Images After Fixing Accessibility**:
-```bash
-# 1. Test if image URL is publicly accessible
-curl -I https://backend.hanna.co.zw/media/product_images/example.png
-
-# Should return: HTTP/2 200
-# If not, check:
-# 1. Nginx is serving media files
-# 2. Media files volume is mounted correctly in docker-compose
-# 3. URL is not behind authentication
-
-# 2. After fixing, enable in Django settings:
-# META_CATALOG_INCLUDE_IMAGES = True
-```
-
-**Docker Configuration**:
+1. **Update docker-compose.yml** (already done):
 ```yaml
 # docker-compose.yml
-backend:
+npm:
   volumes:
-    - mediafiles_volume:/app/mediafiles
-
-nginx:
-  volumes:
-    - mediafiles_volume:/srv/www/media:ro
+    - mediafiles_volume:/srv/www/media:ro  # Mount media files to NPM
 ```
 
-**Nginx Configuration**:
+2. **Configure NPM Custom Location**:
+   - Access NPM Admin UI: `http://your-server:81`
+   - Add custom location for `/media/` on `backend.hanna.co.zw`
+   - Configure to serve from `/srv/www/media/`
+
+3. **Test Accessibility**:
+```bash
+curl -I https://backend.hanna.co.zw/media/product_images/example.png
+# Should return: HTTP/2 200
+```
+
+4. **Troubleshooting**:
+   - Check volume mount: `docker inspect whatsappcrm_npm | grep media`
+   - View NPM logs: `docker exec whatsappcrm_npm tail -f /data/logs/media-error.log`
+   - Verify files exist: `docker exec whatsappcrm_npm ls -la /srv/www/media/product_images/`
+
+**NPM Custom Location Config**:
 ```nginx
-# nginx.conf
+# In NPM Admin UI → Custom Locations tab
 location /media/ {
     alias /srv/www/media/;
     expires 7d;

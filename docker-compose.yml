@@ -125,6 +125,7 @@ services:
     volumes:
       - npm_data:/data
       - npm_letsencrypt:/etc/letsencrypt
+      - mediafiles_volume:/srv/www/media:ro  # Mount media files for public access (read-only)
     depends_on:
       - backend
       - frontend

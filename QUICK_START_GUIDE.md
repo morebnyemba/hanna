@@ -20,13 +20,16 @@ Your product sync with Meta (WhatsApp) Catalog now has:
 # - meta_sync_last_success (timestamp, nullable)
 ```
 
-### Step 2: Enable Image Sync (Optional)
+### Step 2: Configure Media Files Access
 ```bash
-# Add to your Django settings if images are publicly accessible:
-# META_CATALOG_INCLUDE_IMAGES = True
-# 
-# Leave disabled (default False) if images are not publicly accessible
-# Products will sync without images, which is acceptable for Meta Catalog
+# Update docker-compose to mount media files to NPM
+docker-compose down
+docker-compose up -d
+
+# Follow NPM_MEDIA_CONFIGURATION.md to:
+# 1. Configure NPM to serve /media/ from /srv/www/media/
+# 2. Test image URLs are publicly accessible
+# 3. Verify product images can be accessed from Meta's servers
 ```
 
 ### Step 3: Restart Services
@@ -116,33 +119,44 @@ Error Message: [Details here]
 
 ### Scenario 1: Images Not Publicly Accessible
 
-**Problem**: Image URLs are not accessible to Meta's servers
+**Problem**: Image URLs are not accessible to Meta's servers, causing product sync failures
 
-**Solution Option 1 - Disable Image Sync (Recommended)**:
-```python
-# In your Django settings, keep images disabled (default):
-# META_CATALOG_INCLUDE_IMAGES = False  (default)
-# 
-# Products will sync WITHOUT images, which is acceptable for Meta Catalog
-# The catalog will show product info without images until this is fixed
+**Solution**: Configure NPM to serve media files publicly
+
+**Step 1: Verify docker-compose.yml**
+```bash
+# The npm service should have mediafiles_volume mounted:
+# volumes:
+#   - mediafiles_volume:/srv/www/media:ro
 ```
 
-**Solution Option 2 - Fix Image Accessibility**:
+**Step 2: Configure NPM**
+
+Follow the complete guide in **NPM_MEDIA_CONFIGURATION.md**:
+
+1. Access NPM Admin UI at `http://your-server:81`
+2. Add Custom Location for `/media/` on `backend.hanna.co.zw` proxy host
+3. Configure to serve from `/srv/www/media/` with caching
+4. Test image accessibility
+
+**Step 3: Test**
 ```bash
 # 1. Test an image URL
 curl -I https://backend.hanna.co.zw/media/product_images/test.png
 
 # Should return: HTTP/2 200
-# If 404/403, you need to:
-# 1. Configure nginx to serve media files publicly
-# 2. Update docker-compose.yml to share media volume with nginx
-# 3. Ensure no authentication is required for /media/ URLs
 
-# 2. After fixing, enable in settings:
-# META_CATALOG_INCLUDE_IMAGES = True
+# 2. If 404, check NPM logs
+docker exec whatsappcrm_npm tail -f /data/logs/media-error.log
 ```
 
-**Note**: By default, image sync is DISABLED to prevent sync failures when images aren't accessible.
+**Step 4: Retry Product Sync**
+```bash
+# After fixing, reset and retry products in Django Admin
+# Select products → "Reset Meta sync attempts" → Save
+```
+
+**See NPM_MEDIA_CONFIGURATION.md for detailed troubleshooting.**
 
 ### Scenario 2: Products Without SKU Not Syncing
 
