@@ -3,13 +3,71 @@
 SOLAR_CLEANING_FLOW = {
     "name": "solar_cleaning_request",
     "friendly_name": "Solar Panel Cleaning Request",
-    "description": "Guides a user through requesting a solar panel cleaning service.",
+    "description": "Initiates the WhatsApp interactive flow for solar panel cleaning service.",
     "trigger_keywords": ["solar cleaning", "clean panels"],
     "is_active": True,
     "steps": [
         {
             "name": "start_cleaning_request",
             "is_entry_point": True,
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "flows",
+                    "model_name": "WhatsAppFlow",
+                    "variable_name": "solar_cleaning_whatsapp_flow",
+                    "filters_template": {
+                        "name": "solar_cleaning_whatsapp",
+                        "sync_status": "published"
+                    },
+                    "fields_to_return": ["flow_id", "friendly_name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "send_whatsapp_flow", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "solar_cleaning_whatsapp_flow.0"}},
+                {"to_step": "fallback_to_legacy", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "send_whatsapp_flow",
+            "type": "send_message",
+            "config": {
+                "message_type": "interactive",
+                "interactive": {
+                    "type": "flow",
+                    "body": {
+                        "text": "Please complete our solar panel cleaning request form to get started."
+                    },
+                    "action": {
+                        "name": "flow",
+                        "parameters": {
+                            "flow_message_version": "3",
+                            "flow_token": "{{ contact.id }}-solar-cleaning-{{ 'now'|date:'U' }}",
+                            "flow_id": "{{ solar_cleaning_whatsapp_flow.0.flow_id }}",
+                            "flow_cta": "Start Request",
+                            "flow_action": "navigate",
+                            "flow_action_payload": {
+                                "screen": "WELCOME"
+                            }
+                        }
+                    }
+                }
+            },
+            "transitions": [{"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "fallback_to_legacy",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {"body": "Sorry, the interactive form is currently unavailable. Please contact our support team to request a solar panel cleaning service."}
+            },
+            "transitions": [{"to_step": "end_flow_cancelled", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "legacy_start_cleaning_request",
             "type": "question",
             "config": {
                 "message_config": {"message_type": "text", "text": {"body": "You've requested our solar panel cleaning service. Let's get a few details to provide you with a quote.\n\nFirst, what is your *full name*?"}},
@@ -202,7 +260,7 @@ SOLAR_CLEANING_FLOW = {
         {
             "name": "end_flow_success",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Your solar panel cleaning request has been submitted. Our team will contact you shortly to confirm the schedule and provide a quote."}}}
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Please complete the form to submit your solar panel cleaning request. Our team will contact you shortly to confirm the schedule and provide a quote."}}}
         },
         {
             "name": "end_flow_cancelled",
