@@ -3,13 +3,71 @@
 SITE_INSPECTION_FLOW = {
     "name": "site_inspection_request",
     "friendly_name": "Site Assessment Request",
-    "description": "Guides a user through booking a site assessment for a solar installation.",
+    "description": "Initiates the WhatsApp interactive flow for site assessment requests.",
     "trigger_keywords": ['site assessment', 'assessment', 'book assessment', 'site inspection'],
     "is_active": True,
     "steps": [
         {
-            "name": "start_assessment_request",
+            "name": "check_whatsapp_flow",
             "is_entry_point": True,
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "flows",
+                    "model_name": "WhatsAppFlow",
+                    "variable_name": "site_inspection_whatsapp_flow",
+                    "filters_template": {
+                        "name": "site_inspection_whatsapp",
+                        "sync_status": "published"
+                    },
+                    "fields_to_return": ["flow_id", "friendly_name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "send_whatsapp_flow", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "site_inspection_whatsapp_flow.0"}},
+                {"to_step": "fallback_to_legacy", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "send_whatsapp_flow",
+            "type": "send_message",
+            "config": {
+                "message_type": "interactive",
+                "interactive": {
+                    "type": "flow",
+                    "body": {
+                        "text": "Please complete our site assessment request form to get started."
+                    },
+                    "action": {
+                        "name": "flow",
+                        "parameters": {
+                            "flow_message_version": "3",
+                            "flow_token": "{{ contact.id }}-site-inspection-{{ 'now'|date:'U' }}",
+                            "flow_id": "{{ site_inspection_whatsapp_flow.0.flow_id }}",
+                            "flow_cta": "Start Request",
+                            "flow_action": "navigate",
+                            "flow_action_payload": {
+                                "screen": "WELCOME"
+                            }
+                        }
+                    }
+                }
+            },
+            "transitions": [{"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "fallback_to_legacy",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {"body": "Sorry, the interactive form is currently unavailable. Please contact our support team to request a site assessment."}
+            },
+            "transitions": [{"to_step": "end_flow_cancelled", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "start_assessment_request",
             "type": "question",
             "config": {
                 "message_config": {"message_type": "text", "text": {"body": "You've requested a site assessment. Let's get a few details to schedule your visit.\n\nWhat is your *full name*?"}},
@@ -101,6 +159,16 @@ SITE_INSPECTION_FLOW = {
             "type": "end_flow",
             "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Your site assessment request (#{{ generated_assessment_id }}) has been submitted. Our team will contact you shortly to confirm the schedule."}}},
             "transitions": []
+        },
+        {
+            "name": "end_flow_success",
+            "type": "end_flow",
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Please complete the form to submit your site assessment request. Our team will contact you shortly to confirm the schedule."}}}
+        },
+        {
+            "name": "end_flow_cancelled",
+            "type": "end_flow",
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Your request has been cancelled. Type 'menu' to start over."}}}
         }
     ]
 }
