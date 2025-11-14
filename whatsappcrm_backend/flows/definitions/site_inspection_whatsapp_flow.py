@@ -106,12 +106,11 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                         "helper-text": "Enter your full name"
                     },
                     {
-                        "type": "TextInput",
+                        "type": "DatePicker",
                         "name": "assessment_preferred_day",
-                        "label": "Preferred Assessment Day",
+                        "label": "Preferred Assessment Date",
                         "required": True,
-                        "input-type": "text",
-                        "helper-text": "e.g., Monday, December 25th or Next Week"
+                        "helper-text": "Select your preferred date for the assessment"
                     },
                     {
                         "type": "Footer",

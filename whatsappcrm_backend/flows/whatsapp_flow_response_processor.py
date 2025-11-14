@@ -18,6 +18,7 @@ from customer_data.models import (
 )
 from meta_integration.utils import send_whatsapp_message
 import uuid
+from decimal import Decimal, InvalidOperation
 
 logger = logging.getLogger(__name__)
 
@@ -492,14 +493,14 @@ class WhatsAppFlowResponseProcessor:
             
             # Convert monthly income to Decimal
             try:
-                monthly_income = float(loan_monthly_income) if loan_monthly_income else 0
-            except (ValueError, TypeError):
-                monthly_income = 0
+                monthly_income = Decimal(str(loan_monthly_income)) if loan_monthly_income else Decimal('0')
+            except (ValueError, TypeError, InvalidOperation):
+                monthly_income = Decimal('0')
             
             # Handle loan amount based on type
             try:
-                requested_amount = float(loan_request_amount) if loan_request_amount else None
-            except (ValueError, TypeError):
+                requested_amount = Decimal(str(loan_request_amount)) if loan_request_amount else None
+            except (ValueError, TypeError, InvalidOperation):
                 requested_amount = None
             
             # Create loan application
