@@ -1705,8 +1705,12 @@ def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config)
                 whatsapp_flow = whatsapp_flows.filter(name='starlink_installation_whatsapp').first()
             elif 'panel_count' in response_fields and 'roof_type' in response_fields:
                 whatsapp_flow = whatsapp_flows.filter(name='solar_cleaning_whatsapp').first()
-            elif 'order_number' in response_fields:
+            elif 'order_number' in response_fields and 'sales_person' in response_fields:
                 whatsapp_flow = whatsapp_flows.filter(name='solar_installation_whatsapp').first()
+            elif 'assessment_full_name' in response_fields and 'assessment_address' in response_fields:
+                whatsapp_flow = whatsapp_flows.filter(name='site_inspection_whatsapp').first()
+            elif 'loan_type' in response_fields and 'loan_applicant_name' in response_fields:
+                whatsapp_flow = whatsapp_flows.filter(name='loan_application_whatsapp').first()
             
             if not whatsapp_flow:
                 whatsapp_flow = whatsapp_flows.first()
