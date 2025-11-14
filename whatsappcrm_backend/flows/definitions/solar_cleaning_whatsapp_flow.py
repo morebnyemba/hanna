@@ -6,7 +6,7 @@ This is a conversion of the traditional flow to WhatsApp's interactive flow form
 """
 
 SOLAR_CLEANING_WHATSAPP_FLOW = {
-    "version": "3.0",
+    "version": "7.3",
     "screens": [
         {
             "id": "WELCOME",
