@@ -82,9 +82,20 @@ The admin list view shows color-coded sync status:
 
 **Cause**: Meta's servers cannot fetch the product image
 
-**Solution**:
+**Default Behavior**: Images are DISABLED by default to prevent sync failures
+
+**Solution Option 1 - Keep Images Disabled (Recommended)**:
+```python
+# In Django settings (default):
+META_CATALOG_INCLUDE_IMAGES = False  # Images will not be sent to Meta
+
+# Products will sync without images, which is acceptable for Meta Catalog
+# This prevents sync failures when images aren't publicly accessible
+```
+
+**Solution Option 2 - Enable Images After Fixing Accessibility**:
 ```bash
-# Test if image URL is publicly accessible
+# 1. Test if image URL is publicly accessible
 curl -I https://backend.hanna.co.zw/media/product_images/example.png
 
 # Should return: HTTP/2 200
@@ -92,6 +103,9 @@ curl -I https://backend.hanna.co.zw/media/product_images/example.png
 # 1. Nginx is serving media files
 # 2. Media files volume is mounted correctly in docker-compose
 # 3. URL is not behind authentication
+
+# 2. After fixing, enable in Django settings:
+# META_CATALOG_INCLUDE_IMAGES = True
 ```
 
 **Docker Configuration**:

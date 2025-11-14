@@ -148,13 +148,15 @@ Full Response: [complete JSON]
 ═══════════════════════════════════════════════════════
 ```
 
-### 5. `whatsappcrm_backend/products_and_services/migrations/0002_add_meta_sync_fields.py`
+### 5. Database Migration
 
-**Created AddField migration**:
-- Adds meta_sync_attempts field to Product model
-- Adds meta_sync_last_error field to Product model
-- Adds meta_sync_last_attempt field to Product model
-- Adds meta_sync_last_success field to Product model
+**Note**: No migration file included in this PR. The database migration will be handled separately in production.
+
+The following fields need to be added to the Product model:
+- `meta_sync_attempts` - PositiveIntegerField, default=0
+- `meta_sync_last_error` - TextField, blank=True, null=True
+- `meta_sync_last_attempt` - DateTimeField, blank=True, null=True
+- `meta_sync_last_success` - DateTimeField, blank=True, null=True
 
 ### 6. Documentation
 
@@ -248,12 +250,19 @@ For successful product synchronization:
 
 ### 1. Apply Database Migration
 ```bash
-# SSH into server or use docker exec
-docker-compose exec backend python manage.py migrate products_and_services
+# Migration will be handled separately in production
+# The following fields need to be added to products_and_services.Product table:
+# - meta_sync_attempts (integer, default 0, not null)
+# - meta_sync_last_error (text, nullable)
+# - meta_sync_last_attempt (timestamp, nullable)
+# - meta_sync_last_success (timestamp, nullable)
 
-# Expected output:
-# Running migrations:
-#   Applying products_and_services.0002_add_meta_sync_fields... OK
+# SQL example (if needed):
+# ALTER TABLE products_and_services_product 
+#   ADD COLUMN meta_sync_attempts integer DEFAULT 0 NOT NULL,
+#   ADD COLUMN meta_sync_last_error text,
+#   ADD COLUMN meta_sync_last_attempt timestamp with time zone,
+#   ADD COLUMN meta_sync_last_success timestamp with time zone;
 ```
 
 ### 2. Restart Backend Services

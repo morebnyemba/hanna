@@ -10,17 +10,31 @@ Your product sync with Meta (WhatsApp) Catalog now has:
 
 ## 🚀 Deployment (5 minutes)
 
-### Step 1: Run Migration
+### Step 1: Apply Database Changes
 ```bash
-docker-compose exec backend python manage.py migrate products_and_services
+# Migration will be handled separately in production
+# Ensure these fields are added to products_and_services.Product table:
+# - meta_sync_attempts (integer, default 0)
+# - meta_sync_last_error (text, nullable)
+# - meta_sync_last_attempt (timestamp, nullable)
+# - meta_sync_last_success (timestamp, nullable)
 ```
 
-### Step 2: Restart Services
+### Step 2: Enable Image Sync (Optional)
+```bash
+# Add to your Django settings if images are publicly accessible:
+# META_CATALOG_INCLUDE_IMAGES = True
+# 
+# Leave disabled (default False) if images are not publicly accessible
+# Products will sync without images, which is acceptable for Meta Catalog
+```
+
+### Step 3: Restart Services
 ```bash
 docker-compose restart backend
 ```
 
-### Step 3: Verify in Admin
+### Step 4: Verify in Admin
 1. Go to **Django Admin → Products**
 2. Look for new **"Meta Sync Status"** column
 3. Should see color-coded status indicators
@@ -100,21 +114,35 @@ Error Message: [Details here]
 
 ## 📋 Common Scenarios
 
-### Scenario 1: All Products Failing with Image Error
+### Scenario 1: Images Not Publicly Accessible
 
-**Problem**: Image URLs not accessible to Meta
+**Problem**: Image URLs are not accessible to Meta's servers
 
-**Solution**:
+**Solution Option 1 - Disable Image Sync (Recommended)**:
+```python
+# In your Django settings, keep images disabled (default):
+# META_CATALOG_INCLUDE_IMAGES = False  (default)
+# 
+# Products will sync WITHOUT images, which is acceptable for Meta Catalog
+# The catalog will show product info without images until this is fixed
+```
+
+**Solution Option 2 - Fix Image Accessibility**:
 ```bash
-# Test an image URL
+# 1. Test an image URL
 curl -I https://backend.hanna.co.zw/media/product_images/test.png
 
 # Should return: HTTP/2 200
-# If 404/403:
-# 1. Check nginx.conf location /media/ block
-# 2. Verify mediafiles_volume in docker-compose.yml
-# 3. Restart nginx: docker-compose restart nginx
+# If 404/403, you need to:
+# 1. Configure nginx to serve media files publicly
+# 2. Update docker-compose.yml to share media volume with nginx
+# 3. Ensure no authentication is required for /media/ URLs
+
+# 2. After fixing, enable in settings:
+# META_CATALOG_INCLUDE_IMAGES = True
 ```
+
+**Note**: By default, image sync is DISABLED to prevent sync failures when images aren't accessible.
 
 ### Scenario 2: Products Without SKU Not Syncing
 
