@@ -3,7 +3,7 @@
 STARLINK_INSTALLATION_FLOW = {
     "name": "starlink_installation_request",
     "friendly_name": "Request Starlink Installation",
-    "description": "Guides a user through scheduling a Starlink installation.",
+    "description": "Initiates the WhatsApp interactive flow for Starlink installation.",
     "trigger_keywords": ['request starlink', 'starlink installation'],
     "is_active": True,
     "steps": [
@@ -18,11 +18,73 @@ STARLINK_INSTALLATION_FLOW = {
                 }]
             },
             "transitions": [
-                {"to_step": "start_starlink_request", "condition_config": {"type": "always_true"}}
+                {"to_step": "query_whatsapp_flow", "condition_config": {"type": "always_true"}}
             ]
         },
         {
-            "name": "start_starlink_request",
+            "name": "query_whatsapp_flow",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "flows",
+                    "model_name": "WhatsAppFlow",
+                    "variable_name": "starlink_whatsapp_flow",
+                    "filters_template": {
+                        "name": "starlink_installation_whatsapp",
+                        "sync_status": "published"
+                    },
+                    "fields_to_return": ["flow_id", "friendly_name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "send_whatsapp_flow", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "starlink_whatsapp_flow.0"}},
+                {"to_step": "fallback_to_legacy", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "send_whatsapp_flow",
+            "type": "send_message",
+            "config": {
+                "message_type": "interactive",
+                "interactive": {
+                    "type": "flow",
+                    "header": {
+                        "type": "text",
+                        "text": "Starlink Installation"
+                    },
+                    "body": {
+                        "text": "{% if customer_profile.first_name %}Welcome back, {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %}\n\nPlease complete our Starlink installation form to get started."
+                    },
+                    "action": {
+                        "name": "flow",
+                        "parameters": {
+                            "flow_message_version": "3",
+                            "flow_token": "{{ contact.id }}-starlink-install-{{ 'now'|date:'U' }}",
+                            "flow_id": "{{ starlink_whatsapp_flow.0.flow_id }}",
+                            "flow_cta": "Start Request",
+                            "flow_action": "navigate",
+                            "flow_action_payload": {
+                                "screen": "WELCOME"
+                            }
+                        }
+                    }
+                }
+            },
+            "transitions": [{"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "fallback_to_legacy",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {"body": "Sorry, the interactive form is currently unavailable. Please contact our support team to request a Starlink installation."}
+            },
+            "transitions": [{"to_step": "end_flow_cancelled", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "legacy_start_starlink_request",
             "type": "question",
             "config": {
                 "message_config": {
@@ -241,7 +303,7 @@ STARLINK_INSTALLATION_FLOW = {
         {
             "name": "end_flow_success",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you, {{ install_full_name.split(' ')[0] }}! Your Starlink installation request has been submitted. Our team will contact you shortly to confirm the schedule."}}}
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Please complete the form to submit your Starlink installation request. Our team will contact you shortly to confirm the schedule."}}}
         },
         {
             "name": "end_flow_cancelled",

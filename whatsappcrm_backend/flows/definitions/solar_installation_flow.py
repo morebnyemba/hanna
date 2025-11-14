@@ -3,7 +3,7 @@
 SOLAR_INSTALLATION_FLOW = {
     "name": "solar_installation_inquiry",
     "friendly_name": "Request Solar Installation",
-    "description": "Guides a user through scheduling a solar installation for a pre-purchased system or after a site assessment.",
+    "description": "Initiates the WhatsApp interactive flow for solar installation or handles price quotes.",
     "trigger_keywords": [],
     "is_active": True,
     "steps": [
@@ -42,9 +42,76 @@ SOLAR_INSTALLATION_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "payment_status_choice"}
             },
             "transitions": [
-                {"to_step": "ask_installation_type", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "paid"}},
+                {"to_step": "query_whatsapp_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "paid"}},
                 {"to_step": "initialize_quote_context", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "ask_for_price"}}
             ]
+        },
+        {
+            "name": "query_whatsapp_flow",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "flows",
+                    "model_name": "WhatsAppFlow",
+                    "variable_name": "solar_installation_whatsapp_flow",
+                    "filters_template": {
+                        "name": "solar_installation_whatsapp",
+                        "sync_status": "published"
+                    },
+                    "fields_to_return": ["flow_id", "friendly_name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "send_whatsapp_flow", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "solar_installation_whatsapp_flow.0"}},
+                {"to_step": "fallback_to_legacy", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "send_whatsapp_flow",
+            "type": "send_message",
+            "config": {
+                "message_type": "interactive",
+                "interactive": {
+                    "type": "flow",
+                    "header": {
+                        "type": "text",
+                        "text": "Solar Installation"
+                    },
+                    "body": {
+                        "text": "Great! Please complete our solar installation form to schedule your installation."
+                    },
+                    "action": {
+                        "name": "flow",
+                        "parameters": {
+                            "flow_message_version": "3",
+                            "flow_token": "{{ contact.id }}-solar-install-{{ 'now'|date:'U' }}",
+                            "flow_id": "{{ solar_installation_whatsapp_flow.0.flow_id }}",
+                            "flow_cta": "Start Request",
+                            "flow_action": "navigate",
+                            "flow_action_payload": {
+                                "screen": "WELCOME"
+                            }
+                        }
+                    }
+                }
+            },
+            "transitions": [{"to_step": "end_flow_with_form_sent", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "fallback_to_legacy",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {"body": "Sorry, the interactive form is currently unavailable. Let me collect the information the traditional way."}
+            },
+            "transitions": [{"to_step": "ask_installation_type", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "end_flow_with_form_sent",
+            "type": "end_flow",
+            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Please complete the form to submit your solar installation request. Our team will contact you shortly to confirm the schedule."}}}
         },
         {
             "name": "ask_installation_type",
