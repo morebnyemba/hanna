@@ -77,7 +77,7 @@ class MetaCatalogService:
         - name: Product name
         - availability: in stock | out of stock | available for order
         - condition: new | refurbished | used
-        - price: Price as string with decimal (e.g., "100.00")
+        - price: Price as integer in cents/minor currency units (e.g., 10000 for $100.00)
         - currency: ISO 4217 currency code (e.g., "USD")
         - link: Product URL
         
@@ -90,15 +90,17 @@ class MetaCatalogService:
         if not product.sku:
             raise ValueError(f"Product '{product.name}' (ID: {product.id}) is missing an SKU, which is required for 'retailer_id'.")
 
-        # Format price correctly - Meta expects a string with 2 decimal places
-        price_value = "0.00"
+        # Format price correctly - Meta expects an integer in cents (minor currency units)
+        # For USD: $100.00 = 10000 cents
+        price_value = 0
         if product.price is not None:
-            price_value = f"{float(product.price):.2f}"
+            # Convert to cents by multiplying by 100 and rounding to nearest integer
+            price_value = int(round(float(product.price) * 100))
 
         data = {
             "retailer_id": product.sku,
             "name": product.name,
-            "price": price_value,
+            "price": price_value,  # Integer in cents
             "currency": product.currency,
             "condition": "new",
             "availability": "in stock" if product.stock_quantity > 0 else "out of stock",
