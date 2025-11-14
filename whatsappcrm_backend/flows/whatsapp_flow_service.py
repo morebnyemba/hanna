@@ -112,17 +112,29 @@ class WhatsAppFlowService:
         
         url = f"{self.base_url}/{whatsapp_flow.flow_id}/assets"
         
-        payload = {
+        # Prepare the file data for multipart/form-data upload
+        flow_json_str = json.dumps(whatsapp_flow.flow_json)
+        
+        # Create multipart form data with the file parameter
+        files = {
+            'file': ('flow.json', flow_json_str, 'application/json')
+        }
+        
+        data = {
             "name": whatsapp_flow.friendly_name or whatsapp_flow.name,
-            "asset_type": "FLOW_JSON",
-            "flow_json": json.dumps(whatsapp_flow.flow_json)
+            "asset_type": "FLOW_JSON"
+        }
+        
+        # Create headers without Content-Type (requests will set it for multipart)
+        headers = {
+            "Authorization": f"Bearer {self.meta_config.access_token}"
         }
         
         try:
             whatsapp_flow.sync_status = 'syncing'
             whatsapp_flow.save(update_fields=['sync_status'])
             
-            response = requests.post(url, headers=self.headers, json=payload, timeout=20)
+            response = requests.post(url, headers=headers, data=data, files=files, timeout=20)
             response.raise_for_status()
             
             result = response.json()
