@@ -121,7 +121,7 @@ class WhatsAppFlowService:
         }
         
         data = {
-            "name": whatsapp_flow.friendly_name or whatsapp_flow.name,
+            "name": "flow.json",
             "asset_type": "FLOW_JSON"
         }
         
