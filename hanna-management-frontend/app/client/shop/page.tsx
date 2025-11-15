@@ -1,0 +1,363 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX } from 'react-icons/fi';
+import axios from 'axios';
+
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  currency: string;
+  is_active: boolean;
+  stock_quantity: number;
+  product_type: string;
+  category: {
+    id: number;
+    name: string;
+  } | null;
+  images?: unknown[];
+}
+
+interface CartItem {
+  id: number;
+  product: Product;
+  quantity: number;
+  subtotal: string;
+}
+
+interface Cart {
+  id: number;
+  items: CartItem[];
+  total_items: number;
+  total_price: string;
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+
+export default function ShopPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showCart, setShowCart] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Fetch products
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/crm-api/products/products/`);
+      setProducts(response.data.filter((p: Product) => p.is_active));
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setError('Failed to load products. Please try again later.');
+      setLoading(false);
+    }
+  };
+
+  // Fetch cart
+  const fetchCart = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/crm-api/products/cart/`);
+      setCart(response.data);
+    } catch (err) {
+      console.error('Error fetching cart:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    fetchCart();
+  }, []);
+
+  // Add to cart
+  const addToCart = async (productId: number, quantity: number = 1) => {
+    setCartLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/add/`, {
+        product_id: productId,
+        quantity: quantity
+      });
+      setCart(response.data.cart);
+      setShowCart(true);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to add item to cart');
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  // Update cart item quantity
+  const updateCartItem = async (cartItemId: number, quantity: number) => {
+    setCartLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/update/`, {
+        cart_item_id: cartItemId,
+        quantity: quantity
+      });
+      setCart(response.data.cart);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to update cart');
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  // Remove from cart
+  const removeFromCart = async (cartItemId: number) => {
+    setCartLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/remove/`, {
+        cart_item_id: cartItemId
+      });
+      setCart(response.data.cart);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to remove item from cart');
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  // Clear cart
+  const clearCart = async () => {
+    if (!confirm('Are you sure you want to clear your cart?')) return;
+    setCartLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/clear/`);
+      setCart(response.data.cart);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to clear cart');
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  const categories = ['all', ...new Set(products.map(p => p.category?.name).filter(Boolean))];
+  const filteredProducts = selectedCategory === 'all' 
+    ? products 
+    : products.filter(p => p.category?.name === selectedCategory);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link href="/" className="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+                <FiHome className="w-5 h-5" />
+                <span className="font-medium">Home</span>
+              </Link>
+              <span className="text-gray-300">|</span>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Hanna Digital Shop
+              </h1>
+            </div>
+            <button
+              onClick={() => setShowCart(!showCart)}
+              className="relative flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <FiShoppingCart className="w-5 h-5" />
+              <span className="font-medium">Cart</span>
+              {cart && cart.total_items > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                  {cart.total_items}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Category Filter */}
+        <div className="mb-8">
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedCategory === category
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {category === 'all' ? 'All Products' : category}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Products Grid */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading products...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <FiPackage className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-red-600 text-lg">{error}</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-20">
+            <FiPackage className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600 text-lg">No products available</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => (
+              <div
+                key={product.id}
+                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+              >
+                <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                  <FiPackage className="w-16 h-16 text-indigo-400" />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+                  {product.description && (
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+                  )}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-bold text-indigo-600">
+                      {product.currency} {parseFloat(product.price).toFixed(2)}
+                    </span>
+                    {product.stock_quantity > 0 ? (
+                      <span className="text-xs text-green-600 font-medium">
+                        {product.stock_quantity} in stock
+                      </span>
+                    ) : (
+                      <span className="text-xs text-red-600 font-medium">Out of stock</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => addToCart(product.id)}
+                    disabled={product.stock_quantity === 0 || cartLoading}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <FiShoppingCart className="w-4 h-4" />
+                    <span>{product.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Cart Sidebar */}
+      {showCart && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowCart(false)}></div>
+          <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl">
+            <div className="flex flex-col h-full">
+              {/* Cart Header */}
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-2xl font-bold text-gray-900">Shopping Cart</h2>
+                <button
+                  onClick={() => setShowCart(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <FiX className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Cart Items */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {!cart || cart.items.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FiShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">Your cart is empty</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cart.items.map((item) => (
+                      <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FiPackage className="w-8 h-8 text-indigo-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-gray-900 mb-1">{item.product.name}</h3>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {item.product.currency} {parseFloat(item.product.price).toFixed(2)} each
+                          </p>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => updateCartItem(item.id, item.quantity - 1)}
+                              disabled={cartLoading || item.quantity <= 1}
+                              className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+                            >
+                              <FiMinus className="w-4 h-4" />
+                            </button>
+                            <span className="font-medium text-gray-900 w-8 text-center">{item.quantity}</span>
+                            <button
+                              onClick={() => updateCartItem(item.id, item.quantity + 1)}
+                              disabled={cartLoading || item.quantity >= item.product.stock_quantity}
+                              className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+                            >
+                              <FiPlus className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => removeFromCart(item.id)}
+                              disabled={cartLoading}
+                              className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-gray-900">
+                            {item.product.currency} {parseFloat(item.subtotal).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Cart Footer */}
+              {cart && cart.items.length > 0 && (
+                <div className="border-t p-6 space-y-4">
+                  <div className="flex items-center justify-between text-lg">
+                    <span className="font-medium text-gray-700">Total:</span>
+                    <span className="text-2xl font-bold text-indigo-600">
+                      USD {parseFloat(cart.total_price).toFixed(2)}
+                    </span>
+                  </div>
+                  <button
+                    disabled={cartLoading}
+                    className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors disabled:bg-gray-400"
+                  >
+                    Proceed to Checkout
+                  </button>
+                  <button
+                    onClick={clearCart}
+                    disabled={cartLoading}
+                    className="w-full px-6 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    Clear Cart
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,13 +1,17 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Product, ProductCategory, SerializedItem
+from django.shortcuts import get_object_or_404
+from .models import Product, ProductCategory, SerializedItem, Cart, CartItem
 from .serializers import (
     ProductSerializer, 
     ProductCategorySerializer, 
     SerializedItemSerializer,
     BarcodeScanSerializer,
-    BarcodeResponseSerializer
+    BarcodeResponseSerializer,
+    CartSerializer,
+    CartItemSerializer,
+    AddToCartSerializer
 )
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -181,3 +185,203 @@ class BarcodeScanViewSet(viewsets.ViewSet):
                 'results': [],
                 'message': f'No items found matching barcode: {barcode_value}'
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+class CartViewSet(viewsets.ViewSet):
+    """
+    ViewSet for shopping cart operations.
+    Supports both authenticated users and guest sessions.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def _get_or_create_cart(self, request):
+        """Get or create a cart for the current user or session."""
+        if request.user.is_authenticated:
+            cart, created = Cart.objects.get_or_create(user=request.user)
+        else:
+            # For guest users, use session key
+            session_key = request.session.session_key
+            if not session_key:
+                request.session.create()
+                session_key = request.session.session_key
+            cart, created = Cart.objects.get_or_create(session_key=session_key)
+        return cart
+
+    def list(self, request):
+        """Get the current user's/session's cart."""
+        cart = self._get_or_create_cart(request)
+        serializer = CartSerializer(cart)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='add')
+    def add_to_cart(self, request):
+        """
+        Add a product to the cart or update quantity if it already exists.
+        
+        POST /crm-api/products/cart/add/
+        Body: {
+            "product_id": 1,
+            "quantity": 2
+        }
+        """
+        serializer = AddToCartSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        product_id = serializer.validated_data['product_id']
+        quantity = serializer.validated_data['quantity']
+
+        # Get or create cart
+        cart = self._get_or_create_cart(request)
+
+        # Get product
+        try:
+            product = Product.objects.get(id=product_id, is_active=True)
+        except Product.DoesNotExist:
+            return Response(
+                {'error': 'Product not found or not available'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check stock availability
+        if product.stock_quantity < quantity:
+            return Response(
+                {'error': f'Only {product.stock_quantity} items available in stock'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Add or update cart item
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            defaults={'quantity': quantity}
+        )
+
+        if not created:
+            # Update quantity if item already exists
+            new_quantity = cart_item.quantity + quantity
+            if product.stock_quantity < new_quantity:
+                return Response(
+                    {'error': f'Only {product.stock_quantity} items available in stock'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            cart_item.quantity = new_quantity
+            cart_item.save()
+
+        # Return updated cart
+        cart_serializer = CartSerializer(cart)
+        return Response({
+            'message': f'Added {quantity}x {product.name} to cart',
+            'cart': cart_serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='update')
+    def update_quantity(self, request):
+        """
+        Update the quantity of an item in the cart.
+        
+        POST /crm-api/products/cart/update/
+        Body: {
+            "cart_item_id": 1,
+            "quantity": 3
+        }
+        """
+        cart_item_id = request.data.get('cart_item_id')
+        quantity = request.data.get('quantity')
+
+        if not cart_item_id or quantity is None:
+            return Response(
+                {'error': 'cart_item_id and quantity are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            quantity = int(quantity)
+            if quantity < 1:
+                return Response(
+                    {'error': 'Quantity must be at least 1'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Invalid quantity value'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        cart = self._get_or_create_cart(request)
+
+        try:
+            cart_item = CartItem.objects.get(id=cart_item_id, cart=cart)
+        except CartItem.DoesNotExist:
+            return Response(
+                {'error': 'Cart item not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check stock availability
+        if cart_item.product.stock_quantity < quantity:
+            return Response(
+                {'error': f'Only {cart_item.product.stock_quantity} items available in stock'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        cart_item.quantity = quantity
+        cart_item.save()
+
+        cart_serializer = CartSerializer(cart)
+        return Response({
+            'message': 'Cart updated successfully',
+            'cart': cart_serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='remove')
+    def remove_from_cart(self, request):
+        """
+        Remove an item from the cart.
+        
+        POST /crm-api/products/cart/remove/
+        Body: {
+            "cart_item_id": 1
+        }
+        """
+        cart_item_id = request.data.get('cart_item_id')
+
+        if not cart_item_id:
+            return Response(
+                {'error': 'cart_item_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        cart = self._get_or_create_cart(request)
+
+        try:
+            cart_item = CartItem.objects.get(id=cart_item_id, cart=cart)
+            product_name = cart_item.product.name
+            cart_item.delete()
+        except CartItem.DoesNotExist:
+            return Response(
+                {'error': 'Cart item not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        cart_serializer = CartSerializer(cart)
+        return Response({
+            'message': f'Removed {product_name} from cart',
+            'cart': cart_serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='clear')
+    def clear_cart(self, request):
+        """
+        Clear all items from the cart.
+        
+        POST /crm-api/products/cart/clear/
+        """
+        cart = self._get_or_create_cart(request)
+        cart.items.all().delete()
+
+        cart_serializer = CartSerializer(cart)
+        return Response({
+            'message': 'Cart cleared successfully',
+            'cart': cart_serializer.data
+        }, status=status.HTTP_200_OK)

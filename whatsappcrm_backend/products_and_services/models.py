@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 
 class ProductCategory(models.Model):
     """
@@ -165,3 +166,88 @@ class SerializedItem(models.Model):
         verbose_name = _("Serialized Item")
         verbose_name_plural = _("Serialized Items")
         ordering = ['-created_at']
+
+
+class Cart(models.Model):
+    """
+    Shopping cart for a user or guest session.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='carts',
+        null=True,
+        blank=True,
+        help_text=_("The user who owns this cart. Null for guest carts.")
+    )
+    session_key = models.CharField(
+        _("Session Key"),
+        max_length=255,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text=_("Session identifier for guest carts")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        if self.user:
+            return f"Cart for {self.user.username}"
+        return f"Guest cart {self.session_key}"
+
+    @property
+    def total_items(self):
+        """Total number of items in the cart"""
+        return sum(item.quantity for item in self.items.all())
+
+    @property
+    def total_price(self):
+        """Total price of all items in the cart"""
+        return sum(item.subtotal for item in self.items.all())
+
+    class Meta:
+        verbose_name = _("Cart")
+        verbose_name_plural = _("Carts")
+        ordering = ['-updated_at']
+
+
+class CartItem(models.Model):
+    """
+    Individual item in a shopping cart.
+    """
+    cart = models.ForeignKey(
+        Cart,
+        on_delete=models.CASCADE,
+        related_name='items',
+        help_text=_("The cart this item belongs to")
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='cart_items',
+        help_text=_("The product in this cart item")
+    )
+    quantity = models.PositiveIntegerField(
+        _("Quantity"),
+        default=1,
+        help_text=_("Number of items")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.quantity}x {self.product.name} in {self.cart}"
+
+    @property
+    def subtotal(self):
+        """Calculate subtotal for this cart item"""
+        if self.product.price:
+            return self.product.price * self.quantity
+        return 0
+
+    class Meta:
+        verbose_name = _("Cart Item")
+        verbose_name_plural = _("Cart Items")
+        ordering = ['-created_at']
+        unique_together = ['cart', 'product']
