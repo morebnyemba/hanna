@@ -37,8 +37,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": 1000
                 },
                 "loan_request_amount": {
-                    "type": "number",
-                    "__example__": 500
+                    "type": "string",
+                    "__example__": "500"
                 },
                 "loan_product_interest": {
                     "type": "string",
@@ -71,7 +71,7 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                                 "loan_national_id": "",
                                 "loan_employment_status": "",
                                 "loan_monthly_income": 0,
-                                "loan_request_amount": 0,
+                                "loan_request_amount": "",
                                 "loan_product_interest": ""
                             }
                         }
@@ -104,8 +104,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": 1000
                 },
                 "loan_request_amount": {
-                    "type": "number",
-                    "__example__": 500
+                    "type": "string",
+                    "__example__": "500"
                 },
                 "loan_product_interest": {
                     "type": "string",
@@ -125,8 +125,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                         "label": "Are you applying for a Cash Loan or a Product Loan?",
                         "required": True,
                         "data-source": [
-                            {"id": "cash_loan", "title": "💵 Cash Loan"},
-                            {"id": "product_loan", "title": "📦 Product Loan"}
+                            {"id": "cash_loan", "title": "Cash Loan"},
+                            {"id": "product_loan", "title": "Product Loan"}
                         ]
                     },
                     {
@@ -177,8 +177,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": 1000
                 },
                 "loan_request_amount": {
-                    "type": "number",
-                    "__example__": 500
+                    "type": "string",
+                    "__example__": "500"
                 },
                 "loan_product_interest": {
                     "type": "string",
@@ -256,8 +256,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": 1000
                 },
                 "loan_request_amount": {
-                    "type": "number",
-                    "__example__": 500
+                    "type": "string",
+                    "__example__": "500"
                 },
                 "loan_product_interest": {
                     "type": "string",
@@ -338,8 +338,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": 1000
                 },
                 "loan_request_amount": {
-                    "type": "number",
-                    "__example__": 500
+                    "type": "string",
+                    "__example__": "500"
                 },
                 "loan_product_interest": {
                     "type": "string",
@@ -362,7 +362,7 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                         "name": "loan_request_amount",
                         "label": "Cash Amount (USD)",
                         "required": False,
-                        "input-type": "number",
+                        "input-type": "text",
                         "helper-text": "For Cash Loan: Enter amount. For Product Loan: Enter 0 or leave blank"
                     },
                     {
