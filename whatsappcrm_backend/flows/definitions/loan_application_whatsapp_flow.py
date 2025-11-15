@@ -125,8 +125,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                         "label": "Are you applying for a Cash Loan or a Product Loan?",
                         "required": True,
                         "data-source": [
-                            {"id": "cash_loan", "title": "💵 Cash Loan"},
-                            {"id": "product_loan", "title": "📦 Product Loan"}
+                            {"id": "cash_loan", "title": "Cash Loan"},
+                            {"id": "product_loan", "title": "Product Loan"}
                         ]
                     },
                     {
