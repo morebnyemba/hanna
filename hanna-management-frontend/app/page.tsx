@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { FiBox, FiUsers, FiLogIn, FiShield, FiTool, FiSettings } from 'react-icons/fi';
+import { FiBox, FiUsers, FiLogIn, FiShield, FiTool, FiSettings, FiShoppingCart, FiPackage, FiTruck } from 'react-icons/fi';
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
   <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -49,30 +49,54 @@ export default function LandingPage() {
 
           {/* Tagline */}
           <p className="mt-6 text-xl md:text-2xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
-            The exclusive CRM platform for Pfungwa Technologies partners and affiliates,
-            designed to streamline operations and enhance customer engagement.
+            Your complete business management and e-commerce solution. 
+            Manage customers, warranties, and sell products seamlessly - all in one platform.
           </p>
 
           {/* Feature highlights */}
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            <FeatureCard icon={<FiUsers className="w-6 h-6 text-indigo-600" />} title="Customer Management" description="Streamline all customer interactions in one place" />
+            <FeatureCard icon={<FiShoppingCart className="w-6 h-6 text-indigo-600" />} title="Digital Shop" description="Browse and purchase products directly from our online store" />
             <FeatureCard icon={<FiShield className="w-6 h-6 text-indigo-600" />} title="Warranty Management" description="Efficiently track and manage product warranties" />
-            <FeatureCard icon={<FiBox className="w-6 h-6 text-indigo-600" />} title="Powerful Analytics" description="Gain insights with advanced data analytics" />
+            <FeatureCard icon={<FiPackage className="w-6 h-6 text-indigo-600" />} title="Order Tracking" description="Real-time order tracking and delivery updates" />
           </div>
 
-          {/* CTA Buttons */}
-          <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
-            <PortalLink href="/admin/login" icon={<FiSettings className="w-5 h-5 mr-2" />} label="Admin Login" />
-            <PortalLink href="/client/login" icon={<FiLogIn className="w-5 h-5 mr-2" />} label="Client Login" />
+          {/* Shop CTA - Primary Action */}
+          <div className="mt-12">
+            <Link 
+              href="/client/shop" 
+              className="inline-flex items-center justify-center px-12 py-5 text-lg font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-500 hover:to-purple-500 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+            >
+              <FiShoppingCart className="w-6 h-6 mr-3" />
+              Visit Our Digital Shop
+            </Link>
           </div>
 
-          {/* Additional portals section */}
+          {/* Management Portals Section */}
           <div className="mt-16 bg-white/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-white/50 max-w-2xl mx-auto">
-            <p className="text-gray-700 font-medium mb-4">Access your dedicated partner portal below.</p>
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                <PortalLink href="/manufacturer/login" icon={<FiTool className="w-4 h-4 mr-2" />} label="Manufacturer Portal" />
-                <span className="hidden sm:block text-gray-400">&bull;</span>
-                <PortalLink href="/technician/login" icon={<FiTool className="w-4 h-4 mr-2" />} label="Technician Portal" />
+            <p className="text-gray-700 font-medium mb-6">Business Management Portals</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <PortalLink href="/admin/login" icon={<FiSettings className="w-4 h-4 mr-2" />} label="Admin Portal" />
+              <PortalLink href="/client/login" icon={<FiLogIn className="w-4 h-4 mr-2" />} label="Client Portal" />
+              <PortalLink href="/manufacturer/login" icon={<FiTool className="w-4 h-4 mr-2" />} label="Manufacturer Portal" />
+              <PortalLink href="/technician/login" icon={<FiTool className="w-4 h-4 mr-2" />} label="Technician Portal" />
+            </div>
+          </div>
+
+          {/* Additional Features Section */}
+          <div className="mt-12 max-w-2xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex flex-col items-center">
+                <FiTruck className="w-8 h-8 text-indigo-600 mb-2" />
+                <p className="text-sm font-medium text-gray-700">Fast Delivery</p>
+              </div>
+              <div className="flex flex-col items-center">
+                <FiShield className="w-8 h-8 text-indigo-600 mb-2" />
+                <p className="text-sm font-medium text-gray-700">Secure Payments</p>
+              </div>
+              <div className="flex flex-col items-center">
+                <FiUsers className="w-8 h-8 text-indigo-600 mb-2" />
+                <p className="text-sm font-medium text-gray-700">24/7 Support</p>
+              </div>
             </div>
           </div>
 

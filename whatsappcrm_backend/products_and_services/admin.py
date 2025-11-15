@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Product, ProductCategory, ProductImage, SerializedItem
+from .models import Product, ProductCategory, ProductImage, SerializedItem, Cart, CartItem
 
 @admin.register(ProductCategory)
 class ProductCategoryAdmin(admin.ModelAdmin):
@@ -116,3 +116,50 @@ class SerializedItemAdmin(admin.ModelAdmin):
             'fields': ('product', 'serial_number', 'barcode', 'status')
         }),
     )
+
+
+class CartItemInline(admin.TabularInline):
+    """
+    Inline admin for CartItem model.
+    """
+    model = CartItem
+    extra = 0
+    fields = ('product', 'quantity', 'subtotal')
+    readonly_fields = ('subtotal',)
+    autocomplete_fields = ('product',)
+
+
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the Cart model.
+    """
+    list_display = ('id', 'user', 'session_key', 'total_items', 'total_price', 'updated_at')
+    search_fields = ('user__username', 'session_key')
+    list_filter = ('created_at', 'updated_at')
+    readonly_fields = ('total_items', 'total_price', 'created_at', 'updated_at')
+    inlines = [CartItemInline]
+    
+    fieldsets = (
+        (None, {
+            'fields': ('user', 'session_key')
+        }),
+        ('Cart Summary', {
+            'fields': ('total_items', 'total_price')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+
+
+@admin.register(CartItem)
+class CartItemAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the CartItem model.
+    """
+    list_display = ('id', 'cart', 'product', 'quantity', 'subtotal', 'updated_at')
+    search_fields = ('product__name', 'cart__user__username')
+    list_filter = ('created_at', 'updated_at')
+    readonly_fields = ('subtotal', 'created_at', 'updated_at')
+    autocomplete_fields = ('cart', 'product')
