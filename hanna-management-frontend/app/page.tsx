@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { FiBox, FiUsers, FiLogIn, FiShield, FiTool, FiSettings, FiShoppingCart, FiPackage, FiTruck } from 'react-icons/fi';
+import { FiUsers, FiLogIn, FiShield, FiTool, FiSettings, FiShoppingCart, FiPackage, FiTruck } from 'react-icons/fi';
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
   <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
