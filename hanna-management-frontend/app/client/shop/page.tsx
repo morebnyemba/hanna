@@ -140,7 +140,7 @@ export default function ShopPage() {
     }
   };
 
-  const categories = ['all', ...Array.from(new Set(products.map(p => p.category?.name).filter(Boolean)))];
+  const categories: string[] = ['all', ...Array.from(new Set(products.map(p => p.category?.name).filter((name): name is string => Boolean(name))))];
   const filteredProducts = selectedCategory === 'all' 
     ? products 
     : products.filter(p => p.category?.name === selectedCategory);
