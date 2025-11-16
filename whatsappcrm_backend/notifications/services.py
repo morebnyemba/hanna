@@ -17,6 +17,42 @@ from meta_integration.models import MetaAppConfig
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+def serialize_contact_for_template(contact: Contact) -> dict:
+    """
+    Serializes a Contact model instance into a dictionary for use in template rendering.
+    Includes nested customer_profile data if available.
+    """
+    contact_data = {
+        'id': contact.id,
+        'whatsapp_id': contact.whatsapp_id,
+        'name': contact.name or '',
+    }
+    
+    # Add customer profile data if available
+    if hasattr(contact, 'customer_profile') and contact.customer_profile:
+        profile = contact.customer_profile
+        contact_data['customer_profile'] = {
+            'first_name': profile.first_name or '',
+            'last_name': profile.last_name or '',
+            'email': profile.email or '',
+            'company': profile.company or '',
+            'lead_status': profile.lead_status or '',
+        }
+        # Helper method to get full name
+        contact_data['customer_profile']['get_full_name'] = f"{profile.first_name or ''} {profile.last_name or ''}".strip()
+    
+    return contact_data
+
+def serialize_flow_for_template(flow: Flow) -> dict:
+    """
+    Serializes a Flow model instance into a dictionary for use in template rendering.
+    """
+    return {
+        'id': flow.id,
+        'name': flow.name,
+        'trigger': flow.trigger if hasattr(flow, 'trigger') else '',
+    }
+
 def queue_notifications_to_users(
     template_name: str,
     template_context: Optional[dict] = None,
@@ -51,12 +87,9 @@ def queue_notifications_to_users(
             # Add related objects to the context, ensuring they are serializable if they are models.
             # This is crucial because the context will be saved to a JSONField.
             if related_contact:
-                render_context['contact'] = str(related_contact) # Convert model to string
-                if hasattr(related_contact, 'customer_profile'):
-                    # Assuming customer_profile might be needed. Convert it as well.
-                    render_context['customer_profile'] = str(related_contact.customer_profile)
+                render_context['contact'] = serialize_contact_for_template(related_contact)
             if related_flow:
-                render_context['flow'] = str(related_flow)
+                render_context['flow'] = serialize_flow_for_template(related_flow)
             
             final_message_body = render_template_string(template.message_body, render_context)
         except NotificationTemplate.DoesNotExist:
