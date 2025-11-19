@@ -1,7 +1,7 @@
 # whatsappcrm_backend/whatsappcrm_backend/urls.py
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView, TokenBlacklistView
 from django.conf import settings
@@ -71,7 +71,22 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
 # We serve media files via Django even in production mode since NPM proxies all requests.
 # For optimal performance in production, consider configuring NPM to serve media files
 # directly from a shared volume, or use a CDN.
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# NOTE: The static() helper only works when DEBUG=True. Since we need to serve media
+# files in production (DEBUG=False), we explicitly add the URL pattern.
+# This is necessary because NPM proxies /media/ requests to Django.
+if settings.DEBUG:
+    # Use the helper in debug mode
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # In production (DEBUG=False), explicitly serve media files through Django
+    # Using re_path to match any path under /media/
+    from django.views.static import serve
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {
+            'document_root': settings.MEDIA_ROOT,
+        }),
+    ]
 
 # Note on Namespaces:
 # The 'namespace' argument in include() is useful for URL reversing 
