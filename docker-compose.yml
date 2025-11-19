@@ -45,6 +45,8 @@ services:
   frontend:
     build: ./whatsapp-crm-frontend
     container_name: whatsappcrm_frontend_app
+    volumes:
+      - mediafiles_volume:/usr/share/nginx/html/media:ro  # Mount media files for serving (read-only)
     depends_on:
       - backend
     restart: unless-stopped
