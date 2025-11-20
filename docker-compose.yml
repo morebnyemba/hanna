@@ -117,17 +117,17 @@ services:
       - db
     restart: unless-stopped
 
-  npm:
-    image: 'jc21/nginx-proxy-manager:latest'
-    container_name: whatsappcrm_npm
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: whatsappcrm_nginx
     ports:
       - '80:80'   # Public HTTP Port
       - '443:443' # Public HTTPS Port
-      - '81:81'   # Admin UI Port
     volumes:
-      - npm_data:/data
-      - npm_letsencrypt:/etc/letsencrypt
-      - mediafiles_volume:/srv/www/media  # Mount media files for public access (writable so Django can write)
+      - ./nginx_proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - mediafiles_volume:/srv/www/media:ro  # Mount media files (read-only, Django serves them)
+      - npm_letsencrypt:/etc/letsencrypt:ro  # SSL certificates (read-only)
+      - ./nginx_proxy/ssl_custom:/etc/nginx/ssl_custom:ro  # Custom SSL configs
     depends_on:
       - backend
       - frontend
