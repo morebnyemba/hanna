@@ -16,7 +16,8 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 
 # Check if backend container is running
-if ! docker-compose ps backend | grep -q "Up"; then
+BACKEND_STATUS=$(docker-compose ps backend --status running --services 2>/dev/null)
+if [ -z "$BACKEND_STATUS" ]; then
     echo "❌ Error: Backend container is not running"
     echo "Please start the containers first with: docker-compose up -d"
     exit 1
@@ -28,16 +29,14 @@ echo "Running database migrations..."
 echo "----------------------------------------"
 
 # Run migrations
-docker-compose exec backend python manage.py migrate
-
-if [ $? -eq 0 ]; then
+if docker-compose exec backend python manage.py migrate; then
     echo "----------------------------------------"
     echo "✅ Migrations completed successfully!"
     echo ""
     echo "You may also want to:"
     echo "  1. Create a superuser: docker-compose exec backend python manage.py createsuperuser"
     echo "  2. Collect static files: docker-compose exec backend python manage.py collectstatic --noinput"
-    echo "  3. Load initial data (if any): docker-compose exec backend python manage.py loaddata <fixture_name>"
+    echo "  3. Load initial data (if you have fixtures): docker-compose exec backend python manage.py loaddata initial_data.json"
 else
     echo "----------------------------------------"
     echo "❌ Migration failed!"
