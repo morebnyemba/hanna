@@ -132,12 +132,12 @@ if docker-compose exec -T nginx test -f "$CERT_PATH/fullchain.pem" 2>/dev/null; 
     echo "Certificate information:"
     echo ""
     
-    # Get certificate subject (CN)
-    CERT_SUBJECT=$(docker-compose exec -T nginx openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -subject 2>/dev/null || echo "Unable to read")
+    # Get certificate subject (CN) - use certbot container since nginx alpine doesn't have openssl
+    CERT_SUBJECT=$(docker-compose exec -T certbot openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -subject 2>/dev/null || echo "Unable to read (openssl not available)")
     echo "Subject: $CERT_SUBJECT"
     
     # Get certificate issuer
-    CERT_ISSUER=$(docker-compose exec -T nginx openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -issuer 2>/dev/null || echo "Unable to read")
+    CERT_ISSUER=$(docker-compose exec -T certbot openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -issuer 2>/dev/null || echo "Unable to read (openssl not available)")
     echo "Issuer: $CERT_ISSUER"
     
     # Check if it's a Let's Encrypt certificate
@@ -159,14 +159,14 @@ if docker-compose exec -T nginx test -f "$CERT_PATH/fullchain.pem" 2>/dev/null; 
     
     echo ""
     
-    # Get certificate dates
+    # Get certificate dates - use certbot container since nginx alpine doesn't have openssl
     echo "Certificate validity:"
-    docker-compose exec -T nginx openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -dates 2>/dev/null || echo "Unable to read dates"
+    docker-compose exec -T certbot openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -dates 2>/dev/null || echo "Unable to read dates (openssl not available)"
     
     echo ""
     
     # Check certificate expiration
-    EXPIRY_DATE=$(docker-compose exec -T nginx openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -enddate 2>/dev/null | cut -d= -f2)
+    EXPIRY_DATE=$(docker-compose exec -T certbot openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -enddate 2>/dev/null | cut -d= -f2)
     if [ -n "$EXPIRY_DATE" ]; then
         EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
         CURRENT_EPOCH=$(date +%s)
@@ -186,8 +186,9 @@ if docker-compose exec -T nginx test -f "$CERT_PATH/fullchain.pem" 2>/dev/null; 
     echo ""
     
     # Check Subject Alternative Names (SAN) - which domains are covered
+    # Use certbot container since nginx alpine doesn't have openssl
     echo "Domains covered by this certificate:"
-    SAN_DOMAINS=$(docker-compose exec -T nginx openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -text 2>/dev/null | grep -A1 "Subject Alternative Name" | tail -n1 | sed 's/DNS://g' | tr ',' '\n' || echo "Unable to read")
+    SAN_DOMAINS=$(docker-compose exec -T certbot openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -text 2>/dev/null | grep -A1 "Subject Alternative Name" | tail -n1 | sed 's/DNS://g' | tr ',' '\n' || echo "Unable to read (openssl not available)")
     
     if [ -n "$SAN_DOMAINS" ]; then
         echo "$SAN_DOMAINS" | while read -r domain; do

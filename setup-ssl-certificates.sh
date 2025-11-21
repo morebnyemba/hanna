@@ -213,9 +213,9 @@ if docker-compose run --rm --entrypoint certbot certbot $CERTBOT_CMD; then
     done
     echo ""
     
-    # Verify certificate issuer
+    # Verify certificate issuer - use certbot container since nginx alpine doesn't have openssl
     echo "Verifying certificate..."
-    CERT_ISSUER=$(docker-compose exec -T nginx openssl x509 -in /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem -noout -issuer 2>/dev/null | grep -o "CN=[^,]*" || echo "")
+    CERT_ISSUER=$(docker-compose exec -T certbot openssl x509 -in /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem -noout -issuer 2>/dev/null | grep -o "CN=[^,]*" || echo "")
     
     if echo "$CERT_ISSUER" | grep -qi "Let's Encrypt"; then
         echo "✓ Valid Let's Encrypt certificate installed"
