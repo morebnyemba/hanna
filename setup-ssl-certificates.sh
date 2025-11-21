@@ -105,10 +105,11 @@ if ! docker-compose ps nginx | grep -q "Up"; then
                 chmod -R 755 /var/www/letsencrypt
                 
                 # Generate self-signed certificate (suppress non-error output)
+                # Note: Variables are expanded by outer shell before being passed to docker
                 if openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
                     -keyout /etc/letsencrypt/live/$FIRST_DOMAIN/privkey.pem \
                     -out /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem \
-                    -subj \"/CN=$FIRST_DOMAIN\" 2>/dev/null; then
+                    -subj /CN=$FIRST_DOMAIN 2>/dev/null; then
                     echo 'Temporary certificate created successfully'
                 else
                     echo 'ERROR: Failed to generate temporary certificate'

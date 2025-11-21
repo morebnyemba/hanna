@@ -23,24 +23,27 @@ echo "Waiting for valid Let's Encrypt certificates to be created..."
 WAIT_TIME=0
 
 while [ $WAIT_TIME -lt $MAX_CERT_WAIT ]; do
-    # Check if any valid certificates exist (issued by Let's Encrypt, not self-signed)
-    if certbot certificates 2>/dev/null | grep -q "Certificate Name"; then
-        # Verify it's a real certificate by checking the issuer
-        # Self-signed certificates won't have "Let's Encrypt" in the output
-        if certbot certificates 2>/dev/null | grep -A 10 "Certificate Name" | grep -q "Expiry Date"; then
-            echo "$(date): Found valid certificates, starting renewal monitoring"
-            break
-        fi
+    # Check if certbot has any managed certificates
+    # Note: Self-signed certificates created by bootstrap are NOT managed by certbot
+    # and won't appear in 'certbot certificates' output, so this check is reliable
+    CERT_OUTPUT=$(certbot certificates 2>/dev/null)
+    
+    if echo "$CERT_OUTPUT" | grep -q "Certificate Name"; then
+        # Found certificates managed by certbot - these are real Let's Encrypt certs
+        echo "$(date): Found certbot-managed certificates, starting renewal monitoring"
+        echo "$(date): Certificate details:"
+        echo "$CERT_OUTPUT" | grep -A 5 "Certificate Name" | head -6
+        break
     fi
     
     # If we've waited the max time, continue anyway (certificates may be set up externally)
     if [ $WAIT_TIME -ge $MAX_CERT_WAIT ]; then
-        echo "$(date): No valid certificates found after waiting, continuing anyway"
-        echo "$(date): Renewal checks will be performed but may fail until certificates are obtained"
+        echo "$(date): No certbot-managed certificates found after waiting $MAX_CERT_WAIT seconds"
+        echo "$(date): Continuing anyway - renewal checks will be performed but may fail until certificates are obtained"
         break
     fi
     
-    echo "$(date): No valid certificates found yet, waiting... ($WAIT_TIME/$MAX_CERT_WAIT seconds)"
+    echo "$(date): No certbot-managed certificates found yet, waiting... ($WAIT_TIME/$MAX_CERT_WAIT seconds)"
     sleep $CERT_CHECK_INTERVAL
     WAIT_TIME=$((WAIT_TIME + CERT_CHECK_INTERVAL))
 done
