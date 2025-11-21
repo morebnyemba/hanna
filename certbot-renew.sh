@@ -55,6 +55,8 @@ while :; do
     # Run certbot renewal
     if certbot renew --webroot -w /var/www/letsencrypt --quiet; then
         echo "$(date): Certificate renewal check completed successfully"
+        echo "$(date): Note: If certificates were renewed, nginx should be reloaded manually"
+        echo "$(date): Run: docker-compose exec nginx nginx -s reload"
     else
         echo "$(date): Certificate renewal check failed (this is normal if certificates don't need renewal yet)"
     fi

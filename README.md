@@ -34,19 +34,26 @@ docker-compose up -d
 The application uses Let's Encrypt for free SSL certificates. The setup is fully automated:
 
 ```bash
-# Obtain initial SSL certificates
-./setup-ssl-certificates.sh
+# One-command setup (recommended for fresh installations)
+./bootstrap-ssl.sh --email your-email@example.com
+
+# Or manual setup
+./setup-ssl-certificates.sh --email your-email@example.com
 
 # Diagnose SSL issues
 ./diagnose-ssl.sh
+
+# Troubleshoot browser warnings
+./troubleshoot-ssl-warnings.sh
 ```
 
 **Automatic Renewal:** Certificates are automatically renewed every 12 hours by the certbot container.
 
 For detailed SSL setup and troubleshooting, see:
+- **[README_SSL.md](README_SSL.md)** - Quick SSL reference and troubleshooting
+- **[SSL_BROWSER_WARNING_FIX.md](SSL_BROWSER_WARNING_FIX.md)** - ⚠️ Browser warning fixes
 - **[SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md)** - Complete SSL setup guide
-- **[README_SSL.md](README_SSL.md)** - Quick SSL reference
-- **[DOMAIN_SSL_FIX_SUMMARY.md](DOMAIN_SSL_FIX_SUMMARY.md)** - Technical details
+- **[SSL_BOOTSTRAP_FIX.md](SSL_BOOTSTRAP_FIX.md)** - Bootstrap script technical details
 
 ## Architecture
 
