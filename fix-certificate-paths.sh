@@ -74,7 +74,8 @@ for domain in $DOMAINS; do
            docker-compose exec -T nginx test -f "$CERT_PATH/privkey.pem" 2>/dev/null; then
             
             # Check if this certificate covers all our domains
-            SAN_DOMAINS=$(docker-compose exec -T nginx openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -text 2>/dev/null | \
+            # Use certbot container since nginx alpine image doesn't have openssl
+            SAN_DOMAINS=$(docker-compose exec -T certbot openssl x509 -in "$CERT_PATH/fullchain.pem" -noout -text 2>/dev/null | \
                          grep -A1 "Subject Alternative Name" | tail -n1 | sed 's/DNS://g' | tr ',' '\n' | sed 's/^[[:space:]]*//' || echo "")
             
             COVERED_COUNT=0
@@ -120,7 +121,8 @@ echo ""
 
 # Show which domains are covered
 echo "Domains covered by certificate:"
-SAN_DOMAINS=$(docker-compose exec -T nginx openssl x509 -in "$ACTUAL_CERT_DIR/fullchain.pem" -noout -text 2>/dev/null | \
+# Use certbot container since nginx alpine image doesn't have openssl
+SAN_DOMAINS=$(docker-compose exec -T certbot openssl x509 -in "$ACTUAL_CERT_DIR/fullchain.pem" -noout -text 2>/dev/null | \
              grep -A1 "Subject Alternative Name" | tail -n1 | sed 's/DNS://g' | tr ',' '\n' | sed 's/^[[:space:]]*//' || echo "")
 
 for domain in $DOMAINS; do
@@ -153,7 +155,8 @@ if [ "$CURRENT_CERT_PATH" = "$ACTUAL_CERT_DIR/fullchain.pem" ]; then
     echo ""
     
     # Check certificate validity
-    CERT_ISSUER=$(docker-compose exec -T nginx openssl x509 -in "$ACTUAL_CERT_DIR/fullchain.pem" -noout -issuer 2>/dev/null || echo "")
+    # Use certbot container since nginx alpine image doesn't have openssl
+    CERT_ISSUER=$(docker-compose exec -T certbot openssl x509 -in "$ACTUAL_CERT_DIR/fullchain.pem" -noout -issuer 2>/dev/null || echo "")
     
     if echo "$CERT_ISSUER" | grep -qi "Let's Encrypt" && ! echo "$CERT_ISSUER" | grep -qi "Staging"; then
         print_success "Using valid Let's Encrypt production certificate"
