@@ -53,6 +53,8 @@ def queue_notifications_to_users(
             # This is crucial because the context will be saved to a JSONField.
             if related_contact:
                 render_context['contact'] = str(related_contact) # Convert model to string
+                # Add related_contact_name for templates that need it
+                render_context['related_contact_name'] = related_contact.name or related_contact.whatsapp_id
                 if hasattr(related_contact, 'customer_profile'):
                     # Assuming customer_profile might be needed. Convert it as well.
                     render_context['customer_profile'] = str(related_contact.customer_profile)

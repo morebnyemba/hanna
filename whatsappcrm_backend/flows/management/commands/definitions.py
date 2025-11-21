@@ -176,10 +176,10 @@ Please review the job card in the admin panel and assign it to a technician."""
         "description": "Sent to admins when a user is handed over to a human agent by the flow engine.",
         "body": """Human Intervention Required ⚠️
 
-Contact *{{ related_contact.name or related_contact.whatsapp_id }}* requires assistance.
+Contact *{{ related_contact_name }}* requires assistance.
 
 *Reason:*
-{{ template_context.last_bot_message or 'User requested help or an error occurred.' }}
+{{ last_bot_message }}
 
 Please respond to them in the main inbox."""
     },
@@ -199,9 +199,9 @@ Please update the order details in the admin panel as soon as possible."""
         "description": "Sent to admins when a WhatsApp message fails to send.",
         "body": """Message Send Failure ⚠️
 
-Failed to send a message to *{{ related_contact.name or related_contact.whatsapp_id }}*.
+Failed to send a message to *{{ related_contact_name }}*.
 
-*Reason:* {{ template_context.message.error_details or 'Unknown error' }}
+*Reason:* {{ error_details }}
 
 Please check the system logs for more details."""
     },
@@ -219,12 +219,12 @@ Please reply with "status" or any other command to keep the window open."""
         "description": "Sent to admins when an invoice from an email has been successfully processed into an order.",
         "body": """Invoice Processed Successfully ✅
 
-An invoice from *{{ attachment.sender }}* (Filename: *{{ attachment.filename }}*) has been processed.
+An invoice from *{{ sender }}* (Filename: *{{ filename }}*) has been processed.
 
 *Order Details:*
-- Order #: *{{ order.order_number }}*
-- Total Amount: *${{ "%.2f"|format(order.amount) if order.amount is not none else '0.00' }}*
-- Customer: *{{ customer.full_name or customer.contact_name }}*
+- Order #: *{{ order_number }}*
+- Total Amount: *${{ order_amount }}*
+- Customer: *{{ customer_name }}*
 
 The new order has been created in the system."""
     },
