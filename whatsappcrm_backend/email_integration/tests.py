@@ -71,8 +71,12 @@ class CreateOrderFromInvoiceDataTests(TestCase):
         self.assertEqual(OrderItem.objects.count(), 2)
         self.assertEqual(order.items.count(), 2)
         self.assertTrue(Product.objects.filter(sku="SKU-001").exists())
+        
+        # 4. Verify products from email import are created as inactive
+        for product in Product.objects.all():
+            self.assertFalse(product.is_active, "Products created from email import should be inactive")
 
-        # 4. Verify notification was queued
+        # 5. Verify notification was queued
         mock_queue_notifications.assert_called_once()
 
     @patch('email_integration.tasks.queue_notifications_to_users')

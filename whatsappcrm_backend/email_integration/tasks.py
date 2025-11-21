@@ -544,7 +544,8 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                     sku=product_code,
                     name=product_description,
                     price=item_data.get('unit_price', 0),
-                    product_type=Product.ProductType.HARDWARE # Default type
+                    product_type=Product.ProductType.HARDWARE, # Default type
+                    is_active=False  # Products from email import need manual review before activation
                 )
             OrderItem.objects.create(
                 order=order, 
@@ -638,7 +639,8 @@ def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_pref
                 # If the base product doesn't exist, create it.
                 product = Product.objects.create(
                     name=product_description or f"Product with SN {serial_number}",
-                    product_type=Product.ProductType.HARDWARE # Default type
+                    product_type=Product.ProductType.HARDWARE, # Default type
+                    is_active=False  # Products from email import need manual review before activation
                 )
 
             # Now create the new serialized item
