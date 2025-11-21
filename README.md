@@ -40,6 +40,9 @@ The application uses Let's Encrypt for free SSL certificates. The setup is fully
 # Or manual setup
 ./setup-ssl-certificates.sh --email your-email@example.com
 
+# Fix certificate directory issues (if nginx shows old/expired certs)
+./fix-certificate-directory.sh
+
 # Diagnose SSL issues
 ./diagnose-ssl.sh
 
@@ -49,7 +52,17 @@ The application uses Let's Encrypt for free SSL certificates. The setup is fully
 
 **Automatic Renewal:** Certificates are automatically renewed every 12 hours by the certbot container.
 
+### Common SSL Issues & Fixes
+
+| Issue | Fix |
+|-------|-----|
+| Browser shows certificate warnings | Run `./fix-certificate-directory.sh` |
+| Nginx using wrong certificate directory | Run `./fix-certificate-directory.sh` |
+| Certificate expired or self-signed | Run `./setup-ssl-certificates.sh --email your@email.com` |
+| Staging certificate in production | See [CERTIFICATE_DIRECTORY_PATH_FIX.md](CERTIFICATE_DIRECTORY_PATH_FIX.md) |
+
 For detailed SSL setup and troubleshooting, see:
+- **[CERTIFICATE_DIRECTORY_PATH_FIX.md](CERTIFICATE_DIRECTORY_PATH_FIX.md)** - 🆕 Fix for numbered certificate directories
 - **[QUICK_CERTIFICATE_FIX.md](QUICK_CERTIFICATE_FIX.md)** - 🚀 Quick fixes for browser warnings
 - **[CERTIFICATE_DIRECTORY_FIX.md](CERTIFICATE_DIRECTORY_FIX.md)** - Certificate path diagnostics
 - **[README_SSL.md](README_SSL.md)** - Quick SSL reference and troubleshooting
