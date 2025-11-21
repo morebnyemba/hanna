@@ -96,14 +96,17 @@ done
 # Check 3: SSL Certificates
 print_header "3. SSL Certificates"
 
+# Get the first domain for certificate path check
+FIRST_DOMAIN=$(echo $DOMAINS | awk '{print $1}')
+
 echo "Checking if certificates exist..."
-if docker-compose exec -T nginx test -f /etc/letsencrypt/live/dashboard.hanna.co.zw/fullchain.pem 2>/dev/null; then
+if docker-compose exec -T nginx test -f /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem 2>/dev/null; then
     print_success "Certificate files exist in nginx container"
     
     # Check certificate validity
     echo ""
     echo "Certificate details:"
-    docker-compose exec -T nginx openssl x509 -in /etc/letsencrypt/live/dashboard.hanna.co.zw/fullchain.pem -noout -subject -issuer -dates 2>/dev/null || true
+    docker-compose exec -T nginx openssl x509 -in /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem -noout -subject -issuer -dates 2>/dev/null || true
 else
     print_error "Certificate files NOT found in nginx container"
     echo ""
@@ -211,7 +214,7 @@ echo "  - Nginx: $(docker-compose ps -q nginx > /dev/null 2>&1 && echo '✓ Runn
 echo "  - Certbot: $(docker-compose ps -q certbot > /dev/null 2>&1 && echo '✓ Running' || echo '✗ Not Running')"
 echo ""
 
-if docker-compose exec -T nginx test -f /etc/letsencrypt/live/dashboard.hanna.co.zw/fullchain.pem 2>/dev/null; then
+if docker-compose exec -T nginx test -f /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem 2>/dev/null; then
     echo "SSL Certificates: ✓ Present"
 else
     echo "SSL Certificates: ✗ Missing"

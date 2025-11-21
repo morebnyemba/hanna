@@ -141,7 +141,8 @@ services:
     volumes:
       - npm_letsencrypt:/etc/letsencrypt
       - letsencrypt_webroot:/var/www/letsencrypt
-    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/letsencrypt --quiet; sleep 12h & wait $${!}; done;"
+      - ./certbot-renew.sh:/usr/local/bin/certbot-renew.sh:ro
+    entrypoint: /bin/sh /usr/local/bin/certbot-renew.sh
     restart: unless-stopped
 
 volumes:

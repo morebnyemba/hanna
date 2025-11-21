@@ -10,7 +10,7 @@ echo ""
 
 # Configuration
 DOMAINS="dashboard.hanna.co.zw backend.hanna.co.zw hanna.co.zw"
-EMAIL="admin@hanna.co.zw"  # Change this to your email address
+EMAIL="your-email@example.com"  # Change this to your actual email address
 STAGING=false  # Set to true for testing with Let's Encrypt staging server
 
 # Parse command line arguments
@@ -111,10 +111,7 @@ if docker-compose run --rm certbot $CERTBOT_CMD; then
     echo ""
     echo "Certificates will be automatically renewed by the certbot container."
     echo ""
-    echo "To verify your setup, visit:"
-    echo "  https://dashboard.hanna.co.zw"
-    echo "  https://backend.hanna.co.zw"
-    echo "  https://hanna.co.zw"
+    echo "To verify your setup, visit the domains listed above."
 else
     echo ""
     echo "ERROR: Failed to obtain SSL certificates"
