@@ -50,10 +50,11 @@ docker-compose run --rm --entrypoint sh certbot -c "
     
     # Generate self-signed certificate (suppress non-error output)
     # Note: Variables are expanded by outer shell before being passed to docker
+    # The escaped quotes ensure proper DN format handling in openssl
     if openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
         -keyout $CERT_DIR/privkey.pem \
         -out $CERT_DIR/fullchain.pem \
-        -subj /CN=$FIRST_DOMAIN 2>/dev/null; then
+        -subj \"/CN=$FIRST_DOMAIN\" 2>/dev/null; then
         echo 'Temporary certificate created successfully'
     else
         echo 'ERROR: Failed to generate temporary certificate'
