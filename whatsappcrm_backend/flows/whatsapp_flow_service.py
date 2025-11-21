@@ -5,6 +5,7 @@ import json
 import logging
 from typing import Optional, Dict, Any
 from django.utils import timezone
+from django.conf import settings
 
 from .models import WhatsAppFlow, WhatsAppFlowResponse
 from meta_integration.models import MetaAppConfig
@@ -45,8 +46,15 @@ class WhatsAppFlowService:
         """
         url = f"{self.base_url}/{self.meta_config.waba_id}/flows"
         
+        # Get the version suffix from settings
+        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1.02')
+        
+        # Append version suffix to flow name
+        flow_name = whatsapp_flow.friendly_name or whatsapp_flow.name
+        flow_name_with_version = f"{flow_name}_{version_suffix}"
+        
         payload = {
-            "name": whatsapp_flow.friendly_name or whatsapp_flow.name,
+            "name": flow_name_with_version,
             "categories": ["OTHER"]  # Default category, can be made configurable
         }
         

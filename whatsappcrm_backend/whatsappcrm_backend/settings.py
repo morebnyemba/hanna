@@ -447,3 +447,8 @@ INVOICE_PROCESSED_NOTIFICATION_GROUPS = os.getenv('INVOICE_PROCESSED_NOTIFICATIO
 GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
 GCP_PROCESSOR_LOCATION = os.getenv('GCP_PROCESSOR_LOCATION')
 GCP_INVOICE_PROCESSOR_ID = os.getenv('GCP_INVOICE_PROCESSOR_ID')
+
+# --- Meta Sync Version Suffix ---
+# Version suffix to append to flow and template names when syncing with Meta
+# This helps differentiate new syncs from previously synced items after database resets
+META_SYNC_VERSION_SUFFIX = os.getenv('META_SYNC_VERSION_SUFFIX', 'v1.02')
