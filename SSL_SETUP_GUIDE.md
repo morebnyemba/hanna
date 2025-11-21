@@ -37,9 +37,39 @@ Before setting up SSL certificates, ensure:
 
 ## Initial SSL Certificate Setup
 
-### Step 1: Start the Application
+### Recommended: Bootstrap Method (New!)
 
-First, start all services except the certbot (it will run after):
+For a fresh installation or when nginx fails to start due to missing certificates, use the bootstrap script:
+
+```bash
+# Complete SSL setup in one command
+./bootstrap-ssl.sh --email your-email@example.com
+
+# For testing with staging server
+./bootstrap-ssl.sh --email your-email@example.com --staging
+```
+
+The bootstrap script handles the entire process:
+1. Stops any running containers
+2. Creates temporary self-signed certificates
+3. Starts all services (nginx will start successfully with temp certs)
+4. Obtains real Let's Encrypt certificates
+5. Replaces temporary certificates with real ones
+
+### Alternative: Step-by-Step Method
+
+If you prefer manual control or need to troubleshoot:
+
+#### Step 1: Initialize SSL (if nginx won't start)
+
+If nginx is failing to start due to missing certificates:
+
+```bash
+# Create temporary self-signed certificates
+./init-ssl.sh
+```
+
+#### Step 2: Start the Application
 
 ```bash
 # Start all services
@@ -53,30 +83,37 @@ Wait for all containers to be up and running:
 docker-compose ps
 ```
 
-### Step 2: Obtain SSL Certificates
-
-Run the setup script to obtain initial SSL certificates:
+#### Step 3: Obtain Real SSL Certificates
 
 ```bash
 # Use the default configuration
-./setup-ssl-certificates.sh
+./setup-ssl-certificates.sh --email your-email@example.com
 
-# Or specify custom email and domains
+# Or specify custom domains
 ./setup-ssl-certificates.sh --email your-email@example.com --domains "dashboard.hanna.co.zw backend.hanna.co.zw hanna.co.zw"
 ```
+
+The setup script now automatically:
+- Creates temporary certificates if needed
+- Starts nginx if it's not running
+- Obtains real certificates
+- Restarts nginx with the new certificates
 
 For testing purposes, you can use the Let's Encrypt staging server:
 
 ```bash
 # Use staging server (certificates won't be trusted by browsers)
-./setup-ssl-certificates.sh --staging
+./setup-ssl-certificates.sh --staging --email your-email@example.com
 ```
 
-### Step 3: Verify SSL Certificates
+### Step 4: Verify SSL Certificates
 
 After the script completes, verify that SSL certificates are working:
 
 ```bash
+# Run diagnostics
+./diagnose-ssl.sh
+
 # Test HTTPS access
 curl -I https://dashboard.hanna.co.zw
 curl -I https://backend.hanna.co.zw
@@ -156,14 +193,34 @@ docker-compose restart nginx
    ./setup-ssl-certificates.sh --staging
    ```
 
-### Issue: "nginx fails to start - certificate not found"
+### Issue: "nginx fails to start - certificate not found" or "nginx in restart loop"
 
-**Cause:** nginx is trying to load SSL certificates that don't exist yet.
+**Cause:** nginx is trying to load SSL certificates that don't exist yet. This is the most common issue on fresh installations.
 
-**Solution 1: Use temporary self-signed certificates**
+**Solution 1: Use the bootstrap script (Recommended)**
+
+```bash
+# Complete SSL setup from scratch
+./bootstrap-ssl.sh --email your-email@example.com
+```
+
+**Solution 2: Use the init script**
 
 ```bash
 # Create temporary self-signed certificates
+./init-ssl.sh
+
+# Start nginx
+docker-compose up -d nginx
+
+# Now obtain real certificates
+./setup-ssl-certificates.sh --email your-email@example.com
+```
+
+**Solution 3: Manual certificate creation**
+
+```bash
+# Create temporary self-signed certificates manually
 docker-compose run --rm certbot sh -c "
   mkdir -p /etc/letsencrypt/live/dashboard.hanna.co.zw && \
   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -176,12 +233,12 @@ docker-compose run --rm certbot sh -c "
 docker-compose up -d nginx
 
 # Now obtain real certificates
-./setup-ssl-certificates.sh
+./setup-ssl-certificates.sh --email your-email@example.com
 ```
 
-**Solution 2: Modify nginx configuration to start without SSL**
+**Solution 4: Modify nginx configuration to start without SSL**
 
-Temporarily comment out the SSL server blocks in `nginx_proxy/nginx.conf`, start nginx, obtain certificates, then uncomment and restart.
+Temporarily comment out the SSL server blocks in `nginx_proxy/nginx.conf`, start nginx, obtain certificates, then uncomment and restart. (Not recommended - use bootstrap script instead)
 
 ### Issue: "Rate limit exceeded"
 

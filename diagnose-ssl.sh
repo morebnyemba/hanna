@@ -56,9 +56,19 @@ docker-compose ps
 # Check nginx specifically
 if docker-compose ps nginx | grep -q "Up"; then
     print_success "nginx container is running"
+elif docker-compose ps nginx | grep -q "Restarting"; then
+    print_error "nginx container is in a restart loop"
+    echo "  This usually means nginx cannot start due to configuration errors"
+    echo "  Common cause: SSL certificate files not found"
+    echo ""
+    echo "  To fix:"
+    echo "    1. Run: ./init-ssl.sh (creates temporary certificates)"
+    echo "    2. Run: docker-compose up -d nginx (start nginx)"
+    echo "    3. Run: ./setup-ssl-certificates.sh (get real certificates)"
 else
     print_error "nginx container is NOT running"
     echo "  Start it with: docker-compose up -d nginx"
+    echo "  If it fails to start, run: ./init-ssl.sh first"
 fi
 
 # Check certbot
@@ -127,24 +137,35 @@ fi
 print_header "4. ACME Challenge Configuration"
 
 echo "Checking ACME challenge directory..."
-if docker-compose exec -T nginx test -d /var/www/letsencrypt 2>/dev/null; then
-    print_success "ACME challenge directory exists in nginx"
-    docker-compose exec -T nginx ls -la /var/www/letsencrypt/ 2>/dev/null || true
+if docker-compose ps nginx | grep -q "Up"; then
+    if docker-compose exec -T nginx test -d /var/www/letsencrypt 2>/dev/null; then
+        print_success "ACME challenge directory exists in nginx"
+        docker-compose exec -T nginx ls -la /var/www/letsencrypt/ 2>/dev/null || true
+    else
+        print_error "ACME challenge directory NOT found in nginx"
+        echo "  Creating directory..."
+        docker-compose exec -T nginx mkdir -p /var/www/letsencrypt
+    fi
 else
-    print_error "ACME challenge directory NOT found in nginx"
-    echo "  Creating directory..."
-    docker-compose exec -T nginx mkdir -p /var/www/letsencrypt
+    print_warning "Cannot check ACME directory - nginx is not running"
+    echo "  The directory should be created automatically when nginx starts"
 fi
 
 # Check 5: Nginx Configuration
 print_header "5. Nginx Configuration"
 
 echo "Testing nginx configuration..."
-if docker-compose exec -T nginx nginx -t 2>&1; then
-    print_success "nginx configuration is valid"
+if docker-compose ps nginx | grep -q "Up"; then
+    if docker-compose exec -T nginx nginx -t 2>&1; then
+        print_success "nginx configuration is valid"
+    else
+        print_error "nginx configuration has errors"
+        echo "  Check nginx configuration in nginx_proxy/nginx.conf"
+    fi
 else
-    print_error "nginx configuration has errors"
-    echo "  Check nginx configuration in nginx_proxy/nginx.conf"
+    print_warning "Cannot test nginx configuration - nginx is not running"
+    echo "  If nginx is failing to start, it may be due to missing SSL certificates"
+    echo "  Run: ./init-ssl.sh to create temporary certificates"
 fi
 
 # Check 6: Port Accessibility

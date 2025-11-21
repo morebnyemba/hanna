@@ -49,6 +49,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validate email
+if [ "$EMAIL" = "your-email@example.com" ]; then
+    echo "ERROR: Please specify your email address with --email"
+    echo "Example: ./setup-ssl-certificates.sh --email admin@example.com"
+    exit 1
+fi
+
 echo "Configuration:"
 echo "  Domains: $DOMAINS"
 echo "  Email: $EMAIL"
@@ -61,16 +68,79 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
+# Extract first domain for certificate path
+FIRST_DOMAIN=$(echo $DOMAINS | awk '{print $1}')
+
 # Check if nginx container is running
-if ! docker-compose ps nginx | grep -q "Up"; then
-    echo "ERROR: nginx container is not running"
-    echo "Please start the nginx container first: docker-compose up -d nginx"
-    exit 1
+NGINX_STATUS=$(docker-compose ps nginx 2>/dev/null || echo "")
+
+if echo "$NGINX_STATUS" | grep -q "Restarting"; then
+    echo "ERROR: nginx container is in a restart loop"
+    echo "This usually means nginx cannot load SSL certificate files."
+    echo ""
+    echo "Stopping nginx to fix..."
+    docker-compose stop nginx
+    echo ""
 fi
 
-echo "Step 1: Creating webroot directory for ACME challenge..."
-docker-compose exec -T nginx mkdir -p /var/www/letsencrypt
-echo "✓ Webroot directory created"
+if ! docker-compose ps nginx | grep -q "Up"; then
+    echo "WARNING: nginx container is not running"
+    echo ""
+    
+    # Check if certificates exist at all
+    if ! docker-compose run --rm --entrypoint sh certbot -c "test -f /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem" 2>/dev/null; then
+        echo "No certificates found. Running SSL initialization first..."
+        echo ""
+        
+        # Run initialization script to create temporary certificates
+        if [ -f "./init-ssl.sh" ]; then
+            SSL_DOMAINS="$DOMAINS" ./init-ssl.sh
+        else
+            echo "WARNING: init-ssl.sh not found, creating temporary certificates manually..."
+            docker-compose run --rm --entrypoint sh certbot -c "
+                mkdir -p /var/www/letsencrypt/.well-known/acme-challenge && \
+                mkdir -p /etc/letsencrypt/live/$FIRST_DOMAIN && \
+                openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                    -keyout /etc/letsencrypt/live/$FIRST_DOMAIN/privkey.pem \
+                    -out /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem \
+                    -subj '/CN=$FIRST_DOMAIN'
+            "
+            echo "✓ Temporary certificates created"
+        fi
+        
+        echo ""
+        echo "Starting nginx with temporary certificates..."
+        docker-compose up -d nginx
+        echo ""
+        
+        # Wait for nginx to start
+        sleep 5
+        
+        if ! docker-compose ps nginx | grep -q "Up"; then
+            echo "ERROR: nginx failed to start even with temporary certificates"
+            echo "Please check nginx logs: docker-compose logs nginx"
+            exit 1
+        fi
+        
+        echo "✓ nginx started successfully"
+        echo ""
+    else
+        echo "Certificates exist but nginx is not running. Starting nginx..."
+        docker-compose up -d nginx
+        sleep 5
+        
+        if ! docker-compose ps nginx | grep -q "Up"; then
+            echo "ERROR: nginx failed to start"
+            echo "Please check nginx logs: docker-compose logs nginx"
+            exit 1
+        fi
+    fi
+fi
+
+echo "Step 1: Ensuring webroot directory exists for ACME challenge..."
+docker-compose exec -T nginx mkdir -p /var/www/letsencrypt 2>/dev/null || \
+    docker-compose run --rm --entrypoint sh certbot -c "mkdir -p /var/www/letsencrypt"
+echo "✓ Webroot directory ready"
 echo ""
 
 # Build certbot command
