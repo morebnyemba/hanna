@@ -21,8 +21,11 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 
 echo "Step 1: Creating ACME challenge directory..."
-# Create the webroot directory in the volume
-docker-compose run --rm --entrypoint sh certbot -c "mkdir -p /var/www/letsencrypt/.well-known/acme-challenge"
+# Create the webroot directory in the volume with proper permissions
+docker-compose run --rm --entrypoint sh certbot -c "
+    mkdir -p /var/www/letsencrypt/.well-known/acme-challenge
+    chmod -R 755 /var/www/letsencrypt
+"
 echo "✓ ACME challenge directory created"
 echo ""
 
@@ -42,12 +45,25 @@ echo ""
 
 # Create directory structure and generate self-signed certificate
 docker-compose run --rm --entrypoint sh certbot -c "
-    mkdir -p $CERT_DIR && \
-    openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    set -e
+    mkdir -p $CERT_DIR
+    
+    # Generate self-signed certificate (suppress non-error output)
+    # Note: Variables are expanded by outer shell before being passed to docker
+    # The escaped quotes ensure proper DN format handling in openssl
+    if openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
         -keyout $CERT_DIR/privkey.pem \
         -out $CERT_DIR/fullchain.pem \
-        -subj '/CN=$FIRST_DOMAIN' && \
-    echo 'Temporary self-signed certificate created'
+        -subj \"/CN=$FIRST_DOMAIN\" 2>/dev/null; then
+        echo 'Temporary certificate created successfully'
+    else
+        echo 'ERROR: Failed to generate temporary certificate'
+        exit 1
+    fi
+    
+    # Ensure certificate files have proper permissions
+    chmod 644 $CERT_DIR/fullchain.pem
+    chmod 600 $CERT_DIR/privkey.pem
 "
 
 echo ""

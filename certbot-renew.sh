@@ -13,28 +13,39 @@ echo "Checking for certificate renewals every 12 hours..."
 # Trap TERM signal for graceful shutdown
 trap 'echo "Received TERM signal, exiting..."; exit 0' TERM
 
+# Configuration for certificate detection
+CERT_CHECK_INTERVAL=30  # Seconds between certificate checks
+MAX_CERT_WAIT=600  # Wait up to 10 minutes for initial certificates (longer for slow networks)
+
 # Wait for initial certificates to be created before starting renewal loop
 # This prevents the renewal script from interfering with initial certificate setup
-echo "Waiting for initial certificates to be created..."
+echo "Waiting for valid Let's Encrypt certificates to be created..."
 WAIT_TIME=0
-MAX_WAIT=300  # Wait up to 5 minutes for initial certificates
 
-while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-    # Check if any certificates exist
-    if certbot certificates 2>/dev/null | grep -q "Certificate Name"; then
-        echo "$(date): Found existing certificates, starting renewal monitoring"
+while [ $WAIT_TIME -lt $MAX_CERT_WAIT ]; do
+    # Check if certbot has any managed certificates
+    # Note: Self-signed certificates created by bootstrap are NOT managed by certbot
+    # and won't appear in 'certbot certificates' output, so this check is reliable
+    CERT_OUTPUT=$(certbot certificates 2>/dev/null)
+    
+    if echo "$CERT_OUTPUT" | grep -q "Certificate Name"; then
+        # Found certificates managed by certbot - these are real Let's Encrypt certs
+        echo "$(date): Found certbot-managed certificates, starting renewal monitoring"
+        echo "$(date): Certificate details:"
+        echo "$CERT_OUTPUT" | grep -A 5 "Certificate Name" | head -6
         break
     fi
     
     # If we've waited the max time, continue anyway (certificates may be set up externally)
-    if [ $WAIT_TIME -ge $MAX_WAIT ]; then
-        echo "$(date): No certificates found after waiting, continuing anyway"
+    if [ $WAIT_TIME -ge $MAX_CERT_WAIT ]; then
+        echo "$(date): No certbot-managed certificates found after waiting $MAX_CERT_WAIT seconds"
+        echo "$(date): Continuing anyway - renewal checks will be performed but may fail until certificates are obtained"
         break
     fi
     
-    echo "$(date): No certificates found yet, waiting... ($WAIT_TIME/$MAX_WAIT seconds)"
-    sleep 30
-    WAIT_TIME=$((WAIT_TIME + 30))
+    echo "$(date): No certbot-managed certificates found yet, waiting... ($WAIT_TIME/$MAX_CERT_WAIT seconds)"
+    sleep $CERT_CHECK_INTERVAL
+    WAIT_TIME=$((WAIT_TIME + CERT_CHECK_INTERVAL))
 done
 
 # Main renewal loop

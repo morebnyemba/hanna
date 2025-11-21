@@ -98,12 +98,28 @@ if ! docker-compose ps nginx | grep -q "Up"; then
         else
             echo "WARNING: init-ssl.sh not found, creating temporary certificates manually..."
             docker-compose run --rm --entrypoint sh certbot -c "
-                mkdir -p /var/www/letsencrypt/.well-known/acme-challenge && \
-                mkdir -p /etc/letsencrypt/live/$FIRST_DOMAIN && \
-                openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                set -e
+                mkdir -p /var/www/letsencrypt/.well-known/acme-challenge
+                mkdir -p /etc/letsencrypt/live/$FIRST_DOMAIN
+                # Set proper permissions for ACME challenge directory
+                chmod -R 755 /var/www/letsencrypt
+                
+                # Generate self-signed certificate (suppress non-error output)
+                # Note: Variables are expanded by outer shell before being passed to docker
+                # The escaped quotes ensure proper DN format handling in openssl
+                if openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
                     -keyout /etc/letsencrypt/live/$FIRST_DOMAIN/privkey.pem \
                     -out /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem \
-                    -subj '/CN=$FIRST_DOMAIN'
+                    -subj \"/CN=$FIRST_DOMAIN\" 2>/dev/null; then
+                    echo 'Temporary certificate created successfully'
+                else
+                    echo 'ERROR: Failed to generate temporary certificate'
+                    exit 1
+                fi
+                
+                # Ensure certificate files have proper permissions
+                chmod 644 /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem
+                chmod 600 /etc/letsencrypt/live/$FIRST_DOMAIN/privkey.pem
             "
             echo "✓ Temporary certificates created"
         fi
@@ -144,7 +160,9 @@ echo "✓ Webroot directory ready"
 echo ""
 
 # Build certbot command
-CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email"
+# Use --force-renewal to replace any existing certificates (including temporary self-signed ones)
+# Use --expand to allow adding more domains to existing certificate
+CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email --force-renewal --expand"
 
 if [ "$STAGING" = true ]; then
     CERTBOT_CMD="$CERTBOT_CMD --staging"
