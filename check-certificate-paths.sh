@@ -149,7 +149,7 @@ if docker-compose exec -T nginx test -f "$CERT_PATH/fullchain.pem" 2>/dev/null; 
         else
             print_success "Valid Let's Encrypt production certificate"
         fi
-    elif echo "$CERT_ISSUER" | echo "$CERT_SUBJECT" | grep -qi "CN=$FIRST_DOMAIN"; then
+    elif echo "$CERT_SUBJECT" | grep -qi "CN=$FIRST_DOMAIN"; then
         print_warning "This appears to be a self-signed certificate"
         echo "  To get a real certificate, run:"
         echo "  ./setup-ssl-certificates.sh --email your-email@example.com"
@@ -288,17 +288,17 @@ echo ""
 
 # Extract nginx volumes
 echo "Nginx container volumes:"
-grep -A 10 "  nginx:" /home/runner/work/hanna/hanna/docker-compose.yml | grep -E "^\s+- " | grep "letsencrypt" || echo "  No letsencrypt volumes found"
+grep -A 10 "  nginx:" ./docker-compose.yml | grep -E "^\s+- " | grep "letsencrypt" || echo "  No letsencrypt volumes found"
 
 echo ""
 echo "Certbot container volumes:"
-grep -A 10 "  certbot:" /home/runner/work/hanna/hanna/docker-compose.yml | grep -E "^\s+- " | grep "letsencrypt" || echo "  No letsencrypt volumes found"
+grep -A 10 "  certbot:" ./docker-compose.yml | grep -E "^\s+- " | grep "letsencrypt" || echo "  No letsencrypt volumes found"
 
 echo ""
 
 # Check volume names
-NGINX_VOLUME=$(grep -A 10 "  nginx:" /home/runner/work/hanna/hanna/docker-compose.yml | grep "letsencrypt:" | awk '{print $2}' | cut -d: -f1 || echo "")
-CERTBOT_VOLUME=$(grep -A 10 "  certbot:" /home/runner/work/hanna/hanna/docker-compose.yml | grep "letsencrypt:" | awk '{print $2}' | cut -d: -f1 || echo "")
+NGINX_VOLUME=$(grep -A 10 "  nginx:" ./docker-compose.yml | grep "letsencrypt:" | awk '{print $2}' | cut -d: -f1 || echo "")
+CERTBOT_VOLUME=$(grep -A 10 "  certbot:" ./docker-compose.yml | grep "letsencrypt:" | awk '{print $2}' | cut -d: -f1 || echo "")
 
 if [ "$NGINX_VOLUME" = "$CERTBOT_VOLUME" ]; then
     print_success "Nginx and certbot use the same volume: $NGINX_VOLUME"

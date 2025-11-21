@@ -43,7 +43,7 @@ echo "Detecting certificate directory structure..."
 echo ""
 
 # Check what certificate directories exist
-CERT_DIRS=$(docker-compose exec -T nginx find /etc/letsencrypt/live -maxdepth 1 -type d 2>/dev/null | grep -v "^/etc/letsencrypt/live$" || echo "")
+CERT_DIRS=$(docker-compose exec -T nginx find /etc/letsencrypt/live -maxdepth 1 -type d 2>/dev/null | grep -v "^/etc/letsencrypt/live$" || true)
 
 if [ -z "$CERT_DIRS" ]; then
     print_error "No certificate directories found in /etc/letsencrypt/live"
