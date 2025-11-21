@@ -89,7 +89,7 @@ class MetaCatalogServiceTestCase(TestCase):
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_without_image(self, mock_config):
-        """Test that products without images don't have image_link field"""
+        """Test that products without images use a placeholder image_link"""
         # Setup mock config
         mock_active_config = MagicMock()
         mock_active_config.api_version = 'v23.0'
@@ -100,8 +100,10 @@ class MetaCatalogServiceTestCase(TestCase):
         service = MetaCatalogService()
         product_data = service._get_product_data(self.product)
         
-        # Verify image_link is not in the data
-        self.assertNotIn('image_link', product_data)
+        # Verify image_link is present with placeholder URL (Meta API requires it)
+        self.assertIn('image_link', product_data)
+        # Should use the backend's static logo as placeholder
+        self.assertIn('/static/admin/img/logo.png', product_data['image_link'])
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_required_fields(self, mock_config):

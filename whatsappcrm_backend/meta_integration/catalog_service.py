@@ -9,6 +9,9 @@ For products to be successfully created in Meta's catalog, the image_link URL mu
 3. Return a valid image with proper Content-Type header
 4. Use HTTPS protocol
 
+Meta API requires the image_link field for all products (error #10801). When a product 
+has no images, a placeholder image is used.
+
 Infrastructure Requirements:
 - Media files must be properly served by nginx or another web server
 - The docker-compose.yml should include a shared volume for media files
@@ -28,6 +31,11 @@ Example docker-compose volume:
     nginx:
         volumes:
             - media_files:/srv/www/media:ro
+
+Django Settings:
+- BACKEND_DOMAIN_FOR_CSP: Domain name for constructing absolute URLs (e.g., 'backend.hanna.co.zw')
+- META_CATALOG_PLACEHOLDER_IMAGE_PATH: Path to placeholder image for products without images
+  (default: '/static/admin/img/logo.png')
 
 If image URLs are not accessible, Meta will reject product creation with a 400 error.
 """
@@ -80,11 +88,15 @@ class MetaCatalogService:
         - price: Price as integer in cents/minor currency units (e.g., 10000 for $100.00)
         - currency: ISO 4217 currency code (e.g., "USD")
         - link: Product URL
+        - image_link: URL to product image (must be absolute URL and publicly accessible)
+                     Note: Meta API error #10801 "(#10801) \"image_url\" must be specified."
+                     requires this field (despite the error message saying "image_url", the 
+                     actual field name is "image_link"). A placeholder image URL is used 
+                     when the product has no images.
         
         Optional fields:
         - description: Product description
         - brand: Brand name
-        - image_link: URL to product image (must be absolute URL and publicly accessible)
         """
         # SKU is mandatory for the retailer_id
         if not product.sku:
@@ -119,26 +131,32 @@ class MetaCatalogService:
         # Get the first image URL, if available
         # Meta API requires absolute URLs, not relative paths
         # IMPORTANT: The URL must be publicly accessible for Meta's servers to fetch
-        # If no valid image is available, we omit image_link rather than sending an invalid URL
+        # Meta API now requires image_link field to be present
+        # Error #10801: "(#10801) \"image_url\" must be specified."
+        
+        # Get the backend domain once to avoid duplication
+        backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
+        
         first_image = product.images.first()
         if first_image and hasattr(first_image.image, 'url'):
             image_url = first_image.image.url
             # If the URL is relative, convert it to absolute
             if image_url.startswith('/'):
-                # Get the backend domain from settings
-                backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
                 # Use https as the application is behind an HTTPS proxy
                 image_url = f"https://{backend_domain}{image_url}"
             
-            # Only include image_link if we have a URL
-            # Note: If the image URL is not publicly accessible, Meta will reject the product
-            # TODO: Ensure media files are properly served and accessible via nginx
             data["image_link"] = image_url
             logger.debug(f"Product image URL for Meta: {image_url}")
         else:
+            # Meta API requires image_link field even when no image is available
+            # Use a publicly accessible placeholder image from our own static files
+            # Default uses Django admin's logo, but can be customized via META_CATALOG_PLACEHOLDER_IMAGE_PATH setting
+            placeholder_path = getattr(settings, 'META_CATALOG_PLACEHOLDER_IMAGE_PATH', '/static/admin/img/logo.png')
+            placeholder_url = f"https://{backend_domain}{placeholder_path}"
+            data["image_link"] = placeholder_url
             logger.warning(
                 f"Product '{product.name}' (ID: {product.id}) has no images. "
-                "Meta Catalog product will be created without an image."
+                f"Using placeholder image URL: {placeholder_url}"
             )
 
         return data
