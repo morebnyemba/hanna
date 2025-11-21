@@ -128,17 +128,20 @@ docker-compose run --rm --entrypoint sh certbot -c "
     chmod -R 755 /var/www/letsencrypt
     
     echo 'Generating temporary self-signed certificate...'
-    openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    # Generate self-signed certificate (suppress non-error output)
+    if openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
         -keyout $CERT_DIR/privkey.pem \
         -out $CERT_DIR/fullchain.pem \
-        -subj '/CN=$FIRST_DOMAIN' \
-        2>&1 | grep -v 'writing new private key' || true
+        -subj '/CN=$FIRST_DOMAIN' 2>/dev/null; then
+        echo 'Temporary certificate created successfully'
+    else
+        echo 'ERROR: Failed to generate temporary certificate'
+        exit 1
+    fi
     
     # Ensure certificate files have proper permissions
     chmod 644 $CERT_DIR/fullchain.pem
     chmod 600 $CERT_DIR/privkey.pem
-    
-    echo 'Temporary certificate created'
 "
 
 echo "✓ Temporary certificates created"

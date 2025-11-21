@@ -104,10 +104,16 @@ if ! docker-compose ps nginx | grep -q "Up"; then
                 # Set proper permissions for ACME challenge directory
                 chmod -R 755 /var/www/letsencrypt
                 
-                openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                # Generate self-signed certificate (suppress non-error output)
+                if openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
                     -keyout /etc/letsencrypt/live/$FIRST_DOMAIN/privkey.pem \
                     -out /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem \
-                    -subj '/CN=$FIRST_DOMAIN' 2>&1 | grep -v 'writing new private key' || true
+                    -subj '/CN=$FIRST_DOMAIN' 2>/dev/null; then
+                    echo 'Temporary certificate created successfully'
+                else
+                    echo 'ERROR: Failed to generate temporary certificate'
+                    exit 1
+                fi
                 
                 # Ensure certificate files have proper permissions
                 chmod 644 /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem
