@@ -50,6 +50,8 @@ The application uses Let's Encrypt for free SSL certificates. The setup is fully
 **Automatic Renewal:** Certificates are automatically renewed every 12 hours by the certbot container.
 
 For detailed SSL setup and troubleshooting, see:
+- **[QUICK_CERTIFICATE_FIX.md](QUICK_CERTIFICATE_FIX.md)** - 🚀 Quick fixes for browser warnings
+- **[CERTIFICATE_DIRECTORY_FIX.md](CERTIFICATE_DIRECTORY_FIX.md)** - Certificate path diagnostics
 - **[README_SSL.md](README_SSL.md)** - Quick SSL reference and troubleshooting
 - **[SSL_BROWSER_WARNING_FIX.md](SSL_BROWSER_WARNING_FIX.md)** - ⚠️ Browser warning fixes
 - **[SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md)** - Complete SSL setup guide
@@ -127,14 +129,24 @@ See detailed deployment guides:
 
 ### SSL Certificate Issues
 
+**Browser showing security warnings?** Run the quick diagnostic:
+
 ```bash
-# Run diagnostic tool
+# Identify the issue (30 seconds)
+./check-certificate-paths.sh
+
+# Auto-fix certificate path issues
+./fix-certificate-paths.sh
+
+# Full diagnostic
 ./diagnose-ssl.sh
 
 # View logs
 docker-compose logs nginx
 docker-compose logs certbot
 ```
+
+**See [QUICK_CERTIFICATE_FIX.md](QUICK_CERTIFICATE_FIX.md) for step-by-step fixes.**
 
 ### Service Issues
 
