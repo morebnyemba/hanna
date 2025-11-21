@@ -128,7 +128,7 @@ services:
       - mediafiles_volume:/srv/www/media:ro  # Mount media files (read-only, Django serves them)
       - npm_letsencrypt:/etc/letsencrypt:ro  # SSL certificates (read-only)
       - ./nginx_proxy/ssl_custom:/etc/nginx/ssl_custom:ro  # Custom SSL configs
-      - letsencrypt_webroot:/var/www/letsencrypt:ro  # ACME challenge directory for Let's Encrypt
+      - letsencrypt_webroot:/var/www/letsencrypt  # ACME challenge directory for Let's Encrypt (read-write needed)
     depends_on:
       - backend
       - frontend
