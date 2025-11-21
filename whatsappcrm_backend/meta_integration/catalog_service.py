@@ -81,7 +81,8 @@ class MetaCatalogService:
         - currency: ISO 4217 currency code (e.g., "USD")
         - link: Product URL
         - image_link: URL to product image (must be absolute URL and publicly accessible)
-                     Note: As of error #10801, Meta requires this field even if product has no image.
+                     Note: Meta API error #10801 "(#10801) \"image_url\" must be specified." 
+                     requires this field even if product has no image.
                      A placeholder image URL is used when the product has no images.
         
         Optional fields:
@@ -121,14 +122,17 @@ class MetaCatalogService:
         # Get the first image URL, if available
         # Meta API requires absolute URLs, not relative paths
         # IMPORTANT: The URL must be publicly accessible for Meta's servers to fetch
-        # Meta API now requires image_link field to be present (as of error #10801)
+        # Meta API now requires image_link field to be present
+        # Error #10801: "(#10801) \"image_url\" must be specified."
+        
+        # Get the backend domain once to avoid duplication
+        backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
+        
         first_image = product.images.first()
         if first_image and hasattr(first_image.image, 'url'):
             image_url = first_image.image.url
             # If the URL is relative, convert it to absolute
             if image_url.startswith('/'):
-                # Get the backend domain from settings
-                backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
                 # Use https as the application is behind an HTTPS proxy
                 image_url = f"https://{backend_domain}{image_url}"
             
@@ -137,8 +141,8 @@ class MetaCatalogService:
         else:
             # Meta API requires image_link field even when no image is available
             # Use a publicly accessible placeholder image from our own static files
-            backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
-            placeholder_url = f"https://{backend_domain}/static/admin/img/logo.png"
+            placeholder_path = getattr(settings, 'META_CATALOG_PLACEHOLDER_IMAGE_PATH', '/static/admin/img/logo.png')
+            placeholder_url = f"https://{backend_domain}{placeholder_path}"
             data["image_link"] = placeholder_url
             logger.warning(
                 f"Product '{product.name}' (ID: {product.id}) has no images. "
