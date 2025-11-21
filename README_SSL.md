@@ -151,13 +151,20 @@ For more detailed troubleshooting, run:
 
 ### Docker Compose
 - Added `letsencrypt_webroot` volume for ACME challenge files
-- Added volume mount in nginx service: `letsencrypt_webroot:/var/www/letsencrypt:ro`
+- Added volume mount in nginx service: `letsencrypt_webroot:/var/www/letsencrypt` (read-write for ACME challenges)
 - Added `certbot` service for automatic certificate renewal
+
+### Recent Fixes
+- Fixed `letsencrypt_webroot` mount to be read-write (was read-only, preventing ACME challenges)
+- Updated `certbot-renew.sh` to wait for initial certificates before starting renewal loop
+- Updated bootstrap and setup scripts to properly invoke certbot without interference from renewal service
 
 ### New Files
 - `setup-ssl-certificates.sh` - Script to obtain initial SSL certificates
 - `diagnose-ssl.sh` - Diagnostic tool for SSL and domain issues
 - `SSL_SETUP_GUIDE.md` - Comprehensive SSL setup guide
+- `bootstrap-ssl.sh` - One-command complete SSL setup
+- `certbot-renew.sh` - Automatic certificate renewal script
 
 ## Security Features
 
