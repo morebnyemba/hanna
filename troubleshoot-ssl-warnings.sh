@@ -12,7 +12,7 @@ echo ""
 
 # Configuration
 DOMAINS="dashboard.hanna.co.zw backend.hanna.co.zw hanna.co.zw"
-FIRST_DOMAIN=$(echo $DOMAINS | awk '{print $1}')
+FIRST_DOMAIN=$(echo "$DOMAINS" | awk '{print $1}')
 
 # Function to print section header
 print_header() {
@@ -110,7 +110,8 @@ if [ -n "$CERT_SANS" ]; then
     echo "Certificate covers: $CERT_SANS"
     echo ""
     
-    # Check each domain
+    # Check each domain - using word splitting intentionally here as DOMAINS is space-separated
+    # shellcheck disable=SC2086
     ALL_COVERED=true
     for domain in $DOMAINS; do
         if echo "$CERT_SANS" | grep -q "$domain"; then
@@ -161,15 +162,17 @@ print_header "6. Testing HTTPS Access"
 echo "Testing HTTPS connectivity to your domains..."
 echo ""
 
+# Using word splitting intentionally here as DOMAINS is space-separated
+# shellcheck disable=SC2086
 for domain in $DOMAINS; do
     echo "Testing $domain..."
     
     # Test HTTPS with certificate verification
-    if curl -s --max-time 5 https://$domain > /dev/null 2>&1; then
+    if curl -s --max-time 5 "https://$domain" > /dev/null 2>&1; then
         echo "  ✓ HTTPS works with valid certificate"
     else
         # Try without verification to see if it's a certificate issue
-        if curl -k -s --max-time 5 https://$domain > /dev/null 2>&1; then
+        if curl -k -s --max-time 5 "https://$domain" > /dev/null 2>&1; then
             echo "  ⚠ HTTPS works but certificate is not trusted"
             echo "    This confirms the browser warning issue"
         else

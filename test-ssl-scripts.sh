@@ -161,12 +161,15 @@ echo "Test 7: Error Handling"
 echo "─────────────────────────────────"
 
 # Test that bootstrap fails without email
+# Temporarily disable errexit for these tests
+set +e
 ./bootstrap-ssl.sh 2>&1 | grep -q "ERROR.*email" && EXIT_CODE=0 || EXIT_CODE=1
 test_result $EXIT_CODE "bootstrap-ssl.sh requires email parameter"
 
 # Test that setup fails without email
 ./setup-ssl-certificates.sh 2>&1 | grep -q "ERROR.*email" && EXIT_CODE=0 || EXIT_CODE=1
 test_result $EXIT_CODE "setup-ssl-certificates.sh requires email parameter"
+set -e
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════════╗"
