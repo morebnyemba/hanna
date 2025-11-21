@@ -80,11 +80,13 @@ class MetaCatalogService:
         - price: Price as integer in cents/minor currency units (e.g., 10000 for $100.00)
         - currency: ISO 4217 currency code (e.g., "USD")
         - link: Product URL
+        - image_link: URL to product image (must be absolute URL and publicly accessible)
+                     Note: As of error #10801, Meta requires this field even if product has no image.
+                     A placeholder image URL is used when the product has no images.
         
         Optional fields:
         - description: Product description
         - brand: Brand name
-        - image_link: URL to product image (must be absolute URL and publicly accessible)
         """
         # SKU is mandatory for the retailer_id
         if not product.sku:
