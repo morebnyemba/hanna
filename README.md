@@ -201,6 +201,7 @@ docker-compose restart
 - **[FLOW_INTEGRATION_GUIDE.md](FLOW_INTEGRATION_GUIDE.md)** - Integration guide
 - **[ECOMMERCE_IMPLEMENTATION.md](ECOMMERCE_IMPLEMENTATION.md)** - E-commerce features
 - **[PRODUCT_SYNC_VISUAL_GUIDE.md](PRODUCT_SYNC_VISUAL_GUIDE.md)** - Product sync
+- **[META_SYNC_VERSION_SUFFIX.md](META_SYNC_VERSION_SUFFIX.md)** - Version suffixes for Meta sync
 
 ### Media & Configuration
 - **[MEDIA_FIX_SUMMARY.md](MEDIA_FIX_SUMMARY.md)** - Media file handling

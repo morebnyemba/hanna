@@ -2,6 +2,7 @@ import re
 import requests
 import json
 from django.core.management.base import BaseCommand, CommandError
+from django.conf import settings
 from notifications.models import NotificationTemplate
 from meta_integration.models import MetaAppConfig
 
@@ -42,10 +43,15 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("No notification templates found in the database to sync."))
             return
 
+        # Get the version suffix from settings
+        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1.02')
+
         for template in templates_to_sync:
             template_name = template.name
+            # Append version suffix to template name
+            template_name_with_version = f"{template_name}_{version_suffix}"
             original_body = template.message_body
-            self.stdout.write(f"\nProcessing template: '{template_name}'...")
+            self.stdout.write(f"\nProcessing template: '{template_name}' (will be synced as '{template_name_with_version}')...")
 
             if hasattr(template, 'sync_status') and template.sync_status == 'disabled':
                 self.stdout.write(self.style.NOTICE(f"  Skipping disabled template: '{template_name}'"))
@@ -146,7 +152,7 @@ class Command(BaseCommand):
                 # CREATE new template
                 api_url = f"https://graph.facebook.com/v20.0/{self.active_config.waba_id}/message_templates"
                 payload = {
-                    "name": template_name,
+                    "name": template_name_with_version,
                     "language": "en_US",
                     "category": "UTILITY",
                     "components": components,
@@ -166,7 +172,7 @@ class Command(BaseCommand):
                 if response.status_code in [200, 201]:
                     if action == "create":
                         template.meta_template_id = response_data.get('id')
-                    self.stdout.write(self.style.SUCCESS(f"  SUCCESS: Template '{template_name}' {action}d successfully. ID: {template.meta_template_id}"))
+                    self.stdout.write(self.style.SUCCESS(f"  SUCCESS: Template '{template_name_with_version}' {action}d successfully. ID: {template.meta_template_id}"))
                     template.sync_status = 'synced'
                     template.save()
                 else:
