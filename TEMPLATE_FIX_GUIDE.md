@@ -143,6 +143,30 @@ Check the Meta Business Manager to confirm the templates are approved:
 2. Navigate to WhatsApp Business Account → Message Templates
 3. Check status of the three templates (should be "APPROVED")
 
+## Remaining Templates That Need Fixing
+
+**IMPORTANT**: The following templates also contain problematic patterns and will be rejected if synced to WhatsApp:
+
+### Templates with `or` expressions (10 templates):
+1. **hanna_new_order_created** - `{{ order.amount or '0.00' }}`, nested attributes
+2. **hanna_new_online_order_placed** - `{{ contact.name or contact.whatsapp_id }}`, has `{% for %}` loop
+3. **hanna_new_installation_request** - Multiple `or` expressions, `|title` filters, `{% if %}` blocks
+4. **hanna_new_starlink_installation_request** - `{{ contact.name or ... }}`, `|title` filters
+5. **hanna_new_solar_cleaning_request** - `{{ contact.name or ... }}`, `|title` filters
+6. **hanna_admin_order_and_install_created** - `{{ contact.name or contact.username }}`
+7. **hanna_new_site_assessment_request** - `{{ contact.name or contact.whatsapp_id }}`
+8. **hanna_job_card_created_successfully** - Multiple nested attributes
+9. **hanna_new_placeholder_order_created** - `{{ contact.name or contact.whatsapp_id }}`
+10. **hanna_admin_24h_window_reminder** - `{{ recipient.first_name or recipient.username }}`
+
+### Critical Issues Found:
+- **`{% for %}` loops** are NOT supported in WhatsApp templates (`hanna_new_online_order_placed`)
+- **`{% if %}` conditionals** are NOT supported in WhatsApp templates (multiple templates)
+- **Nested attributes** like `order.customer.name` need to be flattened
+- **Jinja2 filters** like `|title`, `|lower` need to be removed
+
+⚠️ **These templates will be rejected when synced to Meta.** They should be fixed before syncing using the same pattern as the three fixed templates.
+
 ## Best Practices for Future Templates
 
 To avoid similar issues in the future:

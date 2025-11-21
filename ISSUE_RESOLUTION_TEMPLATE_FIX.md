@@ -220,22 +220,49 @@ Before syncing templates to WhatsApp, verify:
 
 ## Future Work
 
+### ⚠️ CRITICAL: Additional Templates Requiring Fixes
+
+**10 more templates** have been identified with similar problematic patterns:
+
+| Template Name | Issues |
+|--------------|--------|
+| `hanna_new_order_created` | `or '0.00'`, nested attributes |
+| `hanna_new_online_order_placed` | `or` expression, **`{% for %}` loop** ❌ |
+| `hanna_new_installation_request` | Multiple `or`, `\|title`, `{% if %}` blocks |
+| `hanna_new_starlink_installation_request` | `or` expression, `\|title` filters |
+| `hanna_new_solar_cleaning_request` | `or` expression, `\|title` filters, `{% if %}` |
+| `hanna_admin_order_and_install_created` | `or` expressions |
+| `hanna_new_site_assessment_request` | `or` expression |
+| `hanna_job_card_created_successfully` | Nested attributes |
+| `hanna_new_placeholder_order_created` | `or` expression |
+| `hanna_admin_24h_window_reminder` | `or` expression |
+
+**CRITICAL FINDINGS:**
+- ❌ **`{% for %}` loops are NOT supported** by WhatsApp templates (`hanna_new_online_order_placed`)
+- ❌ **`{% if %}` conditionals are NOT supported** by WhatsApp templates (multiple templates)
+- These templates **WILL BE REJECTED** when synced to Meta
+
 ### Recommended Actions
-1. **Audit other templates**: Check remaining templates for similar issues before syncing them
+1. **Fix remaining 10 templates** using the same pattern as the three already fixed
 2. **Add validation**: Consider adding pre-sync validation to catch problematic patterns
 3. **Update sync script**: Enhance regex to warn about unsupported Jinja2 syntax
 4. **Template testing**: Add automated tests for all notification templates
+5. **Document template limitations**: Create guidelines about WhatsApp template restrictions
 
-### Templates That May Need Similar Fixes
-Templates with these patterns should be reviewed before syncing:
-- Any template with `{{ var|title }}`
-- Any template with `{{ var or 'text' }}`
-- Any template with nested attributes like `{{ contact.name }}`
-
-Search for these patterns:
+### Quick Audit Command
+Search for problematic patterns:
 ```bash
-grep -r "\|title\|\|lower\|\|format" whatsappcrm_backend/flows/management/commands/definitions.py
-grep -r "{{ .* or '[^}]*' }}" whatsappcrm_backend/flows/management/commands/definitions.py
+# Find all templates with 'or' expressions
+grep -n "{{ .*or .*}}" whatsappcrm_backend/flows/management/commands/definitions.py
+
+# Find all templates with filters
+grep -n "{{ .*|.*}}" whatsappcrm_backend/flows/management/commands/definitions.py
+
+# Find all templates with conditionals or loops
+grep -n "{% if\|{% for" whatsappcrm_backend/flows/management/commands/definitions.py
+
+# Find all templates with nested attributes
+grep -n "{{ .*\..*}}" whatsappcrm_backend/flows/management/commands/definitions.py
 ```
 
 ## Contact
