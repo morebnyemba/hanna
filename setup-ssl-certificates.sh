@@ -161,8 +161,9 @@ echo "Step 2: Obtaining SSL certificates from Let's Encrypt..."
 echo "This may take a few minutes..."
 echo ""
 
-# Run certbot to obtain certificates
-if docker-compose run --rm certbot $CERTBOT_CMD; then
+# Run certbot to obtain certificates using a separate one-off container
+# This avoids interference with the renewal service container
+if docker-compose run --rm --entrypoint certbot certbot $CERTBOT_CMD; then
     echo ""
     echo "✓ SSL certificates obtained successfully!"
     echo ""
