@@ -84,6 +84,19 @@ docker-compose restart nginx
 
 ## Troubleshooting
 
+### Issue: Browser shows SSL warnings
+
+**Cause:** Could be staging certificates, self-signed certificates, expired certificates, or browser cache issues.
+
+**Solution:** Run the dedicated troubleshooting script:
+```bash
+./troubleshoot-ssl-warnings.sh
+```
+
+This script will automatically detect the issue and provide specific fix instructions.
+
+For more details, see: [SSL_BROWSER_WARNING_FIX.md](SSL_BROWSER_WARNING_FIX.md)
+
 ### Issue: nginx container in restart loop
 
 **Cause:** nginx cannot start because SSL certificate files don't exist yet.
@@ -136,14 +149,23 @@ curl http://dashboard.hanna.co.zw/.well-known/acme-challenge/test
 docker-compose exec nginx ls -la /var/www/letsencrypt/
 ```
 
-For more detailed troubleshooting, run:
+### Diagnostic Tools
+
+We provide several diagnostic and troubleshooting scripts:
+
 ```bash
+# General SSL diagnostics
 ./diagnose-ssl.sh
+
+# Browser warning troubleshooting (NEW!)
+./troubleshoot-ssl-warnings.sh
 ```
 
 ## Documentation
 
 - **[SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md)** - Complete SSL certificate setup and management guide
+- **[SSL_BROWSER_WARNING_FIX.md](SSL_BROWSER_WARNING_FIX.md)** - ⚠️ **NEW!** Browser SSL warning troubleshooting guide
+- **[SSL_BOOTSTRAP_FIX.md](SSL_BOOTSTRAP_FIX.md)** - Bootstrap script fixes and explanations
 - **[DEPLOYMENT_INSTRUCTIONS.md](DEPLOYMENT_INSTRUCTIONS.md)** - General deployment instructions
 - **[CUSTOM_NGINX_MIGRATION_GUIDE.md](CUSTOM_NGINX_MIGRATION_GUIDE.md)** - Migration guide from NPM to custom nginx
 
