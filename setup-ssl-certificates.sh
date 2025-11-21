@@ -63,14 +63,63 @@ fi
 
 # Check if nginx container is running
 if ! docker-compose ps nginx | grep -q "Up"; then
-    echo "ERROR: nginx container is not running"
-    echo "Please start the nginx container first: docker-compose up -d nginx"
-    exit 1
+    echo "WARNING: nginx container is not running"
+    echo ""
+    
+    # Check if certificates exist at all
+    if ! docker-compose run --rm --entrypoint sh certbot -c "test -f /etc/letsencrypt/live/dashboard.hanna.co.zw/fullchain.pem" 2>/dev/null; then
+        echo "No certificates found. Running SSL initialization first..."
+        echo ""
+        
+        # Run initialization script to create temporary certificates
+        if [ -f "./init-ssl.sh" ]; then
+            ./init-ssl.sh
+        else
+            echo "Creating temporary certificates manually..."
+            docker-compose run --rm --entrypoint sh certbot -c "
+                mkdir -p /var/www/letsencrypt/.well-known/acme-challenge && \
+                mkdir -p /etc/letsencrypt/live/dashboard.hanna.co.zw && \
+                openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                    -keyout /etc/letsencrypt/live/dashboard.hanna.co.zw/privkey.pem \
+                    -out /etc/letsencrypt/live/dashboard.hanna.co.zw/fullchain.pem \
+                    -subj '/CN=dashboard.hanna.co.zw'
+            "
+            echo "✓ Temporary certificates created"
+        fi
+        
+        echo ""
+        echo "Starting nginx with temporary certificates..."
+        docker-compose up -d nginx
+        echo ""
+        
+        # Wait for nginx to start
+        sleep 5
+        
+        if ! docker-compose ps nginx | grep -q "Up"; then
+            echo "ERROR: nginx failed to start even with temporary certificates"
+            echo "Please check nginx logs: docker-compose logs nginx"
+            exit 1
+        fi
+        
+        echo "✓ nginx started successfully"
+        echo ""
+    else
+        echo "Certificates exist but nginx is not running. Starting nginx..."
+        docker-compose up -d nginx
+        sleep 5
+        
+        if ! docker-compose ps nginx | grep -q "Up"; then
+            echo "ERROR: nginx failed to start"
+            echo "Please check nginx logs: docker-compose logs nginx"
+            exit 1
+        fi
+    fi
 fi
 
-echo "Step 1: Creating webroot directory for ACME challenge..."
-docker-compose exec -T nginx mkdir -p /var/www/letsencrypt
-echo "✓ Webroot directory created"
+echo "Step 1: Ensuring webroot directory exists for ACME challenge..."
+docker-compose exec -T nginx mkdir -p /var/www/letsencrypt 2>/dev/null || \
+    docker-compose run --rm --entrypoint sh certbot -c "mkdir -p /var/www/letsencrypt"
+echo "✓ Webroot directory ready"
 echo ""
 
 # Build certbot command

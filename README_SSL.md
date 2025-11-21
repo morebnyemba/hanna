@@ -10,23 +10,50 @@
   - `hanna.co.zw`
 - Ports 80 and 443 accessible from the internet
 
-### Step 1: Start the Application
+### Recommended: One-Command Bootstrap (New!)
+
+For a fresh installation or when nginx fails to start due to missing certificates:
+
+```bash
+# Complete SSL setup in one command
+./bootstrap-ssl.sh --email your-email@example.com
+```
+
+This script handles everything:
+1. Creates temporary self-signed certificates
+2. Starts all services including nginx
+3. Obtains real Let's Encrypt certificates
+4. Activates the new certificates
+
+### Alternative: Manual Step-by-Step Setup
+
+If you prefer manual control or the bootstrap script fails:
+
+#### Step 1: Initialize SSL (if nginx won't start)
+
+```bash
+# Create temporary certificates to allow nginx to start
+./init-ssl.sh
+```
+
+#### Step 2: Start the Application
 
 ```bash
 docker-compose up -d
 ```
 
-### Step 2: Obtain SSL Certificates
+#### Step 3: Obtain Real SSL Certificates
 
 ```bash
 # Run the SSL setup script
-./setup-ssl-certificates.sh
+./setup-ssl-certificates.sh --email your-email@example.com
 ```
 
-The script will:
-1. Create the ACME challenge directory
-2. Obtain SSL certificates from Let's Encrypt for all domains
-3. Restart nginx to load the new certificates
+The script will automatically:
+1. Check if nginx is running (start it if needed with temp certificates)
+2. Create the ACME challenge directory
+3. Obtain SSL certificates from Let's Encrypt for all domains
+4. Restart nginx to load the new certificates
 
 ### Step 3: Verify Setup
 
@@ -57,12 +84,29 @@ docker-compose restart nginx
 
 ## Troubleshooting
 
+### Issue: nginx container in restart loop
+
+**Cause:** nginx cannot start because SSL certificate files don't exist yet.
+
+**Solution:** Use the bootstrap script or init script:
+```bash
+# Option 1: Complete bootstrap (recommended)
+./bootstrap-ssl.sh --email your-email@example.com
+
+# Option 2: Manual fix
+./init-ssl.sh              # Create temporary certificates
+docker-compose up -d nginx  # Start nginx
+./setup-ssl-certificates.sh # Get real certificates
+```
+
 ### Issue: Certificate files not found
 
 **Solution:** Run the SSL setup script:
 ```bash
-./setup-ssl-certificates.sh
+./setup-ssl-certificates.sh --email your-email@example.com
 ```
+
+The script will now automatically create temporary certificates if needed.
 
 ### Issue: Domains not accessible
 
@@ -76,6 +120,9 @@ docker-compose ps nginx
 
 # View nginx logs
 docker-compose logs nginx
+
+# Run diagnostic tool
+./diagnose-ssl.sh
 ```
 
 ### Issue: ACME challenge failed
