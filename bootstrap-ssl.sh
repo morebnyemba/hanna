@@ -124,6 +124,8 @@ docker-compose run --rm --entrypoint sh certbot -c "
     echo 'Creating directory structure...'
     mkdir -p $CERT_DIR
     mkdir -p /var/www/letsencrypt/.well-known/acme-challenge
+    # Set proper permissions for ACME challenge directory
+    chmod -R 755 /var/www/letsencrypt
     
     echo 'Generating temporary self-signed certificate...'
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
@@ -131,6 +133,10 @@ docker-compose run --rm --entrypoint sh certbot -c "
         -out $CERT_DIR/fullchain.pem \
         -subj '/CN=$FIRST_DOMAIN' \
         2>&1 | grep -v 'writing new private key' || true
+    
+    # Ensure certificate files have proper permissions
+    chmod 644 $CERT_DIR/fullchain.pem
+    chmod 600 $CERT_DIR/privkey.pem
     
     echo 'Temporary certificate created'
 "
@@ -147,18 +153,41 @@ docker-compose up -d
 
 echo ""
 echo "Waiting for services to be healthy..."
-sleep 10
+sleep 5
 
-# Check if nginx is running
-if docker-compose ps nginx | grep -q "Up"; then
-    echo "✓ nginx is running"
-else
-    echo "✗ nginx failed to start"
+# Check if nginx is running (with retries for transient startup issues)
+NGINX_RETRIES=0
+MAX_NGINX_RETRIES=12  # 12 retries * 5 seconds = 60 seconds max wait
+while [ $NGINX_RETRIES -lt $MAX_NGINX_RETRIES ]; do
+    if docker-compose ps nginx | grep -q "Up"; then
+        echo "✓ nginx is running"
+        break
+    elif docker-compose ps nginx | grep -q "Restarting"; then
+        echo "⚠ nginx is restarting (attempt $((NGINX_RETRIES + 1))/$MAX_NGINX_RETRIES)..."
+        sleep 5
+        NGINX_RETRIES=$((NGINX_RETRIES + 1))
+    else
+        echo "✗ nginx failed to start"
+        echo ""
+        echo "Checking logs..."
+        docker-compose logs --tail=30 nginx
+        echo ""
+        echo "Please check the error above and try again"
+        exit 1
+    fi
+done
+
+if [ $NGINX_RETRIES -eq $MAX_NGINX_RETRIES ]; then
+    echo "✗ nginx failed to start after $MAX_NGINX_RETRIES attempts"
     echo ""
     echo "Checking logs..."
-    docker-compose logs --tail=20 nginx
+    docker-compose logs --tail=30 nginx
     echo ""
-    echo "Please check the error above and try again"
+    echo "Common issues:"
+    echo "  - Missing SSL configuration files"
+    echo "  - Invalid nginx configuration syntax"
+    echo "  - Port already in use"
+    echo ""
     exit 1
 fi
 
@@ -172,7 +201,9 @@ echo "This may take a few minutes..."
 echo ""
 
 # Build certbot command
-CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email --force-renewal"
+# Use --force-renewal to replace any existing certificates (including temporary self-signed ones)
+# Use --expand to allow adding more domains to existing certificate
+CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email --force-renewal --expand"
 
 if [ "$STAGING" = true ]; then
     CERTBOT_CMD="$CERTBOT_CMD --staging"
