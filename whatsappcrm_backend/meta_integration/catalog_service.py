@@ -136,8 +136,9 @@ class MetaCatalogService:
             logger.debug(f"Product image URL for Meta: {image_url}")
         else:
             # Meta API requires image_link field even when no image is available
-            # Use a publicly accessible placeholder image
-            placeholder_url = "https://via.placeholder.com/800x800.png?text=No+Image"
+            # Use a publicly accessible placeholder image from our own static files
+            backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
+            placeholder_url = f"https://{backend_domain}/static/admin/img/logo.png"
             data["image_link"] = placeholder_url
             logger.warning(
                 f"Product '{product.name}' (ID: {product.id}) has no images. "

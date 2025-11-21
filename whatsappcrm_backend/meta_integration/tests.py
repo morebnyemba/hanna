@@ -102,7 +102,8 @@ class MetaCatalogServiceTestCase(TestCase):
         
         # Verify image_link is present with placeholder URL (Meta API requires it)
         self.assertIn('image_link', product_data)
-        self.assertIn('placeholder', product_data['image_link'].lower())
+        # Should use the backend's static logo as placeholder
+        self.assertIn('/static/admin/img/logo.png', product_data['image_link'])
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_required_fields(self, mock_config):
