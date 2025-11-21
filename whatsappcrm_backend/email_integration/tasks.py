@@ -577,11 +577,11 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                 template_context={
                     'attachment': attachment_dict, 'order': order_dict, 'customer': customer_dict,
                     # Flattened variables for simplified template
-                    'sender': attachment_dict['sender'],
-                    'filename': attachment_dict['filename'],
-                    'order_number': order_dict['order_number'],
-                    'order_amount': f"{order_dict['amount']:.2f}",
-                    'customer_name': customer_dict['full_name'] or customer_dict['contact_name']
+                    'sender': attachment_dict.get('sender', ''),
+                    'filename': attachment_dict.get('filename', ''),
+                    'order_number': order_dict.get('order_number', ''),
+                    'order_amount': f"{order_dict.get('amount', 0):.2f}",
+                    'customer_name': customer_dict.get('full_name') or customer_dict.get('contact_name', '')
                 }
             )
             
