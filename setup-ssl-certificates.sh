@@ -62,6 +62,17 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 
 # Check if nginx container is running
+NGINX_STATUS=$(docker-compose ps nginx 2>/dev/null || echo "")
+
+if echo "$NGINX_STATUS" | grep -q "Restarting"; then
+    echo "ERROR: nginx container is in a restart loop"
+    echo "This usually means nginx cannot load SSL certificate files."
+    echo ""
+    echo "Stopping nginx to fix..."
+    docker-compose stop nginx
+    echo ""
+fi
+
 if ! docker-compose ps nginx | grep -q "Up"; then
     echo "WARNING: nginx container is not running"
     echo ""
