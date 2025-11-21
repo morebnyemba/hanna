@@ -249,17 +249,26 @@ fi
 echo "Updating nginx configuration..."
 echo ""
 
-# Update nginx configuration file directly (since we're in the source repo)
-NGINX_CONF="/home/runner/work/hanna/hanna/nginx_proxy/nginx.conf"
-
-if [ ! -f "$NGINX_CONF" ]; then
-    print_error "Cannot find nginx.conf at $NGINX_CONF"
+# Detect the correct nginx config file path
+# Try common locations
+if [ -f "./nginx_proxy/nginx.conf" ]; then
+    NGINX_CONF="./nginx_proxy/nginx.conf"
+elif [ -f "/home/runner/work/hanna/hanna/nginx_proxy/nginx.conf" ]; then
+    NGINX_CONF="/home/runner/work/hanna/hanna/nginx_proxy/nginx.conf"
+else
+    print_error "Cannot find nginx.conf in expected locations"
+    echo "Expected locations:"
+    echo "  - ./nginx_proxy/nginx.conf"
+    echo "  - /home/runner/work/hanna/hanna/nginx_proxy/nginx.conf"
     exit 1
 fi
 
-# Create backup
-cp "$NGINX_CONF" "$NGINX_CONF.backup.$(date +%Y%m%d_%H%M%S)"
-print_success "Created backup of nginx.conf"
+print_info "Using nginx config: $NGINX_CONF"
+
+# Create backup with unique timestamp
+BACKUP_FILE="$NGINX_CONF.backup.$(date +%Y%m%d_%H%M%S)"
+cp "$NGINX_CONF" "$BACKUP_FILE"
+print_success "Created backup at: $BACKUP_FILE"
 
 # Update certificate paths
 sed -i "s|ssl_certificate /etc/letsencrypt/live/[^/]*/fullchain.pem;|ssl_certificate $BEST_CERT_DIR/fullchain.pem;|g" "$NGINX_CONF"
@@ -267,8 +276,15 @@ sed -i "s|ssl_certificate_key /etc/letsencrypt/live/[^/]*/privkey.pem;|ssl_certi
 
 print_success "Updated nginx.conf"
 
+# Update the config in the running container
 # Copy updated config to container
-docker cp "$NGINX_CONF" "$(docker-compose ps -q nginx):/etc/nginx/conf.d/default.conf"
+NGINX_CONTAINER=$(docker-compose ps -q nginx)
+if [ -z "$NGINX_CONTAINER" ]; then
+    print_error "Cannot find nginx container ID"
+    exit 1
+fi
+
+docker cp "$NGINX_CONF" "$NGINX_CONTAINER:/etc/nginx/conf.d/default.conf"
 print_success "Copied updated config to nginx container"
 
 # Test configuration
@@ -300,16 +316,22 @@ if docker-compose exec -T nginx nginx -t 2>&1 | grep -q "successful"; then
     else
         print_error "Failed to reload nginx"
         echo "Restoring backup..."
-        cp "$NGINX_CONF.backup."* "$NGINX_CONF"
+        if [ -f "$BACKUP_FILE" ]; then
+            cp "$BACKUP_FILE" "$NGINX_CONF"
+            print_success "Configuration restored from backup"
+        fi
         exit 1
     fi
 else
     print_error "Nginx configuration test failed"
     echo "Restoring backup..."
-    cp "$NGINX_CONF.backup."* "$NGINX_CONF"
+    if [ -f "$BACKUP_FILE" ]; then
+        cp "$BACKUP_FILE" "$NGINX_CONF"
+        print_success "Configuration restored from backup"
+    fi
     exit 1
 fi
 
 echo ""
-print_info "Backup saved at: $NGINX_CONF.backup.*"
+print_info "Backup saved at: $BACKUP_FILE"
 echo ""
