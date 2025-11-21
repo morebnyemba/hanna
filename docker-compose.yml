@@ -128,10 +128,21 @@ services:
       - mediafiles_volume:/srv/www/media:ro  # Mount media files (read-only, Django serves them)
       - npm_letsencrypt:/etc/letsencrypt:ro  # SSL certificates (read-only)
       - ./nginx_proxy/ssl_custom:/etc/nginx/ssl_custom:ro  # Custom SSL configs
+      - letsencrypt_webroot:/var/www/letsencrypt:ro  # ACME challenge directory for Let's Encrypt
     depends_on:
       - backend
       - frontend
       - hanna-management-frontend
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: whatsappcrm_certbot
+    volumes:
+      - npm_letsencrypt:/etc/letsencrypt
+      - letsencrypt_webroot:/var/www/letsencrypt
+      - ./certbot-renew.sh:/usr/local/bin/certbot-renew.sh:ro
+    entrypoint: /bin/sh /usr/local/bin/certbot-renew.sh
     restart: unless-stopped
 
 volumes:
@@ -141,3 +152,4 @@ volumes:
   mediafiles_volume:  # Shared volume for user-uploaded media files
   npm_data:
   npm_letsencrypt:
+  letsencrypt_webroot:  # Directory for Let's Encrypt ACME challenge files
