@@ -250,23 +250,26 @@ echo "Updating nginx configuration..."
 echo ""
 
 # Detect the correct nginx config file path
-# Try common locations
-if [ -f "./nginx_proxy/nginx.conf" ]; then
+# Try common locations (relative path first for portability)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/nginx_proxy/nginx.conf" ]; then
+    NGINX_CONF="$SCRIPT_DIR/nginx_proxy/nginx.conf"
+elif [ -f "./nginx_proxy/nginx.conf" ]; then
     NGINX_CONF="./nginx_proxy/nginx.conf"
-elif [ -f "/home/runner/work/hanna/hanna/nginx_proxy/nginx.conf" ]; then
-    NGINX_CONF="/home/runner/work/hanna/hanna/nginx_proxy/nginx.conf"
 else
     print_error "Cannot find nginx.conf in expected locations"
     echo "Expected locations:"
+    echo "  - $SCRIPT_DIR/nginx_proxy/nginx.conf"
     echo "  - ./nginx_proxy/nginx.conf"
-    echo "  - /home/runner/work/hanna/hanna/nginx_proxy/nginx.conf"
+    echo ""
+    echo "Please run this script from the repository root directory."
     exit 1
 fi
 
 print_info "Using nginx config: $NGINX_CONF"
 
-# Create backup with unique timestamp
-BACKUP_FILE="$NGINX_CONF.backup.$(date +%Y%m%d_%H%M%S)"
+# Create backup with unique timestamp and process ID to avoid collisions
+BACKUP_FILE="$NGINX_CONF.backup.$(date +%Y%m%d_%H%M%S).$$"
 cp "$NGINX_CONF" "$BACKUP_FILE"
 print_success "Created backup at: $BACKUP_FILE"
 
