@@ -22,19 +22,24 @@ The issue occurred in the SSL bootstrap workflow:
 
 ## Solution Implemented
 
-### 1. Added `--force-renewal` Flag
+### 1. Added `--cert-name` Parameter (Latest Fix)
 
-Updated both `bootstrap-ssl.sh` and `setup-ssl-certificates.sh` to include the `--force-renewal` flag in the certbot command. This allows certbot to replace existing certificates (including temporary self-signed ones) with real Let's Encrypt certificates.
+Updated both `bootstrap-ssl.sh` and `setup-ssl-certificates.sh` to use the `--cert-name` parameter with certbot. This explicitly tells certbot which certificate to replace, preventing the "live directory exists" error.
 
-**Before:**
-```bash
-CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email"
-```
-
-**After:**
+**Previous approach (had issues):**
 ```bash
 CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email --force-renewal --expand"
 ```
+
+**Current approach (fixed):**
+```bash
+CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email --force-renewal --cert-name $FIRST_DOMAIN"
+```
+
+The key change is replacing `--expand` with `--cert-name $FIRST_DOMAIN`. This:
+- Explicitly specifies the certificate name to use
+- Prevents the "live directory exists" error even when temporary certificates exist
+- Works seamlessly with `--force-renewal` to replace existing certificates
 
 ### 2. Improved Directory Permissions
 
@@ -192,10 +197,10 @@ docker-compose logs nginx
 
 ## Files Modified
 
-- `bootstrap-ssl.sh` - Added `--force-renewal`, improved permissions and nginx checks
-- `setup-ssl-certificates.sh` - Added `--force-renewal`, improved permissions
-- `init-ssl.sh` - Improved permissions for ACME directory and certificates
-- `certbot-renew.sh` - Better certificate detection, longer wait time
+- `bootstrap-ssl.sh` - Added `--cert-name` parameter, replaced `--expand` flag
+- `setup-ssl-certificates.sh` - Added `--cert-name` parameter, replaced `--expand` flag
+- `init-ssl.sh` - Improved permissions for ACME directory and certificates (no changes in latest fix)
+- `certbot-renew.sh` - Better certificate detection, longer wait time (no changes in latest fix)
 
 ## Technical Details
 
@@ -203,9 +208,18 @@ docker-compose logs nginx
 
 The `--force-renewal` flag tells certbot to obtain a new certificate even if one already exists. This is essential when replacing temporary self-signed certificates with real Let's Encrypt certificates during the bootstrap process.
 
-### Why `--expand`?
+### Why `--cert-name` instead of `--expand`?
 
-The `--expand` flag allows adding more domains to an existing certificate without creating a separate certificate for each domain.
+The `--cert-name` parameter explicitly specifies the certificate name to use. This is crucial because:
+
+1. **Prevents "live directory exists" error**: When certbot finds an existing certificate directory (even if it contains temporary self-signed certificates), it needs explicit instruction on what to do. The `--cert-name` parameter tells certbot to use and replace that specific certificate.
+
+2. **Works with `--force-renewal`**: Together, these flags instruct certbot to:
+   - Find the certificate named `dashboard.hanna.co.zw` (via `--cert-name`)
+   - Replace it regardless of expiry date (via `--force-renewal`)
+   - Use the new list of domains provided with `-d` flags
+
+3. **Simpler than `--expand`**: The `--expand` flag was designed for adding domains to existing certificates, but it doesn't handle the case where the existing certificate was created outside certbot's normal flow. The `--cert-name` approach is more direct and reliable.
 
 ### Directory Permissions
 
