@@ -94,9 +94,9 @@ if ! docker-compose ps nginx | grep -q "Up"; then
         
         # Run initialization script to create temporary certificates
         if [ -f "./init-ssl.sh" ]; then
-            ./init-ssl.sh
+            SSL_DOMAINS="$DOMAINS" ./init-ssl.sh
         else
-            echo "Creating temporary certificates manually..."
+            echo "WARNING: init-ssl.sh not found, creating temporary certificates manually..."
             docker-compose run --rm --entrypoint sh certbot -c "
                 mkdir -p /var/www/letsencrypt/.well-known/acme-challenge && \
                 mkdir -p /etc/letsencrypt/live/$FIRST_DOMAIN && \

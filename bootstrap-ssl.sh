@@ -65,7 +65,7 @@ done
 if [ "$EMAIL" = "your-email@example.com" ]; then
     echo "✗ ERROR: Please specify your email address with --email"
     echo ""
-    echo "Example: ./bootstrap-ssl.sh --email admin@example.com"
+    echo "Example: ./bootstrap-ssl.sh --email your-email@example.com"
     echo ""
     exit 1
 fi
@@ -117,7 +117,8 @@ echo "Pulling certbot image if needed..."
 docker-compose pull certbot 2>&1 | grep -v "Pulling" || true
 
 # Create temporary certificates
-CERT_DIR="/etc/letsencrypt/live/dashboard.hanna.co.zw"
+FIRST_DOMAIN=$(echo $DOMAINS | awk '{print $1}')
+CERT_DIR="/etc/letsencrypt/live/$FIRST_DOMAIN"
 docker-compose run --rm --entrypoint sh certbot -c "
     set -e
     echo 'Creating directory structure...'
@@ -128,7 +129,7 @@ docker-compose run --rm --entrypoint sh certbot -c "
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
         -keyout $CERT_DIR/privkey.pem \
         -out $CERT_DIR/fullchain.pem \
-        -subj '/CN=dashboard.hanna.co.zw' \
+        -subj '/CN=$FIRST_DOMAIN' \
         2>&1 | grep -v 'writing new private key' || true
     
     echo 'Temporary certificate created'

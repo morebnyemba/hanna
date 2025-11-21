@@ -46,7 +46,7 @@ docker-compose run --rm --entrypoint sh certbot -c "
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
         -keyout $CERT_DIR/privkey.pem \
         -out $CERT_DIR/fullchain.pem \
-        -subj '/CN=dashboard.hanna.co.zw' && \
+        -subj '/CN=$FIRST_DOMAIN' && \
     echo 'Temporary self-signed certificate created'
 "
 
@@ -56,5 +56,5 @@ echo ""
 echo "=== Initialization Complete ==="
 echo ""
 echo "You can now start nginx with: docker-compose up -d nginx"
-echo "Then obtain real certificates with: ./setup-ssl-certificates.sh"
+echo "Then obtain real certificates with: ./setup-ssl-certificates.sh --email your-email@example.com"
 echo ""
