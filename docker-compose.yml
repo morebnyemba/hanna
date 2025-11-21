@@ -151,3 +151,8 @@ volumes:
   npm_data:
   npm_letsencrypt:
   letsencrypt_webroot:  # Directory for Let's Encrypt ACME challenge files
+
+networks:
+  default:
+    name: hanna_network
+    driver: bridge
