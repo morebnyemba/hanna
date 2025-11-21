@@ -279,16 +279,19 @@ sed -i "s|ssl_certificate_key /etc/letsencrypt/live/[^/]*/privkey.pem;|ssl_certi
 
 print_success "Updated nginx.conf"
 
-# Update the config in the running container
-# Copy updated config to container
+# Apply the updated config to the running container
+# Note: We update the local source file AND copy it to the container
+# This ensures the fix persists across container restarts
 NGINX_CONTAINER=$(docker-compose ps -q nginx)
 if [ -z "$NGINX_CONTAINER" ]; then
-    print_error "Cannot find nginx container ID"
+    print_error "nginx container is not running or not found"
+    echo "Start nginx with: docker-compose up -d nginx"
     exit 1
 fi
 
+# Copy the updated local config file to the container
 docker cp "$NGINX_CONF" "$NGINX_CONTAINER:/etc/nginx/conf.d/default.conf"
-print_success "Copied updated config to nginx container"
+print_success "Applied updated config to nginx container"
 
 # Test configuration
 echo ""
