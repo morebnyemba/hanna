@@ -186,9 +186,23 @@ if docker-compose run --rm --entrypoint certbot certbot $CERTBOT_CMD; then
     echo "✓ SSL certificates obtained successfully!"
     echo ""
     
-    echo "Step 3: Restarting nginx to load new certificates..."
-    docker-compose restart nginx
-    echo "✓ nginx restarted"
+    echo "Step 3: Reloading nginx to load new certificates..."
+    # Use 'nginx -s reload' for graceful reload without dropping connections
+    if docker-compose exec -T nginx nginx -s reload; then
+        echo "✓ nginx reloaded successfully"
+    else
+        echo "⚠ Graceful reload failed, attempting full restart..."
+        docker-compose restart nginx
+        sleep 5
+        
+        if docker-compose ps nginx | grep -q "Up"; then
+            echo "✓ nginx restarted successfully"
+        else
+            echo "✗ nginx failed to restart"
+            echo "Please check logs: docker-compose logs nginx"
+            exit 1
+        fi
+    fi
     echo ""
     
     echo "=== Setup Complete ==="
@@ -198,9 +212,30 @@ if docker-compose run --rm --entrypoint certbot certbot $CERTBOT_CMD; then
         echo "  - https://$domain"
     done
     echo ""
+    
+    # Verify certificate issuer
+    echo "Verifying certificate..."
+    CERT_ISSUER=$(docker-compose exec -T nginx openssl x509 -in /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem -noout -issuer 2>/dev/null | grep -o "CN=[^,]*" || echo "")
+    
+    if echo "$CERT_ISSUER" | grep -qi "Let's Encrypt"; then
+        echo "✓ Valid Let's Encrypt certificate installed"
+    elif echo "$CERT_ISSUER" | grep -qi "Staging"; then
+        echo "⚠ WARNING: This is a STAGING certificate"
+        echo "  Staging certificates will show browser warnings."
+        echo "  To obtain production certificates, run without --staging flag."
+    else
+        echo "⚠ Certificate issuer: $CERT_ISSUER"
+    fi
+    
+    echo ""
     echo "Certificates will be automatically renewed by the certbot container."
     echo ""
     echo "To verify your setup, visit the domains listed above."
+    echo ""
+    echo "If you see browser warnings:"
+    echo "  - Wait a few minutes and refresh (nginx might still be loading)"
+    echo "  - Clear your browser cache"
+    echo "  - Check certificate details: docker-compose exec nginx openssl x509 -in /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem -noout -text"
 else
     echo ""
     echo "ERROR: Failed to obtain SSL certificates"

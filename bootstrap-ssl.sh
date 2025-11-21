@@ -254,19 +254,26 @@ fi
 
 echo ""
 
-# Step 5: Restart nginx to load new certificates
+# Step 5: Reload nginx to load new certificates
 echo "═══ Step 5: Activating SSL certificates ═══"
 echo ""
 
-docker-compose restart nginx
-sleep 5
-
-if docker-compose ps nginx | grep -q "Up"; then
-    echo "✓ nginx restarted successfully"
+echo "Reloading nginx configuration..."
+# Use 'nginx -s reload' for graceful reload without dropping connections
+if docker-compose exec -T nginx nginx -s reload; then
+    echo "✓ nginx reloaded successfully"
 else
-    echo "✗ nginx failed to restart"
-    echo "Please check logs: docker-compose logs nginx"
-    exit 1
+    echo "⚠ Graceful reload failed, attempting full restart..."
+    docker-compose restart nginx
+    sleep 5
+    
+    if docker-compose ps nginx | grep -q "Up"; then
+        echo "✓ nginx restarted successfully"
+    else
+        echo "✗ nginx failed to restart"
+        echo "Please check logs: docker-compose logs nginx"
+        exit 1
+    fi
 fi
 
 echo ""
@@ -283,6 +290,33 @@ if docker-compose exec -T certbot certbot certificates 2>/dev/null | grep -q "Ce
     docker-compose exec -T certbot certbot certificates | grep -A 5 "Certificate Name"
 else
     echo "⚠ Could not retrieve certificate details"
+fi
+
+echo ""
+echo "Checking if nginx is serving the correct certificate..."
+
+# Verify nginx has loaded the certificates
+if docker-compose exec -T nginx test -f /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem; then
+    echo "✓ Certificate files are accessible to nginx"
+    
+    # Check certificate details that nginx is using
+    CERT_ISSUER=$(docker-compose exec -T nginx openssl x509 -in /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem -noout -issuer 2>/dev/null | grep -o "CN=[^,]*" || echo "")
+    
+    if echo "$CERT_ISSUER" | grep -qi "Let's Encrypt"; then
+        echo "✓ Valid Let's Encrypt certificate detected"
+    elif echo "$CERT_ISSUER" | grep -qi "Staging"; then
+        echo "⚠ WARNING: This is a STAGING certificate"
+        echo "  Staging certificates will show browser warnings about being untrusted."
+        echo "  To obtain production certificates, run:"
+        echo "    docker-compose down"
+        echo "    ./bootstrap-ssl.sh --email $EMAIL"
+    else
+        echo "⚠ Certificate issuer: $CERT_ISSUER"
+        echo "  This might be a self-signed or staging certificate."
+        echo "  Browser warnings may appear until production certificates are obtained."
+    fi
+else
+    echo "✗ Certificate files not accessible to nginx"
 fi
 
 echo ""
@@ -304,9 +338,17 @@ echo "  1. Visit the domains listed above in your browser"
 echo "  2. Run diagnostics: ./diagnose-ssl.sh"
 echo "  3. Check certificate expiry: docker-compose exec certbot certbot certificates"
 echo ""
+echo "If you see browser warnings:"
+echo "  - Wait a few minutes and refresh (nginx might still be loading)"
+echo "  - Clear your browser cache and try again"
+echo "  - Ensure you're using production certificates (not staging)"
+echo "  - Check that DNS is properly configured and pointing to this server"
+echo "  - Verify certificate details with: docker-compose exec nginx openssl x509 -in /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem -noout -text"
+echo ""
 echo "Useful commands:"
 echo "  - View nginx logs: docker-compose logs nginx"
 echo "  - View certbot logs: docker-compose logs certbot"
+echo "  - Reload nginx: docker-compose exec nginx nginx -s reload"
 echo "  - Restart services: docker-compose restart"
 echo "  - Stop services: docker-compose down"
 echo ""
