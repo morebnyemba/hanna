@@ -156,18 +156,23 @@ docker-compose up -d
 
 echo ""
 echo "Waiting for services to be healthy..."
-sleep 5
+
+# Configuration for nginx startup checks
+NGINX_STARTUP_WAIT=5  # Initial wait before checking nginx status
+NGINX_RETRY_INTERVAL=5  # Seconds between retries
+MAX_NGINX_RETRIES=12  # Maximum number of retries (12 * 5 = 60 seconds max)
+
+sleep $NGINX_STARTUP_WAIT
 
 # Check if nginx is running (with retries for transient startup issues)
 NGINX_RETRIES=0
-MAX_NGINX_RETRIES=12  # 12 retries * 5 seconds = 60 seconds max wait
 while [ $NGINX_RETRIES -lt $MAX_NGINX_RETRIES ]; do
     if docker-compose ps nginx | grep -q "Up"; then
         echo "✓ nginx is running"
         break
     elif docker-compose ps nginx | grep -q "Restarting"; then
         echo "⚠ nginx is restarting (attempt $((NGINX_RETRIES + 1))/$MAX_NGINX_RETRIES)..."
-        sleep 5
+        sleep $NGINX_RETRY_INTERVAL
         NGINX_RETRIES=$((NGINX_RETRIES + 1))
     else
         echo "✗ nginx failed to start"
