@@ -9,6 +9,9 @@ For products to be successfully created in Meta's catalog, the image_link URL mu
 3. Return a valid image with proper Content-Type header
 4. Use HTTPS protocol
 
+Meta API requires the image_link field for all products (error #10801). When a product 
+has no images, a placeholder image is used.
+
 Infrastructure Requirements:
 - Media files must be properly served by nginx or another web server
 - The docker-compose.yml should include a shared volume for media files
@@ -28,6 +31,11 @@ Example docker-compose volume:
     nginx:
         volumes:
             - media_files:/srv/www/media:ro
+
+Django Settings:
+- BACKEND_DOMAIN_FOR_CSP: Domain name for constructing absolute URLs (e.g., 'backend.hanna.co.zw')
+- META_CATALOG_PLACEHOLDER_IMAGE_PATH: Path to placeholder image for products without images
+  (default: '/static/admin/img/logo.png')
 
 If image URLs are not accessible, Meta will reject product creation with a 400 error.
 """
@@ -81,9 +89,10 @@ class MetaCatalogService:
         - currency: ISO 4217 currency code (e.g., "USD")
         - link: Product URL
         - image_link: URL to product image (must be absolute URL and publicly accessible)
-                     Note: Meta API error #10801 "(#10801) \"image_url\" must be specified." 
-                     requires this field even if product has no image.
-                     A placeholder image URL is used when the product has no images.
+                     Note: Meta API error #10801 "(#10801) \"image_url\" must be specified."
+                     requires this field (despite the error message saying "image_url", the 
+                     actual field name is "image_link"). A placeholder image URL is used 
+                     when the product has no images.
         
         Optional fields:
         - description: Product description
@@ -141,6 +150,7 @@ class MetaCatalogService:
         else:
             # Meta API requires image_link field even when no image is available
             # Use a publicly accessible placeholder image from our own static files
+            # Default uses Django admin's logo, but can be customized via META_CATALOG_PLACEHOLDER_IMAGE_PATH setting
             placeholder_path = getattr(settings, 'META_CATALOG_PLACEHOLDER_IMAGE_PATH', '/static/admin/img/logo.png')
             placeholder_url = f"https://{backend_domain}{placeholder_path}"
             data["image_link"] = placeholder_url
