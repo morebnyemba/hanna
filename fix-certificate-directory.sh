@@ -13,7 +13,7 @@ echo ""
 
 # Configuration
 DOMAINS="dashboard.hanna.co.zw backend.hanna.co.zw hanna.co.zw"
-EXPECTED_CERT_NAME="dashboard.hanna.co.zw"
+EXPECTED_CERT_NAME="dashboard.hanna.co.zw-0001"
 
 # Color codes
 GREEN='\033[0;32m'
