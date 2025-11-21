@@ -1,6 +1,6 @@
 from django.test import TestCase, override_settings
 from unittest.mock import patch, MagicMock
-from .catalog_service import MetaCatalogService
+from .catalog_service import MetaCatalogService, PLACEHOLDER_IMAGE_DATA_URI
 from products_and_services.models import Product, ProductCategory, ProductImage
 
 
@@ -104,11 +104,8 @@ class MetaCatalogServiceTestCase(TestCase):
         self.assertIn('image_link', product_data)
         # Should use a transparent 1x1 PNG data URI as placeholder
         self.assertTrue(product_data['image_link'].startswith('data:image/png;base64,'))
-        # Verify it's the specific transparent PNG we expect
-        self.assertEqual(
-            product_data['image_link'],
-            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-        )
+        # Verify it matches the expected placeholder constant
+        self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_required_fields(self, mock_config):

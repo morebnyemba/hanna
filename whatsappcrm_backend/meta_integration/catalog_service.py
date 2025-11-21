@@ -52,6 +52,10 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+# Transparent 1x1 pixel PNG as a data URI for products without images
+# This is used as a placeholder to satisfy Meta API's requirement for image_link field
+PLACEHOLDER_IMAGE_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
 
 class MetaCatalogService:
     def __init__(self):
@@ -154,9 +158,7 @@ class MetaCatalogService:
             # Meta API requires image_link field even when no image is available
             # Use a transparent 1x1 pixel PNG as a data URI - this is always accessible
             # and doesn't require any external resources or infrastructure
-            # This is a base64-encoded transparent 1x1 PNG image
-            placeholder_data_uri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-            data["image_link"] = placeholder_data_uri
+            data["image_link"] = PLACEHOLDER_IMAGE_DATA_URI
             logger.warning(
                 f"Product '{product.name}' (ID: {product.id}) has no images. "
                 f"Using transparent placeholder data URI for Meta Catalog compliance."
