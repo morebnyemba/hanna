@@ -5,12 +5,13 @@ from django.contrib.auth import get_user_model
 from django.forms.models import model_to_dict
 from django.db import transaction
 from django.db.models import Q
+from django.conf import settings
 
 from .models import Notification, NotificationTemplate
 from .tasks import dispatch_notification_task
 from conversations.models import Contact, Message
 from flows.models import Flow
-from .utils import render_template_string # Import the new render utility
+from .utils import render_template_string, get_versioned_template_name
 from meta_integration.tasks import send_whatsapp_message_task
 from meta_integration.models import MetaAppConfig
 
@@ -139,9 +140,11 @@ def queue_notifications_to_users(
                         })
 
  
+                # Append version suffix to template name when sending to Meta
+                template_name_with_version = get_versioned_template_name(template_name)
                 
                 content_payload = {
-                    "name": template_name,
+                    "name": template_name_with_version,
                     "language": { "code": "en_US" },
                     "components": template_components
                 }

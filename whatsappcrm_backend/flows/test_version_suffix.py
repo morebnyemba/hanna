@@ -36,7 +36,7 @@ class VersionSuffixFlowTest(TestCase):
         self.whatsapp_flow.last_synced_at = None
         self.whatsapp_flow.sync_error = None
     
-    @override_settings(META_SYNC_VERSION_SUFFIX='v1.02')
+    @override_settings(META_SYNC_VERSION_SUFFIX='v1_02')
     @patch('flows.whatsapp_flow_service.requests.post')
     def test_create_flow_with_default_version_suffix(self, mock_post):
         """Test that create_flow appends version suffix to flow name"""
@@ -65,9 +65,9 @@ class VersionSuffixFlowTest(TestCase):
         # Verify the payload contains versioned name
         payload = first_call_args[1]['json']
         self.assertIn('name', payload)
-        self.assertEqual(payload['name'], 'Test Flow_v1.02')
+        self.assertEqual(payload['name'], 'Test Flow_v1_02')
     
-    @override_settings(META_SYNC_VERSION_SUFFIX='v2.00')
+    @override_settings(META_SYNC_VERSION_SUFFIX='v2_00')
     @patch('flows.whatsapp_flow_service.requests.post')
     def test_create_flow_with_custom_version_suffix(self, mock_post):
         """Test that create_flow uses custom version suffix from settings"""
@@ -88,8 +88,9 @@ class VersionSuffixFlowTest(TestCase):
         
         # Verify the payload contains custom versioned name
         payload = first_call_args[1]['json']
-        self.assertEqual(payload['name'], 'Test Flow_v2.00')
+        self.assertEqual(payload['name'], 'Test Flow_v2_00')
     
+    @override_settings(META_SYNC_VERSION_SUFFIX='v1_02')
     @patch('flows.whatsapp_flow_service.requests.post')
     def test_create_flow_uses_name_when_no_friendly_name(self, mock_post):
         """Test that flow name is used when friendly_name is not set"""
@@ -113,36 +114,36 @@ class VersionSuffixFlowTest(TestCase):
         
         # Verify the payload uses name with version suffix
         payload = first_call_args[1]['json']
-        self.assertEqual(payload['name'], 'test_flow_v1.02')
+        self.assertEqual(payload['name'], 'test_flow_v1_02')
 
 
 class VersionSuffixTemplateTest(TestCase):
     """Test that version suffix is applied to message templates"""
     
-    @override_settings(META_SYNC_VERSION_SUFFIX='v1.02')
+    @override_settings(META_SYNC_VERSION_SUFFIX='v1_02')
     def test_template_name_with_version_suffix(self):
         """Test that template names are properly formatted with version suffix"""
         from django.conf import settings
         
         # Get the version suffix
-        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1.02')
+        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
         
         # Test template name formatting
         template_name = "test_template"
         template_name_with_version = f"{template_name}_{version_suffix}"
         
-        self.assertEqual(template_name_with_version, "test_template_v1.02")
+        self.assertEqual(template_name_with_version, "test_template_v1_02")
     
-    @override_settings(META_SYNC_VERSION_SUFFIX='v2.00')
+    @override_settings(META_SYNC_VERSION_SUFFIX='v2_00')
     def test_template_name_with_custom_version_suffix(self):
         """Test that template names use custom version suffix from settings"""
         from django.conf import settings
         
         # Get the version suffix
-        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1.02')
+        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
         
         # Test template name formatting
         template_name = "new_order_notification"
         template_name_with_version = f"{template_name}_{version_suffix}"
         
-        self.assertEqual(template_name_with_version, "new_order_notification_v2.00")
+        self.assertEqual(template_name_with_version, "new_order_notification_v2_00")

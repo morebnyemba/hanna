@@ -3,10 +3,12 @@ from celery import shared_task
 import logging
 from django.utils import timezone
 from django.db import transaction
+from django.conf import settings
 
 from .models import Broadcast, BroadcastRecipient, Contact, Message
 from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task
+from notifications.utils import get_versioned_template_name
 # from flows.services import _resolve_value # For advanced personalization
 
 logger = logging.getLogger(__name__)
@@ -37,8 +39,12 @@ def dispatch_broadcast_task(self, broadcast_id, contact_ids, language_code, comp
             for contact in contacts:
                 # TODO: Implement advanced personalization using a service like _resolve_value
                 # from flows.services if you need to substitute variables like {{name}}.
+                
+                # Append version suffix to template name when sending to Meta
+                template_name_with_version = get_versioned_template_name(broadcast.template_name)
+                
                 content_payload = {
-                    "name": broadcast.template_name,
+                    "name": template_name_with_version,
                     "language": {"code": language_code},
                     "components": components_template or []
                 }

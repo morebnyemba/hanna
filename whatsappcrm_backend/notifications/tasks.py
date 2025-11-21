@@ -11,7 +11,7 @@ from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task
 from conversations.models import Message, Contact
 from .models import Notification, NotificationTemplate
-from .utils import render_template_string
+from .utils import render_template_string, get_versioned_template_name
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -90,12 +90,15 @@ def dispatch_notification_task(self, notification_id: int):
 
 
 
+                # Append version suffix to template name when sending to Meta
+                template_name_with_version = get_versioned_template_name(notification.template_name)
+                
                 content_payload = {
-                    "name": notification.template_name,
+                    "name": template_name_with_version,
                     "language": {"code": "en_US"},
-                    "components": components
+                    "components": template_components
                 }
-                logger.info(f"Dispatching template '{notification.template_name}' with payload: {content_payload}")
+                logger.info(f"Dispatching template '{template_name_with_version}' with payload: {content_payload}")
             else:
                 # This case handles notifications that were queued without a template.
                 # They cannot be sent as templates, so we fail them with a clear error.
