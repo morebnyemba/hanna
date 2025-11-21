@@ -580,8 +580,8 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                     'sender': attachment_dict.get('sender', ''),
                     'filename': attachment_dict.get('filename', ''),
                     'order_number': order_dict.get('order_number', ''),
-                    'order_amount': f"{order_dict.get('amount', 0):.2f}",
-                    'customer_name': customer_dict.get('full_name') or customer_dict.get('contact_name', '')
+                    'order_amount': f"{order_dict.get('amount') or 0:.2f}",
+                    'customer_name': customer_dict.get('full_name') or customer_dict.get('contact_name') or ''
                 }
             )
             
