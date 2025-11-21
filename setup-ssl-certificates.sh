@@ -49,6 +49,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validate email
+if [ "$EMAIL" = "your-email@example.com" ]; then
+    echo "ERROR: Please specify your email address with --email"
+    echo "Example: ./setup-ssl-certificates.sh --email admin@example.com"
+    exit 1
+fi
+
 echo "Configuration:"
 echo "  Domains: $DOMAINS"
 echo "  Email: $EMAIL"
@@ -60,6 +67,9 @@ if ! command -v docker-compose &> /dev/null; then
     echo "ERROR: docker-compose is not installed or not in PATH"
     exit 1
 fi
+
+# Extract first domain for certificate path
+FIRST_DOMAIN=$(echo $DOMAINS | awk '{print $1}')
 
 # Check if nginx container is running
 NGINX_STATUS=$(docker-compose ps nginx 2>/dev/null || echo "")
@@ -78,7 +88,7 @@ if ! docker-compose ps nginx | grep -q "Up"; then
     echo ""
     
     # Check if certificates exist at all
-    if ! docker-compose run --rm --entrypoint sh certbot -c "test -f /etc/letsencrypt/live/dashboard.hanna.co.zw/fullchain.pem" 2>/dev/null; then
+    if ! docker-compose run --rm --entrypoint sh certbot -c "test -f /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem" 2>/dev/null; then
         echo "No certificates found. Running SSL initialization first..."
         echo ""
         
@@ -89,11 +99,11 @@ if ! docker-compose ps nginx | grep -q "Up"; then
             echo "Creating temporary certificates manually..."
             docker-compose run --rm --entrypoint sh certbot -c "
                 mkdir -p /var/www/letsencrypt/.well-known/acme-challenge && \
-                mkdir -p /etc/letsencrypt/live/dashboard.hanna.co.zw && \
+                mkdir -p /etc/letsencrypt/live/$FIRST_DOMAIN && \
                 openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-                    -keyout /etc/letsencrypt/live/dashboard.hanna.co.zw/privkey.pem \
-                    -out /etc/letsencrypt/live/dashboard.hanna.co.zw/fullchain.pem \
-                    -subj '/CN=dashboard.hanna.co.zw'
+                    -keyout /etc/letsencrypt/live/$FIRST_DOMAIN/privkey.pem \
+                    -out /etc/letsencrypt/live/$FIRST_DOMAIN/fullchain.pem \
+                    -subj '/CN=$FIRST_DOMAIN'
             "
             echo "✓ Temporary certificates created"
         fi

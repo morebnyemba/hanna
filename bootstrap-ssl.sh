@@ -16,7 +16,7 @@ echo ""
 
 # Configuration - can be overridden via command line
 DOMAINS="dashboard.hanna.co.zw backend.hanna.co.zw hanna.co.zw"
-EMAIL="admin@example.com"
+EMAIL="your-email@example.com"  # CHANGE THIS! Must be a valid email for Let's Encrypt
 STAGING=false
 
 # Parse command line arguments
@@ -61,6 +61,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validate email
+if [ "$EMAIL" = "your-email@example.com" ]; then
+    echo "✗ ERROR: Please specify your email address with --email"
+    echo ""
+    echo "Example: ./bootstrap-ssl.sh --email admin@example.com"
+    echo ""
+    exit 1
+fi
+
 echo "Configuration:"
 echo "  Domains: $DOMAINS"
 echo "  Email: $EMAIL"
@@ -103,8 +112,9 @@ echo "═══ Step 2: Creating temporary SSL certificates ═══"
 echo ""
 echo "Creating temporary self-signed certificates to allow nginx to start..."
 
-# Ensure certbot service is available
-docker-compose pull certbot >/dev/null 2>&1 || true
+# Ensure certbot service is available (pull image if needed)
+echo "Pulling certbot image if needed..."
+docker-compose pull certbot 2>&1 | grep -v "Pulling" || true
 
 # Create temporary certificates
 CERT_DIR="/etc/letsencrypt/live/dashboard.hanna.co.zw"
@@ -119,10 +129,10 @@ docker-compose run --rm --entrypoint sh certbot -c "
         -keyout $CERT_DIR/privkey.pem \
         -out $CERT_DIR/fullchain.pem \
         -subj '/CN=dashboard.hanna.co.zw' \
-        2>/dev/null
+        2>&1 | grep -v 'writing new private key' || true
     
     echo 'Temporary certificate created'
-" > /dev/null 2>&1
+"
 
 echo "✓ Temporary certificates created"
 echo "✓ ACME challenge directory created"

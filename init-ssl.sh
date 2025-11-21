@@ -9,9 +9,10 @@ set -e
 echo "=== HANNA SSL Initialization ==="
 echo ""
 
-# Configuration
-DOMAINS="dashboard.hanna.co.zw backend.hanna.co.zw hanna.co.zw"
-CERT_DIR="/etc/letsencrypt/live/dashboard.hanna.co.zw"
+# Configuration - can be overridden via environment variables
+DOMAINS="${SSL_DOMAINS:-dashboard.hanna.co.zw backend.hanna.co.zw hanna.co.zw}"
+FIRST_DOMAIN=$(echo $DOMAINS | awk '{print $1}')
+CERT_DIR="/etc/letsencrypt/live/$FIRST_DOMAIN"
 
 # Check if docker-compose is available
 if ! command -v docker-compose &> /dev/null; then
