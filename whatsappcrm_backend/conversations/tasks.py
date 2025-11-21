@@ -3,6 +3,7 @@ from celery import shared_task
 import logging
 from django.utils import timezone
 from django.db import transaction
+from django.conf import settings
 
 from .models import Broadcast, BroadcastRecipient, Contact, Message
 from meta_integration.models import MetaAppConfig
@@ -37,8 +38,13 @@ def dispatch_broadcast_task(self, broadcast_id, contact_ids, language_code, comp
             for contact in contacts:
                 # TODO: Implement advanced personalization using a service like _resolve_value
                 # from flows.services if you need to substitute variables like {{name}}.
+                
+                # Append version suffix to template name when sending to Meta
+                version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
+                template_name_with_version = f"{broadcast.template_name}_{version_suffix}"
+                
                 content_payload = {
-                    "name": broadcast.template_name,
+                    "name": template_name_with_version,
                     "language": {"code": language_code},
                     "components": components_template or []
                 }

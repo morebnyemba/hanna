@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.forms.models import model_to_dict
 from django.db import transaction
 from django.db.models import Q
+from django.conf import settings
 
 from .models import Notification, NotificationTemplate
 from .tasks import dispatch_notification_task
@@ -139,9 +140,12 @@ def queue_notifications_to_users(
                         })
 
  
+                # Append version suffix to template name when sending to Meta
+                version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
+                template_name_with_version = f"{template_name}_{version_suffix}"
                 
                 content_payload = {
-                    "name": template_name,
+                    "name": template_name_with_version,
                     "language": { "code": "en_US" },
                     "components": template_components
                 }

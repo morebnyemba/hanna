@@ -10,11 +10,12 @@ The version suffix is configured via the `META_SYNC_VERSION_SUFFIX` setting in D
 
 ### Default Configuration
 
-By default, the suffix is set to `v1.02`:
+By default, the suffix is set to `v1_02`:
 
 ```python
 # In whatsappcrm_backend/whatsappcrm_backend/settings.py
-META_SYNC_VERSION_SUFFIX = os.getenv('META_SYNC_VERSION_SUFFIX', 'v1.02')
+# Note: Must use underscores only (no dots/periods) as Meta only allows lowercase letters and underscores
+META_SYNC_VERSION_SUFFIX = os.getenv('META_SYNC_VERSION_SUFFIX', 'v1_02')
 ```
 
 ### Environment Variable Override
@@ -23,14 +24,23 @@ You can override the default value by setting the `META_SYNC_VERSION_SUFFIX` env
 
 ```bash
 # In your .env file
-META_SYNC_VERSION_SUFFIX=v2.00
+# Note: Use underscores instead of dots (e.g., v2_00 not v2.00)
+META_SYNC_VERSION_SUFFIX=v2_00
 ```
 
 Or when running Docker:
 
 ```bash
-docker-compose run -e META_SYNC_VERSION_SUFFIX=v2.00 backend python manage.py sync_whatsapp_flows
+docker-compose run -e META_SYNC_VERSION_SUFFIX=v2_00 backend python manage.py sync_whatsapp_flows
 ```
+
+### Important: Naming Requirements
+
+Meta's WhatsApp API has strict naming requirements for templates and flows:
+- **Only lowercase letters and underscores are allowed**
+- No periods, dots, hyphens, or other special characters
+- Examples of valid suffixes: `v1_02`, `v2_00`, `prod_v1`
+- Examples of invalid suffixes: `v1.02`, `v2-00`, `V1_02` (uppercase)
 
 ## How It Works
 
@@ -39,7 +49,7 @@ docker-compose run -e META_SYNC_VERSION_SUFFIX=v2.00 backend python manage.py sy
 When creating a new WhatsApp flow, the version suffix is automatically appended to the flow name:
 
 - **Original flow name:** `Solar Installation`
-- **Synced flow name:** `Solar Installation_v1.02`
+- **Synced flow name:** `Solar Installation_v1_02`
 
 This happens in the `WhatsAppFlowService.create_flow()` method in `flows/whatsapp_flow_service.py`.
 
@@ -48,9 +58,11 @@ This happens in the `WhatsAppFlowService.create_flow()` method in `flows/whatsap
 When syncing notification templates, the version suffix is appended to the template name:
 
 - **Original template name:** `new_online_order_placed`
-- **Synced template name:** `new_online_order_placed_v1.02`
+- **Synced template name:** `new_online_order_placed_v1_02`
 
 This happens in the `sync_meta_templates` management command in `flows/management/commands/sync_meta_templates.py`.
+
+**Important:** When sending template messages to Meta, the system automatically appends the version suffix to the template name. This ensures that messages use the correct versioned template that was synced to Meta.
 
 ## Usage
 
@@ -91,17 +103,17 @@ Processing flow: Solar Installation (Interactive)...
 
 ### Template Sync Output
 ```
-Processing template: 'new_online_order_placed' (will be synced as 'new_online_order_placed_v1.02')...
-  SUCCESS: Template 'new_online_order_placed_v1.02' created successfully. ID: 987654321
+Processing template: 'new_online_order_placed' (will be synced as 'new_online_order_placed_v1_02')...
+  SUCCESS: Template 'new_online_order_placed_v1_02' created successfully. ID: 987654321
 ```
 
 ## Version History
 
 When you need to create a new version (e.g., after significant changes or database issues):
 
-1. Update the environment variable:
+1. Update the environment variable (remember to use underscores, not dots):
    ```bash
-   META_SYNC_VERSION_SUFFIX=v1.03
+   META_SYNC_VERSION_SUFFIX=v1_03
    ```
 
 2. Re-run the sync commands:
@@ -200,11 +212,13 @@ OK
 
 ## Best Practices
 
-1. **Consistent Versioning:** Use a consistent versioning scheme (e.g., v1.00, v1.01, v1.02)
-2. **Document Changes:** Keep track of what changed in each version
-3. **Test First:** Always test with `--dry-run` before syncing templates
-4. **Backup:** Before major version changes, backup your Meta configuration
-5. **Clean Up:** Periodically clean up old versions on Meta to avoid clutter
+1. **Consistent Versioning:** Use a consistent versioning scheme (e.g., v1_00, v1_01, v1_02)
+2. **Naming Rules:** Always use underscores, never dots or other special characters
+3. **Lowercase Only:** Keep all characters lowercase to comply with Meta's requirements
+4. **Document Changes:** Keep track of what changed in each version
+5. **Test First:** Always test with `--dry-run` before syncing templates
+6. **Backup:** Before major version changes, backup your Meta configuration
+7. **Clean Up:** Periodically clean up old versions on Meta to avoid clutter
 
 ## Support
 

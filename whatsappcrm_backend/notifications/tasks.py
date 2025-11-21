@@ -90,12 +90,16 @@ def dispatch_notification_task(self, notification_id: int):
 
 
 
+                # Append version suffix to template name when sending to Meta
+                version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
+                template_name_with_version = f"{notification.template_name}_{version_suffix}"
+                
                 content_payload = {
-                    "name": notification.template_name,
+                    "name": template_name_with_version,
                     "language": {"code": "en_US"},
-                    "components": components
+                    "components": template_components
                 }
-                logger.info(f"Dispatching template '{notification.template_name}' with payload: {content_payload}")
+                logger.info(f"Dispatching template '{template_name_with_version}' with payload: {content_payload}")
             else:
                 # This case handles notifications that were queued without a template.
                 # They cannot be sent as templates, so we fail them with a clear error.

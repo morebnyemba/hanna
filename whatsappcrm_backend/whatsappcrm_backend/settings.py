@@ -451,4 +451,5 @@ GCP_INVOICE_PROCESSOR_ID = os.getenv('GCP_INVOICE_PROCESSOR_ID')
 # --- Meta Sync Version Suffix ---
 # Version suffix to append to flow and template names when syncing with Meta
 # This helps differentiate new syncs from previously synced items after database resets
-META_SYNC_VERSION_SUFFIX = os.getenv('META_SYNC_VERSION_SUFFIX', 'v1.02')
+# Note: Must use underscores only (no dots/periods) as Meta only allows lowercase letters and underscores
+META_SYNC_VERSION_SUFFIX = os.getenv('META_SYNC_VERSION_SUFFIX', 'v1_02')
