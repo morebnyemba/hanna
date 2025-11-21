@@ -212,8 +212,8 @@ echo ""
 
 # Build certbot command
 # Use --force-renewal to replace any existing certificates (including temporary self-signed ones)
-# Use --expand to allow adding more domains to existing certificate
-CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email --force-renewal --expand"
+# Use --cert-name to explicitly specify the certificate name (prevents "live directory exists" errors)
+CERTBOT_CMD="certonly --webroot -w /var/www/letsencrypt --email $EMAIL --agree-tos --no-eff-email --force-renewal --cert-name $FIRST_DOMAIN"
 
 if [ "$STAGING" = true ]; then
     CERTBOT_CMD="$CERTBOT_CMD --staging"
