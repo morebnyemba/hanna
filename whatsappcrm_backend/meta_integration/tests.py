@@ -89,7 +89,7 @@ class MetaCatalogServiceTestCase(TestCase):
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_without_image(self, mock_config):
-        """Test that products without images use a placeholder image_link"""
+        """Test that products without images use a transparent data URI placeholder"""
         # Setup mock config
         mock_active_config = MagicMock()
         mock_active_config.api_version = 'v23.0'
@@ -100,10 +100,15 @@ class MetaCatalogServiceTestCase(TestCase):
         service = MetaCatalogService()
         product_data = service._get_product_data(self.product)
         
-        # Verify image_link is present with placeholder URL (Meta API requires it)
+        # Verify image_link is present with data URI placeholder (Meta API requires it)
         self.assertIn('image_link', product_data)
-        # Should use the backend's static logo as placeholder
-        self.assertIn('/static/admin/img/logo.png', product_data['image_link'])
+        # Should use a transparent 1x1 PNG data URI as placeholder
+        self.assertTrue(product_data['image_link'].startswith('data:image/png;base64,'))
+        # Verify it's the specific transparent PNG we expect
+        self.assertEqual(
+            product_data['image_link'],
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        )
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_required_fields(self, mock_config):

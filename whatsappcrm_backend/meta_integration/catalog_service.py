@@ -7,12 +7,13 @@ For products to be successfully created in Meta's catalog, the image_link URL mu
 1. Publicly accessible (no authentication required)
 2. Reachable from Meta's servers (not behind a firewall/VPN)
 3. Return a valid image with proper Content-Type header
-4. Use HTTPS protocol
+4. Use HTTPS protocol or be a data URI
 
 Meta API requires the image_link field for all products (error #10801). When a product 
-has no images, a placeholder image is used.
+has no images, a transparent 1x1 pixel PNG data URI is used as a placeholder. This ensures
+the product can be created in Meta's catalog without requiring external infrastructure.
 
-Infrastructure Requirements:
+Infrastructure Requirements for Product Images:
 - Media files must be properly served by nginx or another web server
 - The docker-compose.yml should include a shared volume for media files
 - Nginx configuration should serve media files from the correct path
@@ -34,8 +35,10 @@ Example docker-compose volume:
 
 Django Settings:
 - BACKEND_DOMAIN_FOR_CSP: Domain name for constructing absolute URLs (e.g., 'backend.hanna.co.zw')
-- META_CATALOG_PLACEHOLDER_IMAGE_PATH: Path to placeholder image for products without images
-  (default: '/static/admin/img/logo.png')
+
+Placeholder Image:
+When a product has no images, a transparent 1x1 pixel PNG data URI is used automatically.
+This ensures Meta API compliance without requiring external resources or infrastructure.
 
 If image URLs are not accessible, Meta will reject product creation with a 400 error.
 """
@@ -149,14 +152,14 @@ class MetaCatalogService:
             logger.debug(f"Product image URL for Meta: {image_url}")
         else:
             # Meta API requires image_link field even when no image is available
-            # Use a publicly accessible placeholder image from our own static files
-            # Default uses Django admin's logo, but can be customized via META_CATALOG_PLACEHOLDER_IMAGE_PATH setting
-            placeholder_path = getattr(settings, 'META_CATALOG_PLACEHOLDER_IMAGE_PATH', '/static/admin/img/logo.png')
-            placeholder_url = f"https://{backend_domain}{placeholder_path}"
-            data["image_link"] = placeholder_url
+            # Use a transparent 1x1 pixel PNG as a data URI - this is always accessible
+            # and doesn't require any external resources or infrastructure
+            # This is a base64-encoded transparent 1x1 PNG image
+            placeholder_data_uri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+            data["image_link"] = placeholder_data_uri
             logger.warning(
                 f"Product '{product.name}' (ID: {product.id}) has no images. "
-                f"Using placeholder image URL: {placeholder_url}"
+                f"Using transparent placeholder data URI for Meta Catalog compliance."
             )
 
         return data
