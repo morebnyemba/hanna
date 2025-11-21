@@ -11,7 +11,7 @@ from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task
 from conversations.models import Message, Contact
 from .models import Notification, NotificationTemplate
-from .utils import render_template_string
+from .utils import render_template_string, get_versioned_template_name
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -91,8 +91,7 @@ def dispatch_notification_task(self, notification_id: int):
 
 
                 # Append version suffix to template name when sending to Meta
-                version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
-                template_name_with_version = f"{notification.template_name}_{version_suffix}"
+                template_name_with_version = get_versioned_template_name(notification.template_name)
                 
                 content_payload = {
                     "name": template_name_with_version,

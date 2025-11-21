@@ -11,7 +11,7 @@ from .models import Notification, NotificationTemplate
 from .tasks import dispatch_notification_task
 from conversations.models import Contact, Message
 from flows.models import Flow
-from .utils import render_template_string # Import the new render utility
+from .utils import render_template_string, get_versioned_template_name
 from meta_integration.tasks import send_whatsapp_message_task
 from meta_integration.models import MetaAppConfig
 
@@ -141,8 +141,7 @@ def queue_notifications_to_users(
 
  
                 # Append version suffix to template name when sending to Meta
-                version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
-                template_name_with_version = f"{template_name}_{version_suffix}"
+                template_name_with_version = get_versioned_template_name(template_name)
                 
                 content_payload = {
                     "name": template_name_with_version,

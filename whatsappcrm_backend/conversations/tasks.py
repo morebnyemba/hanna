@@ -8,6 +8,7 @@ from django.conf import settings
 from .models import Broadcast, BroadcastRecipient, Contact, Message
 from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task
+from notifications.utils import get_versioned_template_name
 # from flows.services import _resolve_value # For advanced personalization
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,7 @@ def dispatch_broadcast_task(self, broadcast_id, contact_ids, language_code, comp
                 # from flows.services if you need to substitute variables like {{name}}.
                 
                 # Append version suffix to template name when sending to Meta
-                version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
-                template_name_with_version = f"{broadcast.template_name}_{version_suffix}"
+                template_name_with_version = get_versioned_template_name(broadcast.template_name)
                 
                 content_payload = {
                     "name": template_name_with_version,

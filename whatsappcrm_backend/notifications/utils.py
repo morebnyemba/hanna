@@ -1,6 +1,7 @@
 # whatsappcrm_backend/notifications/utils.py
 import logging
 from jinja2 import Environment, Undefined
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,3 +33,24 @@ def render_template_string(template_string: str, context: dict) -> str:
         logger.error(f"Jinja2 template rendering failed: {e}. Template: '{template_string}'", exc_info=False)
         # Return the original string on error to aid in debugging
         return template_string
+
+
+def get_versioned_template_name(template_name: str) -> str:
+    """
+    Returns the template name with the version suffix appended.
+    
+    This is used when sending template messages to Meta's WhatsApp API to ensure
+    the template name matches the versioned name that was synced to Meta.
+    
+    Args:
+        template_name: The base template name (e.g., 'new_order_notification')
+    
+    Returns:
+        The versioned template name (e.g., 'new_order_notification_v1_02')
+    
+    Example:
+        >>> get_versioned_template_name('new_order_notification')
+        'new_order_notification_v1_02'
+    """
+    version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_02')
+    return f"{template_name}_{version_suffix}"
