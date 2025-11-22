@@ -207,13 +207,12 @@ def send_error_notification_email(task_name, attachment_id, error_message, raw_r
     
     try:
         # Get active admin email recipients from the database instead of settings
-        admin_recipients = AdminEmailRecipient.objects.filter(is_active=True).values_list('email', flat=True)
-        recipient_list = list(admin_recipients)
+        recipient_list = list(AdminEmailRecipient.objects.filter(is_active=True).values_list('email', flat=True))
         
         if not recipient_list:
             logger.warning(
                 f"No active AdminEmailRecipient configured. Cannot send error notification for task {task_name}. "
-                f"Please add admin email recipients in the Django admin panel."
+                "Please add admin email recipients in the Django admin panel."
             )
             return
         
