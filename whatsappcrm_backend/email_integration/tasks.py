@@ -206,15 +206,26 @@ def send_error_notification_email(task_name, attachment_id, error_message, raw_r
     """
     
     try:
+        # Get active admin email recipients from the database instead of settings
+        admin_recipients = AdminEmailRecipient.objects.filter(is_active=True).values_list('email', flat=True)
+        recipient_list = list(admin_recipients)
+        
+        if not recipient_list:
+            logger.warning(
+                f"No active AdminEmailRecipient configured. Cannot send error notification for task {task_name}. "
+                f"Please add admin email recipients in the Django admin panel."
+            )
+            return
+        
         send_mail(
             subject=subject,
             message=f"Critical task failure in {task_name} for attachment {attachment_id}. Error: {error_message}", # Plain text fallback
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=settings.ADMIN_EMAIL_RECIPIENTS, # Expects ADMIN_EMAIL_RECIPIENTS in settings.py
+            recipient_list=recipient_list,
             html_message=html_message,
             fail_silently=False,
         )
-        logger.info(f"Successfully sent error notification email for task {task_name} and attachment {attachment_id}.")
+        logger.info(f"Successfully sent error notification email for task {task_name} and attachment {attachment_id} to {len(recipient_list)} recipient(s).")
     except Exception as e:
         logger.critical(
             f"FATAL: Could not send error notification email for task {task_name}. "
