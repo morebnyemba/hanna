@@ -108,6 +108,52 @@ class MetaCatalogServiceTestCase(TestCase):
         self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
+    def test_get_product_data_with_empty_image_url(self, mock_config):
+        """Test that products with empty image URLs use placeholder data URI"""
+        # Setup mock config
+        mock_active_config = MagicMock()
+        mock_active_config.api_version = 'v23.0'
+        mock_active_config.access_token = 'test_token'
+        mock_active_config.catalog_id = 'test_catalog_id'
+        mock_config.objects.get_active_config.return_value = mock_active_config
+        
+        # Create a product image with empty URL
+        mock_image = MagicMock()
+        mock_image.image.url = ''  # Empty string
+        
+        # Mock the images queryset
+        with patch.object(self.product.images, 'first', return_value=mock_image):
+            service = MetaCatalogService()
+            product_data = service._get_product_data(self.product)
+            
+            # Verify image_link uses placeholder when URL is empty
+            self.assertIn('image_link', product_data)
+            self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig')
+    def test_get_product_data_with_none_image_url(self, mock_config):
+        """Test that products with None image URLs use placeholder data URI"""
+        # Setup mock config
+        mock_active_config = MagicMock()
+        mock_active_config.api_version = 'v23.0'
+        mock_active_config.access_token = 'test_token'
+        mock_active_config.catalog_id = 'test_catalog_id'
+        mock_config.objects.get_active_config.return_value = mock_active_config
+        
+        # Create a product image with None URL
+        mock_image = MagicMock()
+        mock_image.image.url = None  # None value
+        
+        # Mock the images queryset
+        with patch.object(self.product.images, 'first', return_value=mock_image):
+            service = MetaCatalogService()
+            product_data = service._get_product_data(self.product)
+            
+            # Verify image_link uses placeholder when URL is None
+            self.assertIn('image_link', product_data)
+            self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_required_fields(self, mock_config):
         """Test that all required fields are present in product data"""
         # Setup mock config
@@ -132,7 +178,7 @@ class MetaCatalogServiceTestCase(TestCase):
         # Verify values are correct
         self.assertEqual(product_data['retailer_id'], 'TEST-SKU-001')
         self.assertEqual(product_data['name'], 'Test Product')
-        self.assertEqual(product_data['price'], '100.0')
+        self.assertEqual(product_data['price'], 10000)  # Price in cents: $100.00 = 10000 cents
         self.assertEqual(product_data['currency'], 'USD')
         self.assertEqual(product_data['condition'], 'new')
         self.assertEqual(product_data['availability'], 'in stock')
