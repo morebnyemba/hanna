@@ -138,6 +138,51 @@ class MetaCatalogServiceTestCase(TestCase):
             self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
+    def test_get_product_data_with_whitespace_image_url(self, mock_config):
+        """Test that products with whitespace-only image URLs use placeholder data URI"""
+        self._setup_mock_config(mock_config)
+        
+        # Create a product image with whitespace-only URL
+        mock_image = MagicMock()
+        mock_image.image.url = '   '  # Whitespace only
+        
+        # Mock the images queryset
+        with patch.object(self.product.images, 'first', return_value=mock_image):
+            service = MetaCatalogService()
+            product_data = service._get_product_data(self.product)
+            
+            # Verify image_link uses placeholder when URL is only whitespace
+            self.assertIn('image_link', product_data)
+            self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig')
+    def test_get_product_data_with_url_containing_whitespace(self, mock_config):
+        """Test that URLs with leading/trailing whitespace are properly trimmed"""
+        self._setup_mock_config(mock_config)
+        
+        # Test data: URL with leading and trailing whitespace around valid path
+        test_domain = 'backend.hanna.co.zw'
+        url_with_whitespace = '  /media/product_images/test.png  '
+        expected_trimmed_url = f'https://{test_domain}/media/product_images/test.png'
+        
+        # Create a product image with URL containing whitespace
+        mock_image = MagicMock()
+        mock_image.image.url = url_with_whitespace
+        
+        # Mock the images queryset
+        with patch.object(self.product.images, 'first', return_value=mock_image):
+            service = MetaCatalogService()
+            
+            with override_settings(BACKEND_DOMAIN_FOR_CSP=test_domain):
+                product_data = service._get_product_data(self.product)
+            
+            # Verify image_link is properly trimmed and converted to absolute URL
+            self.assertIn('image_link', product_data)
+            self.assertEqual(product_data['image_link'], expected_trimmed_url)
+            # Ensure no whitespace in the final URL
+            self.assertNotIn(' ', product_data['image_link'])
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_required_fields(self, mock_config):
         """Test that all required fields are present in product data"""
         self._setup_mock_config(mock_config)
