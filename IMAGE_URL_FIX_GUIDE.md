@@ -63,11 +63,24 @@ All 8 edge case tests pass successfully.
 If you have products with problematic image URLs, you can identify them with:
 
 ```sql
--- Find products with whitespace-only image URLs
+-- Find products with whitespace-only image URLs (PostgreSQL)
+-- Note: Uses PostgreSQL regex operator (~). For other databases, use Python/Django queries instead.
 SELECT p.id, p.name, pi.id as image_id, pi.image 
 FROM products_and_services_product p
 JOIN products_and_services_productimage pi ON pi.product_id = p.id
 WHERE pi.image ~ '^\s+$' OR pi.image = '';
+```
+
+**Alternative using Django ORM (database-agnostic):**
+```python
+from products_and_services.models import Product, ProductImage
+
+# Find products with empty or whitespace-only image URLs
+problematic_images = []
+for img in ProductImage.objects.all():
+    if img.image.url.strip() == '':
+        problematic_images.append(img)
+        print(f"Found problematic image: {img.id} for product {img.product.name}")
 ```
 
 ### 2. Clean Up Problematic Images

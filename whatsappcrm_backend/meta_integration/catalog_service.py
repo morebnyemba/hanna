@@ -145,9 +145,9 @@ class MetaCatalogService:
         backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
         
         first_image = product.images.first()
-        # Check if image exists and has a truthy URL value (whitespace validation happens next)
+        # Check if image exists and has a truthy URL value (not None, not empty string)
         if first_image and hasattr(first_image.image, 'url') and first_image.image.url:
-            # Strip whitespace and ensure string type
+            # Strip whitespace and ensure string type for further validation
             image_url = str(first_image.image.url).strip()
             
             # Validate that URL is non-empty after stripping whitespace

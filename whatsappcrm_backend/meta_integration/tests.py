@@ -160,9 +160,13 @@ class MetaCatalogServiceTestCase(TestCase):
         """Test that URLs with leading/trailing whitespace are properly trimmed"""
         self._setup_mock_config(mock_config)
         
+        # Test data: URL with leading and trailing whitespace around valid path
+        url_with_whitespace = '  /media/product_images/test.png  '
+        expected_trimmed_url = 'https://backend.hanna.co.zw/media/product_images/test.png'
+        
         # Create a product image with URL containing whitespace
         mock_image = MagicMock()
-        mock_image.image.url = '  /media/product_images/test.png  '  # Whitespace around valid URL
+        mock_image.image.url = url_with_whitespace
         
         # Mock the images queryset
         with patch.object(self.product.images, 'first', return_value=mock_image):
@@ -173,10 +177,7 @@ class MetaCatalogServiceTestCase(TestCase):
             
             # Verify image_link is properly trimmed and converted to absolute URL
             self.assertIn('image_link', product_data)
-            self.assertEqual(
-                product_data['image_link'],
-                'https://backend.hanna.co.zw/media/product_images/test.png'
-            )
+            self.assertEqual(product_data['image_link'], expected_trimmed_url)
             # Ensure no whitespace in the final URL
             self.assertNotIn(' ', product_data['image_link'])
     
