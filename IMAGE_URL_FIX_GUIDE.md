@@ -64,23 +64,27 @@ If you have products with problematic image URLs, you can identify them with:
 
 ```sql
 -- Find products with whitespace-only image URLs (PostgreSQL)
--- Note: Uses PostgreSQL regex operator (~). For other databases, use Python/Django queries instead.
+-- Note: This is a simplified example. The 'image' field stores the file path.
+-- Uses PostgreSQL regex operator (~). For other databases, use Python/Django queries instead.
 SELECT p.id, p.name, pi.id as image_id, pi.image 
 FROM products_and_services_product p
 JOIN products_and_services_productimage pi ON pi.product_id = p.id
 WHERE pi.image ~ '^\s+$' OR pi.image = '';
 ```
 
-**Alternative using Django ORM (database-agnostic):**
+**Recommended: Use Django ORM (database-agnostic and handles Django's storage API):**
 ```python
 from products_and_services.models import Product, ProductImage
 
 # Find products with empty or whitespace-only image URLs
 problematic_images = []
 for img in ProductImage.objects.all():
-    if img.image.url.strip() == '':
-        problematic_images.append(img)
-        print(f"Found problematic image: {img.id} for product {img.product.name}")
+    # Check if image exists and has a URL, matching the validation in catalog_service
+    if img.image and hasattr(img.image, 'url') and img.image.url:
+        url = str(img.image.url).strip()
+        if not url:  # Empty after stripping whitespace
+            problematic_images.append(img)
+            print(f"Found problematic image: {img.id} for product {img.product.name}")
 ```
 
 ### 2. Clean Up Problematic Images
@@ -95,9 +99,12 @@ from products_and_services.models import ProductImage
 
 # Find and delete images with whitespace-only URLs
 for img in ProductImage.objects.all():
-    if img.image.url.strip() == '':
-        print(f"Deleting invalid image: {img.id} for product {img.product.name}")
-        img.delete()
+    # Safe check matching the validation in catalog_service
+    if img.image and hasattr(img.image, 'url') and img.image.url:
+        url = str(img.image.url).strip()
+        if not url:  # Empty after stripping
+            print(f"Deleting invalid image: {img.id} for product {img.product.name}")
+            img.delete()
 ```
 
 ### 3. Retry Failed Syncs
