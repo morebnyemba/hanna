@@ -145,15 +145,26 @@ class MetaCatalogService:
         backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
         
         first_image = product.images.first()
+        # Check if image exists and has a valid, non-empty URL after stripping whitespace
         if first_image and hasattr(first_image.image, 'url') and first_image.image.url:
-            image_url = first_image.image.url
-            # If the URL is relative, convert it to absolute
-            if image_url.startswith('/'):
-                # Use https as the application is behind an HTTPS proxy
-                image_url = f"https://{backend_domain}{image_url}"
+            image_url = str(first_image.image.url).strip()  # Strip whitespace and ensure string
             
-            data["image_link"] = image_url
-            logger.debug(f"Product image URL for Meta: {image_url}")
+            # Only use the URL if it's non-empty after stripping
+            if image_url:
+                # If the URL is relative, convert it to absolute
+                if image_url.startswith('/'):
+                    # Use https as the application is behind an HTTPS proxy
+                    image_url = f"https://{backend_domain}{image_url}"
+                
+                data["image_link"] = image_url
+                logger.debug(f"Product image URL for Meta: {image_url}")
+            else:
+                # URL was only whitespace - use placeholder
+                data["image_link"] = PLACEHOLDER_IMAGE_DATA_URI
+                logger.warning(
+                    f"Product '{product.name}' (ID: {product.id}) has image with whitespace-only URL. "
+                    f"Using transparent placeholder data URI for Meta Catalog compliance."
+                )
         else:
             # Meta API requires image_link field even when no image is available
             # Use a transparent 1x1 pixel PNG as a data URI - this is always accessible
