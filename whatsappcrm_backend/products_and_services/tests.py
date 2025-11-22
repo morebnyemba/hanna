@@ -543,3 +543,131 @@ class ProductMetaCatalogSyncTestCase(TestCase):
             self.assertIsNotNone(product.id)
         except Exception as e:
             self.fail(f"Signal should handle API errors gracefully, but raised: {e}")
+
+
+class PublicProductAccessTestCase(TestCase):
+    """
+    Test cases for public access to products and categories
+    """
+    
+    def setUp(self):
+        """Set up test data"""
+        self.client = APIClient()
+        
+        # Create test category
+        self.category = ProductCategory.objects.create(
+            name='Public Test Category',
+            description='Test category description'
+        )
+        
+        # Create test products
+        self.active_product = Product.objects.create(
+            name='Active Product',
+            sku='ACTIVE-001',
+            description='Active test product',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True
+        )
+        
+        self.inactive_product = Product.objects.create(
+            name='Inactive Product',
+            sku='INACTIVE-001',
+            description='Inactive test product',
+            product_type='hardware',
+            category=self.category,
+            price=50.00,
+            currency='USD',
+            stock_quantity=5,
+            is_active=False
+        )
+    
+    def test_public_can_list_products(self):
+        """Test that unauthenticated users can list products"""
+        # Make sure client is not authenticated
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.get('/crm-api/products/products/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+        # Both active and inactive products should be visible in list
+        self.assertGreaterEqual(len(response.data), 2)
+    
+    def test_public_can_retrieve_product(self):
+        """Test that unauthenticated users can retrieve a single product"""
+        # Make sure client is not authenticated
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.get(f'/crm-api/products/products/{self.active_product.id}/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Active Product')
+        self.assertEqual(response.data['sku'], 'ACTIVE-001')
+    
+    def test_public_cannot_create_product(self):
+        """Test that unauthenticated users cannot create products"""
+        # Make sure client is not authenticated
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.post(
+            '/crm-api/products/products/',
+            {
+                'name': 'New Product',
+                'sku': 'NEW-001',
+                'product_type': 'hardware',
+                'price': 75.00,
+                'currency': 'USD'
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_public_cannot_update_product(self):
+        """Test that unauthenticated users cannot update products"""
+        # Make sure client is not authenticated
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.patch(
+            f'/crm-api/products/products/{self.active_product.id}/',
+            {
+                'price': 150.00
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_public_cannot_delete_product(self):
+        """Test that unauthenticated users cannot delete products"""
+        # Make sure client is not authenticated
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.delete(f'/crm-api/products/products/{self.active_product.id}/')
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_public_can_list_categories(self):
+        """Test that unauthenticated users can list product categories"""
+        # Make sure client is not authenticated
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.get('/crm-api/products/categories/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+        self.assertGreaterEqual(len(response.data), 1)
+    
+    def test_public_can_retrieve_category(self):
+        """Test that unauthenticated users can retrieve a single category"""
+        # Make sure client is not authenticated
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.get(f'/crm-api/products/categories/{self.category.id}/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Public Test Category')
