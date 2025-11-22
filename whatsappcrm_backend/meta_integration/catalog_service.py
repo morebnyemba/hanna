@@ -145,7 +145,7 @@ class MetaCatalogService:
         backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
         
         first_image = product.images.first()
-        if first_image and hasattr(first_image.image, 'url'):
+        if first_image and hasattr(first_image.image, 'url') and first_image.image.url:
             image_url = first_image.image.url
             # If the URL is relative, convert it to absolute
             if image_url.startswith('/'):
@@ -160,7 +160,7 @@ class MetaCatalogService:
             # and doesn't require any external resources or infrastructure
             data["image_link"] = PLACEHOLDER_IMAGE_DATA_URI
             logger.warning(
-                f"Product '{product.name}' (ID: {product.id}) has no images. "
+                f"Product '{product.name}' (ID: {product.id}) has no images or empty image URL. "
                 f"Using transparent placeholder data URI for Meta Catalog compliance."
             )
 
