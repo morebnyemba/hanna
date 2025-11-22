@@ -35,7 +35,7 @@ interface Cart {
   total_price: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
 
 export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
