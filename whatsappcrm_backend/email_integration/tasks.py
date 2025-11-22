@@ -206,15 +206,25 @@ def send_error_notification_email(task_name, attachment_id, error_message, raw_r
     """
     
     try:
+        # Get active admin email recipients from the database instead of settings
+        recipient_list = list(AdminEmailRecipient.objects.filter(is_active=True).values_list('email', flat=True))
+        
+        if not recipient_list:
+            logger.warning(
+                f"No active AdminEmailRecipient configured. Cannot send error notification for task {task_name}. "
+                "Please add admin email recipients in the Django admin panel."
+            )
+            return
+        
         send_mail(
             subject=subject,
             message=f"Critical task failure in {task_name} for attachment {attachment_id}. Error: {error_message}", # Plain text fallback
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=settings.ADMIN_EMAIL_RECIPIENTS, # Expects ADMIN_EMAIL_RECIPIENTS in settings.py
+            recipient_list=recipient_list,
             html_message=html_message,
             fail_silently=False,
         )
-        logger.info(f"Successfully sent error notification email for task {task_name} and attachment {attachment_id}.")
+        logger.info(f"Successfully sent error notification email for task {task_name} and attachment {attachment_id} to {len(recipient_list)} recipient(s).")
     except Exception as e:
         logger.critical(
             f"FATAL: Could not send error notification email for task {task_name}. "
@@ -544,7 +554,8 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                     sku=product_code,
                     name=product_description,
                     price=item_data.get('unit_price', 0),
-                    product_type=Product.ProductType.HARDWARE # Default type
+                    product_type=Product.ProductType.HARDWARE,  # Default type
+                    is_active=False,  # Products from email import need manual review before activation
                 )
             OrderItem.objects.create(
                 order=order, 
@@ -638,7 +649,8 @@ def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_pref
                 # If the base product doesn't exist, create it.
                 product = Product.objects.create(
                     name=product_description or f"Product with SN {serial_number}",
-                    product_type=Product.ProductType.HARDWARE # Default type
+                    product_type=Product.ProductType.HARDWARE,  # Default type
+                    is_active=False,  # Products from email import need manual review before activation
                 )
 
             # Now create the new serialized item
