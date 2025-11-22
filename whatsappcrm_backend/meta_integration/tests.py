@@ -31,15 +31,19 @@ class MetaCatalogServiceTestCase(TestCase):
             is_active=True
         )
     
-    @patch('meta_integration.catalog_service.MetaAppConfig')
-    def test_get_product_data_with_relative_image_url(self, mock_config):
-        """Test that relative image URLs are converted to absolute URLs"""
-        # Setup mock config
+    def _setup_mock_config(self, mock_config):
+        """Helper method to setup mock MetaAppConfig"""
         mock_active_config = MagicMock()
         mock_active_config.api_version = 'v23.0'
         mock_active_config.access_token = 'test_token'
         mock_active_config.catalog_id = 'test_catalog_id'
         mock_config.objects.get_active_config.return_value = mock_active_config
+        return mock_active_config
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig')
+    def test_get_product_data_with_relative_image_url(self, mock_config):
+        """Test that relative image URLs are converted to absolute URLs"""
+        self._setup_mock_config(mock_config)
         
         # Create a product image with relative URL
         mock_image = MagicMock()
@@ -64,12 +68,7 @@ class MetaCatalogServiceTestCase(TestCase):
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_absolute_image_url(self, mock_config):
         """Test that absolute image URLs are not modified"""
-        # Setup mock config
-        mock_active_config = MagicMock()
-        mock_active_config.api_version = 'v23.0'
-        mock_active_config.access_token = 'test_token'
-        mock_active_config.catalog_id = 'test_catalog_id'
-        mock_config.objects.get_active_config.return_value = mock_active_config
+        self._setup_mock_config(mock_config)
         
         # Create a product image with absolute URL
         mock_image = MagicMock()
@@ -90,12 +89,7 @@ class MetaCatalogServiceTestCase(TestCase):
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_without_image(self, mock_config):
         """Test that products without images use a transparent data URI placeholder"""
-        # Setup mock config
-        mock_active_config = MagicMock()
-        mock_active_config.api_version = 'v23.0'
-        mock_active_config.access_token = 'test_token'
-        mock_active_config.catalog_id = 'test_catalog_id'
-        mock_config.objects.get_active_config.return_value = mock_active_config
+        self._setup_mock_config(mock_config)
         
         service = MetaCatalogService()
         product_data = service._get_product_data(self.product)
@@ -110,12 +104,7 @@ class MetaCatalogServiceTestCase(TestCase):
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_empty_image_url(self, mock_config):
         """Test that products with empty image URLs use placeholder data URI"""
-        # Setup mock config
-        mock_active_config = MagicMock()
-        mock_active_config.api_version = 'v23.0'
-        mock_active_config.access_token = 'test_token'
-        mock_active_config.catalog_id = 'test_catalog_id'
-        mock_config.objects.get_active_config.return_value = mock_active_config
+        self._setup_mock_config(mock_config)
         
         # Create a product image with empty URL
         mock_image = MagicMock()
@@ -133,12 +122,7 @@ class MetaCatalogServiceTestCase(TestCase):
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_none_image_url(self, mock_config):
         """Test that products with None image URLs use placeholder data URI"""
-        # Setup mock config
-        mock_active_config = MagicMock()
-        mock_active_config.api_version = 'v23.0'
-        mock_active_config.access_token = 'test_token'
-        mock_active_config.catalog_id = 'test_catalog_id'
-        mock_config.objects.get_active_config.return_value = mock_active_config
+        self._setup_mock_config(mock_config)
         
         # Create a product image with None URL
         mock_image = MagicMock()
@@ -156,12 +140,7 @@ class MetaCatalogServiceTestCase(TestCase):
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_required_fields(self, mock_config):
         """Test that all required fields are present in product data"""
-        # Setup mock config
-        mock_active_config = MagicMock()
-        mock_active_config.api_version = 'v23.0'
-        mock_active_config.access_token = 'test_token'
-        mock_active_config.catalog_id = 'test_catalog_id'
-        mock_config.objects.get_active_config.return_value = mock_active_config
+        self._setup_mock_config(mock_config)
         
         service = MetaCatalogService()
         product_data = service._get_product_data(self.product)
@@ -187,12 +166,7 @@ class MetaCatalogServiceTestCase(TestCase):
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_out_of_stock(self, mock_config):
         """Test that products with zero stock show as out of stock"""
-        # Setup mock config
-        mock_active_config = MagicMock()
-        mock_active_config.api_version = 'v23.0'
-        mock_active_config.access_token = 'test_token'
-        mock_active_config.catalog_id = 'test_catalog_id'
-        mock_config.objects.get_active_config.return_value = mock_active_config
+        self._setup_mock_config(mock_config)
         
         # Set product stock to zero
         self.product.stock_quantity = 0
@@ -207,12 +181,7 @@ class MetaCatalogServiceTestCase(TestCase):
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_without_sku_raises_error(self, mock_config):
         """Test that products without SKU raise ValueError"""
-        # Setup mock config
-        mock_active_config = MagicMock()
-        mock_active_config.api_version = 'v23.0'
-        mock_active_config.access_token = 'test_token'
-        mock_active_config.catalog_id = 'test_catalog_id'
-        mock_config.objects.get_active_config.return_value = mock_active_config
+        self._setup_mock_config(mock_config)
         
         # Create product without SKU
         product_no_sku = Product.objects.create(
