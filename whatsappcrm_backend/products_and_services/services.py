@@ -377,3 +377,70 @@ class ItemTrackingService:
             'by_status': {item['status']: item['count'] for item in status_stats},
             'total_items': SerializedItem.objects.count(),
         }
+    
+    @staticmethod
+    @transaction.atomic
+    def checkout_item(
+        item: SerializedItem,
+        destination_location: str,
+        transferred_by: Optional[User] = None,
+        notes: str = ""
+    ) -> ItemLocationHistory:
+        """
+        Checkout an item from its current location and mark it as in transit.
+        Destination is recorded in notes until the item is checked in.
+        """
+        if destination_location not in SerializedItem.Location.values:
+            raise ValueError("Invalid destination location")
+        history = ItemLocationHistory.objects.create(
+            serialized_item=item,
+            from_location=item.current_location,
+            to_location=SerializedItem.Location.IN_TRANSIT,
+            from_holder=item.current_holder,
+            to_holder=None,
+            transfer_reason=ItemLocationHistory.TransferReason.TRANSFER,
+            notes=(notes and f"Heading to {destination_location}. {notes}") or f"Heading to {destination_location}",
+            transferred_by=transferred_by
+        )
+        item.current_location = SerializedItem.Location.IN_TRANSIT
+        item.current_holder = None
+        item.status = SerializedItem.Status.IN_TRANSIT
+        item.location_notes = f"En route to {destination_location}"
+        item.save(update_fields=['current_location', 'current_holder', 'status', 'location_notes', 'updated_at'])
+        return history
+    
+    @staticmethod
+    @transaction.atomic
+    def checkin_item(
+        item: SerializedItem,
+        new_location: str,
+        transferred_by: Optional[User] = None,
+        notes: str = ""
+    ) -> ItemLocationHistory:
+        """
+        Check an item into a new location, clearing the in-transit status.
+        """
+        if new_location not in SerializedItem.Location.values:
+            raise ValueError("Invalid new location")
+        status_map = {
+            SerializedItem.Location.WAREHOUSE: SerializedItem.Status.IN_STOCK,
+            SerializedItem.Location.TECHNICIAN: SerializedItem.Status.IN_REPAIR,
+            SerializedItem.Location.MANUFACTURER: SerializedItem.Status.WARRANTY_CLAIM,
+            SerializedItem.Location.CUSTOMER: SerializedItem.Status.INSTALLED,
+        }
+        new_status = status_map.get(new_location, item.status)
+        history = ItemLocationHistory.objects.create(
+            serialized_item=item,
+            from_location=item.current_location,
+            to_location=new_location,
+            from_holder=item.current_holder,
+            to_holder=item.current_holder if new_location in [SerializedItem.Location.CUSTOMER, SerializedItem.Location.TECHNICIAN] else None,
+            transfer_reason=ItemLocationHistory.TransferReason.TRANSFER,
+            notes=notes or f"Arrived at {new_location}",
+            transferred_by=transferred_by
+        )
+        item.current_location = new_location
+        item.status = new_status
+        item.location_notes = notes or f"Arrived at {new_location}"
+        item.save(update_fields=['current_location', 'status', 'location_notes', 'updated_at'])
+        return history

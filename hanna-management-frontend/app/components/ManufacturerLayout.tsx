@@ -83,6 +83,7 @@ export default function ManufacturerLayout({ children }: { children: ReactNode }
           <SidebarLink href="/manufacturer/dashboard" icon={FiGrid} isCollapsed={isSidebarCollapsed}>Dashboard</SidebarLink>
           <SidebarLink href="/manufacturer/analytics" icon={FiBarChart2} isCollapsed={isSidebarCollapsed}>Analytics</SidebarLink>
           <SidebarLink href="/manufacturer/barcode-scanner" icon={FiCamera} isCollapsed={isSidebarCollapsed}>Barcode Scanner</SidebarLink>
+          <SidebarLink href="/manufacturer/check-in-out" icon={FiTool} isCollapsed={isSidebarCollapsed}>Check-In/Out</SidebarLink>
           <SidebarLink href="/manufacturer/job-cards" icon={FiTool} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
           <SidebarLink href="/manufacturer/warranty-claims" icon={FiShield} isCollapsed={isSidebarCollapsed}>Warranty Claims</SidebarLink>
           <SidebarLink href="/manufacturer/products" icon={FiBox} isCollapsed={isSidebarCollapsed}>Products</SidebarLink>

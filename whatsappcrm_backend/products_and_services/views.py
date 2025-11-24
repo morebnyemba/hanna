@@ -546,6 +546,62 @@ class ItemTrackingViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = ItemLocationStatsSerializer(stats)
         return Response(serializer.data)
     
+    @action(detail=True, methods=['post'], url_path='checkout')
+    def checkout(self, request, pk=None):
+        """
+        Checkout an item and mark it as in transit.
+        
+        POST /crm-api/items/{id}/checkout/
+        Body: {
+            "destination_location": "warehouse|customer|technician|manufacturer|retail|outsourced|disposed",
+            "notes": "Optional notes"
+        }
+        """
+        item = self.get_object()
+        destination = request.data.get('destination_location')
+        if not destination:
+            return Response({'error': 'destination_location is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if destination not in SerializedItem.Location.values:
+            return Response({'error': 'Invalid destination_location'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            history = ItemTrackingService.checkout_item(
+                item=item,
+                destination_location=destination,
+                transferred_by=request.user,
+                notes=request.data.get('notes', '')
+            )
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ItemLocationHistorySerializer(history).data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], url_path='checkin')
+    def checkin(self, request, pk=None):
+        """
+        Check an item into its destination location from in transit.
+        
+        POST /crm-api/items/{id}/checkin/
+        Body: {
+            "new_location": "warehouse|customer|technician|manufacturer|retail|outsourced|disposed",
+            "notes": "Optional notes"
+        }
+        """
+        item = self.get_object()
+        new_location = request.data.get('new_location')
+        if not new_location:
+            return Response({'error': 'new_location is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if new_location not in SerializedItem.Location.values:
+            return Response({'error': 'Invalid new_location'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            history = ItemTrackingService.checkin_item(
+                item=item,
+                new_location=new_location,
+                transferred_by=request.user,
+                notes=request.data.get('notes', '')
+            )
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ItemLocationHistorySerializer(history).data, status=status.HTTP_200_OK)
+    
     @action(detail=True, methods=['post'], url_path='mark-sold')
     def mark_sold(self, request, pk=None):
         """
