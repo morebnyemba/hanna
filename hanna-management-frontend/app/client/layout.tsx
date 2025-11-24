@@ -6,7 +6,7 @@ import { FiHome, FiBarChart2, FiBox, FiWifi, FiSettings } from 'react-icons/fi';
 
 const navLinks = [
   { href: '/client/dashboard', label: 'Dashboard', icon: FiHome },
-  { href: '/client/dashboard', label: 'Monitoring', icon: FiWifi },
+  { href: '/client/monitoring', label: 'Monitoring', icon: FiWifi },
   { href: '/client/shop', label: 'Shop', icon: FiBox },
   { href: '/client/settings', label: 'Settings', icon: FiSettings },
 ];

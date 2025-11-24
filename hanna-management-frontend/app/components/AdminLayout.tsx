@@ -68,14 +68,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`z-30 fixed inset-y-0 left-0 w-64 px-2 py-4 overflow-y-auto bg-purple-800 text-white transition-transform duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
-        <div className="flex justify-between items-center px-4 mb-6">
+      <aside className={`z-30 fixed inset-y-0 left-0 w-64 px-2 py-4 bg-purple-800 text-white transition-transform duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 flex flex-col`}>
+        <div className="flex justify-between items-center px-4 mb-6 shrink-0">
           <h2 className="text-2xl font-semibold">Hanna Admin</h2>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white">
             <FiX size={24} />
           </button>
         </div>
-        <nav className="space-y-2">
+        <nav className="space-y-2 flex-1 overflow-y-auto pr-1">
           <SidebarLink href="/admin/dashboard" icon={FiHome}>Dashboard</SidebarLink>
           <SidebarLink href="/admin/analytics" icon={FiBarChart2}>Analytics</SidebarLink>
           <SidebarLink href="/admin/customers" icon={FiUsers}>Customers</SidebarLink>
@@ -96,7 +96,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarLink href="/admin/flows" icon={FiGitMerge}>Flows</SidebarLink>
           <SidebarLink href="/admin/settings" icon={FiSettings}>Settings</SidebarLink>
         </nav>
-        <div className="absolute bottom-0 w-full left-0 px-2 pb-4">
+        <div className="mt-4 px-2 pt-2 border-t border-purple-700">
            <button onClick={handleLogout} className="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white">
              <FiLogOut className="w-5 h-5 mr-3" />
              Logout
