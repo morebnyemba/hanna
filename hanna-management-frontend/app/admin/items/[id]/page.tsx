@@ -14,7 +14,7 @@ import {
   Truck,
   Package
 } from 'lucide-react';
-import { apiClient } from '@/app/lib/api-client';
+import apiClient from '@/app/lib/apiClient';
 
 interface LocationHistory {
   id: string;

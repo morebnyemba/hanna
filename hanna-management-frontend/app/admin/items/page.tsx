@@ -16,7 +16,7 @@ import {
   Truck,
   Wrench
 } from 'lucide-react';
-import { apiClient } from '@/app/lib/api-client';
+import apiClient from '@/app/lib/apiClient';
 import Link from 'next/link';
 
 interface SerializedItem {

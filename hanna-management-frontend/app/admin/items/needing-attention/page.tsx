@@ -11,7 +11,7 @@ import {
   Clock,
   ArrowLeft
 } from 'lucide-react';
-import { apiClient } from '@/app/lib/api-client';
+import apiClient from '@/app/lib/apiClient';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
