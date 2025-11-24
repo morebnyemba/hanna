@@ -263,3 +263,165 @@ def delete_product_from_meta_catalog(sender, instance, **kwargs):
             f"from Meta Catalog: {str(e)}",
             exc_info=True
         )
+
+
+# ============================================================================
+# Item Location Tracking Signals
+# ============================================================================
+
+from warranty.models import WarrantyClaim
+from customer_data.models import JobCard, Order
+from .models import SerializedItem, ItemLocationHistory
+from .services import ItemTrackingService
+
+
+@receiver(post_save, sender=WarrantyClaim)
+def track_warranty_claim_item(sender, instance, created, **kwargs):
+    """
+    Auto-track item location when warranty claim is created or updated.
+    """
+    if not instance.warranty.serialized_item:
+        return
+    
+    item = instance.warranty.serialized_item
+    
+    # On creation, move item to manufacturer
+    if created:
+        ItemTrackingService.send_to_manufacturer(
+            item=item,
+            warranty_claim=instance,
+            notes=f"Warranty claim {instance.claim_id} created: {instance.description_of_fault[:100]}"
+        )
+    
+    # On status updates, track accordingly
+    elif not created:
+        if instance.status == WarrantyClaim.ClaimStatus.COMPLETED:
+            # Return to warehouse when claim completed
+            ItemTrackingService.return_to_warehouse(
+                item=item,
+                warranty_claim=instance,
+                notes=f"Warranty claim {instance.claim_id} completed",
+                mark_as_stock=True
+            )
+        
+        elif instance.status == WarrantyClaim.ClaimStatus.REPLACED:
+            # Mark old item as decommissioned
+            item.status = SerializedItem.Status.DECOMMISSIONED
+            item.save(update_fields=['status', 'updated_at'])
+
+
+@receiver(post_save, sender=JobCard)
+def track_job_card_item(sender, instance, created, **kwargs):
+    """
+    Auto-track item location when job card status changes.
+    """
+    if not instance.serialized_item:
+        return
+    
+    item = instance.serialized_item
+    
+    # Skip if this is the initial creation
+    if created:
+        # On creation, mark as awaiting collection if item is with customer
+        if item.current_location == SerializedItem.Location.CUSTOMER:
+            ItemTrackingService.mark_item_awaiting_collection(
+                item=item,
+                job_card=instance,
+                notes=f"Job card {instance.job_card_number} created: {instance.reported_fault[:100] if instance.reported_fault else 'Service required'}"
+            )
+        return
+    
+    # Track based on status changes
+    if instance.status == JobCard.Status.IN_PROGRESS:
+        # Assign to technician when in progress
+        if instance.technician and item.current_location != SerializedItem.Location.TECHNICIAN:
+            ItemTrackingService.assign_to_technician(
+                item=item,
+                technician=instance.technician.user,
+                job_card=instance,
+                notes=f"Job card {instance.job_card_number} in progress"
+            )
+    
+    elif instance.status == JobCard.Status.AWAITING_PARTS:
+        # Update item status to awaiting parts
+        if item.status != SerializedItem.Status.AWAITING_PARTS:
+            item.status = SerializedItem.Status.AWAITING_PARTS
+            item.save(update_fields=['status', 'updated_at'])
+            
+            # Create history entry
+            ItemLocationHistory.objects.create(
+                serialized_item=item,
+                from_location=item.current_location,
+                to_location=item.current_location,  # Location doesn't change
+                transfer_reason=ItemLocationHistory.TransferReason.REPAIR,
+                notes=f"Job card {instance.job_card_number} awaiting parts",
+                related_job_card=instance
+            )
+    
+    elif instance.status == JobCard.Status.RESOLVED:
+        # Mark repair as completed
+        if item.status != SerializedItem.Status.REPAIR_COMPLETED:
+            item.status = SerializedItem.Status.REPAIR_COMPLETED
+            item.save(update_fields=['status', 'updated_at'])
+            
+            # If item is with technician, prepare for return
+            if item.current_location == SerializedItem.Location.TECHNICIAN:
+                ItemLocationHistory.objects.create(
+                    serialized_item=item,
+                    from_location=item.current_location,
+                    to_location=item.current_location,
+                    transfer_reason=ItemLocationHistory.TransferReason.REPAIR,
+                    notes=f"Job card {instance.job_card_number} resolved - ready for return",
+                    related_job_card=instance
+                )
+    
+    elif instance.status == JobCard.Status.CLOSED:
+        # Return to warehouse when job closed
+        if item.current_location != SerializedItem.Location.WAREHOUSE:
+            ItemTrackingService.return_to_warehouse(
+                item=item,
+                job_card=instance,
+                notes=f"Job card {instance.job_card_number} closed",
+                mark_as_stock=True
+            )
+
+
+@receiver(post_save, sender=Order)
+def track_order_item_delivery(sender, instance, created, **kwargs):
+    """
+    Track item location when order is delivered.
+    Handles serialized items in order items.
+    """
+    # Only process when order is marked as delivered/closed_won
+    if instance.stage != Order.Stage.CLOSED_WON:
+        return
+    
+    # Check if payment is complete
+    if instance.payment_status != Order.PaymentStatus.PAID:
+        return
+    
+    # Process each order item
+    for order_item in instance.items.all():
+        # Check if product has serialized items that need tracking
+        # This would require additional logic to link order items to specific serialized items
+        # For now, we'll just update any serialized items that are marked for this order
+        serialized_items = SerializedItem.objects.filter(
+            product=order_item.product,
+            status=SerializedItem.Status.SOLD,
+            location_history__related_order=instance
+        ).distinct()
+        
+        for item in serialized_items:
+            if item.status != SerializedItem.Status.DELIVERED:
+                item.status = SerializedItem.Status.DELIVERED
+                item.save(update_fields=['status', 'updated_at'])
+                
+                # Create history entry
+                ItemLocationHistory.objects.create(
+                    serialized_item=item,
+                    from_location=item.current_location,
+                    to_location=SerializedItem.Location.CUSTOMER,
+                    transfer_reason=ItemLocationHistory.TransferReason.DELIVERY,
+                    notes=f"Order {instance.order_number} delivered",
+                    related_order=instance
+                )

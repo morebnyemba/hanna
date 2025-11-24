@@ -8,6 +8,8 @@ router.register(r'categories', views.ProductCategoryViewSet, basename='productca
 router.register(r'serialized-items', views.SerializedItemViewSet, basename='serializeditem')
 router.register(r'barcode', views.BarcodeScanViewSet, basename='barcode')
 router.register(r'cart', views.CartViewSet, basename='cart')
+# Item tracking endpoints
+router.register(r'items', views.ItemTrackingViewSet, basename='item-tracking')
 
 app_name = 'products_and_services_api'
 

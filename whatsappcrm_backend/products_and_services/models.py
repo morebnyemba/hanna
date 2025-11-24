@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+import uuid
 
 class ProductCategory(models.Model):
     """
@@ -125,11 +126,41 @@ class SerializedItem(models.Model):
     Represents a single, physical instance of a product, tracked by its serial number.
     """
     class Status(models.TextChoices):
+        # Stock statuses
         IN_STOCK = 'in_stock', _('In Stock')
+        RESERVED = 'reserved', _('Reserved')
+        
+        # Sales statuses
         SOLD = 'sold', _('Sold')
+        AWAITING_DELIVERY = 'awaiting_delivery', _('Awaiting Delivery')
+        DELIVERED = 'delivered', _('Delivered')
+        
+        # Service statuses
+        AWAITING_COLLECTION = 'awaiting_collection', _('Awaiting Collection')
+        IN_TRANSIT = 'in_transit', _('In Transit')
         IN_REPAIR = 'in_repair', _('In Repair')
+        AWAITING_PARTS = 'awaiting_parts', _('Awaiting Parts')
+        OUTSOURCED = 'outsourced', _('Outsourced to Third Party')
+        REPAIR_COMPLETED = 'repair_completed', _('Repair Completed')
+        
+        # Return/warranty statuses
         RETURNED = 'returned', _('Returned')
+        WARRANTY_CLAIM = 'warranty_claim', _('Warranty Claim Processing')
+        REPLACEMENT_PENDING = 'replacement_pending', _('Replacement Pending')
+        
+        # End-of-life statuses
         DECOMMISSIONED = 'decommissioned', _('Decommissioned')
+        DISPOSED = 'disposed', _('Disposed')
+    
+    class Location(models.TextChoices):
+        WAREHOUSE = 'warehouse', _('Warehouse')
+        CUSTOMER = 'customer', _('With Customer')
+        MANUFACTURER = 'manufacturer', _('At Manufacturer')
+        TECHNICIAN = 'technician', _('With Technician')
+        IN_TRANSIT = 'in_transit', _('In Transit')
+        OUTSOURCED = 'outsourced', _('Outsourced Service')
+        RETAIL = 'retail', _('Retail Store')
+        DISPOSED = 'disposed', _('Disposed/Scrapped')
 
     product = models.ForeignKey(
         Product,
@@ -144,17 +175,46 @@ class SerializedItem(models.Model):
         db_index=True,
         help_text=_("The unique serial number for this specific item.")
     )
-    barcode = models.CharField(_("Barcode"), max_length=100, unique=True, blank=True, null=True, db_index=True, help_text=_("Barcode value for item identification"))
+    barcode = models.CharField(
+        _("Barcode"),
+        max_length=100,
+        unique=True,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text=_("Barcode value for item identification")
+    )
     status = models.CharField(
         _("Status"),
-        max_length=20,
+        max_length=30,
         choices=Status.choices,
         default=Status.IN_STOCK,
         db_index=True,
         help_text=_("The current status of this individual item.")
     )
-    # You can add more fields here to track the item's lifecycle,
-    # such as purchase_date, sale_date, etc.
+    
+    # Location tracking fields
+    current_location = models.CharField(
+        _("Current Location"),
+        max_length=20,
+        choices=Location.choices,
+        default=Location.WAREHOUSE,
+        db_index=True,
+        help_text=_("The current physical location of this item.")
+    )
+    current_holder = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='held_items',
+        help_text=_("Current person/entity holding the item (technician, customer, etc.)")
+    )
+    location_notes = models.TextField(
+        _("Location Notes"),
+        blank=True,
+        help_text=_("Additional location details or address information")
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -166,6 +226,131 @@ class SerializedItem(models.Model):
         verbose_name = _("Serialized Item")
         verbose_name_plural = _("Serialized Items")
         ordering = ['-created_at']
+
+
+class ItemLocationHistory(models.Model):
+    """
+    Tracks the complete movement history of serialized items.
+    Records every location change with full audit trail.
+    """
+    class LocationType(models.TextChoices):
+        WAREHOUSE = 'warehouse', _('Warehouse')
+        CUSTOMER = 'customer', _('Customer Location')
+        MANUFACTURER = 'manufacturer', _('Manufacturer Facility')
+        TECHNICIAN = 'technician', _('Technician/Service Center')
+        IN_TRANSIT = 'in_transit', _('In Transit')
+        OUTSOURCED = 'outsourced', _('Outsourced Service Provider')
+        RETAIL = 'retail', _('Retail Store')
+        DISPOSED = 'disposed', _('Disposed/Scrapped')
+        
+    class TransferReason(models.TextChoices):
+        SALE = 'sale', _('Sale to Customer')
+        REPAIR = 'repair', _('Repair/Service')
+        WARRANTY_CLAIM = 'warranty_claim', _('Warranty Claim')
+        RETURN = 'return', _('Customer Return')
+        TRANSFER = 'transfer', _('Internal Transfer')
+        COLLECTION = 'collection', _('Collection from Customer')
+        DELIVERY = 'delivery', _('Delivery to Customer')
+        OUTSOURCE = 'outsource', _('Sent for Outsourcing')
+        INSTALLATION = 'installation', _('Installation at Customer Site')
+        STOCK_RECEIPT = 'stock_receipt', _('Stock Receipt')
+        DISPOSAL = 'disposal', _('Item Disposal')
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    serialized_item = models.ForeignKey(
+        SerializedItem,
+        on_delete=models.CASCADE,
+        related_name='location_history',
+        help_text=_("The item whose location is being tracked")
+    )
+    from_location = models.CharField(
+        _("From Location"),
+        max_length=20,
+        choices=LocationType.choices,
+        null=True,
+        blank=True,
+        help_text=_("Previous location (null for initial entry)")
+    )
+    to_location = models.CharField(
+        _("To Location"),
+        max_length=20,
+        choices=LocationType.choices,
+        help_text=_("New location")
+    )
+    from_holder = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transferred_from_items',
+        help_text=_("Previous holder of the item")
+    )
+    to_holder = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transferred_to_items',
+        help_text=_("New holder of the item")
+    )
+    transfer_reason = models.CharField(
+        _("Transfer Reason"),
+        max_length=20,
+        choices=TransferReason.choices,
+        help_text=_("Reason for the location change")
+    )
+    notes = models.TextField(
+        _("Notes"),
+        blank=True,
+        help_text=_("Additional notes about this transfer")
+    )
+    
+    # Link to related records
+    related_order = models.ForeignKey(
+        'customer_data.Order',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='item_location_changes',
+        help_text=_("Related sales order, if applicable")
+    )
+    related_warranty_claim = models.ForeignKey(
+        'warranty.WarrantyClaim',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='item_location_changes',
+        help_text=_("Related warranty claim, if applicable")
+    )
+    related_job_card = models.ForeignKey(
+        'customer_data.JobCard',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='item_location_changes',
+        help_text=_("Related job card, if applicable")
+    )
+    
+    transferred_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='item_transfers_made',
+        help_text=_("User who initiated this transfer")
+    )
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    def __str__(self):
+        return f"{self.serialized_item.serial_number}: {self.from_location or 'Initial'} → {self.to_location}"
+    
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = _("Item Location History")
+        verbose_name_plural = _("Item Location Histories")
+        indexes = [
+            models.Index(fields=['-timestamp', 'serialized_item']),
+            models.Index(fields=['to_location', '-timestamp']),
+        ]
 
 
 class Cart(models.Model):

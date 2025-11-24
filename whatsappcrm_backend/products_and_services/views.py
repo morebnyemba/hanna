@@ -11,8 +11,18 @@ from .serializers import (
     BarcodeResponseSerializer,
     CartSerializer,
     CartItemSerializer,
-    AddToCartSerializer
+    AddToCartSerializer,
+    # Item tracking serializers
+    ItemLocationHistorySerializer,
+    SerializedItemDetailSerializer,
+    ItemTransferSerializer,
+    ItemLocationStatsSerializer,
+    ItemsNeedingAttentionSerializer,
 )
+from .services import ItemTrackingService
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
@@ -401,3 +411,290 @@ class CartViewSet(viewsets.ViewSet):
             'message': 'Cart cleared successfully',
             'cart': cart_serializer.data
         }, status=status.HTTP_200_OK)
+
+
+# ============================================================================
+# Item Location Tracking ViewSets
+# ============================================================================
+
+class ItemTrackingViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for item location tracking operations.
+    Provides endpoints for viewing and managing item locations.
+    """
+    queryset = SerializedItem.objects.select_related(
+        'product', 'current_holder'
+    ).prefetch_related('location_history')
+    serializer_class = SerializedItemDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @action(detail=True, methods=['get'], url_path='location-history')
+    def location_history(self, request, pk=None):
+        """
+        Get complete location history for an item.
+        
+        GET /crm-api/items/{id}/location-history/
+        """
+        item = self.get_object()
+        history = ItemTrackingService.get_item_location_timeline(item)
+        serializer = ItemLocationHistorySerializer(history, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='transfer')
+    def transfer(self, request, pk=None):
+        """
+        Transfer item to new location.
+        
+        POST /crm-api/items/{id}/transfer/
+        Body: {
+            "to_location": "technician",
+            "to_holder_id": 5,
+            "reason": "repair",
+            "notes": "Sent for screen replacement",
+            "update_status": "in_repair"
+        }
+        """
+        item = self.get_object()
+        serializer = ItemTransferSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get validated data
+        data = serializer.validated_data
+        to_holder = None
+        if data.get('to_holder_id'):
+            to_holder = User.objects.get(id=data['to_holder_id'])
+        
+        # Get related objects if provided
+        related_order = None
+        related_warranty_claim = None
+        related_job_card = None
+        
+        if data.get('related_order_id'):
+            from customer_data.models import Order
+            related_order = Order.objects.get(id=data['related_order_id'])
+        
+        if data.get('related_warranty_claim_id'):
+            from warranty.models import WarrantyClaim
+            related_warranty_claim = WarrantyClaim.objects.get(id=data['related_warranty_claim_id'])
+        
+        if data.get('related_job_card_id'):
+            from customer_data.models import JobCard
+            related_job_card = JobCard.objects.get(job_card_number=data['related_job_card_id'])
+        
+        # Perform transfer
+        history = ItemTrackingService.transfer_item(
+            item=item,
+            to_location=data['to_location'],
+            to_holder=to_holder,
+            reason=data['reason'],
+            notes=data.get('notes', ''),
+            related_order=related_order,
+            related_warranty_claim=related_warranty_claim,
+            related_job_card=related_job_card,
+            transferred_by=request.user,
+            update_status=data.get('update_status')
+        )
+        
+        return Response(
+            ItemLocationHistorySerializer(history).data,
+            status=status.HTTP_201_CREATED
+        )
+    
+    @action(detail=False, methods=['get'], url_path='by-location/(?P<location>[^/.]+)')
+    def by_location(self, request, location=None):
+        """
+        Get all items at a specific location.
+        
+        GET /crm-api/items/by-location/warehouse/
+        GET /crm-api/items/by-location/technician/?holder_id=5
+        """
+        holder_id = request.query_params.get('holder_id')
+        holder = User.objects.get(id=holder_id) if holder_id else None
+        
+        items = ItemTrackingService.get_items_by_location(location, holder)
+        
+        # Paginate results
+        page = self.paginate_queryset(items)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(items, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='needing-attention')
+    def needing_attention(self, request):
+        """
+        Get items that need attention (awaiting collection, parts, etc.)
+        
+        GET /crm-api/items/needing-attention/
+        """
+        items = ItemTrackingService.get_items_needing_attention()
+        serializer = ItemsNeedingAttentionSerializer(items)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='statistics')
+    def statistics(self, request):
+        """
+        Get statistics about item locations and statuses.
+        
+        GET /crm-api/items/statistics/
+        """
+        stats = ItemTrackingService.get_item_statistics()
+        serializer = ItemLocationStatsSerializer(stats)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='mark-sold')
+    def mark_sold(self, request, pk=None):
+        """
+        Mark item as sold and transfer to customer.
+        
+        POST /crm-api/items/{id}/mark-sold/
+        Body: {
+            "order_id": "uuid",
+            "customer_holder_id": 123,
+            "notes": "Delivered to customer"
+        }
+        """
+        item = self.get_object()
+        
+        from customer_data.models import Order
+        order_id = request.data.get('order_id')
+        if not order_id:
+            return Response(
+                {'error': 'order_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        order = get_object_or_404(Order, id=order_id)
+        customer_holder_id = request.data.get('customer_holder_id')
+        customer_holder = User.objects.get(id=customer_holder_id) if customer_holder_id else None
+        
+        history = ItemTrackingService.mark_item_sold(
+            item=item,
+            order=order,
+            customer_holder=customer_holder,
+            transferred_by=request.user,
+            notes=request.data.get('notes', '')
+        )
+        
+        return Response(
+            ItemLocationHistorySerializer(history).data,
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'], url_path='assign-technician')
+    def assign_technician(self, request, pk=None):
+        """
+        Assign item to a technician for service/repair.
+        
+        POST /crm-api/items/{id}/assign-technician/
+        Body: {
+            "technician_id": 5,
+            "job_card_number": "JC-001",
+            "notes": "Screen replacement needed"
+        }
+        """
+        item = self.get_object()
+        
+        technician_id = request.data.get('technician_id')
+        if not technician_id:
+            return Response(
+                {'error': 'technician_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        technician = get_object_or_404(User, id=technician_id)
+        
+        job_card = None
+        if request.data.get('job_card_number'):
+            from customer_data.models import JobCard
+            job_card = JobCard.objects.get(job_card_number=request.data['job_card_number'])
+        
+        history = ItemTrackingService.assign_to_technician(
+            item=item,
+            technician=technician,
+            job_card=job_card,
+            notes=request.data.get('notes', ''),
+            transferred_by=request.user
+        )
+        
+        return Response(
+            ItemLocationHistorySerializer(history).data,
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'], url_path='mark-outsourced')
+    def mark_outsourced(self, request, pk=None):
+        """
+        Mark item as outsourced to third-party service provider.
+        
+        POST /crm-api/items/{id}/mark-outsourced/
+        Body: {
+            "holder_id": 10,
+            "job_card_number": "JC-001",
+            "notes": "Sent to XYZ Repairs"
+        }
+        """
+        item = self.get_object()
+        
+        holder_id = request.data.get('holder_id')
+        if not holder_id:
+            return Response(
+                {'error': 'holder_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        holder = get_object_or_404(User, id=holder_id)
+        
+        job_card = None
+        if request.data.get('job_card_number'):
+            from customer_data.models import JobCard
+            job_card = JobCard.objects.get(job_card_number=request.data['job_card_number'])
+        
+        history = ItemTrackingService.mark_item_outsourced(
+            item=item,
+            holder=holder,
+            job_card=job_card,
+            notes=request.data.get('notes', ''),
+            transferred_by=request.user
+        )
+        
+        return Response(
+            ItemLocationHistorySerializer(history).data,
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'], url_path='return-to-warehouse')
+    def return_to_warehouse(self, request, pk=None):
+        """
+        Return item to warehouse.
+        
+        POST /crm-api/items/{id}/return-to-warehouse/
+        Body: {
+            "job_card_number": "JC-001",
+            "notes": "Repair completed",
+            "mark_as_stock": true
+        }
+        """
+        item = self.get_object()
+        
+        job_card = None
+        if request.data.get('job_card_number'):
+            from customer_data.models import JobCard
+            job_card = JobCard.objects.get(job_card_number=request.data['job_card_number'])
+        
+        history = ItemTrackingService.return_to_warehouse(
+            item=item,
+            job_card=job_card,
+            notes=request.data.get('notes', ''),
+            transferred_by=request.user,
+            mark_as_stock=request.data.get('mark_as_stock', True)
+        )
+        
+        return Response(
+            ItemLocationHistorySerializer(history).data,
+            status=status.HTTP_200_OK
+        )
