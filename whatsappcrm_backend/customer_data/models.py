@@ -49,6 +49,14 @@ class CustomerProfile(models.Model):
     email = models.EmailField(_("Email Address"), max_length=254, blank=True, null=True)
     company = models.CharField(_("Company"), max_length=150, blank=True, null=True)
     role = models.CharField(_("Role/Title"), max_length=100, blank=True, null=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customer_profile',
+        help_text=_("Linked auth user for portal access.")
+    )
     
     # Location Details
     address_line_1 = models.CharField(_("Address Line 1"), max_length=255, blank=True, null=True)
@@ -326,6 +334,17 @@ class OrderItem(models.Model):
         help_text=_("The total amount for this line item (quantity * unit_price + tax).")
     )
     # --- END FIELD ---
+    units_assigned = models.PositiveIntegerField(
+        _("Units Assigned"),
+        default=0,
+        help_text=_("Number of SerializedItems assigned to this order line.")
+    )
+    is_fully_assigned = models.BooleanField(
+        _("Fully Assigned"),
+        default=False,
+        db_index=True,
+        help_text=_("Whether all units for this line item have been assigned.")
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

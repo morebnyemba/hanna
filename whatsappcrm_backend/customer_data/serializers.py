@@ -103,7 +103,48 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         user.save()
+        # Auto-create Contact + CustomerProfile for client users (non-staff)
+        if not user.is_staff and not user.is_superuser:
+            from conversations.models import Contact
+            from .models import CustomerProfile
+            # Use email or username as whatsapp_id placeholder if real number not provided
+            whatsapp_id_placeholder = user.email or f"user-{user.id}"  # ensure uniqueness
+            contact = Contact.objects.create(
+                whatsapp_id=whatsapp_id_placeholder,
+                name=user.get_full_name() or user.username,
+                user=user
+            )
+            CustomerProfile.objects.create(
+                contact=contact,
+                user=user,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                email=user.email
+            )
         return user
+
+# --- OrderItem Serializer ---
+class OrderItemSerializer(serializers.ModelSerializer):
+    """Serializer for OrderItem with fulfillment tracking"""
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_sku = serializers.CharField(source='product.sku', read_only=True)
+    fulfillment_percentage = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = OrderItem
+        fields = [
+            'id', 'order', 'product', 'product_name', 'product_sku',
+            'quantity', 'unit_price', 'total_amount',
+            'units_assigned', 'is_fully_assigned', 'fulfillment_percentage',
+            'created_at'
+        ]
+        read_only_fields = ('id', 'units_assigned', 'is_fully_assigned', 'created_at')
+    
+    def get_fulfillment_percentage(self, obj):
+        """Calculate fulfillment percentage"""
+        if obj.quantity == 0:
+            return 0
+        return round((obj.units_assigned / obj.quantity) * 100, 1)
 
 # --- Order Serializer ---
 class OrderSerializer(serializers.ModelSerializer):
@@ -115,12 +156,14 @@ class OrderSerializer(serializers.ModelSerializer):
     )
     stage_display = serializers.CharField(source='get_stage_display', read_only=True)
     payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
+    items = OrderItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'name', 'customer', 'stage', 'stage_display', 'payment_status', 'payment_status_display',
-            'amount', 'currency', 'expected_close_date', 'assigned_agent', 'assigned_agent_id', 'notes', 'created_at', 'updated_at'
+            'amount', 'currency', 'expected_close_date', 'assigned_agent', 'assigned_agent_id', 'notes', 
+            'items', 'created_at', 'updated_at'
         ]
         read_only_fields = ('id', 'created_at', 'updated_at')
 

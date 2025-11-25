@@ -58,6 +58,8 @@ class Product(models.Model):
     whatsapp_catalog_id = models.CharField(_("WhatsApp Catalog ID"), max_length=255, blank=True, null=True)
     country_of_origin = models.CharField(_("Country of Origin"), max_length=2, blank=True, null=True, help_text=_("The two-letter country code (e.g., US, GB) required by WhatsApp."))
     brand = models.CharField(_("Brand"), max_length=255, blank=True, null=True, help_text=_("The brand name of the product, required for WhatsApp Catalog."))
+    supplier_sku = models.CharField(_("Supplier SKU"), max_length=120, blank=True, null=True, help_text=_("Original supplier or partner provided product code."))
+    provisional = models.BooleanField(_("Provisional"), default=False, help_text=_("Marks products auto-created from imports pending review."))
     
     # Meta sync tracking fields
     meta_sync_attempts = models.PositiveIntegerField(_("Meta Sync Attempts"), default=0, help_text=_("Number of times sync to Meta Catalog has been attempted"))
@@ -91,6 +93,12 @@ class Product(models.Model):
         self.meta_sync_attempts = 0
         self.meta_sync_last_error = None
         self.save(update_fields=['meta_sync_attempts', 'meta_sync_last_error'])
+
+    def save(self, *args, **kwargs):
+        if not self.sku:
+            from .utils import generate_sku
+            self.sku = generate_sku(self)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("Product")
@@ -167,6 +175,14 @@ class SerializedItem(models.Model):
         on_delete=models.PROTECT,
         related_name='serialized_items',
         help_text=_("The generic product that this item is an instance of.")
+    )
+    order_item = models.ForeignKey(
+        'customer_data.OrderItem',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_items',
+        help_text=_("The order line item this physical unit is assigned to fulfill.")
     )
     serial_number = models.CharField(
         _("Serial Number"),

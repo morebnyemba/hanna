@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import BarcodeScanner from '@/app/components/BarcodeScanner';
 import apiClient from '@/app/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,22 @@ interface ItemData {
   product: { name: string };
 }
 
+interface OrderItem {
+  id: number;
+  product_name: string;
+  product_sku: string;
+  quantity: number;
+  units_assigned: number;
+  is_fully_assigned: boolean;
+  fulfillment_percentage: number;
+}
+
+interface OrderSummary {
+  id: string;
+  order_number: string;
+  items: OrderItem[];
+}
+
 export default function AdminCheckInOutPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [item, setItem] = useState<ItemData | null>(null);
@@ -31,6 +47,34 @@ export default function AdminCheckInOutPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // --- Fulfillment state ---
+  const [pendingOrders, setPendingOrders] = useState<OrderSummary[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('');
+  const [selectedOrderItemId, setSelectedOrderItemId] = useState<number | null>(null);
+  const [fulfillmentError, setFulfillmentError] = useState<string | null>(null);
+  const [fulfillmentMessage, setFulfillmentMessage] = useState<string | null>(null);
+
+  const selectedOrder = pendingOrders.find(o => o.id === selectedOrderId);
+  const matchingOrderItems = selectedOrder?.items.filter(i => i.product_name === item?.product.name || i.product_sku) || [];
+
+  const loadPendingOrders = async () => {
+    setOrdersLoading(true); setFulfillmentError(null);
+    try {
+      const res = await apiClient.get('/crm-api/orders/pending-fulfillment/');
+      setPendingOrders(res.data);
+    } catch (e:any) {
+      setFulfillmentError(e.response?.data?.error || 'Failed to load pending orders');
+    } finally { setOrdersLoading(false); }
+  };
+
+  useEffect(() => {
+    // Clear selection when destination changes away from customer
+    if (destination !== 'customer') {
+      setSelectedOrderId('');
+      setSelectedOrderItemId(null);
+    }
+  }, [destination]);
 
   const handleScan = async (code: string) => {
     setMessage(null); setError(null); setItem(null);
@@ -50,7 +94,16 @@ export default function AdminCheckInOutPage() {
     if (!item) return;
     setLoading(true); setMessage(null); setError(null);
     try {
-      const res = await apiClient.post(`/crm-api/items/${item.id}/checkout/`, { destination_location: destination, notes });
+      const body: any = { destination_location: destination, notes };
+      if (destination === 'customer' && selectedOrderItemId) {
+        body.order_item_id = selectedOrderItemId;
+      }
+      const res = await apiClient.post(`/crm-api/items/${item.id}/checkout/`, body);
+      if (res.data.fulfillment) {
+        setFulfillmentMessage(
+          `Assigned ${res.data.fulfillment.units_assigned}/${res.data.fulfillment.quantity_ordered} units for Order ${res.data.fulfillment.order_number}`
+        );
+      }
       setMessage('Item checked out and marked in transit');
       // Refresh item state
       setItem({ ...item, status: 'in_transit', current_location: 'in_transit' });
@@ -115,6 +168,62 @@ export default function AdminCheckInOutPage() {
                 {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
               </select>
             </div>
+            {destination === 'customer' && (
+              <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+                <h4 className="font-medium text-sm">Order Fulfillment (Optional)</h4>
+                {!pendingOrders.length && (
+                  <Button variant="outline" size="sm" disabled={ordersLoading} onClick={loadPendingOrders}>
+                    {ordersLoading ? 'Loading Orders...' : 'Load Pending Orders'}
+                  </Button>
+                )}
+                {pendingOrders.length > 0 && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-medium">Select Order</label>
+                      <select
+                        className="mt-1 w-full border rounded px-2 py-2 text-sm"
+                        value={selectedOrderId}
+                        onChange={e => { setSelectedOrderId(e.target.value); setSelectedOrderItemId(null); }}
+                      >
+                        <option value="">-- choose order --</option>
+                        {pendingOrders.map(o => (
+                          <option key={o.id} value={o.id}>{o.order_number || o.id}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {selectedOrderId && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Select Matching Order Line</label>
+                        <select
+                          className="mt-1 w-full border rounded px-2 py-2 text-sm"
+                          value={selectedOrderItemId ?? ''}
+                          onChange={e => setSelectedOrderItemId(Number(e.target.value))}
+                        >
+                          <option value="">-- choose line item --</option>
+                          {selectedOrder?.items.map(line => (
+                            <option
+                              key={line.id}
+                              value={line.id}
+                              disabled={line.is_fully_assigned}
+                            >
+                              {line.product_name} • {line.units_assigned}/{line.quantity} assigned
+                              {line.is_fully_assigned ? ' (Full)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedOrderItemId && (
+                          <p className="text-xs text-gray-600">
+                            Linking this physical unit to the selected order line on checkout.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {fulfillmentError && <p className="text-xs text-red-600">{fulfillmentError}</p>}
+                    {fulfillmentMessage && <p className="text-xs text-green-600">{fulfillmentMessage}</p>}
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium">Notes</label>
               <Input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Optional notes" />

@@ -550,12 +550,20 @@ class ItemTrackingViewSet(viewsets.ReadOnlyModelViewSet):
     def checkout(self, request, pk=None):
         """
         Checkout an item and mark it as in transit.
+        Optionally link to an order for fulfillment tracking.
         
         POST /crm-api/items/{id}/checkout/
         Body: {
             "destination_location": "warehouse|customer|technician|manufacturer|retail|outsourced|disposed",
-            "notes": "Optional notes"
+            "notes": "Optional notes",
+            "order_item_id": 123  // Optional: Link to OrderItem for fulfillment
         }
+        
+        If order_item_id is provided:
+        - Validates that product SKU matches the ordered product
+        - Links the physical item to the order line item
+        - Updates fulfillment tracking (units_assigned counter)
+        - Returns validation error if SKU mismatch
         """
         item = self.get_object()
         destination = request.data.get('destination_location')
@@ -563,16 +571,32 @@ class ItemTrackingViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'error': 'destination_location is required'}, status=status.HTTP_400_BAD_REQUEST)
         if destination not in SerializedItem.Location.values:
             return Response({'error': 'Invalid destination_location'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        order_item_id = request.data.get('order_item_id')
+        
         try:
             history = ItemTrackingService.checkout_item(
                 item=item,
                 destination_location=destination,
                 transferred_by=request.user,
-                notes=request.data.get('notes', '')
+                notes=request.data.get('notes', ''),
+                order_item_id=order_item_id
             )
+            
+            # Include fulfillment info in response if order linked
+            response_data = ItemLocationHistorySerializer(history).data
+            if order_item_id and item.order_item:
+                response_data['fulfillment'] = {
+                    'order_number': item.order_item.order.order_number,
+                    'product_name': item.order_item.product.name,
+                    'units_assigned': item.order_item.units_assigned,
+                    'quantity_ordered': item.order_item.quantity,
+                    'is_fully_assigned': item.order_item.is_fully_assigned
+                }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(ItemLocationHistorySerializer(history).data, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['post'], url_path='checkin')
     def checkin(self, request, pk=None):

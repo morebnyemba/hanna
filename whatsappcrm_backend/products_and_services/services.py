@@ -384,29 +384,89 @@ class ItemTrackingService:
         item: SerializedItem,
         destination_location: str,
         transferred_by: Optional[User] = None,
-        notes: str = ""
+        notes: str = "",
+        order_item_id: Optional[int] = None,
+        related_order=None
     ) -> ItemLocationHistory:
         """
         Checkout an item from its current location and mark it as in transit.
         Destination is recorded in notes until the item is checked in.
+        
+        Args:
+            item: The SerializedItem to checkout
+            destination_location: Where the item is heading
+            transferred_by: User initiating the checkout
+            notes: Additional notes
+            order_item_id: Optional OrderItem ID to link this physical unit to an order
+            related_order: Optional Order object for history tracking
+            
+        Returns:
+            ItemLocationHistory record
+            
+        Raises:
+            ValueError: If SKU doesn't match when order_item_id provided
         """
         if destination_location not in SerializedItem.Location.values:
             raise ValueError("Invalid destination location")
+        
+        # If linking to an order, validate SKU and update fulfillment
+        if order_item_id:
+            from customer_data.models import OrderItem
+            try:
+                order_item = OrderItem.objects.select_related('product', 'order').get(id=order_item_id)
+                
+                # SKU Validation: Ensure the scanned item matches the ordered product
+                if item.product.sku != order_item.product.sku:
+                    raise ValueError(
+                        f"Product SKU mismatch! Expected: {order_item.product.sku} "
+                        f"({order_item.product.name}), but scanned: {item.product.sku} "
+                        f"({item.product.name})"
+                    )
+                
+                # Check if already fully assigned
+                if order_item.is_fully_assigned:
+                    raise ValueError(
+                        f"Order item already fully assigned ({order_item.units_assigned}/{order_item.quantity} units)"
+                    )
+                
+                # Link the SerializedItem to the OrderItem
+                item.order_item = order_item
+                
+                # Update fulfillment tracking
+                order_item.units_assigned += 1
+                if order_item.units_assigned >= order_item.quantity:
+                    order_item.is_fully_assigned = True
+                order_item.save(update_fields=['units_assigned', 'is_fully_assigned'])
+                
+                # Use the order from the order_item if not provided
+                if not related_order:
+                    related_order = order_item.order
+                
+                # Add order info to notes
+                notes = (
+                    f"Fulfilling Order #{related_order.order_number} "
+                    f"(Item {order_item.units_assigned}/{order_item.quantity}). {notes}"
+                ).strip()
+                
+            except OrderItem.DoesNotExist:
+                raise ValueError(f"OrderItem with ID {order_item_id} not found")
+        
         history = ItemLocationHistory.objects.create(
             serialized_item=item,
             from_location=item.current_location,
             to_location=SerializedItem.Location.IN_TRANSIT,
             from_holder=item.current_holder,
             to_holder=None,
-            transfer_reason=ItemLocationHistory.TransferReason.TRANSFER,
+            transfer_reason=ItemLocationHistory.TransferReason.SALE if order_item_id else ItemLocationHistory.TransferReason.TRANSFER,
             notes=(notes and f"Heading to {destination_location}. {notes}") or f"Heading to {destination_location}",
-            transferred_by=transferred_by
+            transferred_by=transferred_by,
+            related_order=related_order
         )
         item.current_location = SerializedItem.Location.IN_TRANSIT
         item.current_holder = None
         item.status = SerializedItem.Status.IN_TRANSIT
         item.location_notes = f"En route to {destination_location}"
-        item.save(update_fields=['current_location', 'current_holder', 'status', 'location_notes', 'updated_at'])
+        item.save(update_fields=['current_location', 'current_holder', 'status', 'location_notes', 'order_item', 'updated_at'])
         return history
     
     @staticmethod

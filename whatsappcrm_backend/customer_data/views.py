@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -138,6 +139,77 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsStaffOrReadOnly]
     filterset_fields = ['stage', 'payment_status', 'customer']
     search_fields = ['order_number', 'name', 'notes']
+    
+    @action(detail=False, methods=['get'], url_path='pending-fulfillment')
+    def pending_fulfillment(self, request):
+        """
+        Get orders that have items needing serial number assignment.
+        
+        GET /crm-api/orders/pending-fulfillment/
+        
+        Returns orders with at least one OrderItem where is_fully_assigned=False
+        """
+        from rest_framework.response import Response
+        from django.db.models import Q, Count
+        
+        # Get orders with unfulfilled items
+        orders = Order.objects.prefetch_related('items__product').annotate(
+            unfulfilled_items_count=Count('items', filter=Q(items__is_fully_assigned=False))
+        ).filter(
+            unfulfilled_items_count__gt=0,
+            stage__in=[Order.Stage.CLOSED_WON, Order.Stage.NEGOTIATION]  # Only active orders
+        ).select_related('customer', 'assigned_agent')
+        
+        serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='my')
+    def my_orders(self, request):
+        """Return orders belonging to the authenticated client user."""
+        if not request.user.is_authenticated:
+            return Response([], status=200)
+        # Staff/admin shouldn't use this endpoint
+        if request.user.is_staff or request.user.is_superuser:
+            return Response([], status=200)
+        customer_profile = getattr(request.user, 'customer_profile', None)
+        if not customer_profile:
+            return Response([], status=200)
+        qs = Order.objects.filter(customer=customer_profile).select_related('customer').order_by('-created_at')
+        return Response(OrderSerializer(qs, many=True).data)
+    
+    @action(detail=True, methods=['get'], url_path='fulfillment-status')
+    def fulfillment_status(self, request, pk=None):
+        """
+        Get detailed fulfillment status for a specific order.
+        
+        GET /crm-api/orders/{id}/fulfillment-status/
+        
+        Returns each OrderItem with assigned SerializedItems
+        """
+        from rest_framework.response import Response
+        from products_and_services.models import SerializedItem
+        
+        order = self.get_object()
+        items_data = []
+        
+        for order_item in order.items.select_related('product').prefetch_related('assigned_items').all():
+            assigned_items = order_item.assigned_items.all()
+            items_data.append({
+                'id': order_item.id,
+                'product_sku': order_item.product.sku,
+                'product_name': order_item.product.name,
+                'quantity_ordered': order_item.quantity,
+                'units_assigned': order_item.units_assigned,
+                'is_fully_assigned': order_item.is_fully_assigned,
+                'assigned_serial_numbers': [item.serial_number for item in assigned_items]
+            })
+        
+        return Response({
+            'order_id': order.id,
+            'order_number': order.order_number,
+            'customer': order.customer.get_full_name() if order.customer else None,
+            'items': items_data
+        })
 
 class InstallationRequestViewSet(viewsets.ModelViewSet):
     queryset = InstallationRequest.objects.select_related('customer', 'associated_order').all()
