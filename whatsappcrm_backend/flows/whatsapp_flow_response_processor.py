@@ -43,7 +43,6 @@ class WhatsAppFlowResponseProcessor:
         """
         try:
             with transaction.atomic():
-                # Create the flow response record
                 flow_response = WhatsAppFlowResponse.objects.create(
                     whatsapp_flow=whatsapp_flow,
                     contact=contact,
@@ -51,8 +50,8 @@ class WhatsAppFlowResponseProcessor:
                     response_data=response_data,
                     is_processed=False
                 )
-                
-                # Process based on flow type
+
+                # Map flow name to processor
                 processor_map = {
                     'starlink_installation_whatsapp': WhatsAppFlowResponseProcessor._process_starlink_installation,
                     'solar_cleaning_whatsapp': WhatsAppFlowResponseProcessor._process_solar_cleaning,
@@ -62,17 +61,13 @@ class WhatsAppFlowResponseProcessor:
                     'site_inspection_whatsapp': WhatsAppFlowResponseProcessor._process_site_inspection,
                     'loan_application_whatsapp': WhatsAppFlowResponseProcessor._process_loan_application,
                 }
-                
                 processor = processor_map.get(whatsapp_flow.name)
-                
                 if processor:
                     success, notes = processor(flow_response, contact, response_data)
-                    
                     flow_response.is_processed = success
                     flow_response.processing_notes = notes
                     flow_response.processed_at = timezone.now() if success else None
                     flow_response.save()
-                    
                     if success:
                         logger.info(f"Successfully processed flow response {flow_response.id} for {whatsapp_flow.name}")
                     else:
@@ -81,33 +76,10 @@ class WhatsAppFlowResponseProcessor:
                     flow_response.processing_notes = f"No processor found for flow: {whatsapp_flow.name}"
                     flow_response.save()
                     logger.warning(f"No processor for flow {whatsapp_flow.name}")
-                
-                @staticmethod
-                def _process_starlink_installation(flow_response: WhatsAppFlowResponse, contact: Contact, response_data: Dict[str, Any]) -> tuple[bool, str]:
-                    # ...existing code for starlink...
-                    pass
-            
-            return True, notes
-            
+                return flow_response
         except Exception as e:
-            error_msg = f"Error creating solar cleaning request: {e}"
-            logger.error(error_msg, exc_info=True)
-            return False, error_msg
-    
-    @staticmethod
-    def _process_solar_installation(flow_response: WhatsAppFlowResponse, 
-                                    contact: Contact, 
-                                    response_data: Dict[str, Any]) -> tuple[bool, str]:
-        """
-        Process solar installation flow response.
-        
-        Returns:
-            tuple: (success: bool, notes: str)
-        """
-        try:
-            data = response_data.get('data', response_data)
-            
-            installation_type = data.get('installation_type', 'residential')
+            logger.error(f"Error processing flow response: {e}", exc_info=True)
+            return None
             order_number = data.get('order_number', '')
             branch = data.get('branch', '')
             sales_person = data.get('sales_person', '')
