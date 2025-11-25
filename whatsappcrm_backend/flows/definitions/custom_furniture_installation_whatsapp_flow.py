@@ -105,9 +105,9 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                             "name": "navigate",
                             "next": {"type": "screen", "name": "CONTACT_INFO"},
                             "payload": {
-                                "order_number": "${form.order_number}",
-                                "furniture_type": "${form.furniture_type}",
-                                "specifications": "${form.specifications}",
+                                "order_number": "${data.order_number}",
+                                "furniture_type": "${data.furniture_type}",
+                                "specifications": "${data.specifications}",
                                    "full_name": "${data.full_name}",
                                 "contact_phone": "${data.contact_phone}",
                                 "alt_contact_name": "${data.alt_contact_name}",
@@ -180,9 +180,9 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "furniture_type": "${data.furniture_type}",
                                 "specifications": "${data.specifications}",
                                    "full_name": "${data.full_name}",
-                                "contact_phone": "${form.contact_phone}",
-                                "alt_contact_name": "${form.alt_contact_name}",
-                                "alt_contact_phone": "${form.alt_contact_phone}",
+                                "contact_phone": "${data.contact_phone}",
+                                "alt_contact_name": "${data.alt_contact_name}",
+                                "alt_contact_phone": "${data.alt_contact_phone}",
                                 "preferred_date": "${data.preferred_date}",
                                 "availability": "${data.availability}",
                                 "address": "${data.address}"
@@ -251,8 +251,8 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "contact_phone": "${data.contact_phone}",
                                 "alt_contact_name": "${data.alt_contact_name}",
                                 "alt_contact_phone": "${data.alt_contact_phone}",
-                                "preferred_date": "${form.preferred_date}",
-                                "availability": "${form.availability}",
+                                "preferred_date": "${data.preferred_date}",
+                                "availability": "${data.availability}",
                                 "address": "${data.address}"
                             }
                         }
