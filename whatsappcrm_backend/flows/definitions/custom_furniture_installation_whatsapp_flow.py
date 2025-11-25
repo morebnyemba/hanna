@@ -258,7 +258,9 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                         }
                     }
                 ]
-            }
+            },
+            "terminal": True,
+            "success": True
         }
     ]
 }
