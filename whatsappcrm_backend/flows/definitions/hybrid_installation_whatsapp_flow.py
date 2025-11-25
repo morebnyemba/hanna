@@ -84,7 +84,7 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "order_number",
                                 "label": "Order Number (if applicable)",
                                 "input-type": "text",
-                                "required": false,
+                                "required": False,
                                 "helper-text": "Enter your order number or leave blank"
                             },
                             {
@@ -92,14 +92,14 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "branch",
                                 "label": "Branch",
                                 "input-type": "text",
-                                "required": true
+                                "required": True
                             },
                             {
                                 "type": "TextInput",
                                 "name": "sales_person",
                                 "label": "Sales Person Name",
                                 "input-type": "text",
-                                "required": true
+                                "required": True
                             }
                         ]
                     },
@@ -159,21 +159,21 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "full_name",
                                 "label": "Full Name",
                                 "input-type": "text",
-                                "required": true
+                                "required": True
                             },
                             {
                                 "type": "TextInput",
                                 "name": "contact_phone",
                                 "label": "Contact Phone Number",
                                 "input-type": "phone",
-                                "required": true
+                                "required": True
                             },
                             {
                                 "type": "TextInput",
                                 "name": "alt_contact_name",
                                 "label": "Alternative Contact Name",
                                 "input-type": "text",
-                                "required": false,
+                                "required": False,
                                 "helper-text": "Enter alternative contact or N/A"
                             },
                             {
@@ -181,7 +181,7 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "alt_contact_phone",
                                 "label": "Alternative Contact Number",
                                 "input-type": "phone",
-                                "required": false,
+                                "required": False,
                                 "helper-text": "Enter alternative number or N/A"
                             }
                         ]
@@ -245,7 +245,7 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                                 "type": "Dropdown",
                                 "name": "starlink_kit_type",
                                 "label": "Starlink Kit Type",
-                                "required": true,
+                                "required": True,
                                 "data-source": [
                                     {"id": "standard", "title": "Standard Kit"},
                                     {"id": "high_performance", "title": "High Performance"},
@@ -257,14 +257,14 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "solar_capacity",
                                 "label": "Solar System Capacity (e.g., 5kVA, 10kVA)",
                                 "input-type": "text",
-                                "required": true
+                                "required": True
                             },
                             {
                                 "type": "TextInput",
                                 "name": "mount_location",
                                 "label": "Preferred Mount Location",
                                 "input-type": "text",
-                                "required": true,
+                                "required": True,
                                 "helper-text": "e.g., Roof, Wall, Ground"
                             }
                         ]
@@ -324,13 +324,13 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                                 "type": "DatePicker",
                                 "name": "preferred_date",
                                 "label": "Preferred Installation Date",
-                                "required": true
+                                "required": True
                             },
                             {
                                 "type": "Dropdown",
                                 "name": "availability",
                                 "label": "Preferred Time",
-                                "required": true,
+                                "required": True,
                                 "data-source": [
                                     {"id": "morning", "title": "Morning (8AM - 12PM)"},
                                     {"id": "afternoon", "title": "Afternoon (12PM - 5PM)"}
@@ -340,7 +340,7 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                                 "type": "TextArea",
                                 "name": "address",
                                 "label": "Installation Address",
-                                "required": true,
+                                "required": True,
                                 "helper-text": "Full physical address"
                             }
                         ]

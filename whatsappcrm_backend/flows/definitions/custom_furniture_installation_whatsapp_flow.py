@@ -77,14 +77,14 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "order_number",
                                 "label": "Order Number (if applicable)",
                                 "input-type": "text",
-                                "required": false,
+                                "required": False,
                                 "helper-text": "Enter your order number or leave blank"
                             },
                             {
                                 "type": "Dropdown",
                                 "name": "furniture_type",
                                 "label": "Furniture Type",
-                                "required": true,
+                                "required": True,
                                 "data-source": [
                                     {"id": "kitchen_cabinets", "title": "Kitchen Cabinets"},
                                     {"id": "bedroom_suite", "title": "Bedroom Suite"},
@@ -99,7 +99,7 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "type": "TextArea",
                                 "name": "specifications",
                                 "label": "Specifications/Details",
-                                "required": false,
+                                "required": False,
                                 "helper-text": "Any special requirements or details about the furniture"
                             }
                         ]
@@ -154,21 +154,21 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "full_name",
                                 "label": "Full Name",
                                 "input-type": "text",
-                                "required": true
+                                "required": True
                             },
                             {
                                 "type": "TextInput",
                                 "name": "contact_phone",
                                 "label": "Contact Phone Number",
                                 "input-type": "phone",
-                                "required": true
+                                "required": True
                             },
                             {
                                 "type": "TextInput",
                                 "name": "alt_contact_name",
                                 "label": "Alternative Contact Name",
                                 "input-type": "text",
-                                "required": false,
+                                "required": False,
                                 "helper-text": "Enter alternative contact or N/A"
                             },
                             {
@@ -176,7 +176,7 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "name": "alt_contact_phone",
                                 "label": "Alternative Contact Number",
                                 "input-type": "phone",
-                                "required": false,
+                                "required": False,
                                 "helper-text": "Enter alternative number or N/A"
                             }
                         ]
@@ -230,13 +230,13 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "type": "DatePicker",
                                 "name": "preferred_date",
                                 "label": "Preferred Installation Date",
-                                "required": true
+                                "required": True
                             },
                             {
                                 "type": "Dropdown",
                                 "name": "availability",
                                 "label": "Preferred Time",
-                                "required": true,
+                                "required": True,
                                 "data-source": [
                                     {"id": "morning", "title": "Morning (8AM - 12PM)"},
                                     {"id": "afternoon", "title": "Afternoon (12PM - 5PM)"},
@@ -247,7 +247,7 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "type": "TextArea",
                                 "name": "address",
                                 "label": "Delivery/Installation Address",
-                                "required": true,
+                                "required": True,
                                 "helper-text": "Full physical address where furniture will be delivered/installed"
                             }
                         ]
