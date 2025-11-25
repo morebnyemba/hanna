@@ -81,6 +81,19 @@ WhatsAppFlow.objects.filter(sync_status='published').values_list('name', 'friend
 7. **Share location**: Use WhatsApp's location sharing feature
 8. **Verify confirmation**: Bot should confirm location saved
 
+## Common Issues Fixed
+
+### ✅ Python Boolean Syntax
+- Fixed: `"required": false` → `"required": False`
+- Fixed: `"required": true` → `"required": True`
+- Python requires capitalized boolean literals
+
+### ✅ Meta Flow JSON Validation
+- **Issue**: Form wrappers not supported in WhatsApp Flows v7.3
+- **Fixed**: Removed all `"type": "Form"` wrapper objects
+- **Result**: Input components now direct children of layout
+- All working flows (starlink, solar, etc.) don't use Form wrappers
+
 ## Troubleshooting
 
 ### If migrations fail:
