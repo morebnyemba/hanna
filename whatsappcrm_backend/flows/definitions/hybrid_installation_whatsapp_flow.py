@@ -76,32 +76,26 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                 "type": "SingleColumnLayout",
                 "children": [
                     {
-                        "type": "Form",
-                        "name": "order_form",
-                        "children": [
-                            {
-                                "type": "TextInput",
-                                "name": "order_number",
-                                "label": "Order Number (if applicable)",
-                                "input-type": "text",
-                                "required": False,
-                                "helper-text": "Enter your order number or leave blank"
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "branch",
-                                "label": "Branch",
-                                "input-type": "text",
-                                "required": True
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "sales_person",
-                                "label": "Sales Person Name",
-                                "input-type": "text",
-                                "required": True
-                            }
-                        ]
+                        "type": "TextInput",
+                        "name": "order_number",
+                        "label": "Order Number (if applicable)",
+                        "input-type": "text",
+                        "required": False,
+                        "helper-text": "Enter your order number or leave blank"
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "branch",
+                        "label": "Branch",
+                        "input-type": "text",
+                        "required": True
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "sales_person",
+                        "label": "Sales Person Name",
+                        "input-type": "text",
+                        "required": True
                     },
                     {
                         "type": "Footer",
@@ -151,40 +145,34 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                 "type": "SingleColumnLayout",
                 "children": [
                     {
-                        "type": "Form",
-                        "name": "contact_form",
-                        "children": [
-                            {
-                                "type": "TextInput",
-                                "name": "full_name",
-                                "label": "Full Name",
-                                "input-type": "text",
-                                "required": True
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "contact_phone",
-                                "label": "Contact Phone Number",
-                                "input-type": "phone",
-                                "required": True
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "alt_contact_name",
-                                "label": "Alternative Contact Name",
-                                "input-type": "text",
-                                "required": False,
-                                "helper-text": "Enter alternative contact or N/A"
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "alt_contact_phone",
-                                "label": "Alternative Contact Number",
-                                "input-type": "phone",
-                                "required": False,
-                                "helper-text": "Enter alternative number or N/A"
-                            }
-                        ]
+                        "type": "TextInput",
+                        "name": "full_name",
+                        "label": "Full Name",
+                        "input-type": "text",
+                        "required": True
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "contact_phone",
+                        "label": "Contact Phone Number",
+                        "input-type": "phone",
+                        "required": True
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "alt_contact_name",
+                        "label": "Alternative Contact Name",
+                        "input-type": "text",
+                        "required": False,
+                        "helper-text": "Enter alternative contact or N/A"
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "alt_contact_phone",
+                        "label": "Alternative Contact Number",
+                        "input-type": "phone",
+                        "required": False,
+                        "helper-text": "Enter alternative number or N/A"
                     },
                     {
                         "type": "Footer",
@@ -238,36 +226,30 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                         "text": "System Details"
                     },
                     {
-                        "type": "Form",
-                        "name": "installation_form",
-                        "children": [
-                            {
-                                "type": "Dropdown",
-                                "name": "starlink_kit_type",
-                                "label": "Starlink Kit Type",
-                                "required": True,
-                                "data-source": [
-                                    {"id": "standard", "title": "Standard Kit"},
-                                    {"id": "high_performance", "title": "High Performance"},
-                                    {"id": "roam", "title": "Roam Kit"}
-                                ]
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "solar_capacity",
-                                "label": "Solar System Capacity (e.g., 5kVA, 10kVA)",
-                                "input-type": "text",
-                                "required": True
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "mount_location",
-                                "label": "Preferred Mount Location",
-                                "input-type": "text",
-                                "required": True,
-                                "helper-text": "e.g., Roof, Wall, Ground"
-                            }
+                        "type": "Dropdown",
+                        "name": "starlink_kit_type",
+                        "label": "Starlink Kit Type",
+                        "required": True,
+                        "data-source": [
+                            {"id": "standard", "title": "Standard Kit"},
+                            {"id": "high_performance", "title": "High Performance"},
+                            {"id": "roam", "title": "Roam Kit"}
                         ]
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "solar_capacity",
+                        "label": "Solar System Capacity (e.g., 5kVA, 10kVA)",
+                        "input-type": "text",
+                        "required": True
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "mount_location",
+                        "label": "Preferred Mount Location",
+                        "input-type": "text",
+                        "required": True,
+                        "helper-text": "e.g., Roof, Wall, Ground"
                     },
                     {
                         "type": "Footer",
@@ -317,33 +299,27 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                 "type": "SingleColumnLayout",
                 "children": [
                     {
-                        "type": "Form",
-                        "name": "schedule_form",
-                        "children": [
-                            {
-                                "type": "DatePicker",
-                                "name": "preferred_date",
-                                "label": "Preferred Installation Date",
-                                "required": True
-                            },
-                            {
-                                "type": "Dropdown",
-                                "name": "availability",
-                                "label": "Preferred Time",
-                                "required": True,
-                                "data-source": [
-                                    {"id": "morning", "title": "Morning (8AM - 12PM)"},
-                                    {"id": "afternoon", "title": "Afternoon (12PM - 5PM)"}
-                                ]
-                            },
-                            {
-                                "type": "TextArea",
-                                "name": "address",
-                                "label": "Installation Address",
-                                "required": True,
-                                "helper-text": "Full physical address"
-                            }
+                        "type": "DatePicker",
+                        "name": "preferred_date",
+                        "label": "Preferred Installation Date",
+                        "required": True
+                    },
+                    {
+                        "type": "Dropdown",
+                        "name": "availability",
+                        "label": "Preferred Time",
+                        "required": True,
+                        "data-source": [
+                            {"id": "morning", "title": "Morning (8AM - 12PM)"},
+                            {"id": "afternoon", "title": "Afternoon (12PM - 5PM)"}
                         ]
+                    },
+                    {
+                        "type": "TextArea",
+                        "name": "address",
+                        "label": "Installation Address",
+                        "required": True,
+                        "helper-text": "Full physical address"
                     },
                     {
                         "type": "TextBody",

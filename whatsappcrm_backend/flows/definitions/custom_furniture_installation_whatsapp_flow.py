@@ -69,40 +69,34 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                 "type": "SingleColumnLayout",
                 "children": [
                     {
-                        "type": "Form",
-                        "name": "order_form",
-                        "children": [
-                            {
-                                "type": "TextInput",
-                                "name": "order_number",
-                                "label": "Order Number (if applicable)",
-                                "input-type": "text",
-                                "required": False,
-                                "helper-text": "Enter your order number or leave blank"
-                            },
-                            {
-                                "type": "Dropdown",
-                                "name": "furniture_type",
-                                "label": "Furniture Type",
-                                "required": True,
-                                "data-source": [
-                                    {"id": "kitchen_cabinets", "title": "Kitchen Cabinets"},
-                                    {"id": "bedroom_suite", "title": "Bedroom Suite"},
-                                    {"id": "office_furniture", "title": "Office Furniture"},
-                                    {"id": "living_room", "title": "Living Room Set"},
-                                    {"id": "dining_set", "title": "Dining Set"},
-                                    {"id": "wardrobes", "title": "Wardrobes"},
-                                    {"id": "custom_other", "title": "Other Custom Furniture"}
-                                ]
-                            },
-                            {
-                                "type": "TextArea",
-                                "name": "specifications",
-                                "label": "Specifications/Details",
-                                "required": False,
-                                "helper-text": "Any special requirements or details about the furniture"
-                            }
+                        "type": "TextInput",
+                        "name": "order_number",
+                        "label": "Order Number (if applicable)",
+                        "input-type": "text",
+                        "required": False,
+                        "helper-text": "Enter your order number or leave blank"
+                    },
+                    {
+                        "type": "Dropdown",
+                        "name": "furniture_type",
+                        "label": "Furniture Type",
+                        "required": True,
+                        "data-source": [
+                            {"id": "kitchen_cabinets", "title": "Kitchen Cabinets"},
+                            {"id": "bedroom_suite", "title": "Bedroom Suite"},
+                            {"id": "office_furniture", "title": "Office Furniture"},
+                            {"id": "living_room", "title": "Living Room Set"},
+                            {"id": "dining_set", "title": "Dining Set"},
+                            {"id": "wardrobes", "title": "Wardrobes"},
+                            {"id": "custom_other", "title": "Other Custom Furniture"}
                         ]
+                    },
+                    {
+                        "type": "TextArea",
+                        "name": "specifications",
+                        "label": "Specifications/Details",
+                        "required": False,
+                        "helper-text": "Any special requirements or details about the furniture"
                     },
                     {
                         "type": "Footer",
@@ -146,40 +140,34 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                 "type": "SingleColumnLayout",
                 "children": [
                     {
-                        "type": "Form",
-                        "name": "contact_form",
-                        "children": [
-                            {
-                                "type": "TextInput",
-                                "name": "full_name",
-                                "label": "Full Name",
-                                "input-type": "text",
-                                "required": True
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "contact_phone",
-                                "label": "Contact Phone Number",
-                                "input-type": "phone",
-                                "required": True
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "alt_contact_name",
-                                "label": "Alternative Contact Name",
-                                "input-type": "text",
-                                "required": False,
-                                "helper-text": "Enter alternative contact or N/A"
-                            },
-                            {
-                                "type": "TextInput",
-                                "name": "alt_contact_phone",
-                                "label": "Alternative Contact Number",
-                                "input-type": "phone",
-                                "required": False,
-                                "helper-text": "Enter alternative number or N/A"
-                            }
-                        ]
+                        "type": "TextInput",
+                        "name": "full_name",
+                        "label": "Full Name",
+                        "input-type": "text",
+                        "required": True
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "contact_phone",
+                        "label": "Contact Phone Number",
+                        "input-type": "phone",
+                        "required": True
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "alt_contact_name",
+                        "label": "Alternative Contact Name",
+                        "input-type": "text",
+                        "required": False,
+                        "helper-text": "Enter alternative contact or N/A"
+                    },
+                    {
+                        "type": "TextInput",
+                        "name": "alt_contact_phone",
+                        "label": "Alternative Contact Number",
+                        "input-type": "phone",
+                        "required": False,
+                        "helper-text": "Enter alternative number or N/A"
                     },
                     {
                         "type": "Footer",
@@ -223,34 +211,28 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                 "type": "SingleColumnLayout",
                 "children": [
                     {
-                        "type": "Form",
-                        "name": "schedule_form",
-                        "children": [
-                            {
-                                "type": "DatePicker",
-                                "name": "preferred_date",
-                                "label": "Preferred Installation Date",
-                                "required": True
-                            },
-                            {
-                                "type": "Dropdown",
-                                "name": "availability",
-                                "label": "Preferred Time",
-                                "required": True,
-                                "data-source": [
-                                    {"id": "morning", "title": "Morning (8AM - 12PM)"},
-                                    {"id": "afternoon", "title": "Afternoon (12PM - 5PM)"},
-                                    {"id": "full_day", "title": "Full Day (8AM - 5PM)"}
-                                ]
-                            },
-                            {
-                                "type": "TextArea",
-                                "name": "address",
-                                "label": "Delivery/Installation Address",
-                                "required": True,
-                                "helper-text": "Full physical address where furniture will be delivered/installed"
-                            }
+                        "type": "DatePicker",
+                        "name": "preferred_date",
+                        "label": "Preferred Installation Date",
+                        "required": True
+                    },
+                    {
+                        "type": "Dropdown",
+                        "name": "availability",
+                        "label": "Preferred Time",
+                        "required": True,
+                        "data-source": [
+                            {"id": "morning", "title": "Morning (8AM - 12PM)"},
+                            {"id": "afternoon", "title": "Afternoon (12PM - 5PM)"},
+                            {"id": "full_day", "title": "Full Day (8AM - 5PM)"}
                         ]
+                    },
+                    {
+                        "type": "TextArea",
+                        "name": "address",
+                        "label": "Delivery/Installation Address",
+                        "required": True,
+                        "helper-text": "Full physical address where furniture will be delivered/installed"
                     },
                     {
                         "type": "TextBody",
