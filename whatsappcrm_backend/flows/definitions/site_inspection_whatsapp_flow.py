@@ -2,11 +2,11 @@
 
 """
 WhatsApp Flow JSON definition for Site Assessment/Inspection Request.
-This is a conversion of the traditional flow to WhatsApp's interactive flow format.
+This now includes assessment_type selection via dropdown to align with legacy message flow.
 """
 
 SITE_INSPECTION_WHATSAPP_FLOW = {
-    "version": "7.3",
+    "version": "7.4",
     "screens": [
         {
             "id": "WELCOME",
@@ -31,6 +31,10 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                 "assessment_contact_info": {
                     "type": "string",
                     "__example__": "+263771234567"
+                },
+                "assessment_type": {
+                    "type": "string",
+                    "__example__": "starlink"
                 }
             },
             "layout": {
@@ -42,7 +46,7 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                     },
                     {
                         "type": "TextBody",
-                        "text": "Let's schedule a site assessment for your solar installation. We'll need a few details to process your request."
+                        "text": "Let's schedule a site assessment. First, select what type of assessment you need."
                     },
                     {
                         "type": "Footer",
@@ -51,14 +55,101 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                             "name": "navigate",
                             "next": {
                                 "type": "screen",
-                                "name": "PERSONAL_INFO"
+                                "name": "ASSESSMENT_TYPE"
                             },
                             "payload": {
                                 "assessment_full_name": "",
                                 "assessment_preferred_day": "",
                                 "assessment_company_name": "",
                                 "assessment_address": "",
-                                "assessment_contact_info": ""
+                                "assessment_contact_info": "",
+                                "assessment_type": ""
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": "ASSESSMENT_TYPE",
+            "title": "Assessment Type",
+            "data": {
+                "assessment_full_name": {
+                    "type": "string",
+                    "__example__": "Jane Doe"
+                },
+                "assessment_preferred_day": {
+                    "type": "string",
+                    "__example__": "Monday, December 25th"
+                },
+                "assessment_company_name": {
+                    "type": "string",
+                    "__example__": "ABC Company"
+                },
+                "assessment_address": {
+                    "type": "string",
+                    "__example__": "123 Main Street, Harare"
+                },
+                "assessment_contact_info": {
+                    "type": "string",
+                    "__example__": "+263771234567"
+                },
+                "assessment_type": {
+                    "type": "string",
+                    "__example__": "starlink"
+                }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "TextHeading",
+                        "text": "What type of assessment do you need?"
+                    },
+                    {
+                        "type": "RadioButtonsGroup",
+                        "name": "assessment_type",
+                        "label": "Assessment Type",
+                        "required": True,
+                        "data-source": [
+                            {
+                                "id": "starlink",
+                                "title": "Starlink Installation"
+                            },
+                            {
+                                "id": "commercial_solar",
+                                "title": "Commercial Solar System"
+                            },
+                            {
+                                "id": "hybrid_starlink_solar",
+                                "title": "Hybrid (Starlink + Solar)"
+                            },
+                            {
+                                "id": "custom_furniture",
+                                "title": "Custom Furniture"
+                            },
+                            {
+                                "id": "other",
+                                "title": "Other"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Footer",
+                        "label": "Continue",
+                        "on-click-action": {
+                            "name": "navigate",
+                            "next": {
+                                "type": "screen",
+                                "name": "PERSONAL_INFO"
+                            },
+                            "payload": {
+                                "assessment_full_name": "${data.assessment_full_name}",
+                                "assessment_preferred_day": "${data.assessment_preferred_day}",
+                                "assessment_company_name": "${data.assessment_company_name}",
+                                "assessment_address": "${data.assessment_address}",
+                                "assessment_contact_info": "${data.assessment_contact_info}",
+                                "assessment_type": "${form.assessment_type}"
                             }
                         }
                     }
@@ -88,6 +179,10 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                 "assessment_contact_info": {
                     "type": "string",
                     "__example__": "+263771234567"
+                },
+                "assessment_type": {
+                    "type": "string",
+                    "__example__": "commercial_solar"
                 }
             },
             "layout": {
@@ -125,7 +220,8 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                                 "assessment_preferred_day": "${form.assessment_preferred_day}",
                                 "assessment_company_name": "${data.assessment_company_name}",
                                 "assessment_address": "${data.assessment_address}",
-                                "assessment_contact_info": "${data.assessment_contact_info}"
+                                "assessment_contact_info": "${data.assessment_contact_info}",
+                                "assessment_type": "${data.assessment_type}"
                             }
                         }
                     }
@@ -155,6 +251,10 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                 "assessment_contact_info": {
                     "type": "string",
                     "__example__": "+263771234567"
+                },
+                "assessment_type": {
+                    "type": "string",
+                    "__example__": "hybrid_starlink_solar"
                 }
             },
             "layout": {
@@ -168,7 +268,7 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                         "type": "TextInput",
                         "name": "assessment_company_name",
                         "label": "Company Name",
-                        "required": True,
+                        "required": False,
                         "input-type": "text",
                         "helper-text": "Enter N/A if not applicable"
                     },
@@ -186,7 +286,8 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                                 "assessment_preferred_day": "${data.assessment_preferred_day}",
                                 "assessment_company_name": "${form.assessment_company_name}",
                                 "assessment_address": "${data.assessment_address}",
-                                "assessment_contact_info": "${data.assessment_contact_info}"
+                                "assessment_contact_info": "${data.assessment_contact_info}",
+                                "assessment_type": "${data.assessment_type}"
                             }
                         }
                     }
@@ -216,6 +317,10 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                 "assessment_contact_info": {
                     "type": "string",
                     "__example__": "+263771234567"
+                },
+                "assessment_type": {
+                    "type": "string",
+                    "__example__": "custom_furniture"
                 }
             },
             "layout": {
@@ -247,7 +352,8 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                                 "assessment_preferred_day": "${data.assessment_preferred_day}",
                                 "assessment_company_name": "${data.assessment_company_name}",
                                 "assessment_address": "${form.assessment_address}",
-                                "assessment_contact_info": "${data.assessment_contact_info}"
+                                "assessment_contact_info": "${data.assessment_contact_info}",
+                                "assessment_type": "${data.assessment_type}"
                             }
                         }
                     }
@@ -277,6 +383,10 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                 "assessment_contact_info": {
                     "type": "string",
                     "__example__": "+263771234567"
+                },
+                "assessment_type": {
+                    "type": "string",
+                    "__example__": "starlink"
                 }
             },
             "layout": {
@@ -308,7 +418,8 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
                                 "assessment_preferred_day": "${data.assessment_preferred_day}",
                                 "assessment_company_name": "${data.assessment_company_name}",
                                 "assessment_address": "${data.assessment_address}",
-                                "assessment_contact_info": "${form.assessment_contact_info}"
+                                "assessment_contact_info": "${form.assessment_contact_info}",
+                                "assessment_type": "${data.assessment_type}"
                             }
                         }
                     }
@@ -320,12 +431,11 @@ SITE_INSPECTION_WHATSAPP_FLOW = {
     ]
 }
 
-
 # Metadata for the flow
 SITE_INSPECTION_FLOW_METADATA = {
     "name": "site_inspection_whatsapp",
     "friendly_name": "Site Assessment Request (Interactive)",
-    "description": "Interactive WhatsApp flow for requesting site assessments for solar installations",
+    "description": "Interactive WhatsApp flow for requesting site assessments (with type selection)",
     "trigger_keywords": ["site assessment", "assessment", "book assessment", "site inspection"],
     "is_active": True
 }

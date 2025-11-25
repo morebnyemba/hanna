@@ -376,24 +376,34 @@ class WhatsAppFlowResponseProcessor:
     def _process_site_inspection(flow_response: WhatsAppFlowResponse, 
                                  contact: Contact, 
                                  response_data: Dict[str, Any]) -> tuple[bool, str]:
-        """
-        Process site inspection/assessment flow response.
-        
-        Returns:
-            tuple: (success: bool, notes: str)
-        """
+        """Process site inspection/assessment flow response, now including assessment_type.
+        Returns: (success, notes)"""
         try:
             data = response_data.get('data', response_data)
-            
-            assessment_full_name = data.get('assessment_full_name', '')
-            assessment_preferred_day = data.get('assessment_preferred_day', '')
-            assessment_company_name = data.get('assessment_company_name', '')
-            assessment_address = data.get('assessment_address', '')
-            assessment_contact_info = data.get('assessment_contact_info', '')
-            
+
+            assessment_full_name = data.get('assessment_full_name', '').strip()
+            assessment_preferred_day = data.get('assessment_preferred_day', '').strip()
+            assessment_company_name = data.get('assessment_company_name', '').strip()
+            assessment_address = data.get('assessment_address', '').strip()
+            assessment_contact_info = data.get('assessment_contact_info', '').strip()
+            raw_assessment_type = data.get('assessment_type', '').strip().lower()
+
             if not all([assessment_full_name, assessment_address, assessment_contact_info]):
                 return False, "Missing required fields: full_name, address, or contact_info"
-            
+
+            # Normalize assessment type to model choices
+            type_map = {
+                'starlink': 'starlink',
+                'commercial_solar': 'commercial_solar',
+                'commercial': 'commercial_solar',
+                'solar': 'commercial_solar',
+                'hybrid_starlink_solar': 'hybrid_starlink_solar',
+                'hybrid': 'hybrid_starlink_solar',
+                'custom_furniture': 'custom_furniture',
+                'furniture': 'custom_furniture'
+            }
+            assessment_type = type_map.get(raw_assessment_type, 'other')
+
             # Get or create customer profile
             customer_profile, _ = CustomerProfile.objects.get_or_create(
                 contact=contact,
@@ -402,11 +412,11 @@ class WhatsAppFlowResponseProcessor:
                     'last_name': ' '.join(assessment_full_name.split()[1:]) if len(assessment_full_name.split()) > 1 else '',
                 }
             )
-            
-            # Generate assessment ID
+
+            # Generate assessment ID (consider longer length if collisions observed)
             raw_id = uuid.uuid4().hex[:5].upper()
             assessment_id = f"SA-{raw_id}"
-            
+
             # Create site assessment request
             assessment_request = SiteAssessmentRequest.objects.create(
                 customer=customer_profile,
@@ -416,40 +426,39 @@ class WhatsAppFlowResponseProcessor:
                 address=assessment_address,
                 contact_info=assessment_contact_info,
                 preferred_day=assessment_preferred_day,
+                assessment_type=assessment_type,
                 status='pending'
             )
-            
-            notes = f"Created SiteAssessmentRequest {assessment_request.id} with ID {assessment_id}"
+
+            notes = f"Created SiteAssessmentRequest {assessment_request.id} ({assessment_type}) with ID {assessment_id}"
             logger.info(notes)
-            
-            # Send personalized confirmation message
+
+            # Confirmation message
             confirmation_message = (
                 f"Thank you, {assessment_full_name}! 🙏\n\n"
-                f"Your site assessment request has been successfully submitted.\n\n"
+                f"Your *{assessment_type.replace('_', ' ').title()}* site assessment request has been successfully submitted.\n\n"
                 f"*Details:*\n"
                 f"📋 Assessment ID: {assessment_id}\n"
                 f"📍 Location: {assessment_address}\n"
                 f"📅 Preferred Day: {assessment_preferred_day}\n"
+                f"📝 Type: {assessment_type.replace('_', ' ').title()}\n"
             )
-            
+
             if assessment_company_name and assessment_company_name.lower() != 'n/a':
                 confirmation_message += f"🏢 Company: {assessment_company_name}\n"
-            
+
             confirmation_message += (
                 f"\nOur team will contact you at {assessment_contact_info} to confirm the assessment schedule.\n\n"
                 f"Reference: {assessment_id}"
             )
-            
+
             send_whatsapp_message(
                 to_phone_number=contact.whatsapp_id,
                 message_type='text',
                 data={'body': confirmation_message}
             )
-            
-            # TODO: Send notification to Technical Admin and Sales Team
-            # from notifications.services import queue_notifications_to_users
-            # queue_notifications_to_users(...)
-            
+
+            # TODO: Queue notifications to Technical Admin & Sales Team including assessment_type
             return True, notes
             
         except Exception as e:

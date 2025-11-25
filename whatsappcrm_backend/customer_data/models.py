@@ -8,6 +8,7 @@ from conversations.models import Contact
 import uuid
 # --- ADD THESE IMPORTS ---
 from django.db.models import Sum
+from decimal import Decimal
 # --- END IMPORTS ---
 
 class LeadStatus(models.TextChoices):
@@ -471,9 +472,24 @@ class SiteAssessmentRequest(models.Model):
         ('assessed', 'Assessed'),
         ('cancelled', 'Cancelled'),
     ]
+    ASSESSMENT_TYPE_CHOICES = [
+        ('starlink', 'Starlink'),
+        ('commercial_solar', 'Commercial Solar System'),
+        ('hybrid_starlink_solar', 'Hybrid (Starlink + Solar)'),
+        ('custom_furniture', 'Custom Furniture'),
+        ('other', 'Other')
+    ]
     assessment_id = models.CharField(_("Assessment ID"), max_length=100, unique=True, blank=True, null=True, db_index=True)
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='assessment_requests')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    assessment_type = models.CharField(
+        _("Assessment Type"),
+        max_length=50,
+        choices=ASSESSMENT_TYPE_CHOICES,
+        default='other',
+        db_index=True,
+        help_text=_("Purpose of the site assessment e.g. Starlink, Commercial Solar System, Hybrid, Custom Furniture.")
+    )
     
     full_name = models.CharField(_("Full Name"), max_length=255)
     company_name = models.CharField(_("Company Name"), max_length=255, blank=True, null=True)
@@ -485,7 +501,7 @@ class SiteAssessmentRequest(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Assessment #{self.assessment_id or self.id} for {self.full_name} ({self.status})"
+        return f"Assessment #{self.assessment_id or self.id} for {self.full_name} ({self.assessment_type})"
 
 
 class SolarCleaningRequest(models.Model):
