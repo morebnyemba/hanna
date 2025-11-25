@@ -261,18 +261,21 @@ class WhatsAppFlowResponseProcessor:
                 'commercial_solar': 'commercial_solar',
                 'commercial': 'commercial_solar',
                 'solar': 'commercial_solar',
-                @staticmethod
-                def _process_custom_furniture_installation(flow_response: WhatsAppFlowResponse, 
-                                                           contact: Contact, 
-                                                           response_data: Dict[str, Any]) -> tuple[bool, str]:
-                    """
-                    Process custom furniture installation flow response.
-                    Returns: (success: bool, notes: str)
-                    """
-                    try:
-                        data = response_data.get('data', response_data)
-                        order_number = data.get('order_number', '')
-                        furniture_type = data.get('furniture_type', '')
+            }
+            # ...existing code continues...
+
+    @staticmethod
+    def _process_custom_furniture_installation(flow_response: WhatsAppFlowResponse, 
+                                               contact: Contact, 
+                                               response_data: Dict[str, Any]) -> tuple[bool, str]:
+        """
+        Process custom furniture installation flow response.
+        Returns: (success: bool, notes: str)
+        """
+        try:
+            data = response_data.get('data', response_data)
+            order_number = data.get('order_number', '')
+            furniture_type = data.get('furniture_type', '')
                         specifications = data.get('specifications', '')
                         full_name = data.get('full_name', '')
                         contact_phone = data.get('contact_phone', '')
