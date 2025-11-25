@@ -13,8 +13,15 @@ docker compose exec backend python manage.py load_flows
 
 ## Step 3: Sync WhatsApp Interactive Flows
 ```powershell
+# Sync all flows including the new hybrid and custom furniture flows
 docker compose exec backend python manage.py sync_whatsapp_flows --publish --force
 ```
+
+**What this does:**
+- Uploads hybrid_installation_whatsapp flow to Meta
+- Uploads custom_furniture_installation_whatsapp flow to Meta
+- Updates all existing flows
+- Publishes all flows for production use
 
 ## Step 4: Restart Services (if needed)
 ```powershell

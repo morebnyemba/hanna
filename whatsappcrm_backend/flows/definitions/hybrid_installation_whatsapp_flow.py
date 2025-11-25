@@ -376,3 +376,12 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
         }
     ]
 }
+
+# Metadata for sync_whatsapp_flows command
+HYBRID_INSTALLATION_FLOW_METADATA = {
+    "name": "hybrid_installation_whatsapp",
+    "friendly_name": "Hybrid Installation Request (Interactive)",
+    "description": "Interactive WhatsApp flow for scheduling hybrid Starlink+Solar installations",
+    "trigger_keywords": ["hybrid installation", "starlink solar", "combo installation"],
+    "is_active": True
+}

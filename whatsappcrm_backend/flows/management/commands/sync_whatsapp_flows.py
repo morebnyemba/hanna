@@ -30,6 +30,14 @@ from flows.definitions.loan_application_whatsapp_flow import (
     LOAN_APPLICATION_WHATSAPP_FLOW,
     LOAN_APPLICATION_FLOW_METADATA
 )
+from flows.definitions.hybrid_installation_whatsapp_flow import (
+    HYBRID_INSTALLATION_WHATSAPP_FLOW,
+    HYBRID_INSTALLATION_FLOW_METADATA
+)
+from flows.definitions.custom_furniture_installation_whatsapp_flow import (
+    CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW,
+    CUSTOM_FURNITURE_INSTALLATION_FLOW_METADATA
+)
 
 
 class Command(BaseCommand):
@@ -39,7 +47,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--flow',
             type=str,
-            choices=['starlink', 'solar_cleaning', 'solar_installation', 'site_inspection', 'loan_application', 'all'],
+            choices=['starlink', 'solar_cleaning', 'solar_installation', 'site_inspection', 'loan_application', 'hybrid', 'custom_furniture', 'all'],
             default='all',
             help='Which flow to sync (default: all)'
         )
@@ -103,6 +111,18 @@ class Command(BaseCommand):
             flows_to_sync.append({
                 'json': LOAN_APPLICATION_WHATSAPP_FLOW,
                 'metadata': LOAN_APPLICATION_FLOW_METADATA
+            })
+        
+        if flow_choice in ['hybrid', 'all']:
+            flows_to_sync.append({
+                'json': HYBRID_INSTALLATION_WHATSAPP_FLOW,
+                'metadata': HYBRID_INSTALLATION_FLOW_METADATA
+            })
+        
+        if flow_choice in ['custom_furniture', 'all']:
+            flows_to_sync.append({
+                'json': CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW,
+                'metadata': CUSTOM_FURNITURE_INSTALLATION_FLOW_METADATA
             })
 
         # Sync each flow

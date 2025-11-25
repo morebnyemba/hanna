@@ -271,7 +271,7 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
                                 "alt_contact_phone": "${data.alt_contact_phone}",
                                 "preferred_date": "${form.preferred_date}",
                                 "availability": "${form.availability}",
-                                "address": "${form.address}"
+                                "address": "${data.address}"
                             }
                         }
                     }
@@ -279,4 +279,13 @@ CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
             }
         }
     ]
+}
+
+# Metadata for sync_whatsapp_flows command
+CUSTOM_FURNITURE_INSTALLATION_FLOW_METADATA = {
+    "name": "custom_furniture_installation_whatsapp",
+    "friendly_name": "Custom Furniture Installation Request (Interactive)",
+    "description": "Interactive WhatsApp flow for scheduling custom furniture deliveries and installations",
+    "trigger_keywords": ["furniture installation", "custom furniture", "furniture delivery"],
+    "is_active": True
 }
