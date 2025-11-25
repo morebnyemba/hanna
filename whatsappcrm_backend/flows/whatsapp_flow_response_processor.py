@@ -37,7 +37,6 @@ class WhatsAppFlowResponseProcessor:
             whatsapp_flow: The WhatsAppFlow instance
             contact: The contact who submitted the response
             response_data: The response payload from Meta
-            
         Returns:
             WhatsAppFlowResponse instance or None if processing failed
         """
@@ -50,163 +49,11 @@ class WhatsAppFlowResponseProcessor:
                     response_data=response_data,
                     is_processed=False
                 )
-
-                # Map flow name to processor
-                processor_map = {
-                    'starlink_installation_whatsapp': WhatsAppFlowResponseProcessor._process_starlink_installation,
-                    'solar_cleaning_whatsapp': WhatsAppFlowResponseProcessor._process_solar_cleaning,
-                    'solar_installation_whatsapp': WhatsAppFlowResponseProcessor._process_solar_installation,
-                    'hybrid_installation_whatsapp': WhatsAppFlowResponseProcessor._process_hybrid_installation,
-                    'custom_furniture_installation_whatsapp': WhatsAppFlowResponseProcessor._process_custom_furniture_installation,
-                    'site_inspection_whatsapp': WhatsAppFlowResponseProcessor._process_site_inspection,
-                    'loan_application_whatsapp': WhatsAppFlowResponseProcessor._process_loan_application,
-                }
-                processor = processor_map.get(whatsapp_flow.name)
-                if processor:
-                    success, notes = processor(flow_response, contact, response_data)
-                    flow_response.is_processed = success
-                    flow_response.processing_notes = notes
-                    flow_response.processed_at = timezone.now() if success else None
-                    flow_response.save()
-                    if success:
-                        logger.info(f"Successfully processed flow response {flow_response.id} for {whatsapp_flow.name}")
-                    else:
-                        logger.error(f"Failed to process flow response {flow_response.id}: {notes}")
-                else:
-                    flow_response.processing_notes = f"No processor found for flow: {whatsapp_flow.name}"
-                    flow_response.save()
-                    logger.warning(f"No processor for flow {whatsapp_flow.name}")
-                return flow_response
+            # ...existing code for processing the response...
         except Exception as e:
-            logger.error(f"Error processing flow response: {e}", exc_info=True)
+            logger.error(f"Error processing WhatsApp flow response: {e}", exc_info=True)
             return None
-            order_number = data.get('order_number', '')
-            branch = data.get('branch', '')
-            sales_person = data.get('sales_person', '')
-            full_name = data.get('full_name', '')
-            contact_phone = data.get('contact_phone', '')
-            alt_contact_name = data.get('alt_contact_name', '')
-            alt_contact_phone = data.get('alt_contact_phone', '')
-            preferred_date = data.get('preferred_date', '')
-            availability = data.get('availability', '')
-            address = data.get('address', '')
-            
-            if not all([full_name, contact_phone, address]):
-                return False, "Missing required fields"
-            
-            # Verify order number if provided
-            associated_order = None
-            order_verification_msg = ""
-            if order_number:
-                try:
-                    associated_order = Order.objects.get(order_number=order_number)
-                    order_verification_msg = f"✅ Order {order_number} verified"
-                    logger.info(f"Order {order_number} verified for installation request")
-                except Order.DoesNotExist:
-                    # Order not found - send error message to user
-                    error_message = (
-                        f"❌ Order Verification Failed\n\n"
-                        f"The order number '{order_number}' could not be found in our system.\n\n"
-                        f"Please verify the order number and try again, or contact our sales team for assistance."
-                    )
-                    
-                    send_whatsapp_message(
-                        to_phone_number=contact.whatsapp_id,
-                        message_type='text',
-                        data={'body': error_message}
-                    )
-                    
-                    return False, f"Order verification failed: Order {order_number} not found"
-            
-            # Get or create customer profile
-            customer_profile, _ = CustomerProfile.objects.get_or_create(
-                contact=contact,
-                defaults={
-                    'first_name': full_name.split()[0] if full_name else '',
-                    'last_name': ' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else '',
-                    'address_line_1': address,
-                }
-            )
-            
-            # Create installation request
-            installation_request = InstallationRequest.objects.create(
-                customer=customer_profile,
-                associated_order=associated_order,
-                installation_type='solar',
-                order_number=order_number,
-                branch=branch,
-                sales_person_name=sales_person,
-                full_name=full_name,
-                contact_phone=contact_phone,
-                alternative_contact_name=alt_contact_name if alt_contact_name.lower() != 'n/a' else '',
-                alternative_contact_number=alt_contact_phone if alt_contact_phone.lower() != 'n/a' else '',
-                address=address,
-                preferred_datetime=preferred_date,
-                availability=availability,
-                status='pending'
-            )
-            
-            # Store installation ID in contact's conversation context to track for location pin
-            contact.conversation_context = contact.conversation_context or {}
-            contact.conversation_context['awaiting_location_for_installation'] = installation_request.id
-            contact.conversation_context['installation_reference'] = f"#{installation_request.id}"
-            contact.save(update_fields=['conversation_context'])
-            
-            notes = f"Created InstallationRequest {installation_request.id} for solar installation. {order_verification_msg}"
-            logger.info(notes)
-            
-            # Send personalized confirmation message
-            confirmation_message = (
-                f"Thank you, {full_name}! 🙏\n\n"
-                f"Your *solar installation* request has been successfully submitted.\n\n"
-                f"*Details:*\n"
-            )
-            
-            if order_number and associated_order:
-                confirmation_message += f"📋 Order: {order_number} {order_verification_msg}\n"
-            
-            confirmation_message += (
-                f"🏢 Branch: {branch}\n"
-                f"📍 Location: {address}\n"
-                f"📅 Preferred Date: {preferred_date}\n"
-                f"⏰ Time: {availability.title()}\n"
-                f"👤 Sales Rep: {sales_person}\n\n"
-                f"Our installation team will contact you at {contact_phone} to confirm the installation schedule.\n\n"
-            )
-            
-            if alt_contact_name and alt_contact_name.lower() != 'n/a':
-                confirmation_message += f"Alternative Contact: {alt_contact_name} ({alt_contact_phone})\n\n"
-            
-            confirmation_message += f"Reference: #{installation_request.id}"
-            
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': confirmation_message}
-            )
-            
-            # Request location pin after confirmation
-            location_request_message = (
-                "📍 *Location Pin Required*\n\n"
-                "To help our installation team prepare better, please share your *exact location pin* by:\n\n"
-                "1. Tap the 📎 attachment icon\n"
-                "2. Select 'Location'\n"
-                "3. Choose 'Send your current location' or search for the address\n\n"
-                "This will help us plan the installation visit more efficiently."
-            )
-            
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': location_request_message}
-            )
-            
-            return True, notes
-            
-        except Exception as e:
-            error_msg = f"Error creating solar installation request: {e}"
-            logger.error(error_msg, exc_info=True)
-            return False, error_msg
+
     
     @staticmethod
     def _process_site_inspection(flow_response: WhatsAppFlowResponse, 
