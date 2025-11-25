@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import Order, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction, JobCard, LoanApplication
+from .models import Order, OrderItem, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction, JobCard, LoanApplication
 from conversations.models import Contact
 from products_and_services.models import SerializedItem
 
