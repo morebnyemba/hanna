@@ -79,14 +79,28 @@ MAIN_MENU_FLOW = {
                 "message_config": {
                     "message_type": "interactive",
                     "interactive": {
-                        "type": "button",
+                        "type": "list",
                         "header": {"type": "text", "text": "Installation Services"},
                         "body": {"text": "Great! Which type of installation service do you need?"},
+                        "footer": {"text": "Select an installation type"},
                         "action": {
-                            "buttons": [
-                                {"type": "reply", "reply": {"id": "switch_to_solar_install", "title": "☀️ Solar"}},
-                                {"type": "reply", "reply": {"id": "switch_to_starlink_install", "title": "🛰️ Starlink"}},
-                                {"type": "reply", "reply": {"id": "go_back_to_main_menu", "title": "Go Back"}}
+                            "button": "Select Installation",
+                            "sections": [
+                                {
+                                    "title": "Installation Types",
+                                    "rows": [
+                                        {"id": "switch_to_solar_install", "title": "☀️ Solar Installation", "description": "Solar power system setup"},
+                                        {"id": "switch_to_starlink_install", "title": "🛰️ Starlink Installation", "description": "Starlink satellite internet setup"},
+                                        {"id": "switch_to_hybrid_install", "title": "⚡ Hybrid Installation", "description": "Combined Starlink + Solar setup"},
+                                        {"id": "switch_to_furniture_install", "title": "🪑 Custom Furniture", "description": "Furniture delivery/installation"}
+                                    ]
+                                },
+                                {
+                                    "title": "Navigation",
+                                    "rows": [
+                                        {"id": "go_back_to_main_menu", "title": "🔙 Back to Main Menu", "description": "Return to main menu"}
+                                    ]
+                                }
                             ]
                         }
                     }
@@ -96,7 +110,9 @@ MAIN_MENU_FLOW = {
             "transitions": [
                 {"to_step": "switch_to_solar_installation_flow", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_solar_install"}},
                 {"to_step": "switch_to_starlink_installation_flow", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_starlink_install"}},
-                {"to_step": "show_main_menu", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back_to_main_menu"}}
+                {"to_step": "switch_to_hybrid_installation_flow", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_hybrid_install"}},
+                {"to_step": "switch_to_custom_furniture_installation_flow", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "switch_to_furniture_install"}},
+                {"to_step": "show_main_menu", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "go_back_to_main_menu"}}
             ]
         },
         {
@@ -167,6 +183,24 @@ MAIN_MENU_FLOW = {
             "type": "switch_flow",
             "config": {
                 "target_flow_name": "starlink_installation_request",
+                "initial_context_template": {"source_flow": "main_menu"}
+            },
+            "transitions": []
+        },
+        {
+            "name": "switch_to_hybrid_installation_flow",
+            "type": "switch_flow",
+            "config": {
+                "target_flow_name": "hybrid_installation_request",
+                "initial_context_template": {"source_flow": "main_menu"}
+            },
+            "transitions": []
+        },
+        {
+            "name": "switch_to_custom_furniture_installation_flow",
+            "type": "switch_flow",
+            "config": {
+                "target_flow_name": "custom_furniture_installation_request",
                 "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []

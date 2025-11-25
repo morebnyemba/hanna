@@ -1,0 +1,106 @@
+# whatsappcrm_backend/flows/definitions/hybrid_installation_flow.py
+
+"""
+Conversational flow for Hybrid Installation (Starlink + Solar) - Message-based fallback.
+"""
+
+HYBRID_INSTALLATION_FLOW = {
+    "name": "hybrid_installation_request",
+    "friendly_name": "Hybrid Installation Request",
+    "description": "Initiates the WhatsApp interactive flow for hybrid (Starlink + Solar) installation requests.",
+    "trigger_keywords": ['hybrid installation', 'starlink solar', 'combo installation'],
+    "is_active": True,
+    "steps": [
+        {
+            "name": "check_whatsapp_flow",
+            "is_entry_point": True,
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "flows",
+                    "model_name": "WhatsAppFlow",
+                    "variable_name": "hybrid_installation_whatsapp_flow",
+                    "filters_template": {
+                        "name": "hybrid_installation_whatsapp",
+                        "sync_status": "published"
+                    },
+                    "fields_to_return": ["flow_id", "friendly_name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {
+                    "to_step": "send_whatsapp_flow",
+                    "priority": 1,
+                    "condition_config": {
+                        "type": "variable_exists",
+                        "variable_name": "hybrid_installation_whatsapp_flow.0"
+                    }
+                },
+                {
+                    "to_step": "fallback_message",
+                    "priority": 2,
+                    "condition_config": {"type": "always_true"}
+                }
+            ]
+        },
+        {
+            "name": "send_whatsapp_flow",
+            "type": "send_message",
+            "config": {
+                "message_type": "interactive",
+                "interactive": {
+                    "type": "flow",
+                    "body": {
+                        "text": "Please complete our hybrid installation request form (Starlink + Solar)."
+                    },
+                    "action": {
+                        "name": "flow",
+                        "parameters": {
+                            "flow_message_version": "3",
+                            "flow_token": "{{ contact.id }}-hybrid-install-{{ now().timestamp() }}",
+                            "flow_id": "{{ hybrid_installation_whatsapp_flow.0.flow_id }}",
+                            "flow_cta": "Start Request",
+                            "flow_action": "navigate",
+                            "flow_action_payload": {"screen": "WELCOME"}
+                        }
+                    }
+                }
+            },
+            "transitions": [
+                {"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "fallback_message",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {
+                    "body": "The hybrid installation form is currently unavailable. Please contact our sales team directly or try again later."
+                }
+            },
+            "transitions": [
+                {"to_step": "end_flow_unavailable", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "end_flow_success",
+            "type": "end_flow",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "Thank you! Please complete the form to submit your hybrid installation request."
+                    }
+                }
+            }
+        },
+        {
+            "name": "end_flow_unavailable",
+            "type": "end_flow",
+            "config": {}
+        }
+    ]
+}

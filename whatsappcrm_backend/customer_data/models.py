@@ -422,9 +422,12 @@ class InstallationRequest(models.Model):
         ('cancelled', 'Cancelled'),
     ]
     INSTALLATION_TYPES = [
-        ('residential', 'Residential'),
-        ('commercial', 'Commercial'),
-        ('starlink', 'Starlink'),
+        ('starlink', 'Starlink Installation'),
+        ('solar', 'Solar Panel Installation'),
+        ('hybrid', 'Hybrid (Starlink + Solar)'),
+        ('custom_furniture', 'Custom Furniture Installation'),
+        ('residential', 'Residential (Legacy)'),
+        ('commercial', 'Commercial (Legacy)'),
     ]
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='installation_requests', verbose_name=_("Customer Profile"))
     associated_order = models.ForeignKey(
@@ -436,14 +439,55 @@ class InstallationRequest(models.Model):
         verbose_name=_("Associated Order") # More explicit name
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
-    installation_type = models.CharField(max_length=20, choices=INSTALLATION_TYPES)
+    installation_type = models.CharField(max_length=50, choices=INSTALLATION_TYPES, db_index=True)
     
     order_number = models.CharField(_("Order Number"), max_length=100, blank=True, null=True, db_index=True)
     assessment_number = models.CharField(_("Assessment Number"), max_length=100, blank=True, null=True, db_index=True)
     full_name = models.CharField(_("Contact Full Name"), max_length=255, help_text=_("Full name of the contact requesting the installation"))
     address = models.TextField(_("Installation Address"))
+    
+    # Location pin details (same as SiteAssessmentRequest)
+    location_latitude = models.DecimalField(
+        _("Location Latitude"),
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+        help_text=_("GPS latitude coordinate of the installation site")
+    )
+    location_longitude = models.DecimalField(
+        _("Location Longitude"),
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+        help_text=_("GPS longitude coordinate of the installation site")
+    )
+    location_name = models.CharField(
+        _("Location Name"),
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text=_("Name of the location (if provided by WhatsApp)")
+    )
+    location_address = models.TextField(
+        _("Location Address from Pin"),
+        blank=True,
+        null=True,
+        help_text=_("Address associated with the shared location pin")
+    )
+    location_url = models.URLField(
+        _("Location URL"),
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text=_("Google Maps or similar URL for the location")
+    )
+    
+    # Legacy fields (deprecated in favor of location_latitude/longitude)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    
     preferred_datetime = models.CharField(_("Preferred Date/Time"), max_length=255)
     contact_phone = models.CharField(_("Contact Phone"), max_length=20)
     branch = models.CharField(_("Branch"), max_length=100, blank=True, null=True)
