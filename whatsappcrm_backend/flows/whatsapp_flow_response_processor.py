@@ -82,58 +82,10 @@ class WhatsAppFlowResponseProcessor:
                     flow_response.save()
                     logger.warning(f"No processor for flow {whatsapp_flow.name}")
                 
-                return flow_response
-                
-        except Exception as e:
-            logger.error(f"Error processing flow response: {e}", exc_info=True)
-            return None
-    
-    @staticmethod
-    def _process_starlink_installation(flow_response: WhatsAppFlowResponse, contact: Contact, response_data: Dict[str, Any]) -> tuple[bool, str]:
-        # ...existing code for starlink...
-        pass
-            
-            # Create solar cleaning request
-            try:
-                panel_count_int = int(panel_count)
-            except (ValueError, TypeError):
-                panel_count_int = 0
-            
-            cleaning_request = SolarCleaningRequest.objects.create(
-                customer=customer_profile,
-                full_name=full_name,
-                contact_phone=contact_phone,
-                roof_type=roof_type,
-                panel_type=panel_type,
-                panel_count=panel_count_int,
-                preferred_date=preferred_date,
-                availability=availability,
-                address=address,
-                status='new'
-            )
-            
-            notes = f"Created SolarCleaningRequest {cleaning_request.id}"
-            logger.info(notes)
-            
-            # Send personalized confirmation message
-            confirmation_message = (
-                f"Thank you, {full_name}! 🙏\n\n"
-                f"Your solar panel cleaning request has been successfully received.\n\n"
-                f"*Details:*\n"
-                f"📍 Location: {address}\n"
-                f"📅 Preferred Date: {preferred_date}\n"
-                f"⏰ Time: {availability.title()}\n"
-                f"☀️ Panel Count: {panel_count_int} panels\n"
-                f"🏠 Roof Type: {roof_type.replace('_', ' ').title()}\n\n"
-                f"Our team will contact you at {contact_phone} with a quote and to confirm the service date.\n\n"
-                f"Reference: #{cleaning_request.id}"
-            )
-            
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': confirmation_message}
-            )
+                @staticmethod
+                def _process_starlink_installation(flow_response: WhatsAppFlowResponse, contact: Contact, response_data: Dict[str, Any]) -> tuple[bool, str]:
+                    # ...existing code for starlink...
+                    pass
             
             return True, notes
             
