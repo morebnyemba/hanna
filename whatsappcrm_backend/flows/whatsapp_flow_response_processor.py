@@ -430,6 +430,12 @@ class WhatsAppFlowResponseProcessor:
                 status='pending'
             )
 
+            # Store assessment ID in contact's conversation context to track for location pin
+            contact.conversation_context = contact.conversation_context or {}
+            contact.conversation_context['awaiting_location_for_assessment'] = assessment_request.id
+            contact.conversation_context['assessment_id'] = assessment_id
+            contact.save(update_fields=['conversation_context'])
+
             notes = f"Created SiteAssessmentRequest {assessment_request.id} ({assessment_type}) with ID {assessment_id}"
             logger.info(notes)
 
@@ -456,6 +462,22 @@ class WhatsAppFlowResponseProcessor:
                 to_phone_number=contact.whatsapp_id,
                 message_type='text',
                 data={'body': confirmation_message}
+            )
+
+            # Request location pin after confirmation
+            location_request_message = (
+                "📍 *Location Pin Required*\n\n"
+                "To help our team prepare better, please share your *exact location pin* by:\n\n"
+                "1. Tap the 📎 attachment icon\n"
+                "2. Select 'Location'\n"
+                "3. Choose 'Send your current location' or search for the address\n\n"
+                "This will help us plan the site visit more efficiently."
+            )
+            
+            send_whatsapp_message(
+                to_phone_number=contact.whatsapp_id,
+                message_type='text',
+                data={'body': location_request_message}
             )
 
             # TODO: Queue notifications to Technical Admin & Sales Team including assessment_type

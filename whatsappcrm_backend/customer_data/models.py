@@ -497,6 +497,44 @@ class SiteAssessmentRequest(models.Model):
     contact_info = models.CharField(_("Contact Info"), max_length=255)
     preferred_day = models.CharField(_("Preferred Day"), max_length=255)
     
+    # Location pin details
+    location_latitude = models.DecimalField(
+        _("Location Latitude"),
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+        help_text=_("GPS latitude coordinate of the site")
+    )
+    location_longitude = models.DecimalField(
+        _("Location Longitude"),
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
+        help_text=_("GPS longitude coordinate of the site")
+    )
+    location_name = models.CharField(
+        _("Location Name"),
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text=_("Name of the location (if provided by WhatsApp)")
+    )
+    location_address = models.TextField(
+        _("Location Address from Pin"),
+        blank=True,
+        null=True,
+        help_text=_("Address associated with the shared location pin")
+    )
+    location_url = models.URLField(
+        _("Location URL"),
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text=_("Google Maps or similar URL for the location")
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
