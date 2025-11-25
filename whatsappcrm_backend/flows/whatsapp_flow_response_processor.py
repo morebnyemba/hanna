@@ -365,21 +365,6 @@ class WhatsAppFlowResponseProcessor:
             error_msg = f"Error creating custom furniture installation request: {e}"
             logger.error(error_msg, exc_info=True)
             return False, error_msg
-            elif loan_type == "product_loan" and loan_product_interest:
-                confirmation_message += f"📦 Product: {loan_product_interest}\n"
-            
-            confirmation_message += (
-                f"👤 Employment: {loan_employment_status.replace('_', ' ').title()}\n"
-                f"💼 Monthly Income: ${monthly_income:,.2f} USD\n\n"
-                f"Our finance team will review your application and contact you within 24-48 hours with the next steps.\n\n"
-                f"Reference: #{loan_application.id}"
-            )
-            
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': confirmation_message}
-            )
             
             # TODO: Send notification to Finance Team and System Admins
             # from notifications.services import queue_notifications_to_users
