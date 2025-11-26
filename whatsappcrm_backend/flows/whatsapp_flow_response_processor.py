@@ -6,6 +6,7 @@ Handles the conversion of flow response data into InstallationRequest, SolarClea
 
 import logging
 from typing import Dict, Any, Optional
+from django.utils import timezone
 from django.db import transaction
 from .models import WhatsAppFlow, WhatsAppFlowResponse
 from conversations.models import Contact
