@@ -1802,12 +1802,33 @@ def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config)
         # the flow ID in the flow_token when sending the flow
         whatsapp_flow = None
         
-        # Try to extract flow name from response or use heuristics
+        interactive_data = msg_data.get("interactive", {})
+        nfm_reply = interactive_data.get("nfm_reply", {})
+
+        response_json = nfm_reply.get("response_json")
+        flow_token = nfm_reply.get("flow_token", "")
+
+        if not response_json:
+            logger.warning(f"Flow response has no response_json: {msg_data}")
+            return False, 'No response_json in flow response'
+
+        # Parse the response JSON
+        try:
+            response_data = json.loads(response_json) if isinstance(response_json, str) else response_json
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse flow response JSON: {e}")
+            return False, f'Invalid JSON: {e}'
+
+        # Try to identify which flow this is for
+        whatsapp_flows = WhatsAppFlow.objects.filter(
+            meta_app_config=app_config,
+            is_active=True,
+            sync_status='published'
+        )
+
+        whatsapp_flow = None
         if whatsapp_flows.exists():
-            # Try to match by checking which fields are in the response
             response_fields = set(response_data.keys()) if isinstance(response_data, dict) else set()
-            
-            # Simple heuristic matching
             if 'kit_type' in response_fields:
                 whatsapp_flow = whatsapp_flows.filter(name='starlink_installation_whatsapp').first()
             elif 'panel_count' in response_fields and 'roof_type' in response_fields:
@@ -1818,31 +1839,27 @@ def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config)
                 whatsapp_flow = whatsapp_flows.filter(name='site_inspection_whatsapp').first()
             elif 'loan_type' in response_fields and 'loan_applicant_name' in response_fields:
                 whatsapp_flow = whatsapp_flows.filter(name='loan_application_whatsapp').first()
-            
             if not whatsapp_flow:
                 whatsapp_flow = whatsapp_flows.first()
-        
+
         if not whatsapp_flow:
             logger.error("No active WhatsApp flow found to process response")
             return False, 'No matching WhatsApp flow found'
-        
-        # Process the response
+
+        # Call the WhatsAppFlowResponseProcessor to update the flow context only
         logger.info(f"Processing flow response for {whatsapp_flow.name}")
-        
-        flow_response = WhatsAppFlowResponseProcessor.process_response(
+        processor_result = WhatsAppFlowResponseProcessor.process_response(
             whatsapp_flow=whatsapp_flow,
             contact=contact,
             response_data=response_data
         )
-        
-        if flow_response and flow_response.is_processed:
-            logger.info(f"Successfully processed flow response {flow_response.id}")
-            return True, f'Flow response processed: {flow_response.processing_notes}'
+        if processor_result and processor_result.get("success"):
+            logger.info(f"Successfully updated flow context for WhatsApp flow response.")
+            return True, 'Flow context updated with WhatsApp flow data.'
         else:
-            error_note = flow_response.processing_notes if flow_response else "Unknown error"
+            error_note = processor_result.get("notes") if processor_result else "Unknown error"
             logger.error(f"Flow response processing failed: {error_note}")
             return False, f'Flow processing failed: {error_note}'
-            
     except Exception as e:
         logger.error(f"Error handling flow response: {e}", exc_info=True)
         return False, f'Exception processing flow: {str(e)[:200]}'

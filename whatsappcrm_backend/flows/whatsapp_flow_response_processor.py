@@ -20,38 +20,42 @@ class WhatsAppFlowResponseProcessor:
     """
     
     @staticmethod
-    def process_response(whatsapp_flow: WhatsAppFlow, contact: Contact, response_data: Dict[str, Any]) -> Optional[WhatsAppFlowResponse]:
+    def process_response(whatsapp_flow: WhatsAppFlow, contact: Contact, response_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        Main entry point for processing a flow response.
+        Pure data processor: Updates the contact's flow context with WhatsApp flow response data.
+        Should be called as a task from services.py when a flow response is received.
         Args:
             whatsapp_flow: The WhatsAppFlow instance
             contact: The contact who submitted the response
             response_data: The response payload from Meta
         Returns:
-            WhatsAppFlowResponse instance or None if processing failed
+            Dict with status and notes, or None if failed
         """
         try:
+            # Save the flow response for audit/history
             with transaction.atomic():
-                flow_response = WhatsAppFlowResponse.objects.create(
+                WhatsAppFlowResponse.objects.create(
                     whatsapp_flow=whatsapp_flow,
                     contact=contact,
                     flow_token=response_data.get('flow_token', ''),
                     response_data=response_data,
-                    is_processed=False
+                    is_processed=True
                 )
-            # Route to the correct handler based on flow_type
-            handler = getattr(WhatsAppFlowResponseProcessor, f"_handle_{whatsapp_flow.flow_type}", None)
-            if handler:
-                success, notes = handler(flow_response, contact, response_data)
-                flow_response.is_processed = success
-                flow_response.notes = notes
-                flow_response.save(update_fields=["is_processed", "notes"])
-                return flow_response
+
+            # Update the flow context for the contact (if in a flow)
+            from .models import ContactFlowState
+            flow_state = ContactFlowState.objects.filter(contact=contact).first()
+            if flow_state:
+                # Merge WhatsApp flow data into the flow context
+                context = flow_state.flow_context_data or {}
+                context['whatsapp_flow_data'] = response_data.get('data', response_data)
+                flow_state.flow_context_data = context
+                flow_state.save(update_fields=["flow_context_data"])
+                logger.info(f"Updated flow context for contact {contact.id} with WhatsApp flow data.")
+                return {"success": True, "notes": "Flow context updated with WhatsApp flow data."}
             else:
-                logger.error(f"No handler for flow type: {whatsapp_flow.flow_type}")
-                flow_response.notes = f"No handler for flow type: {whatsapp_flow.flow_type}"
-                flow_response.save(update_fields=["notes"])
-                return None
+                logger.warning(f"No active flow state for contact {contact.id} when processing WhatsApp flow response.")
+                return {"success": False, "notes": "No active flow state for contact."}
         except Exception as e:
             logger.error(f"Error processing WhatsApp flow response: {e}", exc_info=True)
             return None
