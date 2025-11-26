@@ -46,11 +46,16 @@ class WhatsAppFlowResponseProcessor:
             from .models import ContactFlowState
             flow_state = ContactFlowState.objects.filter(contact=contact).first()
             if flow_state:
-                # Merge WhatsApp flow data into the flow context
+                # Merge WhatsApp flow data into the flow context (top-level and under a subkey for compatibility)
                 context = flow_state.flow_context_data or {}
-                context['whatsapp_flow_data'] = response_data.get('data', response_data)
+                wa_data = response_data.get('data', response_data)
+                # Merge at top level
+                context.update(wa_data)
+                # Also keep under a subkey for backward compatibility
+                context['whatsapp_flow_data'] = wa_data
                 flow_state.flow_context_data = context
-                flow_state.save(update_fields=["flow_context_data"])
+                flow_state.last_updated_at = timezone.now()
+                flow_state.save(update_fields=["flow_context_data", "last_updated_at"])
                 logger.info(f"Updated flow context for contact {contact.id} with WhatsApp flow data.")
                 return {"success": True, "notes": "Flow context updated with WhatsApp flow data."}
             else:
