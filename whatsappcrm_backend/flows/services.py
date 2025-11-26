@@ -1550,6 +1550,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
             
             logger.debug(f"Handling active flow. Contact: {contact.whatsapp_id}, Current Step: '{current_step.name}' (Type: {current_step.step_type}). Context: {flow_context}")
 
+
             # --- Step 1: Process incoming message if the current step is a question ---
             if current_step.step_type == 'question' and '_question_awaiting_reply_for' in flow_context:
                 # If we've arrived at a question step via an internal transition (fallthrough/switch),
@@ -1566,6 +1567,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 
                 user_text = message_data.get('text', {}).get('body', '').strip() if message_data.get('type') == 'text' else None
                 interactive_reply_id = None
+                nfm_response_data = None
                 if message_data.get('type') == 'interactive':
                     interactive_payload = message_data.get('interactive', {})
                     interactive_type = interactive_payload.get('type')
@@ -1580,8 +1582,6 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                                 nfm_response_data = json.loads(response_json_str)
                             except json.JSONDecodeError: 
                                 logger.warning(f"Could not parse nfm_reply response_json for question step {current_step.name}")
-                
-                
                 
                 image_payload = message_data.get('image') if message_data.get('type') == 'image' else None
                 location_payload = message_data.get('location') if message_data.get('type') == 'location' else None
@@ -1639,6 +1639,14 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 else:
                     logger.info(f"Reply for question step '{current_step.name}' was not valid. Expected: {expected_reply_type}. User text: {user_text}. Interactive ID: {interactive_reply_id}")
             
+            # --- Step 1b: Pause at wait_for_whatsapp_response action step ---
+            if current_step.step_type == 'action' and current_step.name == 'wait_for_whatsapp_response':
+                # If we've arrived at this step via an internal transition, break to wait for the WhatsApp flow response webhook.
+                if is_internal_message:
+                    logger.debug(f"Reached wait step '{current_step.name}' via internal transition. Breaking loop to await WhatsApp flow response.")
+                    break
+                # If this is a user message, just continue (should not happen, but for safety)
+
             # If this was a user message that was just processed (valid or not),
             # we should not continue falling through steps in the same cycle.
             # The next actions depend on the transition from the user's reply.
