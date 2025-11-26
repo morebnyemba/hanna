@@ -54,11 +54,13 @@ class WhatsAppFlowResponseProcessor:
                 context.update(wa_data)
                 # Also keep under a subkey for backward compatibility
                 context['whatsapp_flow_data'] = wa_data
+                # Set the flag for transition condition
+                context['whatsapp_flow_response_received'] = True
                 flow_state.flow_context_data = context
                 flow_state.last_updated_at = timezone.now()
                 flow_state.save(update_fields=["flow_context_data", "last_updated_at"])
-                logger.info(f"Updated flow context for contact {contact.id} with WhatsApp flow data.")
-                return {"success": True, "notes": "Flow context updated with WhatsApp flow data."}
+                logger.info(f"Updated flow context for contact {contact.id} with WhatsApp flow data and set whatsapp_flow_response_received=True.")
+                return {"success": True, "notes": "Flow context updated with WhatsApp flow data and response flag set."}
             else:
                 logger.warning(f"No active flow state for contact {contact.id} when processing WhatsApp flow response.")
                 return {"success": False, "notes": "No active flow state for contact."}

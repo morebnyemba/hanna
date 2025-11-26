@@ -945,6 +945,18 @@ def _evaluate_transition_condition(transition: FlowTransition, contact: Contact,
     # --- Condition Implementations ---
     value_for_condition = config.get('value') # Get expected value for comparison
 
+    if condition_type == 'whatsapp_flow_response_received':
+        # By default, look for 'whatsapp_flow_response_received' in context, or allow config to specify variable name
+        variable_name = config.get('variable_name', 'whatsapp_flow_response_received')
+        actual_value = _get_value_from_context_or_contact(variable_name, flow_context, contact)
+        result = bool(actual_value)
+        logger.debug(
+            f"Contact {contact.id}, Flow {transition.current_step.flow.id}, Step {transition.current_step.id}: "
+            f"Condition 'whatsapp_flow_response_received' check for '{variable_name}'. "
+            f"Value: '{actual_value}' (type: {type(actual_value).__name__}). Result: {result}"
+        )
+        return result
+
     if condition_type == 'user_reply_matches_keyword':
         keyword = str(config.get('keyword', '')).strip()
         if not keyword: return False # Cannot match empty keyword
