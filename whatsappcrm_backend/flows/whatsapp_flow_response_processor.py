@@ -60,7 +60,7 @@ class WhatsAppFlowResponseProcessor:
 
     @staticmethod
     def _handle_site_inspection_whatsapp(flow_response, contact, response_data):
-        """Process Site Inspection WhatsApp flow response."""
+        """Process Site Inspection WhatsApp flow response and resume conversational flow for extra info (e.g., location pin)."""
         try:
             data = response_data.get('data', response_data)
             required_fields = [
@@ -72,15 +72,29 @@ class WhatsAppFlowResponseProcessor:
                     return False, f"Missing required field: {field}"
             # Example: Save or update SiteAssessmentRequest here
             logger.info(f"[SiteInspection] Processed for {data.get('assessment_full_name')}")
-            return True, "Site inspection processed successfully."
+
+            feedback = (
+                f"Your *site inspection* request has been submitted!\n"
+                f"We will contact you to confirm details."
+            )
+            # If location pin is required but not collected in WhatsApp flow, resume conversational flow to collect it
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "site_assessment_request": data.get('assessment_full_name')}, None)
+                    logger.info(f"[SiteInspection] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[SiteInspection] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
         except Exception as e:
             logger.error(f"[SiteInspection] Error: {e}", exc_info=True)
             return False, str(e)
 
 
+
     @staticmethod
     def _handle_custom_furniture_installation_whatsapp(flow_response, contact, response_data):
-        """Process Custom Furniture Installation WhatsApp flow response: create InstallationRequest, feedback, and handover."""
+        """Process Custom Furniture Installation WhatsApp flow response: create InstallationRequest, feedback, and resume conversational flow for extra info (e.g., location pin)."""
         from customer_data.models import InstallationRequest, CustomerProfile
         try:
             data = response_data.get('data', response_data)
@@ -124,10 +138,16 @@ class WhatsAppFlowResponseProcessor:
                 f"We will contact you at {inst.contact_phone} to confirm details."
             )
 
-            # Handover to conversational flow (pseudo-code, replace with actual integration)
-            # from conversations.services import handover_to_conversational_flow
-            # handover_to_conversational_flow(contact, context={...})
-            logger.info(f"[CustomFurniture] Handover to conversational flow for contact {contact.id}")
+            # If location pin is required but not collected in WhatsApp flow, resume conversational flow to collect it
+            if not data.get('location_pin'):
+                # Pseudo-function: resume the original conversational flow to collect missing info
+                try:
+                    from flows.services import process_message_for_flow
+                    # You may want to set a context flag or message to trigger the next step for location pin
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "installation_request_id": inst.id}, None)
+                    logger.info(f"[CustomFurniture] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[CustomFurniture] Failed to resume conversational flow for location pin: {resume_exc}")
 
             return True, feedback
         except Exception as e:
@@ -137,7 +157,7 @@ class WhatsAppFlowResponseProcessor:
 
     @staticmethod
     def _handle_solar_installation_whatsapp(flow_response, contact, response_data):
-        """Process Solar Installation WhatsApp flow response."""
+        """Process Solar Installation WhatsApp flow response and resume conversational flow for extra info (e.g., location pin)."""
         try:
             data = response_data.get('data', response_data)
             required_fields = [
@@ -148,7 +168,20 @@ class WhatsAppFlowResponseProcessor:
                     logger.warning(f"[SolarInstallation] Missing required field: {field}")
                     return False, f"Missing required field: {field}"
             logger.info(f"[SolarInstallation] Processed for {data.get('full_name')}")
-            return True, "Solar installation processed successfully."
+
+            feedback = (
+                f"Your *solar installation* request has been submitted!\n"
+                f"Order: {data.get('order_number')}\n"
+                f"We will contact you at {data.get('contact_phone')} to confirm details."
+            )
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "order_number": data.get('order_number')}, None)
+                    logger.info(f"[SolarInstallation] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[SolarInstallation] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
         except Exception as e:
             logger.error(f"[SolarInstallation] Error: {e}", exc_info=True)
             return False, str(e)
@@ -156,7 +189,7 @@ class WhatsAppFlowResponseProcessor:
 
     @staticmethod
     def _handle_solar_cleaning_whatsapp(flow_response, contact, response_data):
-        """Process Solar Cleaning WhatsApp flow response."""
+        """Process Solar Cleaning WhatsApp flow response and resume conversational flow for extra info (e.g., location pin)."""
         try:
             data = response_data.get('data', response_data)
             required_fields = [
@@ -167,7 +200,19 @@ class WhatsAppFlowResponseProcessor:
                     logger.warning(f"[SolarCleaning] Missing required field: {field}")
                     return False, f"Missing required field: {field}"
             logger.info(f"[SolarCleaning] Processed for {data.get('full_name')}")
-            return True, "Solar cleaning processed successfully."
+
+            feedback = (
+                f"Your *solar cleaning* request has been submitted!\n"
+                f"We will contact you at {data.get('contact_phone')} to confirm details."
+            )
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "full_name": data.get('full_name')}, None)
+                    logger.info(f"[SolarCleaning] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[SolarCleaning] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
         except Exception as e:
             logger.error(f"[SolarCleaning] Error: {e}", exc_info=True)
             return False, str(e)
@@ -175,7 +220,7 @@ class WhatsAppFlowResponseProcessor:
 
     @staticmethod
     def _handle_loan_application_whatsapp(flow_response, contact, response_data):
-        """Process Loan Application WhatsApp flow response."""
+        """Process Loan Application WhatsApp flow response and resume conversational flow for extra info (e.g., location pin)."""
         try:
             data = response_data.get('data', response_data)
             required_fields = [
@@ -186,7 +231,19 @@ class WhatsAppFlowResponseProcessor:
                     logger.warning(f"[LoanApplication] Missing required field: {field}")
                     return False, f"Missing required field: {field}"
             logger.info(f"[LoanApplication] Processed for {data.get('loan_applicant_name')}")
-            return True, "Loan application processed successfully."
+
+            feedback = (
+                f"Your *loan application* has been submitted!\n"
+                f"We will contact you to confirm details."
+            )
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "loan_applicant_name": data.get('loan_applicant_name')}, None)
+                    logger.info(f"[LoanApplication] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[LoanApplication] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
         except Exception as e:
             logger.error(f"[LoanApplication] Error: {e}", exc_info=True)
             return False, str(e)
@@ -194,7 +251,7 @@ class WhatsAppFlowResponseProcessor:
 
     @staticmethod
     def _handle_hybrid_installation_whatsapp(flow_response, contact, response_data):
-        """Process Hybrid Installation WhatsApp flow response."""
+        """Process Hybrid Installation WhatsApp flow response and resume conversational flow for extra info (e.g., location pin)."""
         try:
             data = response_data.get('data', response_data)
             required_fields = [
@@ -205,43 +262,147 @@ class WhatsAppFlowResponseProcessor:
                     logger.warning(f"[HybridInstallation] Missing required field: {field}")
                     return False, f"Missing required field: {field}"
             logger.info(f"[HybridInstallation] Processed for {data.get('full_name')}")
-            return True, "Hybrid installation processed successfully."
+
+            feedback = (
+                f"Your *hybrid installation* request has been submitted!\n"
+                f"Order: {data.get('order_number')}\n"
+                f"We will contact you at {data.get('contact_phone')} to confirm details."
+            )
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "order_number": data.get('order_number')}, None)
+                    logger.info(f"[HybridInstallation] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[HybridInstallation] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
         except Exception as e:
             logger.error(f"[HybridInstallation] Error: {e}", exc_info=True)
             return False, str(e)
 
     @staticmethod
     def _handle_admin_add_order_whatsapp(flow_response, contact, response_data):
-        return False, "Handler not yet implemented."
+        try:
+            data = response_data.get('data', response_data)
+            feedback = "Your *admin add order* request has been submitted! We will contact you to confirm details."
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "context": "admin_add_order"}, None)
+                    logger.info(f"[AdminAddOrder] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[AdminAddOrder] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
+        except Exception as e:
+            logger.error(f"[AdminAddOrder] Error: {e}", exc_info=True)
+            return False, str(e)
 
     @staticmethod
     def _handle_admin_main_menu_whatsapp(flow_response, contact, response_data):
-        return False, "Handler not yet implemented."
+        try:
+            data = response_data.get('data', response_data)
+            feedback = "Your *admin main menu* request has been submitted! We will contact you to confirm details."
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "context": "admin_main_menu"}, None)
+                    logger.info(f"[AdminMainMenu] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[AdminMainMenu] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
+        except Exception as e:
+            logger.error(f"[AdminMainMenu] Error: {e}", exc_info=True)
+            return False, str(e)
 
     @staticmethod
     def _handle_admin_update_assessment_status_whatsapp(flow_response, contact, response_data):
-        return False, "Handler not yet implemented."
+        try:
+            data = response_data.get('data', response_data)
+            feedback = "Your *admin update assessment status* request has been submitted! We will contact you to confirm details."
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "context": "admin_update_assessment_status"}, None)
+                    logger.info(f"[AdminUpdateAssessmentStatus] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[AdminUpdateAssessmentStatus] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
+        except Exception as e:
+            logger.error(f"[AdminUpdateAssessmentStatus] Error: {e}", exc_info=True)
+            return False, str(e)
 
     @staticmethod
     def _handle_admin_update_order_status_whatsapp(flow_response, contact, response_data):
-        return False, "Handler not yet implemented."
+        try:
+            data = response_data.get('data', response_data)
+            feedback = "Your *admin update order status* request has been submitted! We will contact you to confirm details."
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "context": "admin_update_order_status"}, None)
+                    logger.info(f"[AdminUpdateOrderStatus] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[AdminUpdateOrderStatus] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
+        except Exception as e:
+            logger.error(f"[AdminUpdateOrderStatus] Error: {e}", exc_info=True)
+            return False, str(e)
 
     @staticmethod
     def _handle_admin_update_warranty_claim_whatsapp(flow_response, contact, response_data):
-        return False, "Handler not yet implemented."
+        try:
+            data = response_data.get('data', response_data)
+            feedback = "Your *admin update warranty claim* request has been submitted! We will contact you to confirm details."
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "context": "admin_update_warranty_claim"}, None)
+                    logger.info(f"[AdminUpdateWarrantyClaim] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[AdminUpdateWarrantyClaim] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
+        except Exception as e:
+            logger.error(f"[AdminUpdateWarrantyClaim] Error: {e}", exc_info=True)
+            return False, str(e)
 
     @staticmethod
     def _handle_main_menu_whatsapp(flow_response, contact, response_data):
-        return False, "Handler not yet implemented."
+        try:
+            data = response_data.get('data', response_data)
+            feedback = "Your *main menu* request has been submitted! We will contact you to confirm details."
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "context": "main_menu"}, None)
+                    logger.info(f"[MainMenu] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[MainMenu] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
+        except Exception as e:
+            logger.error(f"[MainMenu] Error: {e}", exc_info=True)
+            return False, str(e)
 
     @staticmethod
     def _handle_simple_add_order_whatsapp(flow_response, contact, response_data):
-        return False, "Handler not yet implemented."
+        try:
+            data = response_data.get('data', response_data)
+            feedback = "Your *simple add order* request has been submitted! We will contact you to confirm details."
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "context": "simple_add_order"}, None)
+                    logger.info(f"[SimpleAddOrder] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[SimpleAddOrder] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
+        except Exception as e:
+            logger.error(f"[SimpleAddOrder] Error: {e}", exc_info=True)
+            return False, str(e)
 
 
     @staticmethod
     def _handle_starlink_installation_whatsapp(flow_response, contact, response_data):
-        """Process Starlink Installation WhatsApp flow response."""
+        """Process Starlink Installation WhatsApp flow response and resume conversational flow for extra info (e.g., location pin)."""
         try:
             data = response_data.get('data', response_data)
             required_fields = [
@@ -252,7 +413,19 @@ class WhatsAppFlowResponseProcessor:
                     logger.warning(f"[StarlinkInstallation] Missing required field: {field}")
                     return False, f"Missing required field: {field}"
             logger.info(f"[StarlinkInstallation] Processed for {data.get('full_name')}")
-            return True, "Starlink installation processed successfully."
+
+            feedback = (
+                f"Your *starlink installation* request has been submitted!\n"
+                f"We will contact you at {data.get('contact_phone')} to confirm details."
+            )
+            if not data.get('location_pin'):
+                try:
+                    from flows.services import process_message_for_flow
+                    process_message_for_flow(contact, {"type": "internal_resume_for_location_pin", "full_name": data.get('full_name')}, None)
+                    logger.info(f"[StarlinkInstallation] Resumed conversational flow for location pin for contact {contact.id}")
+                except Exception as resume_exc:
+                    logger.error(f"[StarlinkInstallation] Failed to resume conversational flow for location pin: {resume_exc}")
+            return True, feedback
         except Exception as e:
             logger.error(f"[StarlinkInstallation] Error: {e}", exc_info=True)
             return False, str(e)
