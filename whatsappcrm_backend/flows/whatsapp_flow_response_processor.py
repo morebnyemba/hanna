@@ -62,7 +62,9 @@ class WhatsAppFlowResponseProcessor:
         """Process site inspection/assessment flow response, now including assessment_type.
         Returns: (success, notes)"""
         try:
+            logger.debug(f"[SiteInspection] Raw response_data: {response_data}")
             data = response_data.get('data', response_data)
+            logger.debug(f"[SiteInspection] Parsed data: {data}")
 
             assessment_full_name = data.get('assessment_full_name', '').strip()
             assessment_preferred_day = data.get('assessment_preferred_day', '').strip()
@@ -71,7 +73,15 @@ class WhatsAppFlowResponseProcessor:
             assessment_contact_info = data.get('assessment_contact_info', '').strip()
             raw_assessment_type = data.get('assessment_type', '').strip().lower()
 
+            logger.debug(f"[SiteInspection] assessment_full_name: {assessment_full_name}")
+            logger.debug(f"[SiteInspection] assessment_preferred_day: {assessment_preferred_day}")
+            logger.debug(f"[SiteInspection] assessment_company_name: {assessment_company_name}")
+            logger.debug(f"[SiteInspection] assessment_address: {assessment_address}")
+            logger.debug(f"[SiteInspection] assessment_contact_info: {assessment_contact_info}")
+            logger.debug(f"[SiteInspection] raw_assessment_type: {raw_assessment_type}")
+
             if not all([assessment_full_name, assessment_address, assessment_contact_info]):
+                logger.warning("[SiteInspection] Missing required fields: full_name, address, or contact_info")
                 return False, "Missing required fields: full_name, address, or contact_info"
 
             # Normalize assessment type to model choices
@@ -81,9 +91,18 @@ class WhatsAppFlowResponseProcessor:
                 'commercial': 'commercial_solar',
                 'solar': 'commercial_solar',
             }
+            normalized_type = type_map.get(raw_assessment_type, raw_assessment_type)
+            logger.debug(f"[SiteInspection] Normalized assessment_type: {normalized_type}")
+
             # ...existing code continues...
+            # (Insert additional business logic here as needed, with similar debug logs at key points)
+
+            # Example: Success log before return
+            logger.info(f"[SiteInspection] Successfully processed site inspection for {assessment_full_name} at {assessment_address}")
+            return True, f"Site inspection processed for {assessment_full_name} at {assessment_address}"
         except Exception as e:
             logger.error(f"Error processing site inspection: {e}", exc_info=True)
+            logger.error(f"[SiteInspection] response_data at error: {response_data}")
             return False, f"Error processing site inspection: {e}"
 
     @staticmethod
