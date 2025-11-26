@@ -319,9 +319,14 @@ def _resolve_template_components(components_config: list, flow_context: dict, co
         return components_config
 
 def _clear_contact_flow_state(contact: Contact, error: bool = False):
+    import traceback
     deleted_count, _ = ContactFlowState.objects.filter(contact=contact).delete()
-    if deleted_count > 0:        
-        logger.info(f"Contact {contact.id}: Cleared flow state ({contact.whatsapp_id})." + (" Due to an error." if error else ""))
+    if deleted_count > 0:
+        stack = ''.join(traceback.format_stack(limit=8))
+        logger.info(
+            f"Contact {contact.id}: Cleared flow state ({contact.whatsapp_id})."
+            f" Error flag: {error}. Call stack:\n{stack}"
+        )
 
 def _initiate_paynow_giving_payment(contact: Contact, amount_str: str, payment_type: str, payment_method: str, phone_number: str, email: str, currency: str, notes: str) -> dict:
     """
