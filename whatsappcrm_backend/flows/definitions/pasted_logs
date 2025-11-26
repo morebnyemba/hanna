@@ -1,0 +1,584 @@
+whatsappcrm_backend/flows/definitions/loan_application_flow.py | 4 ++--
+ whatsappcrm_backend/flows/definitions/site_inspection_flow.py  | 4 ++--
+ whatsappcrm_backend/flows/definitions/solar_cleaning_flow.py   | 4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+root@srv967860:~/HANNA# docker compose exec backend python manage.py runscript create_flow
+[2025-11-26 11:50:08] INFO services Registered flow action: 'send_group_notification'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'update_lead_score'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'create_order_from_context'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'create_order'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'generate_unique_order_number'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'create_order_with_items'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'calculate_order_total'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'update_order_fields'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'update_model_instance'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'create_order_from_cart'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'generate_unique_assessment_id'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'create_placeholder_order'
+[2025-11-26 11:50:08] INFO services Registered flow action: 'normalize_order_number'
+Preparing to create/update flows from declarative definitions...
+Found flow definition: 'admin_add_order' in flows.definitions.admin_add_order_flow
+Found flow definition: 'admin_main_menu' in flows.definitions.admin_main_menu_flow
+Found flow definition: 'admin_update_assessment_status' in flows.definitions.admin_update_assessment_status_flow
+Found flow definition: 'admin_update_order_status' in flows.definitions.admin_update_order_status_flow
+Found flow definition: 'custom_furniture_installation_request' in flows.definitions.custom_furniture_installation_flow
+Could not import or process module flows.definitions.hybrid_installation_flow: name 'null' is not defined
+Found flow definition: 'lead_generation' in flows.definitions.lead_gen_flow
+Found flow definition: 'loan_application_flow' in flows.definitions.loan_application_flow
+Found flow definition: 'main_menu' in flows.definitions.main_menu_flow
+Found flow definition: 'simple_add_order' in flows.definitions.simple_add_order_flow
+Found flow definition: 'site_inspection_request' in flows.definitions.site_inspection_flow
+Found flow definition: 'solar_cleaning_request' in flows.definitions.solar_cleaning_flow
+Found flow definition: 'solar_installation_inquiry' in flows.definitions.solar_installation_flow
+Found flow definition: 'starlink_installation_request' in flows.definitions.starlink_installation_flow
+>>> Starting creation/update for flow: admin_add_order...
+>>> Flow "admin_add_order" was updated. Clearing old steps and transitions.
+    Created step: start_add_order
+    Created step: find_contact
+    Created step: check_if_contact_exists
+    Created step: ask_new_contact_name
+    Created step: create_contact_and_profile
+    Created step: get_customer_profile
+    Created step: check_if_profile_exists
+    Created step: create_customer_profile
+    Created step: ask_order_number
+    Created step: ask_order_description
+    Created step: create_initial_order
+    Created step: ask_product_sku_loop
+    Created step: query_product_loop
+    Created step: check_if_product_exists_loop
+    Created step: handle_no_product_found_loop
+    Created step: ask_quantity_loop
+    Created step: create_order_item_loop
+    Created step: ask_next_sku_loop
+    Created step: calculate_and_update_order_total
+    Created step: ask_installation_type
+    Created step: ask_branch
+    Created step: ask_sales_person
+    Created step: ask_client_name
+    Created step: ask_client_phone
+    Created step: ask_alt_contact_name
+    Created step: ask_alt_contact_phone
+    Created step: ask_install_date
+    Created step: ask_availability
+    Created step: ask_install_address
+    Created step: ask_location_pin
+    Created step: set_skipped_location
+    Created step: confirm_installation_request
+    Created step: save_installation_request
+    Created step: end_flow_success
+    Created step: end_flow_cancelled
+        Created transition: start_add_order -> find_contact
+        Created transition: find_contact -> check_if_contact_exists
+        Created transition: check_if_contact_exists -> get_customer_profile
+        Created transition: check_if_contact_exists -> ask_new_contact_name
+        Created transition: ask_new_contact_name -> create_contact_and_profile
+        Created transition: create_contact_and_profile -> ask_order_number
+        Created transition: get_customer_profile -> check_if_profile_exists
+        Created transition: check_if_profile_exists -> ask_order_number
+        Created transition: check_if_profile_exists -> create_customer_profile
+        Created transition: create_customer_profile -> ask_order_number
+        Created transition: ask_order_number -> ask_order_description
+        Created transition: ask_order_description -> create_initial_order
+        Created transition: create_initial_order -> ask_product_sku_loop
+        Created transition: ask_product_sku_loop -> calculate_and_update_order_total
+        Created transition: ask_product_sku_loop -> query_product_loop
+        Created transition: query_product_loop -> check_if_product_exists_loop
+        Created transition: check_if_product_exists_loop -> ask_quantity_loop
+        Created transition: check_if_product_exists_loop -> handle_no_product_found_loop
+        Created transition: handle_no_product_found_loop -> calculate_and_update_order_total
+        Created transition: handle_no_product_found_loop -> query_product_loop
+        Created transition: ask_quantity_loop -> create_order_item_loop
+        Created transition: create_order_item_loop -> ask_next_sku_loop
+        Created transition: ask_next_sku_loop -> calculate_and_update_order_total
+        Created transition: ask_next_sku_loop -> query_product_loop
+        Created transition: calculate_and_update_order_total -> ask_installation_type
+        Created transition: ask_installation_type -> ask_branch
+        Created transition: ask_branch -> end_flow_cancelled
+        Created transition: ask_branch -> ask_sales_person
+        Created transition: ask_sales_person -> ask_client_name
+        Created transition: ask_client_name -> ask_client_phone
+        Created transition: ask_client_phone -> ask_alt_contact_name
+        Created transition: ask_alt_contact_name -> ask_alt_contact_phone
+        Created transition: ask_alt_contact_phone -> ask_install_date
+        Created transition: ask_install_date -> ask_availability
+        Created transition: ask_availability -> ask_install_address
+        Created transition: ask_install_address -> ask_location_pin
+        Created transition: ask_location_pin -> set_skipped_location
+        Created transition: ask_location_pin -> set_skipped_location
+        Created transition: ask_location_pin -> confirm_installation_request
+        Created transition: set_skipped_location -> confirm_installation_request
+        Created transition: confirm_installation_request -> save_installation_request
+        Created transition: confirm_installation_request -> end_flow_cancelled
+        Created transition: save_installation_request -> end_flow_success
+>>> admin_add_order steps and transitions processed.
+>>> Starting creation/update for flow: admin_main_menu...
+>>> Flow "admin_main_menu" was updated. Clearing old steps and transitions.
+    Created step: start_admin_menu
+    Created step: display_admin_menu
+    Created step: switch_to_update_order
+    Created step: switch_to_update_assessment
+    Created step: switch_to_update_warranty_claim
+    Created step: handle_not_admin
+    Created step: end_admin_menu
+        Created transition: start_admin_menu -> display_admin_menu
+        Created transition: start_admin_menu -> handle_not_admin
+        Created transition: display_admin_menu -> switch_to_update_order
+        Created transition: display_admin_menu -> switch_to_update_assessment
+        Created transition: display_admin_menu -> switch_to_update_warranty_claim
+        Created transition: display_admin_menu -> end_admin_menu
+>>> admin_main_menu steps and transitions processed.
+>>> Starting creation/update for flow: admin_update_assessment_status...
+>>> Flow "admin_update_assessment_status" was updated. Clearing old steps and transitions.
+    Created step: start_update_assessment
+    Created step: find_assessment
+    Created step: check_if_assessment_exists
+    Created step: get_customer_contact
+    Created step: ask_for_new_status
+    Created step: update_assessment_status
+    Created step: handle_assessment_not_found
+    Created step: end_flow_cancelled
+    Created step: end_flow_success
+        Created transition: start_update_assessment -> find_assessment
+        Created transition: find_assessment -> check_if_assessment_exists
+        Created transition: check_if_assessment_exists -> get_customer_contact
+        Created transition: check_if_assessment_exists -> handle_assessment_not_found
+        Created transition: get_customer_contact -> ask_for_new_status
+        Created transition: ask_for_new_status -> end_flow_cancelled
+        Created transition: ask_for_new_status -> update_assessment_status
+        Created transition: update_assessment_status -> end_flow_success
+>>> admin_update_assessment_status steps and transitions processed.
+>>> Starting creation/update for flow: admin_update_order_status...
+>>> Flow "admin_update_order_status" was updated. Clearing old steps and transitions.
+    Created step: start_update_order
+    Created step: normalize_the_order_number
+    Created step: find_order
+    Created step: check_if_order_exists
+    Created step: get_customer_contact
+    Created step: ask_for_new_status
+    Created step: update_order_status
+    Created step: handle_order_not_found
+    Created step: end_flow_cancelled
+    Created step: end_flow_success
+        Created transition: start_update_order -> normalize_the_order_number
+        Created transition: normalize_the_order_number -> find_order
+        Created transition: find_order -> check_if_order_exists
+        Created transition: check_if_order_exists -> get_customer_contact
+        Created transition: check_if_order_exists -> handle_order_not_found
+        Created transition: get_customer_contact -> ask_for_new_status
+        Created transition: ask_for_new_status -> end_flow_cancelled
+        Created transition: ask_for_new_status -> update_order_status
+        Created transition: update_order_status -> end_flow_success
+>>> admin_update_order_status steps and transitions processed.
+>>> Starting creation/update for flow: custom_furniture_installation_request...
+>>> Flow "custom_furniture_installation_request" was updated. Clearing old steps and transitions.
+    Created step: check_whatsapp_flow
+    Created step: send_whatsapp_flow
+    ERROR creating step "wait_for_whatsapp_response" for "custom_furniture_installation_request": {'step_type': ["Value 'wait_for_whatsapp_flow_response' is not a valid choice."]}
+    Created step: ask_location_pin
+    Created step: set_skipped_location
+    Created step: fallback_message
+    Created step: end_flow_success
+    Created step: end_flow_unavailable
+        Created transition: check_whatsapp_flow -> send_whatsapp_flow
+        Created transition: check_whatsapp_flow -> fallback_message
+        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: send_whatsapp_flow -> ask_location_pin
+        Created transition: ask_location_pin -> set_skipped_location
+        Created transition: ask_location_pin -> end_flow_success
+        Created transition: set_skipped_location -> end_flow_success
+        Created transition: fallback_message -> end_flow_unavailable
+>>> custom_furniture_installation_request steps and transitions processed.
+>>> Starting creation/update for flow: lead_generation...
+>>> Flow "lead_generation" was updated. Clearing old steps and transitions.
+    Created step: start_purchase_flow
+    Created step: query_products_for_display
+    Created step: check_if_products_exist
+    Created step: display_products_and_ask_sku
+    Created step: get_product_from_selection
+    Created step: ask_for_quantity
+    Created step: add_to_cart
+    Created step: display_cart_and_ask_next
+    Created step: handle_invalid_selection
+    Created step: check_if_cart_is_empty
+    Created step: ask_delivery_name
+    Created step: ask_delivery_phone
+    Created step: ask_delivery_address
+    Created step: confirm_order
+    Created step: generate_order_number
+    Created step: prefix_order_number
+    Created step: create_final_order
+    Created step: end_flow_success
+    Created step: end_flow_cancelled
+    Created step: handle_no_products_available
+        Created transition: start_purchase_flow -> query_products_for_display
+        Created transition: query_products_for_display -> check_if_products_exist
+        Created transition: check_if_products_exist -> display_products_and_ask_sku
+        Created transition: check_if_products_exist -> handle_no_products_available
+        Created transition: display_products_and_ask_sku -> check_if_cart_is_empty
+        Created transition: display_products_and_ask_sku -> get_product_from_selection
+        Created transition: get_product_from_selection -> ask_for_quantity
+        Created transition: get_product_from_selection -> handle_invalid_selection
+        Created transition: ask_for_quantity -> add_to_cart
+        Created transition: add_to_cart -> display_cart_and_ask_next
+        Created transition: display_cart_and_ask_next -> check_if_cart_is_empty
+        Created transition: display_cart_and_ask_next -> get_product_from_selection
+        Created transition: handle_invalid_selection -> check_if_cart_is_empty
+        Created transition: handle_invalid_selection -> get_product_from_selection
+        Created transition: check_if_cart_is_empty -> ask_delivery_name
+        Created transition: check_if_cart_is_empty -> end_flow_cancelled
+        Created transition: ask_delivery_name -> ask_delivery_phone
+        Created transition: ask_delivery_phone -> ask_delivery_address
+        Created transition: ask_delivery_address -> confirm_order
+        Created transition: confirm_order -> generate_order_number
+        Created transition: confirm_order -> end_flow_cancelled
+        Created transition: generate_order_number -> prefix_order_number
+        Created transition: prefix_order_number -> create_final_order
+        Created transition: create_final_order -> end_flow_success
+>>> lead_generation steps and transitions processed.
+>>> Starting creation/update for flow: loan_application_flow...
+>>> Flow "loan_application_flow" was updated. Clearing old steps and transitions.
+    Created step: ensure_customer_profile
+    Created step: check_whatsapp_flow
+    Created step: send_whatsapp_flow
+    ERROR creating step "wait_for_whatsapp_response" for "loan_application_flow": {'config': ["For 'action' steps, config must include 'actions_to_run' as a list."]}
+    Created step: fallback_to_legacy
+    Created step: start_loan_application
+    Created step: ask_full_name
+    Created step: ask_national_id
+    Created step: ask_employment_status
+    Created step: ask_monthly_income
+    Created step: ask_loan_amount
+    Created step: ask_product_of_interest
+    Created step: confirm_application_details
+    Created step: save_loan_application
+    Created step: end_flow_success
+    Created step: end_flow_cancelled
+    Created step: end_flow_success_interactive
+        Created transition: ensure_customer_profile -> check_whatsapp_flow
+        Created transition: check_whatsapp_flow -> send_whatsapp_flow
+        Created transition: check_whatsapp_flow -> fallback_to_legacy
+        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: fallback_to_legacy -> end_flow_cancelled
+        Created transition: start_loan_application -> ask_full_name
+        Created transition: ask_full_name -> ask_national_id
+        Created transition: ask_national_id -> ask_employment_status
+        Created transition: ask_employment_status -> ask_monthly_income
+        Created transition: ask_monthly_income -> ask_loan_amount
+        Created transition: ask_monthly_income -> ask_product_of_interest
+        Created transition: ask_loan_amount -> confirm_application_details
+        Created transition: ask_product_of_interest -> confirm_application_details
+        Created transition: confirm_application_details -> save_loan_application
+        Created transition: confirm_application_details -> end_flow_cancelled
+        Created transition: save_loan_application -> end_flow_success
+>>> loan_application_flow steps and transitions processed.
+>>> Starting creation/update for flow: main_menu...
+>>> Flow "main_menu" was updated. Clearing old steps and transitions.
+    Created step: ensure_customer_profile_exists
+    Created step: show_main_menu
+    Created step: show_installation_submenu
+    Created step: start_ai_troubleshooting_session
+    Created step: send_ai_welcome_message
+    Created step: end_flow_after_ai_handoff
+    Created step: switch_to_purchase_flow
+    Created step: switch_to_solar_installation_flow
+    Created step: switch_to_starlink_installation_flow
+    Created step: switch_to_hybrid_installation_flow
+    Created step: switch_to_custom_furniture_installation_flow
+    Created step: switch_to_assessment_flow
+    Created step: switch_to_cleaning_flow
+    Created step: switch_to_loan_application_flow
+    Created step: switch_to_warranty_claim_flow
+    Created step: show_coming_soon
+    Created step: show_about_pfungwa
+        Created transition: ensure_customer_profile_exists -> show_main_menu
+        Created transition: show_main_menu -> switch_to_purchase_flow
+        Created transition: show_main_menu -> show_installation_submenu
+        Created transition: show_main_menu -> switch_to_assessment_flow
+        Created transition: show_main_menu -> switch_to_cleaning_flow
+        Created transition: show_main_menu -> switch_to_loan_application_flow
+        Created transition: show_main_menu -> switch_to_warranty_claim_flow
+        Created transition: show_main_menu -> start_ai_troubleshooting_session
+        Created transition: show_main_menu -> show_about_pfungwa
+        Created transition: show_installation_submenu -> switch_to_solar_installation_flow
+        Created transition: show_installation_submenu -> switch_to_starlink_installation_flow
+        Created transition: show_installation_submenu -> switch_to_hybrid_installation_flow
+        Created transition: show_installation_submenu -> switch_to_custom_furniture_installation_flow
+        Created transition: show_installation_submenu -> show_main_menu
+        Created transition: start_ai_troubleshooting_session -> send_ai_welcome_message
+        Created transition: send_ai_welcome_message -> end_flow_after_ai_handoff
+>>> main_menu steps and transitions processed.
+>>> Starting creation/update for flow: simple_add_order...
+>>> Flow "simple_add_order" was updated. Clearing old steps and transitions.
+    Created step: start_simple_add_order
+    Created step: check_if_valid_number
+    Created step: query_for_existing_order
+    Created step: check_if_order_exists
+    Created step: handle_order_exists
+    Created step: create_the_order
+    Created step: notify_admins_of_new_order
+    Created step: end_success
+    Created step: handle_invalid_input
+        Created transition: start_simple_add_order -> check_if_valid_number
+        Created transition: check_if_valid_number -> query_for_existing_order
+        Created transition: check_if_valid_number -> handle_invalid_input
+        Created transition: query_for_existing_order -> check_if_order_exists
+        Created transition: check_if_order_exists -> handle_order_exists
+        Created transition: check_if_order_exists -> create_the_order
+        Created transition: create_the_order -> notify_admins_of_new_order
+        Created transition: notify_admins_of_new_order -> end_success
+>>> simple_add_order steps and transitions processed.
+>>> Starting creation/update for flow: site_inspection_request...
+>>> Flow "site_inspection_request" was updated. Clearing old steps and transitions.
+    Created step: check_whatsapp_flow
+    Created step: send_whatsapp_flow
+    ERROR creating step "wait_for_whatsapp_response" for "site_inspection_request": {'config': ["For 'action' steps, config must include 'actions_to_run' as a list."]}
+    Created step: fallback_to_legacy
+    Created step: start_assessment_request
+    Created step: ask_assessment_type
+    Created step: ask_assessment_day
+    Created step: ask_assessment_company
+    Created step: ask_assessment_address
+    Created step: ask_assessment_contact
+    Created step: generate_assessment_id
+    Created step: prefix_assessment_id
+    Created step: save_assessment_request
+    Created step: end_flow_assessment_success
+    Created step: end_flow_success
+    Created step: end_flow_cancelled
+        Created transition: check_whatsapp_flow -> send_whatsapp_flow
+        Created transition: check_whatsapp_flow -> fallback_to_legacy
+        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: fallback_to_legacy -> start_assessment_request
+        Created transition: start_assessment_request -> ask_assessment_type
+        Created transition: ask_assessment_type -> ask_assessment_day
+        Created transition: ask_assessment_day -> ask_assessment_company
+        Created transition: ask_assessment_company -> ask_assessment_address
+        Created transition: ask_assessment_address -> ask_assessment_contact
+        Created transition: ask_assessment_contact -> generate_assessment_id
+        Created transition: generate_assessment_id -> prefix_assessment_id
+        Created transition: prefix_assessment_id -> save_assessment_request
+        Created transition: save_assessment_request -> end_flow_assessment_success
+>>> site_inspection_request steps and transitions processed.
+>>> Starting creation/update for flow: solar_cleaning_request...
+>>> Flow "solar_cleaning_request" was updated. Clearing old steps and transitions.
+    Created step: start_cleaning_request
+    Created step: send_whatsapp_flow
+    ERROR creating step "wait_for_whatsapp_response" for "solar_cleaning_request": {'config': ["For 'action' steps, config must include 'actions_to_run' as a list."]}
+    Created step: fallback_to_legacy
+    Created step: legacy_start_cleaning_request
+    Created step: ask_contact_phone
+    Created step: ask_roof_type
+    Created step: ask_panel_type
+    Created step: ask_panel_count
+    Created step: ask_availability_date
+    Created step: ask_availability_time
+    Created step: ask_address
+    Created step: ask_location_pin
+    Created step: set_skipped_location
+    Created step: confirm_cleaning_request
+    Created step: save_cleaning_request
+    Created step: end_flow_success
+    Created step: end_flow_cancelled
+        Created transition: start_cleaning_request -> send_whatsapp_flow
+        Created transition: start_cleaning_request -> fallback_to_legacy
+        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: fallback_to_legacy -> end_flow_cancelled
+        Created transition: legacy_start_cleaning_request -> ask_contact_phone
+        Created transition: ask_contact_phone -> ask_roof_type
+        Created transition: ask_roof_type -> ask_panel_type
+        Created transition: ask_panel_type -> ask_panel_count
+        Created transition: ask_panel_count -> ask_availability_date
+        Created transition: ask_availability_date -> ask_availability_time
+        Created transition: ask_availability_time -> ask_address
+        Created transition: ask_address -> ask_location_pin
+        Created transition: ask_location_pin -> set_skipped_location
+        Created transition: ask_location_pin -> confirm_cleaning_request
+        Created transition: set_skipped_location -> confirm_cleaning_request
+        Created transition: confirm_cleaning_request -> save_cleaning_request
+        Created transition: confirm_cleaning_request -> ask_location_pin
+        Created transition: confirm_cleaning_request -> end_flow_cancelled
+        Created transition: save_cleaning_request -> end_flow_success
+>>> solar_cleaning_request steps and transitions processed.
+>>> Starting creation/update for flow: solar_installation_inquiry...
+>>> Flow "solar_installation_inquiry" was updated. Clearing old steps and transitions.
+    Created step: ensure_customer_profile
+    Created step: start_installation_request
+    Created step: query_whatsapp_flow
+    Created step: send_whatsapp_flow
+    ERROR creating step "wait_for_whatsapp_response" for "solar_installation_inquiry": {'step_type': ["Value 'wait_for_whatsapp_flow_response' is not a valid choice."]}
+    Created step: fallback_to_legacy
+    Created step: end_flow_with_form_sent
+    Created step: ask_installation_type
+    Created step: query_customer_paid_orders
+    Created step: display_paid_orders_for_selection
+    Created step: handle_no_paid_orders_found
+    Created step: ask_residential_order_number
+    Created step: initialize_quote_context
+    Created step: query_all_services_for_display
+    Created step: check_if_services_exist_for_display
+    Created step: display_services_and_ask_sku
+    Created step: verify_sku_and_add_to_context
+    Created step: add_sku_to_context
+    Created step: query_selected_products
+    Created step: handle_invalid_sku
+    Created step: ask_for_next_sku
+    Created step: check_if_any_product_selected
+    Created step: generate_quote_order_number
+    Created step: prefix_order_number
+    Created step: verify_order_payment
+    Created step: verify_order_payment_from_selection
+    Created step: check_order_status
+    Created step: ask_commercial_assessment_number
+    Created step: verify_assessment
+    Created step: ask_branch
+    Created step: ask_sales_person
+    Created step: ask_client_name
+    Created step: ask_client_phone
+    Created step: ask_alt_contact_name
+    Created step: ask_alt_contact_phone
+    Created step: ask_install_date
+    Created step: ask_availability
+    Created step: ask_install_address
+    Created step: ask_location_pin
+    Created step: confirm_installation_request
+    Created step: save_installation_request
+    Created step: create_quote_order
+    Created step: query_new_order_details
+    Created step: end_flow_quote_created
+    Created step: end_flow_success
+    Created step: end_flow_cancelled
+    Created step: handle_no_services_available
+    Created step: handle_payment_not_found
+    Created step: handle_order_not_paid
+    Created step: handle_assessment_not_found
+        Created transition: ensure_customer_profile -> start_installation_request
+        Created transition: start_installation_request -> query_whatsapp_flow
+        Created transition: start_installation_request -> initialize_quote_context
+        Created transition: query_whatsapp_flow -> send_whatsapp_flow
+        Created transition: query_whatsapp_flow -> fallback_to_legacy
+        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: send_whatsapp_flow -> end_flow_success
+        Created transition: fallback_to_legacy -> ask_installation_type
+        Created transition: ask_installation_type -> query_customer_paid_orders
+        Created transition: ask_installation_type -> ask_commercial_assessment_number
+        Created transition: query_customer_paid_orders -> display_paid_orders_for_selection
+        Created transition: query_customer_paid_orders -> handle_no_paid_orders_found
+        Created transition: display_paid_orders_for_selection -> verify_order_payment_from_selection
+        Created transition: handle_no_paid_orders_found -> ask_residential_order_number
+        Created transition: handle_no_paid_orders_found -> ask_commercial_assessment_number
+        Created transition: handle_no_paid_orders_found -> handle_payment_not_found
+        Created transition: ask_residential_order_number -> verify_order_payment
+        Created transition: initialize_quote_context -> query_all_services_for_display
+        Created transition: query_all_services_for_display -> check_if_services_exist_for_display
+        Created transition: check_if_services_exist_for_display -> display_services_and_ask_sku
+        Created transition: check_if_services_exist_for_display -> handle_no_services_available
+        Created transition: display_services_and_ask_sku -> check_if_any_product_selected
+        Created transition: display_services_and_ask_sku -> verify_sku_and_add_to_context
+        Created transition: verify_sku_and_add_to_context -> add_sku_to_context
+        Created transition: verify_sku_and_add_to_context -> handle_invalid_sku
+        Created transition: add_sku_to_context -> query_selected_products
+        Created transition: query_selected_products -> ask_for_next_sku
+        Created transition: handle_invalid_sku -> check_if_any_product_selected
+        Created transition: handle_invalid_sku -> verify_sku_and_add_to_context
+        Created transition: ask_for_next_sku -> check_if_any_product_selected
+        Created transition: ask_for_next_sku -> verify_sku_and_add_to_context
+        Created transition: check_if_any_product_selected -> generate_quote_order_number
+        Created transition: check_if_any_product_selected -> end_flow_cancelled
+        Created transition: generate_quote_order_number -> prefix_order_number
+        Created transition: prefix_order_number -> create_quote_order
+        Created transition: verify_order_payment -> check_order_status
+        Created transition: verify_order_payment -> handle_payment_not_found
+        Created transition: verify_order_payment_from_selection -> check_order_status
+        Created transition: verify_order_payment_from_selection -> handle_payment_not_found
+        Created transition: check_order_status -> ask_branch
+        Created transition: check_order_status -> handle_order_not_paid
+        Created transition: ask_commercial_assessment_number -> verify_assessment
+        Created transition: verify_assessment -> ask_branch
+        Created transition: verify_assessment -> handle_assessment_not_found
+        Created transition: ask_branch -> end_flow_cancelled
+        Created transition: ask_branch -> ask_sales_person
+        Created transition: ask_sales_person -> end_flow_cancelled
+        Created transition: ask_sales_person -> ask_branch
+        Created transition: ask_sales_person -> ask_client_name
+        Created transition: ask_client_name -> end_flow_cancelled
+        Created transition: ask_client_name -> ask_sales_person
+        Created transition: ask_client_name -> ask_client_phone
+        Created transition: ask_client_phone -> end_flow_cancelled
+        Created transition: ask_client_phone -> ask_client_name
+        Created transition: ask_client_phone -> ask_alt_contact_name
+        Created transition: ask_alt_contact_name -> end_flow_cancelled
+        Created transition: ask_alt_contact_name -> ask_client_phone
+        Created transition: ask_alt_contact_name -> ask_alt_contact_phone
+        Created transition: ask_alt_contact_phone -> end_flow_cancelled
+        Created transition: ask_alt_contact_phone -> ask_alt_contact_name
+        Created transition: ask_alt_contact_phone -> ask_install_date
+        Created transition: ask_install_date -> end_flow_cancelled
+        Created transition: ask_install_date -> ask_alt_contact_phone
+        Created transition: ask_install_date -> ask_availability
+        Created transition: ask_availability -> ask_install_date
+        Created transition: ask_availability -> ask_install_address
+        Created transition: ask_install_address -> end_flow_cancelled
+        Created transition: ask_install_address -> ask_availability
+        Created transition: ask_install_address -> ask_location_pin
+        Created transition: ask_location_pin -> end_flow_cancelled
+        Created transition: ask_location_pin -> ask_install_address
+        Created transition: ask_location_pin -> confirm_installation_request
+        Created transition: confirm_installation_request -> save_installation_request
+        Created transition: confirm_installation_request -> end_flow_cancelled
+        Created transition: save_installation_request -> end_flow_success
+        Created transition: create_quote_order -> query_new_order_details
+        Created transition: query_new_order_details -> end_flow_quote_created
+>>> solar_installation_inquiry steps and transitions processed.
+>>> Starting creation/update for flow: starlink_installation_request...
+>>> Flow "starlink_installation_request" was updated. Clearing old steps and transitions.
+    Created step: ensure_customer_profile
+    Created step: query_whatsapp_flow
+    Created step: send_whatsapp_flow
+    ERROR creating step "wait_for_whatsapp_response" for "starlink_installation_request": {'step_type': ["Value 'wait_for_whatsapp_flow_response' is not a valid choice."]}
+    Created step: fallback_to_legacy
+    Created step: legacy_start_starlink_request
+    Created step: ask_client_name
+    Created step: ask_client_phone
+    Created step: ask_kit_type
+    Created step: ask_install_location
+    Created step: ask_install_date
+    Created step: ask_availability
+    Created step: ask_install_address
+    Created step: ask_location_pin
+    Created step: set_skipped_location
+    Created step: confirm_installation_request
+    Created step: save_installation_request
+    Created step: end_flow_success
+    Created step: end_flow_cancelled
+        Created transition: ensure_customer_profile -> query_whatsapp_flow
+        Created transition: query_whatsapp_flow -> send_whatsapp_flow
+        Created transition: query_whatsapp_flow -> fallback_to_legacy
+        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: send_whatsapp_flow -> ask_location_pin
+        Created transition: fallback_to_legacy -> end_flow_cancelled
+        Created transition: legacy_start_starlink_request -> ask_client_name
+        Created transition: legacy_start_starlink_request -> end_flow_cancelled
+        Created transition: ask_client_name -> ask_client_phone
+        Created transition: ask_client_phone -> ask_client_name
+        Created transition: ask_client_phone -> ask_kit_type
+        Created transition: ask_kit_type -> ask_client_phone
+        Created transition: ask_kit_type -> ask_install_location
+        Created transition: ask_install_location -> ask_kit_type
+        Created transition: ask_install_location -> ask_install_date
+        Created transition: ask_install_date -> ask_install_location
+        Created transition: ask_install_date -> ask_availability
+        Created transition: ask_availability -> ask_install_date
+        Created transition: ask_availability -> ask_install_address
+        Created transition: ask_install_address -> ask_availability
+        Created transition: ask_install_address -> ask_location_pin
+        Created transition: ask_location_pin -> set_skipped_location
+        Created transition: ask_location_pin -> confirm_installation_request
+        Created transition: set_skipped_location -> confirm_installation_request
+        Created transition: confirm_installation_request -> save_installation_request
+        Created transition: confirm_installation_request -> ask_location_pin
+        Created transition: confirm_installation_request -> end_flow_cancelled
+        Created transition: save_installation_request -> end_flow_success
+>>> starlink_installation_request steps and transitions processed.
+>>> Flow creation script finished successfully!
+root@srv967860:~/HANNA# 

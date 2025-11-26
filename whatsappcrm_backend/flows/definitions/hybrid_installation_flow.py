@@ -76,7 +76,7 @@ HYBRID_INSTALLATION_FLOW = {
 
         {
             "name": "wait_for_whatsapp_response",
-            "type": "wait_for_whatsapp_flow_response",
+            "type": "action",
             "config": {
                 "message_config": {
                     "message_type": "text",

@@ -76,6 +76,7 @@ LOAN_APPLICATION_FLOW = {
             "name": "wait_for_whatsapp_response",
             "type": "action",
             "config": {
+                "actions_to_run": [],
                 "wait_for": "whatsapp_flow_response"
             },
             "transitions": [
