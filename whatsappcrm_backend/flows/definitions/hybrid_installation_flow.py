@@ -72,6 +72,17 @@ HYBRID_INSTALLATION_FLOW = {
                 {"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}
             ]
         },
+
+        {
+            "name": "wait_for_whatsapp_response",
+            "type": "wait",
+            "config": {
+                "wait_for": "whatsapp_flow_response"
+            },
+            "transitions": [
+                {"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}
+            ]
+        },
         {
             "name": "fallback_message",
             "type": "send_message",

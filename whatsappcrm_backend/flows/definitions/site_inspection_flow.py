@@ -21,7 +21,24 @@ SITE_INSPECTION_FLOW = {
             "name": "send_whatsapp_flow",
             "type": "send_message",
             "config": {"message_type": "interactive", "interactive": {"type": "flow", "body": {"text": "Please complete our site assessment request form to get started."}, "action": {"name": "flow", "parameters": {"flow_message_version": "3", "flow_token": "{{ contact.id }}-site-inspection-{{ now().timestamp() }}", "flow_id": "{{ site_inspection_whatsapp_flow.0.flow_id }}", "flow_cta": "Start Request", "flow_action": "navigate", "flow_action_payload": {"screen": "WELCOME"}}}}},
-            "transitions": [{"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}]
+            "transitions": [
+                {"to_step": "wait_for_whatsapp_response", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "wait_for_whatsapp_response",
+            "type": "wait_for_whatsapp_flow_response",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "Please complete the WhatsApp form. We will continue once your submission is received."
+                    }
+                }
+            },
+            "transitions": [
+                {"to_step": "end_flow_success", "condition_config": {"type": "whatsapp_flow_response_received"}}
+            ]
         },
         {
             "name": "fallback_to_legacy",

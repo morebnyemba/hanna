@@ -97,7 +97,24 @@ SOLAR_INSTALLATION_FLOW = {
                     }
                 }
             },
-            "transitions": [{"to_step": "end_flow_with_form_sent", "condition_config": {"type": "always_true"}}]
+            "transitions": [
+                {"to_step": "wait_for_whatsapp_response", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "wait_for_whatsapp_response",
+            "type": "wait_for_whatsapp_flow_response",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "Please complete the WhatsApp form. We will continue once your submission is received."
+                    }
+                }
+            },
+            "transitions": [
+                {"to_step": "end_flow_with_form_sent", "condition_config": {"type": "whatsapp_flow_response_received"}}
+            ]
         },
         {
             "name": "fallback_to_legacy",

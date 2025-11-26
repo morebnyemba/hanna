@@ -68,7 +68,19 @@ LOAN_APPLICATION_FLOW = {
                     }
                 }
             },
-            "transitions": [{"to_step": "end_flow_success_interactive", "condition_config": {"type": "always_true"}}]
+            "transitions": [
+                {"to_step": "wait_for_whatsapp_response", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "wait_for_whatsapp_response",
+            "type": "wait",
+            "config": {
+                "wait_for": "whatsapp_flow_response"
+            },
+            "transitions": [
+                {"to_step": "end_flow_success_interactive", "condition_config": {"type": "always_true"}}
+            ]
         },
         {
             "name": "fallback_to_legacy",
