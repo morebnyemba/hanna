@@ -1,21 +1,20 @@
-whatsappcrm_backend/flows/definitions/loan_application_flow.py | 4 ++--
- whatsappcrm_backend/flows/definitions/site_inspection_flow.py  | 4 ++--
- whatsappcrm_backend/flows/definitions/solar_cleaning_flow.py   | 4 ++--
- 3 files changed, 6 insertions(+), 6 deletions(-)
+From https://github.com/morebnyemba/HANNA
+ * branch            main       -> FETCH_HEAD
+Already up to date.
 root@srv967860:~/HANNA# docker compose exec backend python manage.py runscript create_flow
-[2025-11-26 11:50:08] INFO services Registered flow action: 'send_group_notification'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'update_lead_score'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'create_order_from_context'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'create_order'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'generate_unique_order_number'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'create_order_with_items'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'calculate_order_total'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'update_order_fields'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'update_model_instance'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'create_order_from_cart'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'generate_unique_assessment_id'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'create_placeholder_order'
-[2025-11-26 11:50:08] INFO services Registered flow action: 'normalize_order_number'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'send_group_notification'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'update_lead_score'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'create_order_from_context'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'create_order'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'generate_unique_order_number'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'create_order_with_items'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'calculate_order_total'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'update_order_fields'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'update_model_instance'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'create_order_from_cart'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'generate_unique_assessment_id'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'create_placeholder_order'
+[2025-11-26 12:05:55] INFO services Registered flow action: 'normalize_order_number'
 Preparing to create/update flows from declarative definitions...
 Found flow definition: 'admin_add_order' in flows.definitions.admin_add_order_flow
 Found flow definition: 'admin_main_menu' in flows.definitions.admin_main_menu_flow
@@ -174,7 +173,7 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
 >>> Flow "custom_furniture_installation_request" was updated. Clearing old steps and transitions.
     Created step: check_whatsapp_flow
     Created step: send_whatsapp_flow
-    ERROR creating step "wait_for_whatsapp_response" for "custom_furniture_installation_request": {'step_type': ["Value 'wait_for_whatsapp_flow_response' is not a valid choice."]}
+    Created step: wait_for_whatsapp_response
     Created step: ask_location_pin
     Created step: set_skipped_location
     Created step: fallback_message
@@ -182,8 +181,9 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
     Created step: end_flow_unavailable
         Created transition: check_whatsapp_flow -> send_whatsapp_flow
         Created transition: check_whatsapp_flow -> fallback_message
-        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: send_whatsapp_flow -> wait_for_whatsapp_response
         Created transition: send_whatsapp_flow -> ask_location_pin
+        Created transition: wait_for_whatsapp_response -> ask_location_pin
         Created transition: ask_location_pin -> set_skipped_location
         Created transition: ask_location_pin -> end_flow_success
         Created transition: set_skipped_location -> end_flow_success
@@ -241,7 +241,7 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
     Created step: ensure_customer_profile
     Created step: check_whatsapp_flow
     Created step: send_whatsapp_flow
-    ERROR creating step "wait_for_whatsapp_response" for "loan_application_flow": {'config': ["For 'action' steps, config must include 'actions_to_run' as a list."]}
+    Created step: wait_for_whatsapp_response
     Created step: fallback_to_legacy
     Created step: start_loan_application
     Created step: ask_full_name
@@ -258,7 +258,8 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
         Created transition: ensure_customer_profile -> check_whatsapp_flow
         Created transition: check_whatsapp_flow -> send_whatsapp_flow
         Created transition: check_whatsapp_flow -> fallback_to_legacy
-        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: send_whatsapp_flow -> wait_for_whatsapp_response
+        Created transition: wait_for_whatsapp_response -> confirm_application_details
         Created transition: fallback_to_legacy -> end_flow_cancelled
         Created transition: start_loan_application -> ask_full_name
         Created transition: ask_full_name -> ask_national_id
@@ -332,7 +333,7 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
 >>> Flow "site_inspection_request" was updated. Clearing old steps and transitions.
     Created step: check_whatsapp_flow
     Created step: send_whatsapp_flow
-    ERROR creating step "wait_for_whatsapp_response" for "site_inspection_request": {'config': ["For 'action' steps, config must include 'actions_to_run' as a list."]}
+    Created step: wait_for_whatsapp_response
     Created step: fallback_to_legacy
     Created step: start_assessment_request
     Created step: ask_assessment_type
@@ -348,7 +349,8 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
     Created step: end_flow_cancelled
         Created transition: check_whatsapp_flow -> send_whatsapp_flow
         Created transition: check_whatsapp_flow -> fallback_to_legacy
-        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: send_whatsapp_flow -> wait_for_whatsapp_response
+        Created transition: wait_for_whatsapp_response -> generate_assessment_id
         Created transition: fallback_to_legacy -> start_assessment_request
         Created transition: start_assessment_request -> ask_assessment_type
         Created transition: ask_assessment_type -> ask_assessment_day
@@ -364,7 +366,7 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
 >>> Flow "solar_cleaning_request" was updated. Clearing old steps and transitions.
     Created step: start_cleaning_request
     Created step: send_whatsapp_flow
-    ERROR creating step "wait_for_whatsapp_response" for "solar_cleaning_request": {'config': ["For 'action' steps, config must include 'actions_to_run' as a list."]}
+    Created step: wait_for_whatsapp_response
     Created step: fallback_to_legacy
     Created step: legacy_start_cleaning_request
     Created step: ask_contact_phone
@@ -382,7 +384,8 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
     Created step: end_flow_cancelled
         Created transition: start_cleaning_request -> send_whatsapp_flow
         Created transition: start_cleaning_request -> fallback_to_legacy
-        WARNING: Could not create transition from "send_whatsapp_flow". Target step "wait_for_whatsapp_response" not found.
+        Created transition: send_whatsapp_flow -> wait_for_whatsapp_response
+        Created transition: wait_for_whatsapp_response -> confirm_cleaning_request
         Created transition: fallback_to_legacy -> end_flow_cancelled
         Created transition: legacy_start_cleaning_request -> ask_contact_phone
         Created transition: ask_contact_phone -> ask_roof_type
@@ -406,7 +409,7 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
     Created step: start_installation_request
     Created step: query_whatsapp_flow
     Created step: send_whatsapp_flow
-    ERROR creating step "wait_for_whatsapp_response" for "solar_installation_inquiry": {'step_type': ["Value 'wait_for_whatsapp_flow_response' is not a valid choice."]}
+    ERROR creating step "wait_for_whatsapp_response" for "solar_installation_inquiry": {'config': ["For 'action' steps, config must include 'actions_to_run' as a list."]}
     Created step: fallback_to_legacy
     Created step: end_flow_with_form_sent
     Created step: ask_installation_type
@@ -535,7 +538,7 @@ Found flow definition: 'starlink_installation_request' in flows.definitions.star
     Created step: ensure_customer_profile
     Created step: query_whatsapp_flow
     Created step: send_whatsapp_flow
-    ERROR creating step "wait_for_whatsapp_response" for "starlink_installation_request": {'step_type': ["Value 'wait_for_whatsapp_flow_response' is not a valid choice."]}
+    ERROR creating step "wait_for_whatsapp_response" for "starlink_installation_request": {'config': ["For 'action' steps, config must include 'actions_to_run' as a list."]}
     Created step: fallback_to_legacy
     Created step: legacy_start_starlink_request
     Created step: ask_client_name

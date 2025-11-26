@@ -81,6 +81,7 @@ STARLINK_INSTALLATION_FLOW = {
             "name": "wait_for_whatsapp_response",
             "type": "action",
             "config": {
+                "actions_to_run": [],
                 "message_config": {
                     "message_type": "text",
                     "text": {
