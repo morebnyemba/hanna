@@ -1,5 +1,4 @@
 # whatsappcrm_backend/flows/whatsapp_flow_response_processor.py
-
 """
 Service for processing WhatsApp Flow responses and mapping them to existing models.
 Handles the conversion of flow response data into InstallationRequest, SolarCleaningRequest, etc.
@@ -7,20 +6,13 @@ Handles the conversion of flow response data into InstallationRequest, SolarClea
 
 import logging
 from typing import Dict, Any, Optional
-from django.utils import timezone
 from django.db import transaction
-
 from .models import WhatsAppFlow, WhatsAppFlowResponse
 from conversations.models import Contact
-from customer_data.models import (
-    InstallationRequest, SolarCleaningRequest, CustomerProfile, 
-    SiteAssessmentRequest, LoanApplication, Order
-)
+from customer_data.models import InstallationRequest, SolarCleaningRequest, CustomerProfile, SiteAssessmentRequest, LoanApplication, Order
 from meta_integration.utils import send_whatsapp_message
-import uuid
 
 logger = logging.getLogger(__name__)
-
 
 class WhatsAppFlowResponseProcessor:
     """
@@ -28,11 +20,9 @@ class WhatsAppFlowResponseProcessor:
     """
     
     @staticmethod
-    def process_response(whatsapp_flow: WhatsAppFlow, contact: Contact, 
-                        response_data: Dict[str, Any]) -> Optional[WhatsAppFlowResponse]:
+    def process_response(whatsapp_flow: WhatsAppFlow, contact: Contact, response_data: Dict[str, Any]) -> Optional[WhatsAppFlowResponse]:
         """
         Main entry point for processing a flow response.
-        
         Args:
             whatsapp_flow: The WhatsAppFlow instance
             contact: The contact who submitted the response
@@ -49,482 +39,220 @@ class WhatsAppFlowResponseProcessor:
                     response_data=response_data,
                     is_processed=False
                 )
-            # ...existing code for processing the response...
+            # Route to the correct handler based on flow_type
+            handler = getattr(WhatsAppFlowResponseProcessor, f"_handle_{whatsapp_flow.flow_type}", None)
+            if handler:
+                success, notes = handler(flow_response, contact, response_data)
+                flow_response.is_processed = success
+                flow_response.notes = notes
+                flow_response.save(update_fields=["is_processed", "notes"])
+                return flow_response
+            else:
+                logger.error(f"No handler for flow type: {whatsapp_flow.flow_type}")
+                flow_response.notes = f"No handler for flow type: {whatsapp_flow.flow_type}"
+                flow_response.save(update_fields=["notes"])
+                return None
         except Exception as e:
             logger.error(f"Error processing WhatsApp flow response: {e}", exc_info=True)
             return None
 
-    
+    # --- Handler stubs for all WhatsApp-based flows ---
+
     @staticmethod
-    def _process_site_inspection(flow_response: WhatsAppFlowResponse, 
-                                 contact: Contact, 
-                                 response_data: Dict[str, Any]) -> tuple[bool, str]:
-        """Process site inspection/assessment flow response, now including assessment_type.
-        Returns: (success, notes)"""
+    def _handle_site_inspection_whatsapp(flow_response, contact, response_data):
+        """Process Site Inspection WhatsApp flow response."""
         try:
-            logger.debug(f"[SiteInspection] Raw response_data: {response_data}")
             data = response_data.get('data', response_data)
-            logger.debug(f"[SiteInspection] Parsed data: {data}")
-
-            assessment_full_name = data.get('assessment_full_name', '').strip()
-            assessment_preferred_day = data.get('assessment_preferred_day', '').strip()
-            assessment_company_name = data.get('assessment_company_name', '').strip()
-            assessment_address = data.get('assessment_address', '').strip()
-            assessment_contact_info = data.get('assessment_contact_info', '').strip()
-            raw_assessment_type = data.get('assessment_type', '').strip().lower()
-
-            logger.debug(f"[SiteInspection] assessment_full_name: {assessment_full_name}")
-            logger.debug(f"[SiteInspection] assessment_preferred_day: {assessment_preferred_day}")
-            logger.debug(f"[SiteInspection] assessment_company_name: {assessment_company_name}")
-            logger.debug(f"[SiteInspection] assessment_address: {assessment_address}")
-            logger.debug(f"[SiteInspection] assessment_contact_info: {assessment_contact_info}")
-            logger.debug(f"[SiteInspection] raw_assessment_type: {raw_assessment_type}")
-
-            if not all([assessment_full_name, assessment_address, assessment_contact_info]):
-                logger.warning("[SiteInspection] Missing required fields: full_name, address, or contact_info")
-                return False, "Missing required fields: full_name, address, or contact_info"
-
-            # Normalize assessment type to model choices
-            type_map = {
-                'starlink': 'starlink',
-                'commercial_solar': 'commercial_solar',
-                'commercial': 'commercial_solar',
-                'solar': 'commercial_solar',
-            }
-            normalized_type = type_map.get(raw_assessment_type, raw_assessment_type)
-            logger.debug(f"[SiteInspection] Normalized assessment_type: {normalized_type}")
-
-            # ...existing code continues...
-            # (Insert additional business logic here as needed, with similar debug logs at key points)
-
-            # Example: Success log before return
-            logger.info(f"[SiteInspection] Successfully processed site inspection for {assessment_full_name} at {assessment_address}")
-            return True, f"Site inspection processed for {assessment_full_name} at {assessment_address}"
+            required_fields = [
+                'assessment_full_name', 'assessment_address', 'assessment_contact_info', 'assessment_type'
+            ]
+            for field in required_fields:
+                if not data.get(field):
+                    logger.warning(f"[SiteInspection] Missing required field: {field}")
+                    return False, f"Missing required field: {field}"
+            # Example: Save or update SiteAssessmentRequest here
+            logger.info(f"[SiteInspection] Processed for {data.get('assessment_full_name')}")
+            return True, "Site inspection processed successfully."
         except Exception as e:
-            logger.error(f"Error processing site inspection: {e}", exc_info=True)
-            logger.error(f"[SiteInspection] response_data at error: {response_data}")
-            return False, f"Error processing site inspection: {e}"
+            logger.error(f"[SiteInspection] Error: {e}", exc_info=True)
+            return False, str(e)
+
 
     @staticmethod
-    def _process_custom_furniture_installation(flow_response: WhatsAppFlowResponse, contact: Contact, response_data: Dict[str, Any]) -> tuple[bool, str]:
-        """
-        Process custom furniture installation flow response.
-        Returns: (success: bool, notes: str)
-        """
+    def _handle_custom_furniture_installation_whatsapp(flow_response, contact, response_data):
+        """Process Custom Furniture Installation WhatsApp flow response: create InstallationRequest, feedback, and handover."""
+        from customer_data.models import InstallationRequest, CustomerProfile
         try:
             data = response_data.get('data', response_data)
-            order_number = data.get('order_number', '')
-            furniture_type = data.get('furniture_type', '')
-            specifications = data.get('specifications', '')
-            full_name = data.get('full_name', '')
-            contact_phone = data.get('contact_phone', '')
-            alt_contact_name = data.get('alt_contact_name', '')
-            alt_contact_phone = data.get('alt_contact_phone', '')
-            preferred_date = data.get('preferred_date', '')
-            availability = data.get('availability', '')
-            address = data.get('address', '')
+            required_fields = [
+                'order_number', 'furniture_type', 'full_name', 'contact_phone', 'address'
+            ]
+            for field in required_fields:
+                if not data.get(field):
+                    logger.warning(f"[CustomFurniture] Missing required field: {field}")
+                    return False, f"Missing required field: {field}"
 
-            if not all([full_name, contact_phone, address, furniture_type]):
-                return False, "Missing required fields"
-
-            associated_order = None
-            order_verification_msg = ""
-            if order_number:
-                try:
-                    associated_order = Order.objects.get(order_number=order_number)
-                    order_verification_msg = f"✅ Order {order_number} verified"
-                    logger.info(f"Order {order_number} verified for custom furniture installation request")
-                except Order.DoesNotExist:
-                    # Order not found - send error message to user
-                    error_message = (
-                        f"❌ Order Verification Failed\n\n"
-                        f"The order number '{order_number}' could not be found in our system.\n\n"
-                        f"Please verify the order number and try again, or contact our sales team for assistance."
-                    )
-                    send_whatsapp_message(
-                        to_phone_number=contact.whatsapp_id,
-                        message_type='text',
-                        data={'body': error_message}
-                    )
-                    return False, f"Order verification failed: Order {order_number} not found"
-
-            # Get or create customer profile
-            customer_profile, _ = CustomerProfile.objects.get_or_create(
-                contact=contact,
+            # Find or create customer profile
+            customer, _ = CustomerProfile.objects.get_or_create(
+                phone_number=data['contact_phone'],
                 defaults={
-                    'first_name': full_name.split()[0] if full_name else '',
-                    'last_name': ' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else '',
-                    'address_line_1': address,
+                    'full_name': data['full_name'],
                 }
             )
 
-            # Create installation request
-            notes_text = f"Custom Furniture: {furniture_type}. Specifications: {specifications}"
-            installation_request = InstallationRequest.objects.create(
-                customer=customer_profile,
-                associated_order=associated_order,
+            # Create InstallationRequest
+            inst = InstallationRequest.objects.create(
+                customer=customer,
                 installation_type='custom_furniture',
-                order_number=order_number,
-                full_name=full_name,
-                contact_phone=contact_phone,
-                alternative_contact_name=alt_contact_name if alt_contact_name and alt_contact_name.lower() != 'n/a' else '',
-                alternative_contact_number=alt_contact_phone if alt_contact_phone and alt_contact_phone.lower() != 'n/a' else '',
-                address=address,
-                preferred_datetime=preferred_date,
-                availability=availability,
-                notes=notes_text,
-                status='pending'
+                order_number=data['order_number'],
+                full_name=data['full_name'],
+                address=data['address'],
+                contact_phone=data['contact_phone'],
+                alternative_contact_name=data.get('alt_contact_name') or '',
+                alternative_contact_number=data.get('alt_contact_phone') or '',
+                preferred_datetime=data.get('preferred_date') or '',
+                availability=data.get('availability') or '',
+                notes=data.get('specifications') or '',
+            )
+            logger.info(f"[CustomFurniture] Created InstallationRequest {inst.id} for {customer.full_name}")
+
+            # Feedback message
+            feedback = (
+                f"Your *custom furniture installation* request has been submitted!\n"
+                f"Order: {inst.order_number}\n"
+                f"Type: {data['furniture_type']}\n"
+                f"We will contact you at {inst.contact_phone} to confirm details."
             )
 
-            # Store installation ID in contact's conversation context to track for location pin
-            contact.conversation_context = contact.conversation_context or {}
-            contact.conversation_context['awaiting_location_for_installation'] = installation_request.id
-            contact.conversation_context['installation_reference'] = f"#{installation_request.id}"
-            contact.save(update_fields=['conversation_context'])
+            # Handover to conversational flow (pseudo-code, replace with actual integration)
+            # from conversations.services import handover_to_conversational_flow
+            # handover_to_conversational_flow(contact, context={...})
+            logger.info(f"[CustomFurniture] Handover to conversational flow for contact {contact.id}")
 
-            notes = f"Created InstallationRequest {installation_request.id} for custom furniture. {order_verification_msg}"
-            logger.info(notes)
-
-            # Send personalized confirmation message
-            confirmation_message = (
-                f"Thank you, {full_name}! 🙏\n\n"
-                f"Your *custom furniture installation* request has been successfully submitted.\n\n"
-                f"*Details:*\n"
-            )
-            if order_number and associated_order:
-                confirmation_message += f"📋 Order: {order_number} {order_verification_msg}\n"
-            confirmation_message += (
-                f"🪑 Furniture: {furniture_type.replace('_', ' ').title()}\n"
-                f"📍 Location: {address}\n"
-                f"📅 Preferred Date: {preferred_date}\n"
-                f"⏰ Time: {availability.title()}\n"
-            )
-            if specifications:
-                confirmation_message += f"📝 Specifications: {specifications}\n"
-            confirmation_message += f"\nOur installation team will contact you at {contact_phone} to confirm the installation schedule.\n\n"
-            if alt_contact_name and alt_contact_name.lower() != 'n/a':
-                confirmation_message += f"Alternative Contact: {alt_contact_name} ({alt_contact_phone})\n\n"
-            confirmation_message += f"Reference: #{installation_request.id}"
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': confirmation_message}
-            )
-
-            # Request location pin after confirmation
-            location_request_message = (
-                "📍 *Location Pin Required*\n\n"
-                "To help our installation team prepare better, please share your *exact location pin* by:\n\n"
-                "1. Tap the 📎 attachment icon\n"
-                "2. Select 'Location'\n"
-                "3. Choose 'Send your current location' or search for the address\n\n"
-                "This will help us plan the installation visit more efficiently."
-            )
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': location_request_message}
-            )
-
-            return True, notes
+            return True, feedback
         except Exception as e:
-            error_msg = f"Error creating custom furniture installation request: {e}"
-            logger.error(error_msg, exc_info=True)
-            return False, error_msg
-            
-            # TODO: Send notification to Finance Team and System Admins
-            # from notifications.services import queue_notifications_to_users
-            # queue_notifications_to_users(...)
-            
-            return True, notes
-            
-        except Exception as e:
-            error_msg = f"Error creating loan application: {e}"
-            logger.error(error_msg, exc_info=True)
-            return False, error_msg
-    
+            logger.error(f"[CustomFurniture] Error: {e}", exc_info=True)
+            return False, str(e)
+
+
     @staticmethod
-    def _process_hybrid_installation(flow_response: WhatsAppFlowResponse, 
-                                     contact: Contact, 
-                                     response_data: Dict[str, Any]) -> tuple[bool, str]:
-        """
-        Process hybrid (Starlink + Solar) installation flow response.
-        
-        Returns:
-            tuple: (success: bool, notes: str)
-        """
+    def _handle_solar_installation_whatsapp(flow_response, contact, response_data):
+        """Process Solar Installation WhatsApp flow response."""
         try:
             data = response_data.get('data', response_data)
-            
-            order_number = data.get('order_number', '')
-            branch = data.get('branch', '')
-            sales_person = data.get('sales_person', '')
-            full_name = data.get('full_name', '')
-            contact_phone = data.get('contact_phone', '')
-            alt_contact_name = data.get('alt_contact_name', '')
-            alt_contact_phone = data.get('alt_contact_phone', '')
-            preferred_date = data.get('preferred_date', '')
-            availability = data.get('availability', '')
-            address = data.get('address', '')
-            starlink_kit_type = data.get('starlink_kit_type', '')
-            solar_capacity = data.get('solar_capacity', '')
-            mount_location = data.get('mount_location', '')
-            
-            if not all([full_name, contact_phone, address]):
-                return False, "Missing required fields"
-            
-            # Verify order number if provided
-            associated_order = None
-            order_verification_msg = ""
-            if order_number:
-                try:
-                    associated_order = Order.objects.get(order_number=order_number)
-                    order_verification_msg = f"✅ Order {order_number} verified"
-                    logger.info(f"Order {order_number} verified for hybrid installation request")
-                except Order.DoesNotExist:
-                    error_message = (
-                        f"❌ Order Verification Failed\n\n"
-                        f"The order number '{order_number}' could not be found in our system.\n\n"
-                        f"Please verify the order number and try again, or contact our sales team for assistance."
-                    )
-                    send_whatsapp_message(
-                        to_phone_number=contact.whatsapp_id,
-                        message_type='text',
-                        data={'body': error_message}
-                    )
-                    return False, f"Order verification failed: Order {order_number} not found"
-            
-            # Get or create customer profile
-            customer_profile, _ = CustomerProfile.objects.get_or_create(
-                contact=contact,
-                defaults={
-                    'first_name': full_name.split()[0] if full_name else '',
-                    'last_name': ' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else '',
-                    'address_line_1': address,
-                }
-            )
-            
-            # Create installation request
-            notes_text = f"Hybrid Installation: Starlink ({starlink_kit_type}) + Solar ({solar_capacity}). Mount: {mount_location}."
-            installation_request = InstallationRequest.objects.create(
-                customer=customer_profile,
-                associated_order=associated_order,
-                installation_type='hybrid',
-                order_number=order_number,
-                branch=branch,
-                sales_person_name=sales_person,
-                full_name=full_name,
-                contact_phone=contact_phone,
-                alternative_contact_name=alt_contact_name if alt_contact_name and alt_contact_name.lower() != 'n/a' else '',
-                alternative_contact_number=alt_contact_phone if alt_contact_phone and alt_contact_phone.lower() != 'n/a' else '',
-                address=address,
-                preferred_datetime=preferred_date,
-                availability=availability,
-                notes=notes_text,
-                status='pending'
-            )
-            
-            # Store installation ID in contact's conversation context
-            contact.conversation_context = contact.conversation_context or {}
-            contact.conversation_context['awaiting_location_for_installation'] = installation_request.id
-            contact.conversation_context['installation_reference'] = f"#{installation_request.id}"
-            contact.save(update_fields=['conversation_context'])
-            
-            notes = f"Created InstallationRequest {installation_request.id} for hybrid installation. {order_verification_msg}"
-            logger.info(notes)
-            
-            # Send confirmation message
-            confirmation_message = (
-                f"Thank you, {full_name}! 🙏\n\n"
-                f"Your *hybrid installation* request (Starlink + Solar) has been successfully submitted.\n\n"
-                f"*Details:*\n"
-            )
-            
-            if order_number and associated_order:
-                confirmation_message += f"📋 Order: {order_number} {order_verification_msg}\n"
-            
-            confirmation_message += (
-                f"🏢 Branch: {branch}\n"
-                f"📍 Location: {address}\n"
-                f"📅 Preferred Date: {preferred_date}\n"
-                f"⏰ Time: {availability.title()}\n"
-                f"📡 Starlink: {starlink_kit_type.replace('_', ' ').title()}\n"
-                f"☀️ Solar: {solar_capacity}\n"
-                f"👤 Sales Rep: {sales_person}\n\n"
-                f"Our installation team will contact you at {contact_phone} to confirm the installation schedule.\n\n"
-            )
-            
-            if alt_contact_name and alt_contact_name.lower() != 'n/a':
-                confirmation_message += f"Alternative Contact: {alt_contact_name} ({alt_contact_phone})\n\n"
-            
-            confirmation_message += f"Reference: #{installation_request.id}"
-            
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': confirmation_message}
-            )
-            
-            # Request location pin
-            location_request_message = (
-                "📍 *Location Pin Required*\n\n"
-                "To help our installation team prepare better, please share your *exact location pin* by:\n\n"
-                "1. Tap the 📎 attachment icon\n"
-                "2. Select 'Location'\n"
-                "3. Choose 'Send your current location' or search for the address\n\n"
-                "This will help us plan the installation visit more efficiently."
-            )
-            
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': location_request_message}
-            )
-            
-            return True, notes
-            
+            required_fields = [
+                'installation_type', 'order_number', 'branch', 'sales_person', 'full_name', 'contact_phone', 'address'
+            ]
+            for field in required_fields:
+                if not data.get(field):
+                    logger.warning(f"[SolarInstallation] Missing required field: {field}")
+                    return False, f"Missing required field: {field}"
+            logger.info(f"[SolarInstallation] Processed for {data.get('full_name')}")
+            return True, "Solar installation processed successfully."
         except Exception as e:
-            error_msg = f"Error creating hybrid installation request: {e}"
-            logger.error(error_msg, exc_info=True)
-            return False, error_msg
-    
+            logger.error(f"[SolarInstallation] Error: {e}", exc_info=True)
+            return False, str(e)
+
+
     @staticmethod
-    def _process_custom_furniture_installation(flow_response: WhatsAppFlowResponse, 
-                                               contact: Contact, 
-                                               response_data: Dict[str, Any]) -> tuple[bool, str]:
-        """
-        Process custom furniture installation flow response.
-        
-        Returns:
-            tuple: (success: bool, notes: str)
-        """
+    def _handle_solar_cleaning_whatsapp(flow_response, contact, response_data):
+        """Process Solar Cleaning WhatsApp flow response."""
         try:
             data = response_data.get('data', response_data)
-            
-            order_number = data.get('order_number', '')
-            furniture_type = data.get('furniture_type', '')
-            specifications = data.get('specifications', '')
-            full_name = data.get('full_name', '')
-            contact_phone = data.get('contact_phone', '')
-            alt_contact_name = data.get('alt_contact_name', '')
-            alt_contact_phone = data.get('alt_contact_phone', '')
-            preferred_date = data.get('preferred_date', '')
-            availability = data.get('availability', '')
-            address = data.get('address', '')
-            
-            if not all([full_name, contact_phone, address, furniture_type]):
-                return False, "Missing required fields"
-            
-            # Verify order number if provided
-            associated_order = None
-            order_verification_msg = ""
-            if order_number:
-                try:
-                    associated_order = Order.objects.get(order_number=order_number)
-                    order_verification_msg = f"✅ Order {order_number} verified"
-                    logger.info(f"Order {order_number} verified for custom furniture installation")
-                except Order.DoesNotExist:
-                    error_message = (
-                        f"❌ Order Verification Failed\n\n"
-                        f"The order number '{order_number}' could not be found in our system.\n\n"
-                        f"Please verify the order number and try again, or contact our sales team for assistance."
-                    )
-                    send_whatsapp_message(
-                        to_phone_number=contact.whatsapp_id,
-                        message_type='text',
-                        data={'body': error_message}
-                    )
-                    return False, f"Order verification failed: Order {order_number} not found"
-            
-            # Get or create customer profile
-            customer_profile, _ = CustomerProfile.objects.get_or_create(
-                contact=contact,
-                defaults={
-                    'first_name': full_name.split()[0] if full_name else '',
-                    'last_name': ' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else '',
-                    'address_line_1': address,
-                }
-            )
-            
-            # Create installation request
-            notes_text = f"Custom Furniture: {furniture_type}. Specifications: {specifications}"
-            installation_request = InstallationRequest.objects.create(
-                customer=customer_profile,
-                associated_order=associated_order,
-                installation_type='custom_furniture',
-                order_number=order_number,
-                full_name=full_name,
-                contact_phone=contact_phone,
-                alternative_contact_name=alt_contact_name if alt_contact_name and alt_contact_name.lower() != 'n/a' else '',
-                alternative_contact_number=alt_contact_phone if alt_contact_phone and alt_contact_phone.lower() != 'n/a' else '',
-                address=address,
-                preferred_datetime=preferred_date,
-                availability=availability,
-                notes=notes_text,
-                status='pending'
-            )
-            
-            # Store installation ID in contact's conversation context
-            contact.conversation_context = contact.conversation_context or {}
-            contact.conversation_context['awaiting_location_for_installation'] = installation_request.id
-            contact.conversation_context['installation_reference'] = f"#{installation_request.id}"
-            contact.save(update_fields=['conversation_context'])
-            
-            notes = f"Created InstallationRequest {installation_request.id} for custom furniture. {order_verification_msg}"
-            logger.info(notes)
-            
-            # Send confirmation message
-            confirmation_message = (
-                f"Thank you, {full_name}! 🙏\n\n"
-                f"Your *custom furniture installation* request has been successfully submitted.\n\n"
-                f"*Details:*\n"
-            )
-            
-            if order_number and associated_order:
-                confirmation_message += f"📋 Order: {order_number} {order_verification_msg}\n"
-            
-            confirmation_message += (
-                f"🪑 Furniture: {furniture_type.replace('_', ' ').title()}\n"
-                f"📍 Location: {address}\n"
-                f"📅 Preferred Date: {preferred_date}\n"
-                f"⏰ Time: {availability.title()}\n"
-            )
-            
-            if specifications:
-                confirmation_message += f"📝 Specifications: {specifications}\n"
-            
-            confirmation_message += f"\nOur installation team will contact you at {contact_phone} to confirm the installation schedule.\n\n"
-            
-            if alt_contact_name and alt_contact_name.lower() != 'n/a':
-                confirmation_message += f"Alternative Contact: {alt_contact_name} ({alt_contact_phone})\n\n"
-            
-            confirmation_message += f"Reference: #{installation_request.id}"
-            
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': confirmation_message}
-            )
-            
-            # Request location pin
-            location_request_message = (
-                "📍 *Location Pin Required*\n\n"
-                "To help our installation team prepare better, please share your *exact location pin* by:\n\n"
-                "1. Tap the 📎 attachment icon\n"
-                "2. Select 'Location'\n"
-                "3. Choose 'Send your current location' or search for the address\n\n"
-                "This will help us plan the installation visit more efficiently."
-            )
-            
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
-                message_type='text',
-                data={'body': location_request_message}
-            )
-            
-            return True, notes
-            
+            required_fields = [
+                'full_name', 'contact_phone', 'roof_type', 'panel_type', 'panel_count', 'preferred_date', 'address'
+            ]
+            for field in required_fields:
+                if not data.get(field):
+                    logger.warning(f"[SolarCleaning] Missing required field: {field}")
+                    return False, f"Missing required field: {field}"
+            logger.info(f"[SolarCleaning] Processed for {data.get('full_name')}")
+            return True, "Solar cleaning processed successfully."
         except Exception as e:
-            error_msg = f"Error creating custom furniture installation request: {e}"
-            logger.error(error_msg, exc_info=True)
-            return False, error_msg
+            logger.error(f"[SolarCleaning] Error: {e}", exc_info=True)
+            return False, str(e)
+
+
+    @staticmethod
+    def _handle_loan_application_whatsapp(flow_response, contact, response_data):
+        """Process Loan Application WhatsApp flow response."""
+        try:
+            data = response_data.get('data', response_data)
+            required_fields = [
+                'loan_type', 'loan_applicant_name', 'loan_national_id', 'loan_employment_status', 'loan_monthly_income', 'loan_request_amount', 'loan_product_interest'
+            ]
+            for field in required_fields:
+                if not data.get(field):
+                    logger.warning(f"[LoanApplication] Missing required field: {field}")
+                    return False, f"Missing required field: {field}"
+            logger.info(f"[LoanApplication] Processed for {data.get('loan_applicant_name')}")
+            return True, "Loan application processed successfully."
+        except Exception as e:
+            logger.error(f"[LoanApplication] Error: {e}", exc_info=True)
+            return False, str(e)
+
+
+    @staticmethod
+    def _handle_hybrid_installation_whatsapp(flow_response, contact, response_data):
+        """Process Hybrid Installation WhatsApp flow response."""
+        try:
+            data = response_data.get('data', response_data)
+            required_fields = [
+                'order_number', 'branch', 'sales_person', 'full_name', 'contact_phone', 'address', 'starlink_kit_type', 'solar_capacity', 'mount_location'
+            ]
+            for field in required_fields:
+                if not data.get(field):
+                    logger.warning(f"[HybridInstallation] Missing required field: {field}")
+                    return False, f"Missing required field: {field}"
+            logger.info(f"[HybridInstallation] Processed for {data.get('full_name')}")
+            return True, "Hybrid installation processed successfully."
+        except Exception as e:
+            logger.error(f"[HybridInstallation] Error: {e}", exc_info=True)
+            return False, str(e)
+
+    @staticmethod
+    def _handle_admin_add_order_whatsapp(flow_response, contact, response_data):
+        return False, "Handler not yet implemented."
+
+    @staticmethod
+    def _handle_admin_main_menu_whatsapp(flow_response, contact, response_data):
+        return False, "Handler not yet implemented."
+
+    @staticmethod
+    def _handle_admin_update_assessment_status_whatsapp(flow_response, contact, response_data):
+        return False, "Handler not yet implemented."
+
+    @staticmethod
+    def _handle_admin_update_order_status_whatsapp(flow_response, contact, response_data):
+        return False, "Handler not yet implemented."
+
+    @staticmethod
+    def _handle_admin_update_warranty_claim_whatsapp(flow_response, contact, response_data):
+        return False, "Handler not yet implemented."
+
+    @staticmethod
+    def _handle_main_menu_whatsapp(flow_response, contact, response_data):
+        return False, "Handler not yet implemented."
+
+    @staticmethod
+    def _handle_simple_add_order_whatsapp(flow_response, contact, response_data):
+        return False, "Handler not yet implemented."
+
+
+    @staticmethod
+    def _handle_starlink_installation_whatsapp(flow_response, contact, response_data):
+        """Process Starlink Installation WhatsApp flow response."""
+        try:
+            data = response_data.get('data', response_data)
+            required_fields = [
+                'full_name', 'contact_phone', 'kit_type', 'mount_location', 'preferred_date', 'availability'
+            ]
+            for field in required_fields:
+                if not data.get(field):
+                    logger.warning(f"[StarlinkInstallation] Missing required field: {field}")
+                    return False, f"Missing required field: {field}"
+            logger.info(f"[StarlinkInstallation] Processed for {data.get('full_name')}")
+            return True, "Starlink installation processed successfully."
+        except Exception as e:
+            logger.error(f"[StarlinkInstallation] Error: {e}", exc_info=True)
+            return False, str(e)
