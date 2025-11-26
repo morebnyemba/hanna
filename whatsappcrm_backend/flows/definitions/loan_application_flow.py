@@ -74,12 +74,12 @@ LOAN_APPLICATION_FLOW = {
         },
         {
             "name": "wait_for_whatsapp_response",
-            "type": "wait",
+            "type": "action",
             "config": {
                 "wait_for": "whatsapp_flow_response"
             },
             "transitions": [
-                {"to_step": "end_flow_success_interactive", "condition_config": {"type": "always_true"}}
+                {"to_step": "confirm_application_details", "condition_config": {"type": "whatsapp_flow_response_received"}}
             ]
         },
         {

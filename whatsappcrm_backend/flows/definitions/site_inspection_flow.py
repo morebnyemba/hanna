@@ -27,7 +27,7 @@ SITE_INSPECTION_FLOW = {
         },
         {
             "name": "wait_for_whatsapp_response",
-            "type": "wait_for_whatsapp_flow_response",
+            "type": "action",
             "config": {
                 "message_config": {
                     "message_type": "text",
@@ -37,7 +37,7 @@ SITE_INSPECTION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_success", "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "generate_assessment_id", "condition_config": {"type": "whatsapp_flow_response_received"}}
             ]
         },
         {

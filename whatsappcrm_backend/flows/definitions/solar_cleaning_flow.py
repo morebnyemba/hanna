@@ -61,7 +61,7 @@ SOLAR_CLEANING_FLOW = {
         },
         {
             "name": "wait_for_whatsapp_response",
-            "type": "wait_for_whatsapp_flow_response",
+            "type": "action",
             "config": {
                 "message_config": {
                     "message_type": "text",
@@ -71,7 +71,7 @@ SOLAR_CLEANING_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_success", "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "confirm_cleaning_request", "condition_config": {"type": "whatsapp_flow_response_received"}}
             ]
         },
         {
