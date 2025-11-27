@@ -96,7 +96,7 @@ SOLAR_CLEANING_FLOW = {
                 ]
             },
             "transitions": [
-                {"to_step": "confirm_cleaning_request", "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_location_pin", "condition_config": {"type": "always_true"}}
             ]
         },
         {

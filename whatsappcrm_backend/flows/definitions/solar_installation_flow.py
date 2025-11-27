@@ -140,7 +140,7 @@ SOLAR_INSTALLATION_FLOW = {
                 ]
             },
             "transitions": [
-                {"to_step": "end_flow_with_form_sent", "condition_config": {"type": "always_true"}}
+                {"to_step": "ask_location_pin", "condition_config": {"type": "always_true"}}
             ]
         },
         {
