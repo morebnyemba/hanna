@@ -72,7 +72,31 @@ SOLAR_CLEANING_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "confirm_cleaning_request", "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "map_whatsapp_response_to_context", "condition_config": {"type": "whatsapp_flow_response_received"}}
+            ]
+        },
+        {
+            "name": "map_whatsapp_response_to_context",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {
+                        "action_type": "map_whatsapp_response_fields",
+                        "mappings": {
+                            "cleaning_full_name": "{{ whatsapp_flow_response.full_name }}",
+                            "cleaning_phone": "{{ whatsapp_flow_response.phone }}",
+                            "cleaning_roof_type": "{{ whatsapp_flow_response.roof_type }}",
+                            "cleaning_panel_type": "{{ whatsapp_flow_response.panel_type }}",
+                            "cleaning_panel_count": "{{ whatsapp_flow_response.panel_count }}",
+                            "cleaning_date": "{{ whatsapp_flow_response.date }}",
+                            "cleaning_availability": "{{ whatsapp_flow_response.availability }}",
+                            "cleaning_address": "{{ whatsapp_flow_response.address }}"
+                        }
+                    }
+                ]
+            },
+            "transitions": [
+                {"to_step": "confirm_cleaning_request", "condition_config": {"type": "always_true"}}
             ]
         },
         {

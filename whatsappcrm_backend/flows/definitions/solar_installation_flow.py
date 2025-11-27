@@ -115,7 +115,32 @@ SOLAR_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_with_form_sent", "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "map_whatsapp_response_to_context", "condition_config": {"type": "whatsapp_flow_response_received"}}
+            ]
+        },
+        {
+            "name": "map_whatsapp_response_to_context",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {
+                        "action_type": "map_whatsapp_response_fields",
+                        "mappings": {
+                            "install_branch": "{{ whatsapp_flow_response.branch }}",
+                            "install_sales_person": "{{ whatsapp_flow_response.sales_person }}",
+                            "install_full_name": "{{ whatsapp_flow_response.full_name }}",
+                            "install_phone": "{{ whatsapp_flow_response.phone }}",
+                            "install_alt_name": "{{ whatsapp_flow_response.alt_name }}",
+                            "install_alt_phone": "{{ whatsapp_flow_response.alt_phone }}",
+                            "install_datetime": "{{ whatsapp_flow_response.datetime }}",
+                            "install_availability": "{{ whatsapp_flow_response.availability }}",
+                            "install_address": "{{ whatsapp_flow_response.address }}"
+                        }
+                    }
+                ]
+            },
+            "transitions": [
+                {"to_step": "end_flow_with_form_sent", "condition_config": {"type": "always_true"}}
             ]
         },
         {
