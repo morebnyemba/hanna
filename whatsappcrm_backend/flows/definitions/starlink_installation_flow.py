@@ -73,8 +73,7 @@ STARLINK_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "wait_for_whatsapp_response", "priority": 1, "condition_config": {"type": "always_true"}},
-                {"to_step": "ask_location_pin", "priority": 2, "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "wait_for_whatsapp_response", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -90,7 +89,7 @@ STARLINK_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "end_flow_success", "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "ask_location_pin", "condition_config": {"type": "whatsapp_flow_response_received"}}
             ]
         },
         {
