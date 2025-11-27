@@ -38,7 +38,23 @@ SITE_INSPECTION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "generate_assessment_id", "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "collect_location_pin", "condition_config": {"type": "whatsapp_flow_response_received"}}
+            ]
+        },
+        {
+            "name": "collect_location_pin",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {"action_type": "set_contact_context_variable", "variable_name": "awaiting_location_for_assessment", "value_template": "pending"}
+                ],
+                "message_config": {
+                    "message_type": "text",
+                    "text": {"body": "Please send your site location pin using WhatsApp's location feature. This helps our team find your site easily."}
+                }
+            },
+            "transitions": [
+                {"to_step": "generate_assessment_id", "condition_config": {"type": "location_pin_received"}}
             ]
         },
         {
