@@ -34,6 +34,7 @@ pytesseract
 django-jazzmin
 django-extensions
 django-countries
+django-encrypted-model-fields
 
 # --- API, Monitoring & Other ---
 drf-spectacular
