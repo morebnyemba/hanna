@@ -80,19 +80,14 @@ SOLAR_CLEANING_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [
-                    {
-                        "action_type": "map_whatsapp_response_fields",
-                        "mappings": {
-                            "cleaning_full_name": "{{ whatsapp_flow_response.full_name }}",
-                            "cleaning_phone": "{{ whatsapp_flow_response.phone }}",
-                            "cleaning_roof_type": "{{ whatsapp_flow_response.roof_type }}",
-                            "cleaning_panel_type": "{{ whatsapp_flow_response.panel_type }}",
-                            "cleaning_panel_count": "{{ whatsapp_flow_response.panel_count }}",
-                            "cleaning_date": "{{ whatsapp_flow_response.date }}",
-                            "cleaning_availability": "{{ whatsapp_flow_response.availability }}",
-                            "cleaning_address": "{{ whatsapp_flow_response.address }}"
-                        }
-                    }
+                    {"action_type": "set_context_variable", "variable_name": "cleaning_full_name", "value_template": "{{ whatsapp_flow_data.full_name }}"},
+                    {"action_type": "set_context_variable", "variable_name": "cleaning_phone", "value_template": "{{ whatsapp_flow_data.contact_phone }}"},
+                    {"action_type": "set_context_variable", "variable_name": "cleaning_roof_type", "value_template": "{{ whatsapp_flow_data.roof_type }}"},
+                    {"action_type": "set_context_variable", "variable_name": "cleaning_panel_type", "value_template": "{{ whatsapp_flow_data.panel_type }}"},
+                    {"action_type": "set_context_variable", "variable_name": "cleaning_panel_count", "value_template": "{{ whatsapp_flow_data.panel_count }}"},
+                    {"action_type": "set_context_variable", "variable_name": "cleaning_date", "value_template": "{{ whatsapp_flow_data.preferred_date }}"},
+                    {"action_type": "set_context_variable", "variable_name": "cleaning_availability", "value_template": "{{ whatsapp_flow_data.availability }}"},
+                    {"action_type": "set_context_variable", "variable_name": "cleaning_address", "value_template": "{{ whatsapp_flow_data.address }}"}
                 ]
             },
             "transitions": [

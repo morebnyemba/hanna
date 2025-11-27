@@ -123,20 +123,15 @@ SOLAR_INSTALLATION_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [
-                    {
-                        "action_type": "map_whatsapp_response_fields",
-                        "mappings": {
-                            "install_branch": "{{ whatsapp_flow_response.branch }}",
-                            "install_sales_person": "{{ whatsapp_flow_response.sales_person }}",
-                            "install_full_name": "{{ whatsapp_flow_response.full_name }}",
-                            "install_phone": "{{ whatsapp_flow_response.phone }}",
-                            "install_alt_name": "{{ whatsapp_flow_response.alt_name }}",
-                            "install_alt_phone": "{{ whatsapp_flow_response.alt_phone }}",
-                            "install_datetime": "{{ whatsapp_flow_response.datetime }}",
-                            "install_availability": "{{ whatsapp_flow_response.availability }}",
-                            "install_address": "{{ whatsapp_flow_response.address }}"
-                        }
-                    }
+                    {"action_type": "set_context_variable", "variable_name": "install_branch", "value_template": "{{ whatsapp_flow_data.branch }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_sales_person", "value_template": "{{ whatsapp_flow_data.sales_person }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_full_name", "value_template": "{{ whatsapp_flow_data.full_name }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_phone", "value_template": "{{ whatsapp_flow_data.contact_phone }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_alt_name", "value_template": "{{ whatsapp_flow_data.alt_contact_name }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_alt_phone", "value_template": "{{ whatsapp_flow_data.alt_contact_phone }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_datetime", "value_template": "{{ whatsapp_flow_data.preferred_date }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_availability", "value_template": "{{ whatsapp_flow_data.availability }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_address", "value_template": "{{ whatsapp_flow_data.address }}"}
                 ]
             },
             "transitions": [

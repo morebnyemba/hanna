@@ -94,14 +94,9 @@ CUSTOM_FURNITURE_INSTALLATION_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [
-                    {
-                        "action_type": "map_whatsapp_response_fields",
-                        "mappings": {
-                            "install_full_name": "{{ whatsapp_flow_response.full_name }}",
-                            "install_phone": "{{ whatsapp_flow_response.phone }}",
-                            "install_address": "{{ whatsapp_flow_response.address }}"
-                        }
-                    }
+                    {"action_type": "set_context_variable", "variable_name": "install_full_name", "value_template": "{{ whatsapp_flow_data.full_name }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_phone", "value_template": "{{ whatsapp_flow_data.contact_phone }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_address", "value_template": "{{ whatsapp_flow_data.address }}"}
                 ]
             },
             "transitions": [
