@@ -1429,7 +1429,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
     # If the message was sent TO the dedicated order receiver number, bypass all normal
     # flow logic and immediately trigger the simple_add_order flow for the sender.
     order_receiver_phone_id = getattr(settings, 'ORDER_RECEIVER_PHONE_ID', None)
-    message_app_config = incoming_message_obj.app_config
+    message_app_config = getattr(incoming_message_obj, 'app_config', None)
 
     if order_receiver_phone_id and message_app_config and message_app_config.phone_number_id == order_receiver_phone_id:
         logger.info(f"Message received on Order Receiver Number from {contact.whatsapp_id}. Triggering 'simple_add_order' flow.")
