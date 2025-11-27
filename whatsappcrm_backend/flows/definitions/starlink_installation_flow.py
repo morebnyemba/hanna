@@ -89,7 +89,25 @@ STARLINK_INSTALLATION_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "ask_location_pin", "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "map_whatsapp_response_fields", "condition_config": {"type": "whatsapp_flow_response_received"}}
+            ]
+        },
+        {
+            "name": "map_whatsapp_response_fields",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {"action_type": "set_context_variable", "variable_name": "install_full_name", "value_template": "{{ whatsapp_flow_data.full_name }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_phone", "value_template": "{{ whatsapp_flow_data.contact_phone }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_kit_type", "value_template": "{{ whatsapp_flow_data.kit_type }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_mount_location", "value_template": "{{ whatsapp_flow_data.mount_location }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_datetime", "value_template": "{{ whatsapp_flow_data.preferred_date }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_availability", "value_template": "{{ whatsapp_flow_data.availability }}"},
+                    {"action_type": "set_context_variable", "variable_name": "install_address", "value_template": "{{ whatsapp_flow_data.address }}"}
+                ]
+            },
+            "transitions": [
+                {"to_step": "ask_location_pin", "condition_config": {"type": "always_true"}}
             ]
         },
         {
