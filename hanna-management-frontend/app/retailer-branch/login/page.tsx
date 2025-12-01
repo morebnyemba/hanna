@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction } from '@/app/store/authStore';
-import { FiUser, FiLock, FiLogIn, FiMapPin, FiChevronDown, FiBuilding } from 'react-icons/fi';
+import { FiUser, FiLock, FiLogIn, FiMapPin, FiChevronDown, FiHome } from 'react-icons/fi';
 
 interface Retailer {
   id: number;
@@ -112,7 +112,7 @@ export default function RetailerBranchLoginPage() {
                     ))}
                   </select>
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <FiBuilding className="h-5 w-5 text-white/60" />
+                    <FiHome className="h-5 w-5 text-white/60" />
                   </div>
                 </div>
               </div>

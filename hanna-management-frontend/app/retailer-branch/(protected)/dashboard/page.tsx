@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiBox, FiShoppingCart, FiTruck, FiPackage, FiArrowDownCircle, FiArrowUpCircle, FiBuilding } from 'react-icons/fi';
+import { FiBox, FiShoppingCart, FiTruck, FiPackage, FiArrowDownCircle, FiArrowUpCircle, FiHome } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import Link from 'next/link';
 import { useAuthStore } from '@/app/store/authStore';
@@ -84,7 +84,7 @@ export default function BranchDashboardPage() {
           {/* Show selected retailer from login */}
           {selectedRetailer && (
             <p className="text-emerald-600 mt-1 flex items-center">
-              <FiBuilding className="mr-1" />
+              <FiHome className="mr-1" />
               Logged in under: <span className="font-semibold ml-1">{selectedRetailer.company_name}</span>
             </p>
           )}
