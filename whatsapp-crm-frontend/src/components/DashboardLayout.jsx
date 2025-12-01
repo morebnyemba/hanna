@@ -27,7 +27,8 @@ import {
   FiMail,
   FiActivity,
   FiCreditCard,
-  FiCamera
+  FiCamera,
+  FiShoppingBag
 } from 'react-icons/fi';
 
 const DashboardBackground = () => (
@@ -61,6 +62,7 @@ export default function DashboardLayout() {
     { to: '/conversation', label: 'Conversations', icon: <FiMessageSquare className="h-5 w-5" /> },
     { to: '/contacts', label: 'Contacts', icon: <FiUsers className="h-5 w-5" /> },
     { to: '/barcode-scanner', label: 'Barcode Scanner', icon: <FiCamera className="h-5 w-5" /> },
+    { to: '/retailer-portal', label: 'Retailer Portal', icon: <FiShoppingBag className="h-5 w-5" /> },
     { to: '/installation-requests', label: 'Installation Requests', icon: <FiActivity className="h-5 w-5" /> },
     { to: '/orders', label: 'Orders', icon: <FiCreditCard className="h-5 w-5" /> },
     { to: '/site-assessments', label: 'Site Assessments', icon: <FiBarChart2 className="h-5 w-5" /> },
