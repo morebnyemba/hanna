@@ -30,23 +30,25 @@ interface Order {
 interface DispatchResult {
   success: boolean;
   message: string;
-  item?: {
-    item_id: number;
-    serial_number: string;
-    barcode: string | null;
-    product_name: string;
-    order_item_id: number;
-    units_assigned: number;
-    quantity_ordered: number;
-    is_fully_assigned: boolean;
-    dispatch_timestamp: string;
-  };
+  item?: DispatchedItem;
   order_fulfillment?: {
     order_number: string;
     items_remaining: number;
     total_items: number;
     all_dispatched: boolean;
   };
+}
+
+interface DispatchedItem {
+  item_id: number;
+  serial_number: string;
+  barcode: string | null;
+  product_name: string;
+  order_item_id: number;
+  units_assigned: number;
+  quantity_ordered: number;
+  is_fully_assigned: boolean;
+  dispatch_timestamp: string;
 }
 
 export default function OrderDispatchPage() {
@@ -59,7 +61,7 @@ export default function OrderDispatchPage() {
   const [serialNumber, setSerialNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [dispatchedItems, setDispatchedItems] = useState<DispatchResult['item'][]>([]);
+  const [dispatchedItems, setDispatchedItems] = useState<DispatchedItem[]>([]);
 
   // Verify order
   const handleVerifyOrder = async (e?: React.FormEvent) => {
@@ -107,9 +109,9 @@ export default function OrderDispatchPage() {
       
       const data: DispatchResult = response.data;
       
-      // Update dispatched items list
+      // Update dispatched items list (only add if item exists)
       if (data.item) {
-        setDispatchedItems(prev => [...prev, data.item!]);
+        setDispatchedItems(prev => [...prev, data.item]);
       }
       
       // Refresh order to get updated fulfillment status
@@ -399,13 +401,15 @@ export default function OrderDispatchPage() {
                     className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
                   >
                     <div>
-                      <span className="font-medium text-gray-900">{item?.product_name}</span>
+                      <span className="font-medium text-gray-900">{item.product_name}</span>
                       <span className="ml-2 text-sm text-gray-600">
-                        SN: {item?.serial_number}
+                        SN: {item.serial_number}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      {new Date(item?.dispatch_timestamp || '').toLocaleTimeString()}
+                      {item.dispatch_timestamp 
+                        ? new Date(item.dispatch_timestamp).toLocaleTimeString()
+                        : 'N/A'}
                     </div>
                   </div>
                 ))}

@@ -395,12 +395,18 @@ class OrderDispatchSerializer(serializers.Serializer):
     """
     order_id = serializers.UUIDField()
     order_number = serializers.CharField()
-    customer_name = serializers.CharField(allow_null=True)
+    customer_name = serializers.SerializerMethodField()
     payment_status = serializers.CharField()
     stage = serializers.CharField()
     items = OrderItemDispatchSerializer(many=True, source='items.all')
     is_eligible_for_dispatch = serializers.SerializerMethodField()
     dispatch_message = serializers.SerializerMethodField()
+    
+    def get_customer_name(self, obj):
+        """Get customer name from related customer profile."""
+        if obj.customer:
+            return obj.customer.get_full_name() or str(obj.customer)
+        return None
     
     def get_is_eligible_for_dispatch(self, obj):
         """Check if order is eligible for dispatch."""
