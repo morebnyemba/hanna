@@ -5,14 +5,17 @@ from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import Retailer
-from .permissions import IsAdminUser, IsRetailer, IsRetailerOrAdmin
+from .models import Retailer, RetailerBranch
+from .permissions import IsAdminUser, IsRetailer, IsRetailerOrAdmin, IsRetailerBranch
 from .serializers import (
     UserSerializer, 
     UserInviteSerializer,
     RetailerSerializer,
     RetailerRegistrationSerializer,
     RetailerUpdateSerializer,
+    RetailerBranchSerializer,
+    RetailerBranchCreateSerializer,
+    RetailerBranchUpdateSerializer,
 )
 
 
@@ -81,9 +84,9 @@ class RetailerViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing retailers.
     Admins can list/retrieve/update all retailers.
-    Retailers can view and update their own profile.
+    Retailers can view and update their own profile and manage branches.
     """
-    queryset = Retailer.objects.select_related('user').all()
+    queryset = Retailer.objects.select_related('user').prefetch_related('branches').all()
     permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
@@ -98,9 +101,9 @@ class RetailerViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         if user.is_staff:
-            return Retailer.objects.select_related('user').all()
+            return Retailer.objects.select_related('user').prefetch_related('branches').all()
         elif hasattr(user, 'retailer_profile'):
-            return Retailer.objects.filter(user=user).select_related('user')
+            return Retailer.objects.filter(user=user).select_related('user').prefetch_related('branches')
         return Retailer.objects.none()
 
     def get_permissions(self):
@@ -115,7 +118,7 @@ class RetailerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='me')
     def my_profile(self, request):
         """
-        Get the current retailer's profile.
+        Get the current retailer's profile with their branches.
         """
         if not hasattr(request.user, 'retailer_profile'):
             return Response(
@@ -143,3 +146,104 @@ class RetailerViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(RetailerSerializer(request.user.retailer_profile).data)
+
+    @action(detail=False, methods=['get'], url_path='me/branches')
+    def my_branches(self, request):
+        """
+        Get all branches for the current retailer.
+        """
+        if not hasattr(request.user, 'retailer_profile'):
+            return Response(
+                {"detail": "You are not registered as a retailer."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        branches = request.user.retailer_profile.branches.all()
+        serializer = RetailerBranchSerializer(branches, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='me/branches/create')
+    def create_branch(self, request):
+        """
+        Create a new branch for the current retailer.
+        """
+        if not hasattr(request.user, 'retailer_profile'):
+            return Response(
+                {"detail": "You are not registered as a retailer."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = RetailerBranchCreateSerializer(
+            data=request.data,
+            context={'retailer': request.user.retailer_profile}
+        )
+        serializer.is_valid(raise_exception=True)
+        branch = serializer.save()
+        return Response(
+            {
+                "message": "Branch created successfully.",
+                "branch": RetailerBranchSerializer(branch).data
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+class RetailerBranchViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing retailer branches.
+    Retailers can manage their own branches.
+    Branches can view their own profile.
+    Admins can view all branches.
+    """
+    queryset = RetailerBranch.objects.select_related('user', 'retailer').all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return RetailerBranchCreateSerializer
+        if self.action in ['update', 'partial_update']:
+            return RetailerBranchUpdateSerializer
+        return RetailerBranchSerializer
+
+    def get_queryset(self):
+        """
+        Admins see all branches.
+        Retailers see only their own branches.
+        Branches see only their own profile.
+        """
+        user = self.request.user
+        if user.is_staff:
+            return RetailerBranch.objects.select_related('user', 'retailer').all()
+        elif hasattr(user, 'retailer_profile'):
+            return RetailerBranch.objects.filter(retailer=user.retailer_profile).select_related('user', 'retailer')
+        elif hasattr(user, 'retailer_branch_profile'):
+            return RetailerBranch.objects.filter(user=user).select_related('user', 'retailer')
+        return RetailerBranch.objects.none()
+
+    def get_permissions(self):
+        """
+        Only retailers or admins can create/delete branches.
+        Branches can view their own profile.
+        """
+        if self.action in ['create', 'destroy']:
+            return [IsRetailerOrAdmin()]
+        return [permissions.IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        """Set retailer context when creating a branch."""
+        if hasattr(self.request.user, 'retailer_profile'):
+            serializer.context['retailer'] = self.request.user.retailer_profile
+            serializer.save()
+        else:
+            raise serializers.ValidationError("Only retailers can create branches.")
+
+    @action(detail=False, methods=['get'], url_path='me')
+    def my_profile(self, request):
+        """
+        Get the current branch's profile.
+        """
+        if not hasattr(request.user, 'retailer_branch_profile'):
+            return Response(
+                {"detail": "You are not registered as a retailer branch."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = RetailerBranchSerializer(request.user.retailer_branch_profile)
+        return Response(serializer.data)

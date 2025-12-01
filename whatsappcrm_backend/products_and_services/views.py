@@ -28,7 +28,7 @@ from .serializers import (
 )
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
-from users.permissions import IsRetailer, IsRetailerOrAdmin
+from users.permissions import IsRetailer, IsRetailerOrAdmin, IsRetailerBranch, IsRetailerBranchOrAdmin
 
 User = get_user_model()
 
@@ -789,44 +789,46 @@ class ItemTrackingViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
 # ============================================================================
-# Retailer Portal ViewSet
+# Retailer Branch Portal ViewSet (for branch operations)
 # ============================================================================
 
-class RetailerPortalViewSet(viewsets.ViewSet):
+class RetailerBranchPortalViewSet(viewsets.ViewSet):
     """
-    ViewSet for retailer portal operations.
-    Provides endpoints for checking in/out products and managing serial numbers.
+    ViewSet for retailer BRANCH portal operations.
+    Branches (not retailers) perform check-in/checkout and serial number management.
+    Retailers can only manage branches, not perform these operations directly.
     """
-    permission_classes = [IsRetailerOrAdmin]
+    permission_classes = [IsRetailerBranchOrAdmin]
 
-    def _get_retailer(self, request):
-        """Get the retailer profile for the current user."""
-        if hasattr(request.user, "retailer_profile"):
-            return request.user.retailer_profile
+    def _get_branch(self, request):
+        """Get the retailer branch profile for the current user."""
+        if hasattr(request.user, "retailer_branch_profile"):
+            return request.user.retailer_branch_profile
         return None
 
     @action(detail=False, methods=["get"], url_path="dashboard")
     def dashboard(self, request):
         """
-        Get retailer dashboard statistics.
+        Get branch dashboard statistics.
         
-        GET /crm-api/products/retailer/dashboard/
+        GET /crm-api/products/retailer-branch/dashboard/
         """
         user = request.user
+        branch = self._get_branch(request)
         
-        # Get items held by this retailer (at retail location)
-        retailer_items = SerializedItem.objects.filter(
+        # Get items held by this branch (at retail location)
+        branch_items = SerializedItem.objects.filter(
             current_holder=user,
             current_location=SerializedItem.Location.RETAIL
         ).select_related("product")
         
         # Count items by status
-        items_in_stock = retailer_items.filter(status=SerializedItem.Status.IN_STOCK).count()
+        items_in_stock = branch_items.filter(status=SerializedItem.Status.IN_STOCK).count()
         items_sold = SerializedItem.objects.filter(
             location_history__transferred_by=user,
             location_history__transfer_reason=ItemLocationHistory.TransferReason.SALE
         ).distinct().count()
-        items_in_transit = retailer_items.filter(status=SerializedItem.Status.IN_TRANSIT).count()
+        items_in_transit = branch_items.filter(status=SerializedItem.Status.IN_TRANSIT).count()
         
         # Get recent checkout history (last 10)
         recent_checkout_ids = ItemLocationHistory.objects.filter(
@@ -849,7 +851,9 @@ class RetailerPortalViewSet(viewsets.ViewSet):
         ).select_related("product")
         
         stats = {
-            "total_items": retailer_items.count(),
+            "branch_name": branch.branch_name if branch else None,
+            "retailer_name": branch.retailer.company_name if branch else None,
+            "total_items": branch_items.count(),
             "items_in_stock": items_in_stock,
             "items_sold": items_sold,
             "items_in_transit": items_in_transit,
@@ -862,13 +866,13 @@ class RetailerPortalViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="inventory")
     def inventory(self, request):
         """
-        Get retailer inventory (items at retail location).
+        Get branch inventory (items at this branch location).
         
-        GET /crm-api/products/retailer/inventory/
+        GET /crm-api/products/retailer-branch/inventory/
         """
         user = request.user
         
-        # Get items held by this retailer
+        # Get items held by this branch
         items = SerializedItem.objects.filter(
             current_holder=user,
             current_location=SerializedItem.Location.RETAIL
@@ -882,7 +886,7 @@ class RetailerPortalViewSet(viewsets.ViewSet):
         """
         Checkout an item (send to customer).
         
-        POST /crm-api/products/retailer/checkout/
+        POST /crm-api/products/retailer-branch/checkout/
         Body: {
             "serial_number": "SN12345",
             "customer_name": "John Doe",
@@ -915,17 +919,20 @@ class RetailerPortalViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Check if item is at retailer location
+        # Check if item is at this branch location
         if item.current_holder != request.user or item.current_location != SerializedItem.Location.RETAIL:
             return Response(
-                {"error": "This item is not currently in your inventory."},
+                {"error": "This item is not currently in your branch inventory."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         # Transfer item to customer
+        branch = self._get_branch(request)
         checkout_notes = f"Sold to: {customer_name}"
         if customer_phone:
             checkout_notes += f" (Phone: {customer_phone})"
+        if branch:
+            checkout_notes += f" | Branch: {branch.branch_name}"
         if notes:
             checkout_notes += f". {notes}"
         
@@ -950,7 +957,7 @@ class RetailerPortalViewSet(viewsets.ViewSet):
         """
         Check-in an item (receive from warehouse or return).
         
-        POST /crm-api/products/retailer/checkin/
+        POST /crm-api/products/retailer-branch/checkin/
         Body: {
             "serial_number": "SN12345",
             "notes": "Received from main warehouse"
@@ -979,15 +986,20 @@ class RetailerPortalViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Transfer item to retailer location
-        checkin_notes = f"Checked in by retailer. {notes}".strip()
+        # Transfer item to branch location
+        branch = self._get_branch(request)
+        checkin_notes = f"Checked in by branch"
+        if branch:
+            checkin_notes += f": {branch.branch_name}"
+        if notes:
+            checkin_notes += f". {notes}"
         
         history = ItemTrackingService.transfer_item(
             item=item,
             to_location=SerializedItem.Location.RETAIL,
             to_holder=request.user,
             reason=ItemLocationHistory.TransferReason.STOCK_RECEIPT,
-            notes=checkin_notes,
+            notes=checkin_notes.strip(),
             transferred_by=request.user,
             update_status=SerializedItem.Status.IN_STOCK
         )
@@ -1003,7 +1015,7 @@ class RetailerPortalViewSet(viewsets.ViewSet):
         """
         Add a new serial number to a product (create a serialized item).
         
-        POST /crm-api/products/retailer/add-serial-number/
+        POST /crm-api/products/retailer-branch/add-serial-number/
         Body: {
             "product_id": 123,
             "serial_number": "SN12345",
@@ -1021,7 +1033,9 @@ class RetailerPortalViewSet(viewsets.ViewSet):
         # Get the product
         product = get_object_or_404(Product, id=product_id)
         
-        # Create the serialized item at retailer location
+        # Create the serialized item at branch location
+        branch = self._get_branch(request)
+        branch_info = f" at branch {branch.branch_name}" if branch else ""
         item = SerializedItem.objects.create(
             product=product,
             serial_number=serial_number,
@@ -1029,7 +1043,7 @@ class RetailerPortalViewSet(viewsets.ViewSet):
             status=SerializedItem.Status.IN_STOCK,
             current_location=SerializedItem.Location.RETAIL,
             current_holder=request.user,
-            location_notes=f"Added by retailer: {request.user.get_full_name() or request.user.username}"
+            location_notes=f"Added by branch{branch_info}: {request.user.get_full_name() or request.user.username}"
         )
         
         # Create initial location history
@@ -1039,7 +1053,7 @@ class RetailerPortalViewSet(viewsets.ViewSet):
             to_location=SerializedItem.Location.RETAIL,
             to_holder=request.user,
             transfer_reason=ItemLocationHistory.TransferReason.STOCK_RECEIPT,
-            notes=f"Initial stock entry by retailer",
+            notes=f"Initial stock entry by branch{branch_info}",
             transferred_by=request.user
         )
         
@@ -1053,7 +1067,7 @@ class RetailerPortalViewSet(viewsets.ViewSet):
         """
         Scan an item by serial number or barcode.
         
-        GET /crm-api/products/retailer/scan/{identifier}/
+        GET /crm-api/products/retailer-branch/scan/{identifier}/
         """
         if not identifier:
             return Response(
@@ -1087,7 +1101,7 @@ class RetailerPortalViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Check if item is in retailer inventory
+        # Check if item is in this branch's inventory
         is_in_inventory = (
             item.current_holder == request.user and 
             item.current_location == SerializedItem.Location.RETAIL
@@ -1104,13 +1118,13 @@ class RetailerPortalViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="history")
     def transaction_history(self, request):
         """
-        Get transaction history for the retailer.
+        Get transaction history for this branch.
         
-        GET /crm-api/products/retailer/history/
+        GET /crm-api/products/retailer-branch/history/
         """
         user = request.user
         
-        # Get all location history where this user was involved
+        # Get all location history where this branch was involved
         history = ItemLocationHistory.objects.filter(
             Q(transferred_by=user) | Q(from_holder=user) | Q(to_holder=user)
         ).select_related(
@@ -1123,3 +1137,109 @@ class RetailerPortalViewSet(viewsets.ViewSet):
         
         serializer = ItemLocationHistorySerializer(history, many=True)
         return Response(serializer.data)
+
+
+# ============================================================================
+# Legacy Retailer Portal ViewSet (deprecated - use RetailerBranchPortalViewSet)
+# ============================================================================
+
+class RetailerPortalViewSet(viewsets.ViewSet):
+    """
+    DEPRECATED: This ViewSet is kept for backward compatibility.
+    New implementations should use RetailerBranchPortalViewSet.
+    
+    Retailers should manage branches via /crm-api/users/retailers/me/branches/
+    Branches perform check-in/checkout via /crm-api/products/retailer-branch/
+    """
+    permission_classes = [IsRetailerOrAdmin]
+
+    def _get_retailer(self, request):
+        """Get the retailer profile for the current user."""
+        if hasattr(request.user, "retailer_profile"):
+            return request.user.retailer_profile
+        return None
+
+    @action(detail=False, methods=["get"], url_path="dashboard")
+    def dashboard(self, request):
+        """
+        Get retailer dashboard statistics.
+        NOTE: This is for the parent retailer account - shows aggregate data across all branches.
+        """
+        retailer = self._get_retailer(request)
+        
+        if retailer:
+            # Get all branch users for this retailer
+            branch_users = [b.user for b in retailer.branches.filter(is_active=True)]
+            
+            # Aggregate stats across all branches
+            total_items = SerializedItem.objects.filter(
+                current_holder__in=branch_users,
+                current_location=SerializedItem.Location.RETAIL
+            ).count()
+            
+            items_sold = SerializedItem.objects.filter(
+                location_history__transferred_by__in=branch_users,
+                location_history__transfer_reason=ItemLocationHistory.TransferReason.SALE
+            ).distinct().count()
+            
+            return Response({
+                "company_name": retailer.company_name,
+                "total_branches": retailer.branches.count(),
+                "active_branches": retailer.branches.filter(is_active=True).count(),
+                "total_items_across_branches": total_items,
+                "total_items_sold": items_sold,
+                "message": "Use individual branch accounts for check-in/checkout operations."
+            })
+        
+        return Response({
+            "error": "You must be a retailer to access this endpoint.",
+            "message": "If you are a branch, use /crm-api/products/retailer-branch/dashboard/"
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=False, methods=["get"], url_path="inventory")
+    def inventory(self, request):
+        """Deprecated - branches should use their own endpoint."""
+        return Response({
+            "error": "Retailers cannot view inventory directly.",
+            "message": "Individual branches should access /crm-api/products/retailer-branch/inventory/"
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=False, methods=["post"], url_path="checkout")
+    def checkout_item(self, request):
+        """Deprecated - only branches can checkout items."""
+        return Response({
+            "error": "Retailers cannot checkout items directly.",
+            "message": "Individual branches should access /crm-api/products/retailer-branch/checkout/"
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=False, methods=["post"], url_path="checkin")
+    def checkin_item(self, request):
+        """Deprecated - only branches can checkin items."""
+        return Response({
+            "error": "Retailers cannot checkin items directly.",
+            "message": "Individual branches should access /crm-api/products/retailer-branch/checkin/"
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=False, methods=["post"], url_path="add-serial-number")
+    def add_serial_number(self, request):
+        """Deprecated - only branches can add serial numbers."""
+        return Response({
+            "error": "Retailers cannot add serial numbers directly.",
+            "message": "Individual branches should access /crm-api/products/retailer-branch/add-serial-number/"
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=False, methods=["get"], url_path="scan/(?P<identifier>[^/.]+)")
+    def scan_item(self, request, identifier=None):
+        """Deprecated - only branches can scan items."""
+        return Response({
+            "error": "Retailers cannot scan items directly.",
+            "message": "Individual branches should access /crm-api/products/retailer-branch/scan/{identifier}/"
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=False, methods=["get"], url_path="history")
+    def transaction_history(self, request):
+        """Deprecated - only branches can view their history."""
+        return Response({
+            "error": "Retailers cannot view transaction history directly.",
+            "message": "Individual branches should access /crm-api/products/retailer-branch/history/"
+        }, status=status.HTTP_403_FORBIDDEN)

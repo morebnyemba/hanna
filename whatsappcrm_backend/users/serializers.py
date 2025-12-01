@@ -7,8 +7,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db import transaction
 
-from .models import Retailer
-from .constants import RETAILER_GROUP_NAME
+from .models import Retailer, RetailerBranch
+from .constants import RETAILER_GROUP_NAME, RETAILER_BRANCH_GROUP_NAME
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -66,6 +66,106 @@ class UserInviteSerializer(serializers.Serializer):
         return user
 
 
+class RetailerBranchSerializer(serializers.ModelSerializer):
+    """
+    Serializer for RetailerBranch model.
+    """
+    user = UserSerializer(read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    retailer_name = serializers.CharField(source='retailer.company_name', read_only=True)
+
+    class Meta:
+        model = RetailerBranch
+        fields = [
+            'id', 'user', 'username', 'email', 'retailer', 'retailer_name',
+            'branch_name', 'branch_code', 'contact_phone', 'address',
+            'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'username', 'email', 'retailer', 'retailer_name', 'created_at', 'updated_at']
+
+
+class RetailerBranchCreateSerializer(serializers.Serializer):
+    """
+    Serializer for creating a new retailer branch.
+    Creates a user account for the branch.
+    """
+    # User fields for the branch account
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    
+    # Branch fields
+    branch_name = serializers.CharField(max_length=255)
+    branch_code = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_email(self, value):
+        """Ensure email is unique."""
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
+
+    def validate_password(self, value):
+        """Validate password using Django's password validators."""
+        validate_password(value)
+        return value
+
+    def validate(self, data):
+        """Check that the branch name is unique for this retailer."""
+        retailer = self.context.get('retailer')
+        if retailer and RetailerBranch.objects.filter(retailer=retailer, branch_name=data['branch_name']).exists():
+            raise serializers.ValidationError({
+                'branch_name': 'A branch with this name already exists for this retailer.'
+            })
+        return data
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """Create user and branch profile."""
+        retailer = self.context.get('retailer')
+        if not retailer:
+            raise serializers.ValidationError("Retailer context is required.")
+
+        # Create user for the branch
+        email = validated_data['email']
+        user = User.objects.create_user(
+            username=email,
+            email=email,
+            password=validated_data['password'],
+            first_name=validated_data['branch_name'],  # Use branch name as first name
+            last_name=retailer.company_name,  # Use company name as last name
+            is_staff=False
+        )
+
+        # Add to RetailerBranch group
+        branch_group, _ = Group.objects.get_or_create(name=RETAILER_BRANCH_GROUP_NAME)
+        user.groups.add(branch_group)
+
+        # Create branch profile
+        branch = RetailerBranch.objects.create(
+            user=user,
+            retailer=retailer,
+            branch_name=validated_data['branch_name'],
+            branch_code=validated_data.get('branch_code') or None,
+            contact_phone=validated_data.get('contact_phone') or None,
+            address=validated_data.get('address') or None,
+        )
+
+        return branch
+
+
+class RetailerBranchUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating a retailer branch.
+    """
+    class Meta:
+        model = RetailerBranch
+        fields = ['branch_name', 'branch_code', 'contact_phone', 'address', 'is_active']
+
+
 class RetailerSerializer(serializers.ModelSerializer):
     """
     Serializer for Retailer model.
@@ -73,15 +173,20 @@ class RetailerSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
+    branch_count = serializers.SerializerMethodField()
+    branches = RetailerBranchSerializer(many=True, read_only=True)
 
     class Meta:
         model = Retailer
         fields = [
             'id', 'user', 'username', 'email', 'company_name',
             'business_registration_number', 'contact_phone', 'address',
-            'is_active', 'created_at', 'updated_at'
+            'is_active', 'branch_count', 'branches', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'user', 'username', 'email', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'username', 'email', 'branch_count', 'branches', 'created_at', 'updated_at']
+
+    def get_branch_count(self, obj):
+        return obj.branches.count()
 
 
 class RetailerRegistrationSerializer(serializers.Serializer):

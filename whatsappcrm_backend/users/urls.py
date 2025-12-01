@@ -8,12 +8,14 @@ from .views import (
     UserDetailView,
     RetailerRegistrationView,
     RetailerViewSet,
+    RetailerBranchViewSet,
 )
 
 app_name = 'users_api'
 
 router = DefaultRouter()
 router.register(r'retailers', RetailerViewSet, basename='retailer')
+router.register(r'retailer-branches', RetailerBranchViewSet, basename='retailer-branch')
 
 urlpatterns = [
     path('', UserListView.as_view(), name='user-list'),

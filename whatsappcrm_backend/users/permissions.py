@@ -15,12 +15,35 @@ class IsAdminUser(permissions.BasePermission):
 
 class IsRetailer(permissions.BasePermission):
     """
-    Allows access only to authenticated retailers.
+    Allows access only to authenticated retailers (company accounts).
+    Retailers can only manage branches.
     """
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
         return hasattr(request.user, 'retailer_profile')
+
+
+class IsRetailerBranch(permissions.BasePermission):
+    """
+    Allows access only to authenticated retailer branch accounts.
+    Branch accounts perform check-in/checkout operations.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return hasattr(request.user, 'retailer_branch_profile')
+
+
+class IsRetailerOrBranch(permissions.BasePermission):
+    """
+    Allows access to either retailer accounts or branch accounts.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return (hasattr(request.user, 'retailer_profile') or 
+                hasattr(request.user, 'retailer_branch_profile'))
 
 
 class IsRetailerOrAdmin(permissions.BasePermission):
@@ -31,3 +54,13 @@ class IsRetailerOrAdmin(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         return request.user.is_staff or hasattr(request.user, 'retailer_profile')
+
+
+class IsRetailerBranchOrAdmin(permissions.BasePermission):
+    """
+    Allows access to retailer branches or admin users.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.is_staff or hasattr(request.user, 'retailer_branch_profile')

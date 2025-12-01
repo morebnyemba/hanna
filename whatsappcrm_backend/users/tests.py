@@ -4,7 +4,7 @@ from django.contrib.auth.models import Group
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from .models import Retailer
+from .models import Retailer, RetailerBranch
 
 User = get_user_model()
 
@@ -191,3 +191,129 @@ class RetailerProfileTestCase(TestCase):
         response = self.client.get('/crm-api/users/retailers/me/')
         
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class RetailerBranchTestCase(TestCase):
+    """
+    Test cases for retailer branch management.
+    """
+    
+    def setUp(self):
+        """Set up test client, retailer, and branch."""
+        self.client = APIClient()
+        
+        # Create retailer user
+        self.retailer_user = User.objects.create_user(
+            username='retailer@example.com',
+            email='retailer@example.com',
+            password='testpass123',
+            first_name='John',
+            last_name='Doe'
+        )
+        self.retailer = Retailer.objects.create(
+            user=self.retailer_user,
+            company_name='Test Electronics',
+            business_registration_number='REG-TEST-001',
+        )
+        
+        # Add to Retailer group
+        retailer_group, _ = Group.objects.get_or_create(name='Retailer')
+        self.retailer_user.groups.add(retailer_group)
+
+    def test_retailer_can_create_branch(self):
+        """Test retailer can create a new branch."""
+        self.client.force_authenticate(user=self.retailer_user)
+        
+        data = {
+            'email': 'branch1@example.com',
+            'password': 'BranchPass123!',
+            'branch_name': 'Downtown Branch',
+            'branch_code': 'BR001',
+            'contact_phone': '+1234567890',
+            'address': '456 Branch St'
+        }
+        
+        response = self.client.post('/crm-api/users/retailers/me/branches/create/', data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('message', response.data)
+        self.assertIn('branch', response.data)
+        
+        # Verify branch was created
+        branch = RetailerBranch.objects.get(branch_name='Downtown Branch')
+        self.assertEqual(branch.retailer, self.retailer)
+        self.assertEqual(branch.branch_code, 'BR001')
+
+    def test_retailer_can_list_branches(self):
+        """Test retailer can list their branches."""
+        # Create a branch first
+        branch_user = User.objects.create_user(
+            username='branch@example.com',
+            email='branch@example.com',
+            password='branchpass123'
+        )
+        RetailerBranch.objects.create(
+            user=branch_user,
+            retailer=self.retailer,
+            branch_name='Test Branch',
+            branch_code='BR001'
+        )
+        
+        self.client.force_authenticate(user=self.retailer_user)
+        response = self.client.get('/crm-api/users/retailers/me/branches/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_branch_can_get_own_profile(self):
+        """Test branch can get their own profile."""
+        # Create a branch
+        branch_user = User.objects.create_user(
+            username='branch@example.com',
+            email='branch@example.com',
+            password='branchpass123'
+        )
+        branch = RetailerBranch.objects.create(
+            user=branch_user,
+            retailer=self.retailer,
+            branch_name='Test Branch',
+            branch_code='BR001'
+        )
+        
+        # Add to RetailerBranch group
+        branch_group, _ = Group.objects.get_or_create(name='RetailerBranch')
+        branch_user.groups.add(branch_group)
+        
+        self.client.force_authenticate(user=branch_user)
+        response = self.client.get('/crm-api/users/retailer-branches/me/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['branch_name'], 'Test Branch')
+
+    def test_duplicate_branch_name_fails(self):
+        """Test creating duplicate branch name fails."""
+        # Create first branch
+        branch_user = User.objects.create_user(
+            username='branch@example.com',
+            email='branch@example.com',
+            password='branchpass123'
+        )
+        RetailerBranch.objects.create(
+            user=branch_user,
+            retailer=self.retailer,
+            branch_name='Downtown Branch',
+            branch_code='BR001'
+        )
+        
+        # Try to create duplicate
+        self.client.force_authenticate(user=self.retailer_user)
+        data = {
+            'email': 'branch2@example.com',
+            'password': 'BranchPass123!',
+            'branch_name': 'Downtown Branch',  # Duplicate name
+            'branch_code': 'BR002',
+        }
+        
+        response = self.client.post('/crm-api/users/retailers/me/branches/create/', data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

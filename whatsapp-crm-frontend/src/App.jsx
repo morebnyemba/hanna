@@ -27,7 +27,6 @@ import EventFormPage from './pages/EventFormPage';
 import MinistriesPage from './pages/MinistriesPage';
 import MinistryFormPage from './pages/MinistryFormPage';
 import BarcodeScannerPage from './pages/BarcodeScannerPage';
-import RetailerPortalPage from './pages/RetailerPortalPage';
 
 const NotFoundPage = () => (
   <div className="p-10 text-center">
@@ -72,9 +71,6 @@ const router = createBrowserRouter([
   { path: 'installation-requests', element: <InstallationRequestsPage /> },
   { path: 'orders', element: <OrdersPage /> },
   { path: 'site-assessments', element: <SiteAssessmentsPage /> },
-
-  // Retailer Portal
-  { path: 'retailer-portal', element: <RetailerPortalPage /> },
 
   // Sermon Management
   { path: 'sermons', element: <SermonsPage /> },
