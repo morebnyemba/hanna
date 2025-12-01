@@ -237,12 +237,11 @@ export default function CheckInOutPage() {
       </div>
 
       {/* Barcode Scanner Modal */}
-      {showScanner && (
-        <BarcodeScanner
-          onScan={handleScan}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
+      <BarcodeScanner
+        isOpen={showScanner}
+        onScanSuccess={handleScan}
+        onClose={() => setShowScanner(false)}
+      />
     </main>
   );
 }
