@@ -5,6 +5,10 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import transaction
+
+from .models import Retailer
+
 
 class UserSerializer(serializers.ModelSerializer):
     groups = serializers.SlugRelatedField(
@@ -17,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'groups']
         read_only_fields = ['id', 'username'] # Username is not editable after creation
+
 
 class UserInviteSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -58,3 +63,109 @@ class UserInviteSerializer(serializers.Serializer):
         )
 
         return user
+
+
+class RetailerSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Retailer model.
+    """
+    user = UserSerializer(read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+
+    class Meta:
+        model = Retailer
+        fields = [
+            'id', 'user', 'username', 'email', 'company_name',
+            'business_registration_number', 'contact_phone', 'address',
+            'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'username', 'email', 'created_at', 'updated_at']
+
+
+class RetailerRegistrationSerializer(serializers.Serializer):
+    """
+    Serializer for retailer registration.
+    Creates a user account and associated retailer profile.
+    """
+    # User fields
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    first_name = serializers.CharField(max_length=30)
+    last_name = serializers.CharField(max_length=150)
+    
+    # Retailer fields
+    company_name = serializers.CharField(max_length=255)
+    business_registration_number = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_email(self, value):
+        """Ensure email is unique."""
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
+
+    def validate_business_registration_number(self, value):
+        """Ensure business registration number is unique if provided."""
+        if value and Retailer.objects.filter(business_registration_number=value).exists():
+            raise serializers.ValidationError("A retailer with this business registration number already exists.")
+        return value
+
+    def validate_password(self, value):
+        """Validate password using Django's password validators."""
+        validate_password(value)
+        return value
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """Create user and retailer profile."""
+        # Extract user data
+        email = validated_data['email']
+        password = validated_data['password']
+        first_name = validated_data['first_name']
+        last_name = validated_data['last_name']
+
+        # Create user
+        user = User.objects.create_user(
+            username=email,  # Use email as username
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            is_staff=False
+        )
+
+        # Add to Retailer group
+        retailer_group, _ = Group.objects.get_or_create(name='Retailer')
+        user.groups.add(retailer_group)
+
+        # Create retailer profile
+        retailer = Retailer.objects.create(
+            user=user,
+            company_name=validated_data['company_name'],
+            business_registration_number=validated_data.get('business_registration_number') or None,
+            contact_phone=validated_data.get('contact_phone') or None,
+            address=validated_data.get('address') or None,
+        )
+
+        return retailer
+
+
+class RetailerUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating retailer profile.
+    """
+    class Meta:
+        model = Retailer
+        fields = ['company_name', 'business_registration_number', 'contact_phone', 'address']
+
+    def validate_business_registration_number(self, value):
+        """Ensure business registration number is unique if changed."""
+        if value and self.instance:
+            existing = Retailer.objects.filter(business_registration_number=value).exclude(id=self.instance.id)
+            if existing.exists():
+                raise serializers.ValidationError("A retailer with this business registration number already exists.")
+        return value

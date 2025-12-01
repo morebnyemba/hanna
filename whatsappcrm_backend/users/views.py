@@ -1,9 +1,19 @@
 # whatsappcrm_backend/users/views.py
 
 from django.contrib.auth.models import User
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from .serializers import UserSerializer, UserInviteSerializer
+
+from .models import Retailer
+from .serializers import (
+    UserSerializer, 
+    UserInviteSerializer,
+    RetailerSerializer,
+    RetailerRegistrationSerializer,
+    RetailerUpdateSerializer,
+)
+
 
 class IsAdminUser(permissions.BasePermission):
     """
@@ -12,6 +22,27 @@ class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user and request.user.is_staff
 
+
+class IsRetailer(permissions.BasePermission):
+    """
+    Allows access only to authenticated retailers.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return hasattr(request.user, 'retailer_profile')
+
+
+class IsRetailerOrAdmin(permissions.BasePermission):
+    """
+    Allows access to retailers or admin users.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.is_staff or hasattr(request.user, 'retailer_profile')
+
+
 class UserListView(generics.ListAPIView):
     """
     API view to list all users. Only accessible by admins.
@@ -19,6 +50,7 @@ class UserListView(generics.ListAPIView):
     queryset = User.objects.all().order_by('first_name')
     serializer_class = UserSerializer
     permission_classes = [IsAdminUser]
+
 
 class UserInviteView(generics.CreateAPIView):
     """
@@ -36,6 +68,7 @@ class UserInviteView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED
         )
 
+
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     API view to retrieve, update, or delete a user.
@@ -48,3 +81,92 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         # Instead of deleting, we just deactivate the user
         instance.is_active = False
         instance.save()
+
+
+class RetailerRegistrationView(generics.CreateAPIView):
+    """
+    API view for retailer registration.
+    Creates a user account and retailer profile.
+    """
+    serializer_class = RetailerRegistrationSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        retailer = serializer.save()
+        return Response(
+            {
+                "message": "Retailer registration successful.",
+                "retailer": RetailerSerializer(retailer).data
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+class RetailerViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing retailers.
+    Admins can list/retrieve/update all retailers.
+    Retailers can view and update their own profile.
+    """
+    queryset = Retailer.objects.select_related('user').all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ['update', 'partial_update']:
+            return RetailerUpdateSerializer
+        return RetailerSerializer
+
+    def get_queryset(self):
+        """
+        Admins see all retailers.
+        Retailers see only their own profile.
+        """
+        user = self.request.user
+        if user.is_staff:
+            return Retailer.objects.select_related('user').all()
+        elif hasattr(user, 'retailer_profile'):
+            return Retailer.objects.filter(user=user).select_related('user')
+        return Retailer.objects.none()
+
+    def get_permissions(self):
+        """
+        Only admins can create or delete retailers.
+        Retailers can view and update their own profile.
+        """
+        if self.action in ['create', 'destroy']:
+            return [IsAdminUser()]
+        return [IsRetailerOrAdmin()]
+
+    @action(detail=False, methods=['get'], url_path='me')
+    def my_profile(self, request):
+        """
+        Get the current retailer's profile.
+        """
+        if not hasattr(request.user, 'retailer_profile'):
+            return Response(
+                {"detail": "You are not registered as a retailer."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = RetailerSerializer(request.user.retailer_profile)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['patch'], url_path='me/update')
+    def update_my_profile(self, request):
+        """
+        Update the current retailer's profile.
+        """
+        if not hasattr(request.user, 'retailer_profile'):
+            return Response(
+                {"detail": "You are not registered as a retailer."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = RetailerUpdateSerializer(
+            request.user.retailer_profile,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(RetailerSerializer(request.user.retailer_profile).data)

@@ -10,6 +10,8 @@ router.register(r'barcode', views.BarcodeScanViewSet, basename='barcode')
 router.register(r'cart', views.CartViewSet, basename='cart')
 # Item tracking endpoints
 router.register(r'items', views.ItemTrackingViewSet, basename='item-tracking')
+# Retailer portal endpoints
+router.register(r'retailer', views.RetailerPortalViewSet, basename='retailer-portal')
 
 app_name = 'products_and_services_api'
 

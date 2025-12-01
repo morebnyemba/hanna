@@ -247,3 +247,122 @@ class ItemsNeedingAttentionSerializer(serializers.Serializer):
     awaiting_parts = SerializedItemDetailSerializer(many=True, read_only=True)
     outsourced = SerializedItemDetailSerializer(many=True, read_only=True)
     in_transit = SerializedItemDetailSerializer(many=True, read_only=True)
+
+
+# ============================================================================
+# Retailer Portal Serializers
+# ============================================================================
+
+class RetailerItemCheckoutSerializer(serializers.Serializer):
+    """
+    Serializer for retailer item checkout (sending to customer).
+    """
+    serial_number = serializers.CharField(
+        max_length=255,
+        required=True,
+        help_text="Serial number or barcode of the item to checkout"
+    )
+    customer_name = serializers.CharField(
+        max_length=255,
+        required=True,
+        help_text="Name of the customer receiving the item"
+    )
+    customer_phone = serializers.CharField(
+        max_length=20,
+        required=False,
+        allow_blank=True,
+        help_text="Customer phone number"
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Additional notes about this checkout"
+    )
+
+
+class RetailerItemCheckinSerializer(serializers.Serializer):
+    """
+    Serializer for retailer item check-in (receiving from warehouse or return).
+    """
+    serial_number = serializers.CharField(
+        max_length=255,
+        required=True,
+        help_text="Serial number or barcode of the item to check-in"
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Additional notes about this check-in"
+    )
+
+
+class RetailerAddSerialNumberSerializer(serializers.Serializer):
+    """
+    Serializer for retailer adding serial numbers to products.
+    """
+    product_id = serializers.IntegerField(
+        required=True,
+        help_text="ID of the product"
+    )
+    serial_number = serializers.CharField(
+        max_length=255,
+        required=True,
+        help_text="Serial number to add"
+    )
+    barcode = serializers.CharField(
+        max_length=100,
+        required=False,
+        allow_blank=True,
+        help_text="Barcode for the item (optional)"
+    )
+
+    def validate_serial_number(self, value):
+        """Ensure serial number is unique."""
+        if SerializedItem.objects.filter(serial_number=value).exists():
+            raise serializers.ValidationError("An item with this serial number already exists.")
+        return value
+
+    def validate_barcode(self, value):
+        """Ensure barcode is unique if provided."""
+        if value and SerializedItem.objects.filter(barcode=value).exists():
+            raise serializers.ValidationError("An item with this barcode already exists.")
+        return value
+
+    def validate_product_id(self, value):
+        """Ensure product exists."""
+        try:
+            Product.objects.get(id=value)
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("Product with this ID does not exist.")
+        return value
+
+
+class RetailerInventoryItemSerializer(serializers.ModelSerializer):
+    """
+    Serializer for retailer inventory items with product details.
+    """
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_sku = serializers.CharField(source='product.sku', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    current_location_display = serializers.CharField(source='get_current_location_display', read_only=True)
+
+    class Meta:
+        model = SerializedItem
+        fields = [
+            'id', 'serial_number', 'barcode', 'product', 'product_name', 'product_sku',
+            'status', 'status_display', 'current_location', 'current_location_display',
+            'location_notes', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class RetailerDashboardStatsSerializer(serializers.Serializer):
+    """
+    Serializer for retailer dashboard statistics.
+    """
+    total_items = serializers.IntegerField()
+    items_in_stock = serializers.IntegerField()
+    items_sold = serializers.IntegerField()
+    items_in_transit = serializers.IntegerField()
+    recent_checkouts = RetailerInventoryItemSerializer(many=True, read_only=True)
+    recent_checkins = RetailerInventoryItemSerializer(many=True, read_only=True)
