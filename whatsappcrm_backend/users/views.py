@@ -16,6 +16,7 @@ from .serializers import (
     RetailerBranchSerializer,
     RetailerBranchCreateSerializer,
     RetailerBranchUpdateSerializer,
+    RetailerSelectSerializer,
 )
 
 
@@ -57,6 +58,16 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         # Instead of deleting, we just deactivate the user
         instance.is_active = False
         instance.save()
+
+
+class RetailerListForSelectionView(generics.ListAPIView):
+    """
+    Public API view to list retailers for branch login selection.
+    Returns only active retailers with minimal info (id, company_name).
+    """
+    serializer_class = RetailerSelectSerializer
+    permission_classes = [permissions.AllowAny]
+    queryset = Retailer.objects.filter(is_active=True).order_by('company_name')
 
 
 class RetailerRegistrationView(generics.CreateAPIView):

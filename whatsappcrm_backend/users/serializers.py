@@ -275,3 +275,13 @@ class RetailerUpdateSerializer(serializers.ModelSerializer):
             if existing.exists():
                 raise serializers.ValidationError("A retailer with this business registration number already exists.")
         return value
+
+
+class RetailerSelectSerializer(serializers.ModelSerializer):
+    """
+    Minimal serializer for retailer selection dropdown (public).
+    Used during branch login to select which retailer the branch belongs to.
+    """
+    class Meta:
+        model = Retailer
+        fields = ['id', 'company_name']

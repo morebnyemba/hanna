@@ -5,16 +5,23 @@ import Cookies from 'js-cookie';
 interface User {
   username: string;
   email?: string;
-  role: 'admin' | 'client' | 'manufacturer' | 'technician' | null;
+  role: 'admin' | 'client' | 'manufacturer' | 'technician' | 'retailer' | 'retailer_branch' | null;
+}
+
+interface SelectedRetailer {
+  id: number;
+  company_name: string;
 }
 
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   user: User | null;
-  login: (tokens: { access: string; refresh: string }, userData: { username: string; email: string; role: any }) => void;
+  selectedRetailer: SelectedRetailer | null;
+  login: (tokens: { access: string; refresh: string }, userData: { username: string; email: string; role: any }, retailer?: SelectedRetailer | null) => void;
   logout: () => void;
   setTokens: (tokens: { access: string; refresh: string }) => void;
+  setSelectedRetailer: (retailer: SelectedRetailer | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -23,11 +30,13 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       user: null,
-      login: (tokens, userData) => {
+      selectedRetailer: null,
+      login: (tokens, userData, retailer = null) => {
         set({
           accessToken: tokens.access,
           refreshToken: tokens.refresh,
           user: userData,
+          selectedRetailer: retailer,
         });
         // Manually set a cookie for the middleware to read on server-side requests.
         // The middleware cannot access localStorage, but it can access cookies.
@@ -39,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
         accessToken: null,
         refreshToken: null,
         user: null,
+        selectedRetailer: null,
       });
         // Also remove the cookie on logout.
         Cookies.remove('auth-storage', { path: '/' });
@@ -46,6 +56,9 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (tokens) => set({
         accessToken: tokens.access,
         refreshToken: tokens.refresh,
+      }),
+      setSelectedRetailer: (retailer) => set({
+        selectedRetailer: retailer,
       }),
     }),
     {
@@ -55,7 +68,7 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-export const loginAction = async (username: string, password: string) => {
+export const loginAction = async (username: string, password: string, selectedRetailer?: { id: number; company_name: string } | null) => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
   const response = await fetch(`${apiUrl}/crm-api/auth/token/`, {
     method: 'POST',
@@ -67,7 +80,11 @@ export const loginAction = async (username: string, password: string) => {
   
   const data = await response.json();
   // The backend now returns 'role', 'username', 'email', 'access', 'refresh'
-  useAuthStore.getState().login({ access: data.access, refresh: data.refresh }, { username: data.username, email: data.email, role: data.role });
+  useAuthStore.getState().login(
+    { access: data.access, refresh: data.refresh }, 
+    { username: data.username, email: data.email, role: data.role },
+    selectedRetailer || null
+  );
 
   // Return the data so the login page can use the role for redirection
   return data;

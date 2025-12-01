@@ -7,6 +7,7 @@ from .views import (
     UserInviteView, 
     UserDetailView,
     RetailerRegistrationView,
+    RetailerListForSelectionView,
     RetailerViewSet,
     RetailerBranchViewSet,
 )
@@ -22,5 +23,6 @@ urlpatterns = [
     path('invite/', UserInviteView.as_view(), name='user-invite'),
     path('<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('retailer/register/', RetailerRegistrationView.as_view(), name='retailer-register'),
+    path('retailers-list/', RetailerListForSelectionView.as_view(), name='retailer-list-for-selection'),
     path('', include(router.urls)),
 ]

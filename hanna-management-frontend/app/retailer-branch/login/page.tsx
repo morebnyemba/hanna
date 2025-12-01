@@ -1,23 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction } from '@/app/store/authStore';
-import { FiUser, FiLock, FiLogIn, FiMapPin } from 'react-icons/fi';
+import { FiUser, FiLock, FiLogIn, FiMapPin, FiChevronDown, FiBuilding } from 'react-icons/fi';
+
+interface Retailer {
+  id: number;
+  company_name: string;
+}
 
 export default function RetailerBranchLoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedRetailerId, setSelectedRetailerId] = useState<number | null>(null);
+  const [retailers, setRetailers] = useState<Retailer[]>([]);
+  const [loadingRetailers, setLoadingRetailers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Fetch retailers for selection
+  useEffect(() => {
+    const fetchRetailers = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        const response = await fetch(`${apiUrl}/crm-api/users/retailers-list/`);
+        if (!response.ok) throw new Error('Failed to load retailers');
+        const data = await response.json();
+        setRetailers(data);
+      } catch (err) {
+        console.error('Failed to fetch retailers:', err);
+        setError('Failed to load retailers. Please refresh the page.');
+      } finally {
+        setLoadingRetailers(false);
+      }
+    };
+    fetchRetailers();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!selectedRetailerId) {
+      setError('Please select the retailer you are logging in under.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const loginResponse = await loginAction(username, password);
+      const selectedRetailer = retailers.find(r => r.id === selectedRetailerId);
+      const loginResponse = await loginAction(username, password, selectedRetailer || null);
       if (loginResponse?.role === 'retailer_branch' || loginResponse?.role === 'admin') {
         router.push('/retailer-branch/dashboard');
       } else {
@@ -54,6 +88,35 @@ export default function RetailerBranchLoginPage() {
 
             {/* Login Form */}
             <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Retailer Selection */}
+              <div>
+                <label htmlFor="retailer" className="block text-sm font-medium text-white">
+                  Select Retailer
+                </label>
+                <div className="mt-1 relative">
+                  <select
+                    id="retailer"
+                    value={selectedRetailerId || ''}
+                    onChange={(e) => setSelectedRetailerId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                    disabled={loadingRetailers}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all duration-300 cursor-pointer"
+                    required
+                  >
+                    <option value="" className="bg-emerald-800 text-white">
+                      {loadingRetailers ? 'Loading retailers...' : '-- Select Retailer --'}
+                    </option>
+                    {retailers.map((retailer) => (
+                      <option key={retailer.id} value={retailer.id} className="bg-emerald-800 text-white">
+                        {retailer.company_name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <FiBuilding className="h-5 w-5 text-white/60" />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-white">
                   Username
@@ -112,7 +175,7 @@ export default function RetailerBranchLoginPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || loadingRetailers}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-emerald-700 bg-white hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02]"
                 >
                   {loading ? (

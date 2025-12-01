@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiBox, FiShoppingCart, FiTruck, FiPackage, FiArrowDownCircle, FiArrowUpCircle } from 'react-icons/fi';
+import { FiBox, FiShoppingCart, FiTruck, FiPackage, FiArrowDownCircle, FiArrowUpCircle, FiBuilding } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import Link from 'next/link';
+import { useAuthStore } from '@/app/store/authStore';
 
 interface BranchDashboard {
   branch_name: string | null;
@@ -56,6 +57,7 @@ export default function BranchDashboardPage() {
   const [data, setData] = useState<BranchDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { selectedRetailer } = useAuthStore();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,6 +81,13 @@ export default function BranchDashboardPage() {
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Branch Dashboard</h1>
+          {/* Show selected retailer from login */}
+          {selectedRetailer && (
+            <p className="text-emerald-600 mt-1 flex items-center">
+              <FiBuilding className="mr-1" />
+              Logged in under: <span className="font-semibold ml-1">{selectedRetailer.company_name}</span>
+            </p>
+          )}
           {data?.branch_name && (
             <p className="text-gray-600 mt-1">
               {data.branch_name} {data.retailer_name && `• ${data.retailer_name}`}
