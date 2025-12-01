@@ -111,7 +111,8 @@ export default function OrderDispatchPage() {
       
       // Update dispatched items list (only add if item exists)
       if (data.item) {
-        setDispatchedItems(prev => [...prev, data.item]);
+        const dispatchedItem = data.item;
+        setDispatchedItems(prev => [...prev, dispatchedItem]);
       }
       
       // Refresh order to get updated fulfillment status
@@ -420,12 +421,11 @@ export default function OrderDispatchPage() {
       )}
 
       {/* Barcode Scanner Modal */}
-      {showScanner && (
-        <BarcodeScanner
-          onScan={handleScan}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
+      <BarcodeScanner
+        isOpen={showScanner}
+        onScanSuccess={handleScan}
+        onClose={() => setShowScanner(false)}
+      />
     </main>
   );
 }
