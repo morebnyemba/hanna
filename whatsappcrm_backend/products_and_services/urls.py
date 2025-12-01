@@ -10,6 +10,10 @@ router.register(r'barcode', views.BarcodeScanViewSet, basename='barcode')
 router.register(r'cart', views.CartViewSet, basename='cart')
 # Item tracking endpoints
 router.register(r'items', views.ItemTrackingViewSet, basename='item-tracking')
+# Retailer portal endpoints (deprecated - for backward compatibility)
+router.register(r'retailer', views.RetailerPortalViewSet, basename='retailer-portal')
+# Retailer Branch portal endpoints (main portal for branch operations)
+router.register(r'retailer-branch', views.RetailerBranchPortalViewSet, basename='retailer-branch-portal')
 
 app_name = 'products_and_services_api'
 

@@ -67,6 +67,10 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             token['role'] = 'manufacturer'
         elif hasattr(user, 'technician_profile'):
             token['role'] = 'technician'
+        elif hasattr(user, 'retailer_profile'):
+            token['role'] = 'retailer'
+        elif hasattr(user, 'retailer_branch_profile'):
+            token['role'] = 'retailer_branch'
         else:
             token['role'] = 'client'
 
