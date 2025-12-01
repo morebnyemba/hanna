@@ -366,3 +366,97 @@ class RetailerDashboardStatsSerializer(serializers.Serializer):
     items_in_transit = serializers.IntegerField()
     recent_checkouts = RetailerInventoryItemSerializer(many=True, read_only=True)
     recent_checkins = RetailerInventoryItemSerializer(many=True, read_only=True)
+
+
+# ============================================================================
+# Order-Based Dispatch Serializers
+# ============================================================================
+
+class OrderItemDispatchSerializer(serializers.Serializer):
+    """
+    Serializer for order item dispatch status.
+    """
+    id = serializers.IntegerField()
+    product_id = serializers.IntegerField(source='product.id')
+    product_name = serializers.CharField(source='product.name')
+    product_sku = serializers.CharField(source='product.sku')
+    quantity = serializers.IntegerField()
+    units_assigned = serializers.IntegerField()
+    is_fully_assigned = serializers.BooleanField()
+    remaining = serializers.SerializerMethodField()
+    
+    def get_remaining(self, obj):
+        return obj.quantity - obj.units_assigned
+
+
+class OrderDispatchSerializer(serializers.Serializer):
+    """
+    Serializer for order dispatch response (order verification).
+    """
+    order_id = serializers.UUIDField()
+    order_number = serializers.CharField()
+    customer_name = serializers.CharField(allow_null=True)
+    payment_status = serializers.CharField()
+    stage = serializers.CharField()
+    items = OrderItemDispatchSerializer(many=True, source='items.all')
+    is_eligible_for_dispatch = serializers.SerializerMethodField()
+    dispatch_message = serializers.SerializerMethodField()
+    
+    def get_is_eligible_for_dispatch(self, obj):
+        """Check if order is eligible for dispatch."""
+        # Order must be closed_won and paid/partially_paid
+        return (
+            obj.stage == 'closed_won' and 
+            obj.payment_status in ['paid', 'partially_paid']
+        )
+    
+    def get_dispatch_message(self, obj):
+        """Get dispatch eligibility message."""
+        if obj.stage != 'closed_won':
+            return f"Order is not ready for dispatch. Current stage: {obj.get_stage_display()}"
+        if obj.payment_status not in ['paid', 'partially_paid']:
+            return f"Order payment not confirmed. Status: {obj.get_payment_status_display()}"
+        # Check if all items are fully assigned
+        all_assigned = all(item.is_fully_assigned for item in obj.items.all())
+        if all_assigned:
+            return "All items for this order have been dispatched."
+        return "Order is ready for dispatch."
+
+
+class OrderItemScanSerializer(serializers.Serializer):
+    """
+    Serializer for scanning an item for an order.
+    """
+    order_number = serializers.CharField(
+        required=True,
+        help_text="The order/invoice number"
+    )
+    serial_number = serializers.CharField(
+        max_length=255,
+        required=True,
+        help_text="Serial number or barcode of the item being dispatched"
+    )
+    order_item_id = serializers.IntegerField(
+        required=False,
+        help_text="Optional: Specific OrderItem ID to assign to (auto-matched if not provided)"
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Additional notes about this dispatch"
+    )
+
+
+class DispatchedItemSerializer(serializers.Serializer):
+    """
+    Serializer for dispatched item response.
+    """
+    item_id = serializers.IntegerField()
+    serial_number = serializers.CharField()
+    barcode = serializers.CharField(allow_null=True)
+    product_name = serializers.CharField()
+    order_item_id = serializers.IntegerField()
+    units_assigned = serializers.IntegerField()
+    quantity_ordered = serializers.IntegerField()
+    is_fully_assigned = serializers.BooleanField()
+    dispatch_timestamp = serializers.DateTimeField()

@@ -25,6 +25,10 @@ from .serializers import (
     RetailerAddSerialNumberSerializer,
     RetailerInventoryItemSerializer,
     RetailerDashboardStatsSerializer,
+    # Order dispatch serializers
+    OrderDispatchSerializer,
+    OrderItemScanSerializer,
+    DispatchedItemSerializer,
 )
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
@@ -1137,6 +1141,303 @@ class RetailerBranchPortalViewSet(viewsets.ViewSet):
         
         serializer = ItemLocationHistorySerializer(history, many=True)
         return Response(serializer.data)
+
+    # ========================================================================
+    # Order-Based Dispatch Endpoints
+    # ========================================================================
+
+    @action(detail=False, methods=["get"], url_path="order/verify/(?P<order_number>[^/.]+)")
+    def verify_order(self, request, order_number=None):
+        """
+        Verify an order exists and is eligible for dispatch.
+        
+        GET /crm-api/products/retailer-branch/order/verify/{order_number}/
+        
+        Returns order details including items to be dispatched and their fulfillment status.
+        """
+        from customer_data.models import Order
+        
+        if not order_number:
+            return Response(
+                {"error": "Order number is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Try to find the order
+        try:
+            order = Order.objects.prefetch_related(
+                "items", "items__product"
+            ).select_related("customer").get(order_number=order_number)
+        except Order.DoesNotExist:
+            return Response(
+                {"error": f"Order with number '{order_number}' not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Serialize the order with dispatch info
+        serializer = OrderDispatchSerializer(order)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"], url_path="order/dispatch-item")
+    def dispatch_item(self, request):
+        """
+        Dispatch a single item for an order.
+        
+        POST /crm-api/products/retailer-branch/order/dispatch-item/
+        Body: {
+            "order_number": "ORD-12345",
+            "serial_number": "SN12345",  // Can be serial number or barcode
+            "order_item_id": 123,  // Optional - auto-matched if not provided
+            "notes": "Packed and ready"
+        }
+        
+        This endpoint:
+        1. Validates the order exists and is eligible for dispatch
+        2. Finds the serialized item by serial number or barcode
+        3. Validates the product matches an order line item (or matches specific order_item_id)
+        4. Links the SerializedItem to the OrderItem
+        5. Updates fulfillment tracking (units_assigned)
+        6. Records the dispatch in ItemLocationHistory
+        7. Returns dispatch confirmation with timestamp
+        """
+        from customer_data.models import Order, OrderItem
+        
+        serializer = OrderItemScanSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        order_number = serializer.validated_data["order_number"]
+        serial_number = serializer.validated_data["serial_number"]
+        order_item_id = serializer.validated_data.get("order_item_id")
+        notes = serializer.validated_data.get("notes", "")
+        
+        # 1. Find the order
+        try:
+            order = Order.objects.prefetch_related(
+                "items", "items__product"
+            ).get(order_number=order_number)
+        except Order.DoesNotExist:
+            return Response(
+                {"error": f"Order with number '{order_number}' not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 2. Check if order is eligible for dispatch
+        if order.stage != "closed_won":
+            return Response(
+                {"error": f"Order is not ready for dispatch. Current stage: {order.get_stage_display()}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if order.payment_status not in ["paid", "partially_paid"]:
+            return Response(
+                {"error": f"Order payment not confirmed. Status: {order.get_payment_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 3. Find the serialized item
+        try:
+            item = SerializedItem.objects.select_related("product").get(
+                Q(serial_number=serial_number) | Q(barcode=serial_number)
+            )
+        except SerializedItem.DoesNotExist:
+            return Response(
+                {"error": f"No item found with serial number or barcode: {serial_number}"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except SerializedItem.MultipleObjectsReturned:
+            return Response(
+                {"error": "Multiple items found. Please use a unique identifier."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 4. Check if item is already assigned to an order
+        if item.order_item is not None:
+            return Response(
+                {"error": f"This item is already assigned to order {item.order_item.order.order_number}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 5. Find the matching order item (or use provided order_item_id)
+        if order_item_id:
+            try:
+                target_order_item = OrderItem.objects.get(id=order_item_id, order=order)
+            except OrderItem.DoesNotExist:
+                return Response(
+                    {"error": f"Order item {order_item_id} not found in this order"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Validate SKU match
+            if item.product.sku != target_order_item.product.sku:
+                return Response(
+                    {"error": f"Product SKU mismatch! Expected: {target_order_item.product.sku} "
+                             f"({target_order_item.product.name}), but scanned: {item.product.sku} "
+                             f"({item.product.name})"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            # Auto-match: find an order item with matching product that is not fully assigned
+            matching_items = order.items.filter(
+                product=item.product,
+                is_fully_assigned=False
+            )
+            
+            if not matching_items.exists():
+                # Check if product exists in order but is fully assigned
+                all_matching = order.items.filter(product=item.product)
+                if all_matching.exists():
+                    return Response(
+                        {"error": f"All units of {item.product.name} for this order have been dispatched"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                else:
+                    return Response(
+                        {"error": f"Product {item.product.name} (SKU: {item.product.sku}) is not part of this order"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            target_order_item = matching_items.first()
+        
+        # 6. Check if order item is already fully assigned
+        if target_order_item.is_fully_assigned:
+            return Response(
+                {"error": f"All {target_order_item.quantity} units of {target_order_item.product.name} "
+                         f"have already been dispatched for this order"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 7. Perform the dispatch - link item to order and update fulfillment
+        branch = self._get_branch(request)
+        dispatch_notes = f"Dispatched for Order #{order_number}"
+        if branch:
+            dispatch_notes += f" by branch {branch.branch_name}"
+        if notes:
+            dispatch_notes += f". {notes}"
+        
+        # Link item to order item
+        item.order_item = target_order_item
+        
+        # Update fulfillment tracking
+        target_order_item.units_assigned += 1
+        if target_order_item.units_assigned >= target_order_item.quantity:
+            target_order_item.is_fully_assigned = True
+        target_order_item.save(update_fields=["units_assigned", "is_fully_assigned"])
+        
+        # Transfer item (mark as in transit/sold)
+        history = ItemTrackingService.transfer_item(
+            item=item,
+            to_location=SerializedItem.Location.CUSTOMER,
+            to_holder=None,  # Customer is not a system user
+            reason=ItemLocationHistory.TransferReason.SALE,
+            notes=dispatch_notes,
+            related_order=order,
+            transferred_by=request.user,
+            update_status=SerializedItem.Status.SOLD
+        )
+        
+        # Save item with order_item link
+        item.save(update_fields=["order_item"])
+        
+        # 8. Return dispatch confirmation
+        return Response({
+            "success": True,
+            "message": f"Item {item.serial_number} dispatched for order {order_number}",
+            "item": {
+                "item_id": item.id,
+                "serial_number": item.serial_number,
+                "barcode": item.barcode,
+                "product_name": item.product.name,
+                "order_item_id": target_order_item.id,
+                "units_assigned": target_order_item.units_assigned,
+                "quantity_ordered": target_order_item.quantity,
+                "is_fully_assigned": target_order_item.is_fully_assigned,
+                "dispatch_timestamp": history.timestamp.isoformat()
+            },
+            "order_fulfillment": {
+                "order_number": order.order_number,
+                "items_remaining": sum(
+                    1 for oi in order.items.all() 
+                    if not oi.is_fully_assigned
+                ),
+                "total_items": order.items.count(),
+                "all_dispatched": all(oi.is_fully_assigned for oi in order.items.all())
+            }
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="order/(?P<order_number>[^/.]+)/dispatch-status")
+    def order_dispatch_status(self, request, order_number=None):
+        """
+        Get dispatch status for an order - shows which items have been dispatched.
+        
+        GET /crm-api/products/retailer-branch/order/{order_number}/dispatch-status/
+        """
+        from customer_data.models import Order
+        
+        if not order_number:
+            return Response(
+                {"error": "Order number is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            order = Order.objects.prefetch_related(
+                "items", "items__product", "items__assigned_items"
+            ).get(order_number=order_number)
+        except Order.DoesNotExist:
+            return Response(
+                {"error": f"Order with number '{order_number}' not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Build dispatch status for each order item
+        items_status = []
+        for order_item in order.items.all():
+            dispatched_items = []
+            for serial_item in order_item.assigned_items.select_related("product"):
+                # Get the dispatch history entry for this item
+                dispatch_history = serial_item.location_history.filter(
+                    related_order=order
+                ).order_by("-timestamp").first()
+                
+                dispatched_items.append({
+                    "serial_number": serial_item.serial_number,
+                    "barcode": serial_item.barcode,
+                    "status": serial_item.status,
+                    "status_display": serial_item.get_status_display(),
+                    "dispatched_at": dispatch_history.timestamp.isoformat() if dispatch_history else None,
+                    "dispatched_by": (
+                        dispatch_history.transferred_by.get_full_name() or 
+                        dispatch_history.transferred_by.username
+                    ) if dispatch_history and dispatch_history.transferred_by else None
+                })
+            
+            items_status.append({
+                "order_item_id": order_item.id,
+                "product_name": order_item.product.name,
+                "product_sku": order_item.product.sku,
+                "quantity": order_item.quantity,
+                "units_assigned": order_item.units_assigned,
+                "is_fully_assigned": order_item.is_fully_assigned,
+                "remaining": order_item.quantity - order_item.units_assigned,
+                "dispatched_items": dispatched_items
+            })
+        
+        return Response({
+            "order_number": order.order_number,
+            "order_id": str(order.id),
+            "customer_name": (
+                order.customer.get_full_name() if order.customer else None
+            ),
+            "stage": order.stage,
+            "stage_display": order.get_stage_display(),
+            "payment_status": order.payment_status,
+            "payment_status_display": order.get_payment_status_display(),
+            "items": items_status,
+            "total_items": order.items.count(),
+            "items_fully_dispatched": sum(1 for oi in order.items.all() if oi.is_fully_assigned),
+            "all_dispatched": all(oi.is_fully_assigned for oi in order.items.all())
+        })
 
 
 # ============================================================================

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiGrid, FiLogOut, FiMenu, FiX, FiDownload, FiUpload, FiBox, FiPlus, FiList, FiCamera, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiGrid, FiLogOut, FiMenu, FiX, FiDownload, FiUpload, FiBox, FiPlus, FiList, FiCamera, FiChevronLeft, FiChevronRight, FiTruck } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
@@ -79,6 +79,7 @@ export default function RetailerBranchLayout({ children }: { children: ReactNode
         <p className={`text-sm text-center text-gray-300 capitalize mb-4 ${isSidebarCollapsed ? 'hidden md:block' : ''}`}>Branch Portal</p>
         <nav className="space-y-2 flex-1 overflow-y-auto pr-1">
           <SidebarLink href="/retailer-branch/dashboard" icon={FiGrid} isCollapsed={isSidebarCollapsed}>Dashboard</SidebarLink>
+          <SidebarLink href="/retailer-branch/order-dispatch" icon={FiTruck} isCollapsed={isSidebarCollapsed}>Order Dispatch</SidebarLink>
           <SidebarLink href="/retailer-branch/check-in-out" icon={FiDownload} isCollapsed={isSidebarCollapsed}>Check-In / Out</SidebarLink>
           <SidebarLink href="/retailer-branch/inventory" icon={FiBox} isCollapsed={isSidebarCollapsed}>Inventory</SidebarLink>
           <SidebarLink href="/retailer-branch/add-serial" icon={FiPlus} isCollapsed={isSidebarCollapsed}>Add Serial Number</SidebarLink>
