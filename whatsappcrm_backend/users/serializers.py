@@ -8,6 +8,7 @@ from django.conf import settings
 from django.db import transaction
 
 from .models import Retailer
+from .constants import RETAILER_GROUP_NAME
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -139,7 +140,7 @@ class RetailerRegistrationSerializer(serializers.Serializer):
         )
 
         # Add to Retailer group
-        retailer_group, _ = Group.objects.get_or_create(name='Retailer')
+        retailer_group, _ = Group.objects.get_or_create(name=RETAILER_GROUP_NAME)
         user.groups.add(retailer_group)
 
         # Create retailer profile
