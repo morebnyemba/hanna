@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { loginAction } from '@/app/store/authStore';
-import { FiUser, FiLock, FiLogIn, FiMapPin, FiChevronDown, FiHome } from 'react-icons/fi';
+import { FiUser, FiLock, FiLogIn, FiMapPin, FiHome, FiShoppingBag } from 'react-icons/fi';
 
 interface Retailer {
   id: number;
@@ -190,6 +191,18 @@ export default function RetailerBranchLoginPage() {
                     <><FiLogIn className="mr-2"/> Sign in</>
                   )}
                 </button>
+              </div>
+
+              {/* Retailer login link */}
+              <div className="text-center pt-4 border-t border-white/20">
+                <p className="text-white/70 text-sm mb-2">Are you a retailer?</p>
+                <Link 
+                  href="/retailer/login"
+                  className="inline-flex items-center text-white hover:text-white/80 font-medium transition-colors"
+                >
+                  <FiShoppingBag className="mr-2 h-4 w-4" />
+                  Login here
+                </Link>
               </div>
             </form>
           </div>

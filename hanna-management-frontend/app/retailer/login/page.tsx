@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { loginAction } from '@/app/store/authStore';
-import { FiUser, FiLock, FiLogIn, FiShoppingBag } from 'react-icons/fi';
+import { FiUser, FiLock, FiLogIn, FiShoppingBag, FiMapPin } from 'react-icons/fi';
 
 export default function RetailerLoginPage() {
   const [username, setUsername] = useState('');
@@ -127,6 +128,18 @@ export default function RetailerLoginPage() {
                     <><FiLogIn className="mr-2"/> Sign in</>
                   )}
                 </button>
+              </div>
+
+              {/* Branch login link */}
+              <div className="text-center pt-4 border-t border-white/20">
+                <p className="text-white/70 text-sm mb-2">Are you a branch?</p>
+                <Link 
+                  href="/retailer-branch/login"
+                  className="inline-flex items-center text-white hover:text-white/80 font-medium transition-colors"
+                >
+                  <FiMapPin className="mr-2 h-4 w-4" />
+                  Login here
+                </Link>
               </div>
             </form>
           </div>
