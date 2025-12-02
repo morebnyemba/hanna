@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { FiUsers, FiLogIn, FiShield, FiTool, FiSettings, FiShoppingCart, FiPackage, FiTruck } from 'react-icons/fi';
+import { FiUsers, FiLogIn, FiShield, FiTool, FiSettings, FiShoppingCart, FiPackage, FiTruck, FiShoppingBag, FiMapPin } from 'react-icons/fi';
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
   <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -79,6 +79,8 @@ export default function LandingPage() {
               <PortalLink href="/client/login" icon={<FiLogIn className="w-4 h-4 mr-2" />} label="Client Portal" />
               <PortalLink href="/manufacturer/login" icon={<FiTool className="w-4 h-4 mr-2" />} label="Manufacturer Portal" />
               <PortalLink href="/technician/login" icon={<FiTool className="w-4 h-4 mr-2" />} label="Technician Portal" />
+              <PortalLink href="/retailer/login" icon={<FiShoppingBag className="w-4 h-4 mr-2" />} label="Retailer Portal" />
+              <PortalLink href="/retailer-branch/login" icon={<FiMapPin className="w-4 h-4 mr-2" />} label="Branch Portal" />
             </div>
           </div>
 
