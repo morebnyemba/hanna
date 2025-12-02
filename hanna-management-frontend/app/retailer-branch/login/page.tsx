@@ -29,10 +29,13 @@ export default function RetailerBranchLoginPage() {
         const response = await fetch(`${apiUrl}/crm-api/users/retailers-list/`);
         if (!response.ok) throw new Error('Failed to load retailers');
         const data = await response.json();
-        setRetailers(data);
+        // Handle both array response and paginated response
+        const retailersList = Array.isArray(data) ? data : (data.results || []);
+        setRetailers(retailersList);
       } catch (err) {
         console.error('Failed to fetch retailers:', err);
         setError('Failed to load retailers. Please refresh the page.');
+        setRetailers([]); // Ensure retailers is always an array
       } finally {
         setLoadingRetailers(false);
       }
