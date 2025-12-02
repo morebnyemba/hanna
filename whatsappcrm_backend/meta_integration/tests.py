@@ -40,10 +40,15 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_config.objects.get_active_config.return_value = mock_active_config
         return mock_active_config
     
-    def _mock_product_images(self, product, mock_image):
+    def _mock_product_images_context(self, product, mock_image):
         """
-        Helper method to mock product.images.first() return value.
+        Returns a context manager to mock product.images.first() return value.
         Uses PropertyMock to properly mock the Django RelatedManager.
+        
+        Usage:
+            with self._mock_product_images_context(product, mock_image):
+                # product.images.first() will return mock_image
+                pass
         """
         mock_images = MagicMock()
         mock_images.first.return_value = mock_image
@@ -59,7 +64,7 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image.image.url = '/media/product_images/test.png'
         
         # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images(self.product, mock_image):
+        with self._mock_product_images_context(self.product, mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -84,7 +89,7 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image.image.url = 'https://cdn.example.com/images/test.png'
         
         # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images(self.product, mock_image):
+        with self._mock_product_images_context(self.product, mock_image):
             service = MetaCatalogService()
             product_data = service._get_product_data(self.product)
             
@@ -125,7 +130,7 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image.image.url = ''  # Empty string
         
         # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images(self.product, mock_image):
+        with self._mock_product_images_context(self.product, mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -146,7 +151,7 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image.image.url = None  # None value
         
         # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images(self.product, mock_image):
+        with self._mock_product_images_context(self.product, mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -167,7 +172,7 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image.image.url = '   '  # Whitespace only
         
         # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images(self.product, mock_image):
+        with self._mock_product_images_context(self.product, mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -193,7 +198,7 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image.image.url = url_with_whitespace
         
         # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images(self.product, mock_image):
+        with self._mock_product_images_context(self.product, mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP=test_domain):
@@ -251,25 +256,17 @@ class MetaCatalogServiceTestCase(TestCase):
         """Test that products without SKU raise ValueError"""
         self._setup_mock_config(mock_config)
         
-        # Create product and then manually clear the SKU
-        # (SKU is auto-generated in save(), so we need to update it after creation)
-        product_no_sku = Product.objects.create(
-            name='Product No SKU',
-            description='Test product without SKU',
-            product_type='service',
-            category=self.category,
-            price=50.00,
-            currency='USD',
-            is_active=True
-        )
-        # Clear the auto-generated SKU
-        Product.objects.filter(pk=product_no_sku.pk).update(sku=None)
-        product_no_sku.refresh_from_db()
+        # Create a mock product with no SKU to test the validation
+        # Using a mock avoids the auto-generation of SKU in the Product.save() method
+        mock_product = MagicMock()
+        mock_product.name = 'Product No SKU'
+        mock_product.id = 999
+        mock_product.sku = None  # No SKU
         
         service = MetaCatalogService()
         
         # Verify ValueError is raised
         with self.assertRaises(ValueError) as context:
-            service._get_product_data(product_no_sku)
+            service._get_product_data(mock_product)
         
         self.assertIn('missing an SKU', str(context.exception))

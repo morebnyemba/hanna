@@ -65,8 +65,15 @@ from datetime import datetime, timedelta
 logger = logging.getLogger(__name__)
 
 # Placeholder image path for products without images
-# This is a static file that must be publicly accessible via the backend domain
-# Meta API requires a publicly accessible URL, data URIs are NOT supported
+# This static file must be:
+# 1. Present in the static directory (whatsappcrm_backend/static/admin/img/placeholder.png)
+# 2. Publicly accessible via the backend domain (https://backend.domain.com/static/admin/img/placeholder.png)
+# 3. Served by nginx or the web server (see docstring for nginx configuration)
+# 
+# If this file is not accessible, Meta API will reject product creation with error #10801.
+# Verify accessibility by testing: curl -I https://your-backend-domain/static/admin/img/placeholder.png
+#
+# Meta API requires a publicly accessible URL - data URIs are NOT supported
 PLACEHOLDER_IMAGE_PATH = "/static/admin/img/placeholder.png"
 
 
