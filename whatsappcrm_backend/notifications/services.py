@@ -157,8 +157,7 @@ def queue_notifications_to_users(
                 direction='out', 
                 message_type=message_type,
                 content_payload=content_payload, 
-                status='pending_dispatch', 
-                related_flow=related_flow
+                status='pending_dispatch'
             )
             send_whatsapp_message_task.delay(outgoing_msg.id, active_config.id)
             logger.info(f"Queued direct WhatsApp notification for template '{template_name}' to contact {recipient_contact.id} ({recipient_contact.whatsapp_id}).")
