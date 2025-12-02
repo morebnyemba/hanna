@@ -104,7 +104,7 @@ export default function HistoryPage() {
                     Reason: {item.transfer_reason_display || item.transfer_reason}
                   </p>
                   {item.notes && (
-                    <p className="text-sm text-gray-500 mt-1 italic">"{item.notes}"</p>
+                    <p className="text-sm text-gray-500 mt-1 italic">&quot;{item.notes}&quot;</p>
                   )}
                 </div>
                 <div className="text-right mt-2 sm:mt-0">
