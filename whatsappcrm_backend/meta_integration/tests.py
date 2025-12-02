@@ -1,6 +1,6 @@
 from django.test import TestCase, override_settings
-from unittest.mock import patch, MagicMock
-from .catalog_service import MetaCatalogService, PLACEHOLDER_IMAGE_DATA_URI
+from unittest.mock import patch, MagicMock, PropertyMock
+from .catalog_service import MetaCatalogService, PLACEHOLDER_IMAGE_PATH
 from products_and_services.models import Product, ProductCategory, ProductImage
 
 
@@ -40,6 +40,15 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_config.objects.get_active_config.return_value = mock_active_config
         return mock_active_config
     
+    def _mock_product_images(self, product, mock_image):
+        """
+        Helper method to mock product.images.first() return value.
+        Uses PropertyMock to properly mock the Django RelatedManager.
+        """
+        mock_images = MagicMock()
+        mock_images.first.return_value = mock_image
+        return patch.object(type(product), 'images', new_callable=PropertyMock, return_value=mock_images)
+    
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_relative_image_url(self, mock_config):
         """Test that relative image URLs are converted to absolute URLs"""
@@ -49,8 +58,8 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image = MagicMock()
         mock_image.image.url = '/media/product_images/test.png'
         
-        # Mock the images queryset
-        with patch.object(self.product.images, 'first', return_value=mock_image):
+        # Mock the images queryset using PropertyMock for Django RelatedManager
+        with self._mock_product_images(self.product, mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -74,8 +83,8 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image = MagicMock()
         mock_image.image.url = 'https://cdn.example.com/images/test.png'
         
-        # Mock the images queryset
-        with patch.object(self.product.images, 'first', return_value=mock_image):
+        # Mock the images queryset using PropertyMock for Django RelatedManager
+        with self._mock_product_images(self.product, mock_image):
             service = MetaCatalogService()
             product_data = service._get_product_data(self.product)
             
@@ -88,72 +97,86 @@ class MetaCatalogServiceTestCase(TestCase):
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_without_image(self, mock_config):
-        """Test that products without images use a transparent data URI placeholder"""
+        """Test that products without images use a static placeholder URL"""
         self._setup_mock_config(mock_config)
         
         service = MetaCatalogService()
-        product_data = service._get_product_data(self.product)
         
-        # Verify image_link is present with data URI placeholder (Meta API requires it)
+        with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
+            product_data = service._get_product_data(self.product)
+        
+        # Verify image_link is present with publicly accessible placeholder URL
+        # (Meta API does not accept data URIs)
         self.assertIn('image_link', product_data)
-        # Should use a transparent 1x1 PNG data URI as placeholder
-        self.assertTrue(product_data['image_link'].startswith('data:image/png;base64,'))
-        # Verify it matches the expected placeholder constant
-        self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
+        # Should use a static placeholder URL, not a data URI
+        self.assertFalse(product_data['image_link'].startswith('data:'))
+        self.assertTrue(product_data['image_link'].startswith('https://'))
+        # Verify it uses the placeholder path
+        expected_placeholder_url = f'https://backend.hanna.co.zw{PLACEHOLDER_IMAGE_PATH}'
+        self.assertEqual(product_data['image_link'], expected_placeholder_url)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_empty_image_url(self, mock_config):
-        """Test that products with empty image URLs use placeholder data URI"""
+        """Test that products with empty image URLs use placeholder URL"""
         self._setup_mock_config(mock_config)
         
         # Create a product image with empty URL
         mock_image = MagicMock()
         mock_image.image.url = ''  # Empty string
         
-        # Mock the images queryset
-        with patch.object(self.product.images, 'first', return_value=mock_image):
+        # Mock the images queryset using PropertyMock for Django RelatedManager
+        with self._mock_product_images(self.product, mock_image):
             service = MetaCatalogService()
-            product_data = service._get_product_data(self.product)
             
-            # Verify image_link uses placeholder when URL is empty
+            with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
+                product_data = service._get_product_data(self.product)
+            
+            # Verify image_link uses placeholder URL when URL is empty
             self.assertIn('image_link', product_data)
-            self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
+            expected_placeholder_url = f'https://backend.hanna.co.zw{PLACEHOLDER_IMAGE_PATH}'
+            self.assertEqual(product_data['image_link'], expected_placeholder_url)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_none_image_url(self, mock_config):
-        """Test that products with None image URLs use placeholder data URI"""
+        """Test that products with None image URLs use placeholder URL"""
         self._setup_mock_config(mock_config)
         
         # Create a product image with None URL
         mock_image = MagicMock()
         mock_image.image.url = None  # None value
         
-        # Mock the images queryset
-        with patch.object(self.product.images, 'first', return_value=mock_image):
+        # Mock the images queryset using PropertyMock for Django RelatedManager
+        with self._mock_product_images(self.product, mock_image):
             service = MetaCatalogService()
-            product_data = service._get_product_data(self.product)
             
-            # Verify image_link uses placeholder when URL is None
+            with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
+                product_data = service._get_product_data(self.product)
+            
+            # Verify image_link uses placeholder URL when URL is None
             self.assertIn('image_link', product_data)
-            self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
+            expected_placeholder_url = f'https://backend.hanna.co.zw{PLACEHOLDER_IMAGE_PATH}'
+            self.assertEqual(product_data['image_link'], expected_placeholder_url)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_whitespace_image_url(self, mock_config):
-        """Test that products with whitespace-only image URLs use placeholder data URI"""
+        """Test that products with whitespace-only image URLs use placeholder URL"""
         self._setup_mock_config(mock_config)
         
         # Create a product image with whitespace-only URL
         mock_image = MagicMock()
         mock_image.image.url = '   '  # Whitespace only
         
-        # Mock the images queryset
-        with patch.object(self.product.images, 'first', return_value=mock_image):
+        # Mock the images queryset using PropertyMock for Django RelatedManager
+        with self._mock_product_images(self.product, mock_image):
             service = MetaCatalogService()
-            product_data = service._get_product_data(self.product)
             
-            # Verify image_link uses placeholder when URL is only whitespace
+            with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
+                product_data = service._get_product_data(self.product)
+            
+            # Verify image_link uses placeholder URL when URL is only whitespace
             self.assertIn('image_link', product_data)
-            self.assertEqual(product_data['image_link'], PLACEHOLDER_IMAGE_DATA_URI)
+            expected_placeholder_url = f'https://backend.hanna.co.zw{PLACEHOLDER_IMAGE_PATH}'
+            self.assertEqual(product_data['image_link'], expected_placeholder_url)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_url_containing_whitespace(self, mock_config):
@@ -169,8 +192,8 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_image = MagicMock()
         mock_image.image.url = url_with_whitespace
         
-        # Mock the images queryset
-        with patch.object(self.product.images, 'first', return_value=mock_image):
+        # Mock the images queryset using PropertyMock for Django RelatedManager
+        with self._mock_product_images(self.product, mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP=test_domain):
@@ -228,7 +251,8 @@ class MetaCatalogServiceTestCase(TestCase):
         """Test that products without SKU raise ValueError"""
         self._setup_mock_config(mock_config)
         
-        # Create product without SKU
+        # Create product and then manually clear the SKU
+        # (SKU is auto-generated in save(), so we need to update it after creation)
         product_no_sku = Product.objects.create(
             name='Product No SKU',
             description='Test product without SKU',
@@ -238,6 +262,9 @@ class MetaCatalogServiceTestCase(TestCase):
             currency='USD',
             is_active=True
         )
+        # Clear the auto-generated SKU
+        Product.objects.filter(pk=product_no_sku.pk).update(sku=None)
+        product_no_sku.refresh_from_db()
         
         service = MetaCatalogService()
         
