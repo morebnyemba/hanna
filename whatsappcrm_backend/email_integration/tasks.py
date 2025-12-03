@@ -355,7 +355,22 @@ def process_attachment_with_gemini(self, attachment_id):
 
         # 5. Parse the extracted JSON data
         try:
-            cleaned_text = response.text.strip().replace('```json', '').replace('```', '').strip()
+            raw_text = response.text.strip()
+            cleaned_text = None
+            
+            # First, try to find JSON within markdown code blocks (```json ... ```)
+            json_match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text)
+            if json_match:
+                cleaned_text = json_match.group(1).strip()
+            else:
+                # Fallback: Try to find a JSON object starting with { and ending with }
+                json_object_match = re.search(r'(\{[\s\S]*\})', raw_text)
+                if json_object_match:
+                    cleaned_text = json_object_match.group(1).strip()
+                else:
+                    # Last resort: Use the entire text (backward compatibility)
+                    cleaned_text = raw_text.replace('```json', '').replace('```', '').strip()
+            
             if not cleaned_text:
                 raise json.JSONDecodeError("Empty response from Gemini", "", 0)
             extracted_data = json.loads(cleaned_text)
