@@ -130,3 +130,185 @@ class WhatsAppFlowServiceUpdateFlowJsonTest(TestCase):
         # Verify sync_status was set to 'error'
         # Last save call should have set sync_status to 'error'
         self.assertEqual(self.whatsapp_flow.sync_status, 'error')
+
+
+class WhatsAppFlowServiceListFlowsTest(TestCase):
+    """Test the list_flows and find_flow_by_name methods"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.meta_config = Mock(spec=MetaAppConfig)
+        self.meta_config.access_token = "test_access_token"
+        self.meta_config.api_version = "v23.0"
+        self.meta_config.waba_id = "1234567890"
+        
+        self.service = WhatsAppFlowService(self.meta_config)
+    
+    @patch('flows.whatsapp_flow_service.requests.get')
+    def test_list_flows_success(self, mock_get):
+        """Test that list_flows retrieves flows from Meta"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'data': [
+                {'id': 'flow_1', 'name': 'Test Flow 1_v1.02'},
+                {'id': 'flow_2', 'name': 'Test Flow 2_v1.02'}
+            ]
+        }
+        mock_get.return_value = mock_response
+        
+        flows = self.service.list_flows()
+        
+        self.assertEqual(len(flows), 2)
+        self.assertEqual(flows[0]['id'], 'flow_1')
+        self.assertEqual(flows[1]['name'], 'Test Flow 2_v1.02')
+    
+    @patch('flows.whatsapp_flow_service.requests.get')
+    def test_list_flows_handles_pagination(self, mock_get):
+        """Test that list_flows handles paginated results"""
+        # First page
+        response1 = Mock()
+        response1.status_code = 200
+        response1.json.return_value = {
+            'data': [{'id': 'flow_1', 'name': 'Flow 1'}],
+            'paging': {'next': 'https://graph.facebook.com/next_page'}
+        }
+        
+        # Second page
+        response2 = Mock()
+        response2.status_code = 200
+        response2.json.return_value = {
+            'data': [{'id': 'flow_2', 'name': 'Flow 2'}]
+        }
+        
+        mock_get.side_effect = [response1, response2]
+        
+        flows = self.service.list_flows()
+        
+        self.assertEqual(len(flows), 2)
+        self.assertEqual(mock_get.call_count, 2)
+    
+    @patch('flows.whatsapp_flow_service.requests.get')
+    def test_list_flows_handles_error(self, mock_get):
+        """Test that list_flows returns empty list on error"""
+        mock_get.side_effect = Exception("Network error")
+        
+        flows = self.service.list_flows()
+        
+        self.assertEqual(flows, [])
+    
+    @patch('flows.whatsapp_flow_service.requests.get')
+    def test_find_flow_by_name_found(self, mock_get):
+        """Test that find_flow_by_name finds existing flow"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'data': [
+                {'id': 'flow_123', 'name': 'Solar Installation Request (Interactive)_v1.02'},
+                {'id': 'flow_456', 'name': 'Another Flow_v1.02'}
+            ]
+        }
+        mock_get.return_value = mock_response
+        
+        flow_id = self.service.find_flow_by_name('Solar Installation Request (Interactive)_v1.02')
+        
+        self.assertEqual(flow_id, 'flow_123')
+    
+    @patch('flows.whatsapp_flow_service.requests.get')
+    def test_find_flow_by_name_not_found(self, mock_get):
+        """Test that find_flow_by_name returns None when flow not found"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'data': [
+                {'id': 'flow_456', 'name': 'Another Flow_v1.02'}
+            ]
+        }
+        mock_get.return_value = mock_response
+        
+        flow_id = self.service.find_flow_by_name('Nonexistent Flow_v1.02')
+        
+        self.assertIsNone(flow_id)
+
+
+class WhatsAppFlowServiceSyncFlowTest(TestCase):
+    """Test the sync_flow method with flow_id recovery"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.meta_config = Mock(spec=MetaAppConfig)
+        self.meta_config.access_token = "test_access_token"
+        self.meta_config.api_version = "v23.0"
+        self.meta_config.waba_id = "1234567890"
+        
+        self.service = WhatsAppFlowService(self.meta_config)
+        
+        # Create a mock WhatsAppFlow without flow_id
+        self.whatsapp_flow = Mock(spec=WhatsAppFlow)
+        self.whatsapp_flow.flow_id = None
+        self.whatsapp_flow.name = "test_flow"
+        self.whatsapp_flow.friendly_name = "Test Flow"
+        self.whatsapp_flow.flow_json = {"version": "3.0", "screens": []}
+        self.whatsapp_flow.sync_status = 'draft'
+        self.whatsapp_flow.save = Mock()
+    
+    @patch('flows.whatsapp_flow_service.WhatsAppFlowService.find_flow_by_name')
+    @patch('flows.whatsapp_flow_service.WhatsAppFlowService.update_flow_json')
+    def test_sync_flow_recovers_existing_flow_id(self, mock_update, mock_find):
+        """Test that sync_flow recovers flow_id from Meta if flow exists"""
+        # Flow exists on Meta
+        mock_find.return_value = 'existing_flow_id_123'
+        mock_update.return_value = True
+        
+        with patch.object(self.service, 'find_flow_by_name', mock_find):
+            with patch.object(self.service, 'update_flow_json', mock_update):
+                result = self.service.sync_flow(self.whatsapp_flow)
+        
+        # Should find the flow
+        mock_find.assert_called_once()
+        
+        # Should set the flow_id
+        self.assertEqual(self.whatsapp_flow.flow_id, 'existing_flow_id_123')
+        
+        # Should call update instead of create
+        mock_update.assert_called_once_with(self.whatsapp_flow)
+        
+        # Should succeed
+        self.assertTrue(result)
+    
+    @patch('flows.whatsapp_flow_service.WhatsAppFlowService.find_flow_by_name')
+    @patch('flows.whatsapp_flow_service.WhatsAppFlowService.create_flow')
+    def test_sync_flow_creates_new_flow_if_not_found(self, mock_create, mock_find):
+        """Test that sync_flow creates new flow if not found on Meta"""
+        # Flow doesn't exist on Meta
+        mock_find.return_value = None
+        mock_create.return_value = True
+        
+        with patch.object(self.service, 'find_flow_by_name', mock_find):
+            with patch.object(self.service, 'create_flow', mock_create):
+                result = self.service.sync_flow(self.whatsapp_flow)
+        
+        # Should look for the flow
+        mock_find.assert_called_once()
+        
+        # Should call create since flow not found
+        mock_create.assert_called_once_with(self.whatsapp_flow)
+        
+        # Should succeed
+        self.assertTrue(result)
+    
+    @patch('flows.whatsapp_flow_service.WhatsAppFlowService.update_flow_json')
+    def test_sync_flow_updates_if_flow_id_exists(self, mock_update):
+        """Test that sync_flow updates directly if flow_id already exists"""
+        # Flow already has flow_id
+        self.whatsapp_flow.flow_id = 'known_flow_id'
+        mock_update.return_value = True
+        
+        with patch.object(self.service, 'update_flow_json', mock_update):
+            result = self.service.sync_flow(self.whatsapp_flow)
+        
+        # Should call update directly
+        mock_update.assert_called_once_with(self.whatsapp_flow)
+        
+        # Should succeed
+        self.assertTrue(result)
