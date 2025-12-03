@@ -1,5 +1,4 @@
 from django.test import TestCase, override_settings
-from django.core.files.uploadedfile import SimpleUploadedFile
 from unittest.mock import patch, MagicMock, PropertyMock
 from .catalog_service import MetaCatalogService, PLACEHOLDER_IMAGE_PATH
 from products_and_services.models import Product, ProductCategory, ProductImage
