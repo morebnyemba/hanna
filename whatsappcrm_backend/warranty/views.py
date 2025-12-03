@@ -130,9 +130,189 @@ class ManufacturerProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user.manufacturer_profile
 
+
+class ManufacturerProductTrackingView(APIView):
+    """
+    Get all products with their serialized items for tracking by manufacturer.
+    Shows item locations, statuses, and lifecycle information.
+    """
+    permission_classes = [IsManufacturer]
+
+    def get(self, request, *args, **kwargs):
+        manufacturer = request.user.manufacturer_profile
+        products = Product.objects.filter(
+            manufacturer=manufacturer
+        ).prefetch_related(
+            'serialized_items'
+        ).order_by('name')
+        
+        data = []
+        for product in products:
+            items = product.serialized_items.all()
+            serialized_items = []
+            items_in_stock = 0
+            items_sold = 0
+            items_in_repair = 0
+            
+            for item in items:
+                serialized_items.append({
+                    'id': item.id,
+                    'serial_number': item.serial_number,
+                    'barcode': item.barcode,
+                    'status': item.status,
+                    'status_display': item.get_status_display(),
+                    'current_location': item.current_location,
+                    'current_location_display': item.get_current_location_display(),
+                    'location_notes': item.location_notes,
+                    'created_at': item.created_at.isoformat(),
+                    'updated_at': item.updated_at.isoformat(),
+                })
+                
+                # Count items by status
+                if item.status == 'in_stock':
+                    items_in_stock += 1
+                elif item.status == 'sold':
+                    items_sold += 1
+                elif item.status in ['in_repair', 'awaiting_parts', 'outsourced']:
+                    items_in_repair += 1
+            
+            data.append({
+                'id': product.id,
+                'name': product.name,
+                'sku': product.sku,
+                'product_type': product.product_type,
+                'serialized_items': serialized_items,
+                'total_items': len(items),
+                'items_in_stock': items_in_stock,
+                'items_sold': items_sold,
+                'items_in_repair': items_in_repair,
+            })
+        
+        return Response(data)
+
 class TechnicianJobCardViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = JobCardSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return JobCard.objects.filter(technician=self.request.user.technician_profile)
+
+
+class TechnicianInstallationHistoryView(generics.ListAPIView):
+    """
+    Get installation history for the logged-in technician/installer.
+    Includes all installations assigned to this technician with their order details.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        from customer_data.models import InstallationRequest
+        from django.db.models import Q
+        from django.utils.dateparse import parse_date
+        
+        technician = self.request.user.technician_profile
+        queryset = InstallationRequest.objects.filter(
+            technicians=technician
+        ).select_related(
+            'customer', 'associated_order'
+        ).prefetch_related(
+            'associated_order__items', 
+            'associated_order__items__product',
+            'associated_order__items__assigned_items'
+        ).order_by('-created_at')
+        
+        # Date filtering
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        
+        if start_date:
+            queryset = queryset.filter(created_at__date__gte=parse_date(start_date))
+        if end_date:
+            queryset = queryset.filter(created_at__date__lte=parse_date(end_date))
+        
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = []
+        for installation in queryset:
+            data.append({
+                'id': installation.id,
+                'full_name': installation.full_name,
+                'address': installation.address,
+                'contact_phone': installation.contact_phone,
+                'installation_type': installation.installation_type,
+                'installation_type_display': installation.get_installation_type_display(),
+                'status': installation.status,
+                'status_display': installation.get_status_display(),
+                'order_number': installation.order_number,
+                'created_at': installation.created_at.isoformat(),
+                'updated_at': installation.updated_at.isoformat(),
+                'notes': installation.notes,
+            })
+        return Response(data)
+
+
+class TechnicianInstallationDetailView(generics.RetrieveAPIView):
+    """
+    Get detailed installation info including assigned products with serial numbers.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        from customer_data.models import InstallationRequest
+        
+        technician = self.request.user.technician_profile
+        installation_id = self.kwargs.get('pk')
+        
+        return InstallationRequest.objects.filter(
+            id=installation_id,
+            technicians=technician
+        ).select_related(
+            'customer', 'associated_order'
+        ).prefetch_related(
+            'associated_order__items', 
+            'associated_order__items__product',
+            'associated_order__items__assigned_items'
+        ).first()
+
+    def retrieve(self, request, *args, **kwargs):
+        installation = self.get_object()
+        if not installation:
+            return Response({'error': 'Installation not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Build detailed response with order items and serial numbers
+        order_data = None
+        if installation.associated_order:
+            items_data = []
+            for item in installation.associated_order.items.all():
+                serial_numbers = [si.serial_number for si in item.assigned_items.all()]
+                items_data.append({
+                    'id': str(item.id),
+                    'product_name': item.product.name,
+                    'product_sku': item.product.sku,
+                    'quantity': item.quantity,
+                    'serial_numbers': serial_numbers,
+                })
+            order_data = {
+                'id': str(installation.associated_order.id),
+                'order_number': installation.associated_order.order_number,
+                'items': items_data,
+            }
+        
+        data = {
+            'id': installation.id,
+            'full_name': installation.full_name,
+            'address': installation.address,
+            'contact_phone': installation.contact_phone,
+            'installation_type': installation.installation_type,
+            'installation_type_display': installation.get_installation_type_display(),
+            'status': installation.status,
+            'status_display': installation.get_status_display(),
+            'order_number': installation.order_number,
+            'created_at': installation.created_at.isoformat(),
+            'updated_at': installation.updated_at.isoformat(),
+            'notes': installation.notes,
+            'associated_order': order_data,
+        }
+        return Response(data)
