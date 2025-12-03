@@ -161,6 +161,47 @@ docker-compose logs certbot
 
 **See [QUICK_CERTIFICATE_FIX.md](QUICK_CERTIFICATE_FIX.md) for step-by-step fixes.**
 
+### Migration Conflicts
+
+If you see an error like:
+```
+error: The following untracked working tree files would be overwritten by merge:
+        whatsappcrm_backend/.../migrations/0001_initial.py
+Please move or remove them before you merge.
+```
+
+This happens when migration files exist locally but aren't tracked by git. Run:
+
+```bash
+# Use the automated fix script
+./fix-untracked-migrations.sh
+
+# Then pull and migrate
+git pull origin main
+docker compose exec backend python manage.py migrate
+```
+
+**Manual fix:**
+```bash
+# 1. See untracked migration files
+git status
+
+# 2. Backup and remove each untracked migration file shown
+#    (Replace paths with actual files from git status output)
+mkdir -p /tmp/migration_backup
+mv whatsappcrm_backend/*/migrations/*.py /tmp/migration_backup/  # or specific files
+
+# 3. Reset to remote
+git reset --hard origin/main
+
+# 4. Rebuild and migrate
+docker compose down
+docker compose up -d --build
+docker compose exec backend python manage.py migrate
+```
+
+**For inconsistent migration history errors, see:** `./fix-migration-history.sh`
+
 ### Service Issues
 
 ```bash
