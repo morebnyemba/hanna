@@ -3,7 +3,7 @@
 import requests
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from django.utils import timezone
 from django.conf import settings
 
@@ -33,6 +33,67 @@ class WhatsAppFlowService:
             "Authorization": f"Bearer {meta_config.access_token}",
             "Content-Type": "application/json",
         }
+    
+    def list_flows(self) -> List[Dict[str, Any]]:
+        """
+        Lists all flows from Meta's platform for this WhatsApp Business Account.
+        
+        Returns:
+            List of flow dictionaries containing id, name, and other flow details
+        """
+        url = f"{self.base_url}/{self.meta_config.waba_id}/flows"
+        all_flows = []
+        
+        try:
+            # Paginate through all flows
+            while url:
+                response = requests.get(url, headers=self.headers, timeout=20)
+                response.raise_for_status()
+                
+                result = response.json()
+                flows = result.get('data', [])
+                all_flows.extend(flows)
+                
+                # Check for pagination
+                paging = result.get('paging', {})
+                url = paging.get('next')
+            
+            logger.info(f"Retrieved {len(all_flows)} flows from Meta")
+            return all_flows
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error listing flows from Meta: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_details = e.response.json()
+                    logger.error(f"Error details: {error_details}")
+                except:
+                    logger.error(f"Response: {e.response.text}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error listing flows: {e}", exc_info=True)
+            return []
+    
+    def find_flow_by_name(self, flow_name: str) -> Optional[str]:
+        """
+        Finds a flow on Meta by its name and returns the flow_id if found.
+        
+        Args:
+            flow_name: The name of the flow to find (with version suffix)
+            
+        Returns:
+            The flow_id if found, None otherwise
+        """
+        flows = self.list_flows()
+        
+        for flow in flows:
+            if flow.get('name') == flow_name:
+                flow_id = flow.get('id')
+                logger.info(f"Found existing flow on Meta: '{flow_name}' with ID: {flow_id}")
+                return flow_id
+        
+        logger.info(f"No existing flow found on Meta with name: '{flow_name}'")
+        return None
     
     def create_flow(self, whatsapp_flow: WhatsAppFlow) -> bool:
         """
@@ -243,6 +304,9 @@ class WhatsAppFlowService:
         Syncs a flow with Meta - creates if new, updates if exists.
         Optionally publishes the flow.
         
+        If the flow doesn't have a flow_id but exists on Meta (identified by name),
+        it will recover the flow_id and update instead of trying to create a duplicate.
+        
         Args:
             whatsapp_flow: The WhatsAppFlow instance to sync
             publish: Whether to publish the flow after syncing
@@ -251,10 +315,27 @@ class WhatsAppFlowService:
             bool: True if successful, False otherwise
         """
         if not whatsapp_flow.flow_id:
-            # Flow doesn't exist on Meta yet, create it
-            success = self.create_flow(whatsapp_flow)
+            # Flow doesn't have a flow_id locally, but may exist on Meta
+            # Build the flow name with version suffix to look it up
+            version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1.02')
+            flow_name = whatsapp_flow.friendly_name or whatsapp_flow.name
+            flow_name_with_version = f"{flow_name}_{version_suffix}"
+            
+            # Try to find existing flow on Meta by name
+            existing_flow_id = self.find_flow_by_name(flow_name_with_version)
+            
+            if existing_flow_id:
+                # Flow exists on Meta, recover the flow_id
+                logger.info(f"Recovered existing flow_id {existing_flow_id} for flow '{flow_name_with_version}'")
+                whatsapp_flow.flow_id = existing_flow_id
+                whatsapp_flow.save(update_fields=['flow_id'])
+                # Update the flow JSON instead of creating
+                success = self.update_flow_json(whatsapp_flow)
+            else:
+                # Flow doesn't exist on Meta yet, create it
+                success = self.create_flow(whatsapp_flow)
         else:
-            # Flow exists, update it
+            # Flow exists (has flow_id), update it
             success = self.update_flow_json(whatsapp_flow)
         
         if success and publish:
