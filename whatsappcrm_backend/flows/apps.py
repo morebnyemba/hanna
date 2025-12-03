@@ -10,4 +10,7 @@ class FlowsConfig(AppConfig):
     def ready(self):
         # This ensures that your custom flow actions are discovered and registered
         # automatically when the Django application starts.
-        import flows.actions
+        # Using a registration function instead of direct import to ensure
+        # models are available before registration happens.
+        from flows.actions import register_flow_actions
+        register_flow_actions()
