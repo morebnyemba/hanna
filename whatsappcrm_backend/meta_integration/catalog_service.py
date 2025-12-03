@@ -7,20 +7,30 @@ For products to be successfully created in Meta's catalog, the image_link URL mu
 1. Publicly accessible (no authentication required)
 2. Reachable from Meta's servers (not behind a firewall/VPN)
 3. Return a valid image with proper Content-Type header
-4. Use HTTPS protocol or be a data URI
+4. Use HTTPS protocol (data URIs are NOT supported by Meta API)
 
 Meta API requires the image_link field for all products (error #10801). When a product 
-has no images, a transparent 1x1 pixel PNG data URI is used as a placeholder. This ensures
-the product can be created in Meta's catalog without requiring external infrastructure.
+has no images, a static placeholder image URL is used. This ensures the product can be 
+created in Meta's catalog.
+
+CRITICAL: Meta API does NOT accept data URIs for the image_link field. The URL must be
+a publicly accessible HTTP/HTTPS URL that Meta's servers can fetch.
 
 Infrastructure Requirements for Product Images:
 - Media files must be properly served by nginx or another web server
 - The docker-compose.yml should include a shared volume for media files
 - Nginx configuration should serve media files from the correct path
+- Static files must also be served publicly for the placeholder image
 
 Example nginx configuration:
     location /media/ {
         alias /srv/www/media/;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+    
+    location /static/ {
+        alias /srv/www/static/;
         expires 7d;
         add_header Cache-Control "public";
     }
@@ -29,16 +39,18 @@ Example docker-compose volume:
     backend:
         volumes:
             - media_files:/app/mediafiles
+            - static_files:/app/static
     nginx:
         volumes:
             - media_files:/srv/www/media:ro
+            - static_files:/srv/www/static:ro
 
 Django Settings:
 - BACKEND_DOMAIN_FOR_CSP: Domain name for constructing absolute URLs (e.g., 'backend.hanna.co.zw')
 
 Placeholder Image:
-When a product has no images, a transparent 1x1 pixel PNG data URI is used automatically.
-This ensures Meta API compliance without requiring external resources or infrastructure.
+When a product has no images, a static placeholder image at /static/admin/img/placeholder.png
+is used. This file must be served publicly via the backend domain.
 
 If image URLs are not accessible, Meta will reject product creation with a 400 error.
 """
@@ -52,9 +64,17 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-# Transparent 1x1 pixel PNG as a data URI for products without images
-# This is used as a placeholder to satisfy Meta API's requirement for image_link field
-PLACEHOLDER_IMAGE_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+# Placeholder image path for products without images
+# This static file must be:
+# 1. Present in the static directory (whatsappcrm_backend/static/admin/img/placeholder.png)
+# 2. Publicly accessible via the backend domain (https://backend.domain.com/static/admin/img/placeholder.png)
+# 3. Served by nginx or the web server (see docstring for nginx configuration)
+# 
+# If this file is not accessible, Meta API will reject product creation with error #10801.
+# Verify accessibility by testing: curl -I https://your-backend-domain/static/admin/img/placeholder.png
+#
+# Meta API requires a publicly accessible URL - data URIs are NOT supported
+PLACEHOLDER_IMAGE_PATH = "/static/admin/img/placeholder.png"
 
 
 class MetaCatalogService:
@@ -140,15 +160,31 @@ class MetaCatalogService:
         # IMPORTANT: The URL must be publicly accessible for Meta's servers to fetch
         # Meta API now requires image_link field to be present
         # Error #10801: "(#10801) \"image_url\" must be specified."
+        # NOTE: Data URIs are NOT supported by Meta API - must be an actual HTTP/HTTPS URL
         
         # Get the backend domain once to avoid duplication
         backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
         
+        # Build placeholder URL - must be publicly accessible via HTTPS
+        placeholder_url = f"https://{backend_domain}{PLACEHOLDER_IMAGE_PATH}"
+        
         first_image = product.images.first()
+        
+        # Debug logging to help diagnose image detection issues
+        image_count = product.images.count()
+        logger.debug(
+            f"Product '{product.name}' (ID: {product.id}) has {image_count} image(s) in database. "
+            f"First image object: {first_image}"
+        )
+        
         # Check if image exists and has a truthy URL value (not None)
         if first_image and hasattr(first_image.image, 'url') and first_image.image.url:
             # Strip whitespace and ensure string type for further validation
             image_url = str(first_image.image.url).strip()
+            
+            logger.debug(
+                f"Product '{product.name}' (ID: {product.id}) first image URL: '{image_url}'"
+            )
             
             # Validate that URL is non-empty after stripping whitespace
             if image_url:
@@ -160,20 +196,27 @@ class MetaCatalogService:
                 data["image_link"] = image_url
                 logger.debug(f"Product image URL for Meta: {image_url}")
             else:
-                # URL was only whitespace - use placeholder
-                data["image_link"] = PLACEHOLDER_IMAGE_DATA_URI
+                # URL was only whitespace - use placeholder URL
+                data["image_link"] = placeholder_url
                 logger.warning(
                     f"Product '{product.name}' (ID: {product.id}) has image with whitespace-only URL. "
-                    f"Using transparent placeholder data URI for Meta Catalog compliance."
+                    f"Using placeholder image URL for Meta Catalog: {placeholder_url}"
                 )
         else:
             # Meta API requires image_link field even when no image is available
-            # Use a transparent 1x1 pixel PNG as a data URI - this is always accessible
-            # and doesn't require any external resources or infrastructure
-            data["image_link"] = PLACEHOLDER_IMAGE_DATA_URI
+            # Use a static placeholder image URL - data URIs are NOT supported by Meta API
+            data["image_link"] = placeholder_url
+            # Enhanced debug info to help diagnose why image was not detected
+            debug_info = []
+            if not first_image:
+                debug_info.append("no ProductImage records found")
+            elif not hasattr(first_image.image, 'url'):
+                debug_info.append("image field has no 'url' attribute")
+            elif not first_image.image.url:
+                debug_info.append(f"image.url is empty/None: '{first_image.image.url}'")
             logger.warning(
-                f"Product '{product.name}' (ID: {product.id}) has no images or empty image URL. "
-                f"Using transparent placeholder data URI for Meta Catalog compliance."
+                f"Product '{product.name}' (ID: {product.id}) - {', '.join(debug_info)}. "
+                f"Using placeholder image URL for Meta Catalog: {placeholder_url}"
             )
 
         return data
