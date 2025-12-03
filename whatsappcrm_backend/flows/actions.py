@@ -1,18 +1,26 @@
 # whatsappcrm_backend/flows/actions.py
+"""
+Flow actions module with lazy imports to prevent circular import issues
+during Django app initialization when migrations don't exist.
+
+All model imports are deferred to function body level to ensure Django
+has fully set up all apps before any model access occurs.
+"""
 
 import logging
 import random
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from decimal import Decimal, InvalidOperation
-from typing import Dict, Any, List
-from .services import flow_action_registry
-from conversations.models import Contact
-from customer_data.models import CustomerProfile, Order, OrderItem
-from products_and_services.models import Product # Assuming this is the new generic product model
+from typing import Dict, Any, List, TYPE_CHECKING
+
+# Use TYPE_CHECKING for type hints without runtime imports
+if TYPE_CHECKING:
+    from conversations.models import Contact
 
 logger = logging.getLogger(__name__)
 
-def update_lead_score(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def update_lead_score(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     A custom flow action to update a lead's score on their CustomerProfile.
 
@@ -20,6 +28,8 @@ def update_lead_score(contact: Contact, context: Dict[str, Any], params: Dict[st
     - score_to_add (int): The number of points to add (can be negative).
     - reason (str): The reason for the score change, for logging.
     """
+    from customer_data.models import CustomerProfile
+    
     score_to_add = params.get('score_to_add', 0)
     reason = params.get('reason', 'Score updated by flow')
 
@@ -41,9 +51,10 @@ def update_lead_score(contact: Contact, context: Dict[str, Any], params: Dict[st
 
     logger.info(f"Updated lead score for contact {contact.id} by {score_to_add}. New score: {profile.lead_score}. Reason: {reason}")
     
-    return [] # This action does not return any messages to the user
+    return []
 
-def create_order_from_context(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def create_order_from_context(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Creates an Order record based on data collected in the flow context.
 
@@ -53,14 +64,15 @@ def create_order_from_context(contact: Contact, context: Dict[str, Any], params:
     - amount_context_var (str): The name of the context variable holding the deal amount.
     - stage (str): The initial stage for the opportunity (e.g., 'qualification').
     """
+    from customer_data.models import CustomerProfile, Order, OrderItem
+    from products_and_services.models import Product
+    from .services import _get_value_from_context_or_contact, _resolve_value
+    
     product_id_var = params.get('product_id_context_var', 'selected_product_id')
     name_template = params.get('order_name_template', 'New Order for {{ contact.name }}')
     amount_var = params.get('amount_context_var', 'selected_product_details.price')
     initial_stage = params.get('stage', Order.Stage.QUALIFICATION)
 
-    # Import locally to prevent circular dependency issues
-    from .services import _get_value_from_context_or_contact, _resolve_value
-    
     product_id = _get_value_from_context_or_contact(product_id_var, context, contact)
     order_name = _resolve_value(name_template, context, contact)
     amount = _get_value_from_context_or_contact(amount_var, context, contact)
@@ -70,7 +82,6 @@ def create_order_from_context(contact: Contact, context: Dict[str, Any], params:
         return []
 
     try:
-        # Use the new generic Product model
         product = Product.objects.get(pk=product_id)
     except Product.DoesNotExist:
         logger.error(f"Could not create order for contact {contact.id}: Product with ID {product_id} does not exist.")
@@ -82,10 +93,10 @@ def create_order_from_context(contact: Contact, context: Dict[str, Any], params:
 
     order, order_created = Order.objects.get_or_create(
         customer=customer_profile,
-        name=order_name, # Use the resolved name
+        name=order_name,
         defaults={
             'stage': initial_stage,
-            'amount': amount or product.price, # Use product price as a fallback
+            'amount': amount or product.price,
             'currency': getattr(product, 'currency', 'USD')
         }
     )
@@ -94,15 +105,16 @@ def create_order_from_context(contact: Contact, context: Dict[str, Any], params:
         OrderItem.objects.create(
             order=order,
             product=product,
-            quantity=1, # Assume quantity is 1 for this simpler action
+            quantity=1,
             unit_price=product.price
         )
         logger.info(f"Created new order '{order.name}' (ID: {order.id}) and OrderItem for contact {contact.id}.")
-        context['created_order_id'] = str(order.id) # Save ID back to context
+        context['created_order_id'] = str(order.id)
 
-    return [] # This action does not return any messages to the user
+    return []
 
-def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def create_order(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Custom flow action to create or update an Order in the CRM.
     This action creates an Order and a corresponding OrderItem.
@@ -116,6 +128,9 @@ def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, An
     - stage (str, optional): The initial stage for the opportunity (e.g., 'qualification'). Defaults to 'qualification'.
     - save_order_id_to (str, optional): Context variable to save the new order's ID to.
     """
+    from customer_data.models import Order, OrderItem
+    from products_and_services.models import Product
+    
     actions_to_perform = []
     try:
         customer_profile = getattr(contact, 'customer_profile', None)
@@ -123,7 +138,6 @@ def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, An
             logger.warning(f"Cannot create order for contact {contact.id}: CustomerProfile does not exist.")
             return actions_to_perform
 
-        # Get required parameters from the action config (already resolved by the flow service)
         name = params.get('order_name') or params.get('order_name_template')
         amount_str = params.get('amount')
         product_sku = params.get('product_sku')
@@ -142,12 +156,11 @@ def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, An
             logger.error(f"Action 'create_order' for contact {contact.id} is missing required params (order_name, and at least one of product_sku/line_item_skus). Params: {params}")
             return actions_to_perform
 
-        # Fetch all products at once
         products = Product.objects.filter(sku__in=unique_skus)
         product_map = {p.sku: p for p in products}
         
         total_amount = Decimal('0.0')
-        if not amount_str: # Calculate amount from products if not provided
+        if not amount_str:
             for sku in unique_skus:
                 if sku in product_map:
                     total_amount += product_map[sku].price
@@ -158,7 +171,6 @@ def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, An
                 logger.error(f"Action 'create_order' for contact {contact.id} received an invalid amount: '{amount_str}'. Defaulting to calculated amount.")
                 total_amount = sum(p.price for p in products)
 
-        # Ensure the final name includes customer info for uniqueness if it's a generic name
         final_order_name = f"{name} - {customer_profile.company or contact.name or contact.whatsapp_id}"
 
         order, created = Order.objects.get_or_create(
@@ -183,13 +195,16 @@ def create_order(contact: Contact, context: Dict[str, Any], params: Dict[str, An
     
     return actions_to_perform
 
-def generate_unique_order_number_action(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def generate_unique_order_number_action(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Generates a unique 5-digit order number and saves it to the context.
 
     Params expected from flow config:
     - save_to_variable (str): The context variable name to save the number to.
     """
+    from customer_data.models import Order
+    
     save_to_variable = params.get('save_to_variable')
     if not save_to_variable:
         logger.error(f"Action 'generate_unique_order_number' for contact {contact.id} is missing 'save_to_variable' in params.")
@@ -203,9 +218,10 @@ def generate_unique_order_number_action(contact: Contact, context: Dict[str, Any
     context[save_to_variable] = order_num
     logger.info(f"Generated unique order number {order_num} for contact {contact.id} and saved to '{save_to_variable}'.")
     
-    return [] # This action does not return any messages
+    return []
 
-def create_order_with_items(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def create_order_with_items(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Creates a new Order and associated OrderItems from a list of SKUs.
     This action is designed to always create a new order.
@@ -217,6 +233,8 @@ def create_order_with_items(contact: Contact, context: Dict[str, Any], params: D
     - stage (str, optional): The initial stage for the order. Defaults to 'prospecting'.
     - save_order_id_to (str, optional): Context variable to save the new order's ID to.
     """
+    from customer_data.models import CustomerProfile, Order, OrderItem
+    from products_and_services.models import Product
     from .services import _resolve_value
     from django.db import transaction
 
@@ -273,10 +291,13 @@ def create_order_with_items(contact: Contact, context: Dict[str, Any], params: D
 
     return []
 
-def calculate_order_total(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def calculate_order_total(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Calculates the total amount of an order from its items and saves it to context.
     """
+    from customer_data.models import OrderItem
+    
     order_id_var = params.get('order_id_context_var')
     save_to_variable = params.get('save_to_variable')
 
@@ -302,10 +323,12 @@ def calculate_order_total(contact: Contact, context: Dict[str, Any], params: Dic
 
     return []
 
-def update_order_fields(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def update_order_fields(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Updates fields on an existing Order instance.
     """
+    from customer_data.models import Order
     from .services import _resolve_value
 
     order_id_var = params.get('order_id_context_var')
@@ -339,7 +362,8 @@ def update_order_fields(contact: Contact, context: Dict[str, Any], params: Dict[
 
     return []
 
-def update_model_instance(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def update_model_instance(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Updates fields on an existing model instance. A more generic version of update_order_fields.
     """
@@ -361,7 +385,6 @@ def update_model_instance(contact: Contact, context: Dict[str, Any], params: Dic
         
         resolved_fields = _resolve_value(fields_to_update_template, context, contact)
         
-        # Validate that fields exist on the model before trying to update
         valid_fields = {f.name for f in Model._meta.get_fields()}
         update_data = {k: v for k, v in resolved_fields.items() if k in valid_fields}
         
@@ -379,7 +402,8 @@ def update_model_instance(contact: Contact, context: Dict[str, Any], params: Dic
 
     return []
 
-def create_order_from_cart(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def create_order_from_cart(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Creates a new Order and associated OrderItems from a cart stored in the context.
     The cart is expected to be a list of dictionaries, each with 'sku' and 'quantity'.
@@ -393,6 +417,8 @@ def create_order_from_cart(contact: Contact, context: Dict[str, Any], params: Di
     - payment_status (str, optional): The initial payment status. Defaults to 'pending'.
     - save_order_to (str, optional): Context variable to save the created order object to.
     """
+    from customer_data.models import CustomerProfile, Order, OrderItem
+    from products_and_services.models import Product
     from .services import _resolve_value
     from django.db import transaction
     from django.forms.models import model_to_dict
@@ -431,8 +457,6 @@ def create_order_from_cart(contact: Contact, context: Dict[str, Any], params: Di
 
     try:
         with transaction.atomic():
-            # The 'amount' will be calculated automatically by the signal handler
-            # after OrderItems are created. We initialize it to 0.
             order = Order.objects.create(
                 customer=customer_profile, name=order_name, order_number=order_number,
                 stage=stage, payment_status=payment_status, amount=Decimal('0.00'),
@@ -450,7 +474,7 @@ def create_order_from_cart(contact: Contact, context: Dict[str, Any], params: Di
             logger.info(f"Created new Order (ID: {order.id}) with {len(order_items_to_create)} items for customer {customer_profile.pk} via 'create_order_from_cart'.")
             
             if save_to_var:
-                order.refresh_from_db() # The signal updates the amount, so we need to get the latest value.
+                order.refresh_from_db()
                 context[save_to_var] = model_to_dict(order, fields=['id', 'order_number', 'name', 'amount'])
 
     except Exception as e:
@@ -458,11 +482,13 @@ def create_order_from_cart(contact: Contact, context: Dict[str, Any], params: Di
 
     return []
 
-def generate_unique_assessment_id_action(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def generate_unique_assessment_id_action(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Generates a unique 6-digit assessment ID and saves it to the context.
     """
     from customer_data.models import SiteAssessmentRequest
+    
     save_to_variable = params.get('save_to_variable')
     if not save_to_variable:
         logger.error(f"Action 'generate_unique_assessment_id' for contact {contact.id} is missing 'save_to_variable' in params.")
@@ -478,11 +504,14 @@ def generate_unique_assessment_id_action(contact: Contact, context: Dict[str, An
     
     return []
 
-def create_placeholder_order(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def create_placeholder_order(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Creates a placeholder Order with just an order number.
     Used by the super-admin simple order creation flow.
     """
+    from customer_data.models import Order
+    
     order_number = params.get('order_number')
 
     if not order_number:
@@ -490,14 +519,12 @@ def create_placeholder_order(contact: Contact, context: Dict[str, Any], params: 
         return []
 
     try:
-        # Use get_or_create to avoid creating duplicates if the same number is sent twice.
         order, created = Order.objects.get_or_create(
             order_number=order_number,
             defaults={
                 'name': f"Placeholder for Order #{order_number}",
                 'stage': Order.Stage.PROSPECTING,
                 'payment_status': Order.PaymentStatus.PAID,
-                # customer and amount are allowed to be null now
             }
         )
         if created:
@@ -510,7 +537,8 @@ def create_placeholder_order(contact: Contact, context: Dict[str, Any], params: 
 
     return []
 
-def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+def normalize_order_number(contact: "Contact", context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Normalizes an order number from various formats (e.g., 12345/PO, PO/12345, 12345)
     to a consistent format (e.g., 12345/PO).
@@ -521,6 +549,7 @@ def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Di
     - default_suffix (str, optional): The suffix to add if none is present. Defaults to 'PO'.
     """
     import re
+    
     input_var = params.get('input_variable')
     output_var = params.get('output_variable')
     default_suffix = params.get('default_suffix', 'PO')
@@ -535,7 +564,6 @@ def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Di
         context[output_var] = raw_order_number
         return []
 
-    # Extract all numbers and all letters
     numbers = "".join(re.findall(r'\d+', raw_order_number))
     letters = "".join(re.findall(r'[a-zA-Z]+', raw_order_number)).upper()
 
@@ -545,7 +573,6 @@ def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Di
         context['is_order_number_valid'] = False
         return []
 
-    # Use extracted letters if present, otherwise use the default suffix
     suffix = letters if letters else default_suffix
     
     normalized_order_number = f"{numbers}/{suffix}"
@@ -556,16 +583,24 @@ def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Di
 
     return []
 
-# --- Register all custom actions here ---
-flow_action_registry.register('update_lead_score', update_lead_score)
-flow_action_registry.register('create_order_from_context', create_order_from_context)
-flow_action_registry.register('create_order', create_order)
-flow_action_registry.register('generate_unique_order_number', generate_unique_order_number_action)
-flow_action_registry.register('create_order_with_items', create_order_with_items)
-flow_action_registry.register('calculate_order_total', calculate_order_total)
-flow_action_registry.register('update_order_fields', update_order_fields)
-flow_action_registry.register('update_model_instance', update_model_instance)
-flow_action_registry.register('create_order_from_cart', create_order_from_cart)
-flow_action_registry.register('generate_unique_assessment_id', generate_unique_assessment_id_action)
-flow_action_registry.register('create_placeholder_order', create_placeholder_order)
-flow_action_registry.register('normalize_order_number', normalize_order_number)
+
+def register_flow_actions():
+    """
+    Register all custom flow actions with the flow action registry.
+    This function is called from the FlowsConfig.ready() method to ensure
+    models are available before registration happens.
+    """
+    from .services import flow_action_registry
+    
+    flow_action_registry.register('update_lead_score', update_lead_score)
+    flow_action_registry.register('create_order_from_context', create_order_from_context)
+    flow_action_registry.register('create_order', create_order)
+    flow_action_registry.register('generate_unique_order_number', generate_unique_order_number_action)
+    flow_action_registry.register('create_order_with_items', create_order_with_items)
+    flow_action_registry.register('calculate_order_total', calculate_order_total)
+    flow_action_registry.register('update_order_fields', update_order_fields)
+    flow_action_registry.register('update_model_instance', update_model_instance)
+    flow_action_registry.register('create_order_from_cart', create_order_from_cart)
+    flow_action_registry.register('generate_unique_assessment_id', generate_unique_assessment_id_action)
+    flow_action_registry.register('create_placeholder_order', create_placeholder_order)
+    flow_action_registry.register('normalize_order_number', normalize_order_number)
