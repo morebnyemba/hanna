@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiShield, FiBox, FiSettings, FiCheckSquare, FiBarChart2, FiChevronLeft, FiChevronRight, FiCamera } from 'react-icons/fi';
+import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiShield, FiBox, FiSettings, FiCheckSquare, FiBarChart2, FiChevronLeft, FiChevronRight, FiCamera, FiMapPin } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
@@ -87,6 +87,7 @@ export default function ManufacturerLayout({ children }: { children: ReactNode }
           <SidebarLink href="/manufacturer/job-cards" icon={FiTool} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
           <SidebarLink href="/manufacturer/warranty-claims" icon={FiShield} isCollapsed={isSidebarCollapsed}>Warranty Claims</SidebarLink>
           <SidebarLink href="/manufacturer/products" icon={FiBox} isCollapsed={isSidebarCollapsed}>Products</SidebarLink>
+          <SidebarLink href="/manufacturer/product-tracking" icon={FiMapPin} isCollapsed={isSidebarCollapsed}>Product Tracking</SidebarLink>
           <SidebarLink href="/manufacturer/settings" icon={FiSettings} isCollapsed={isSidebarCollapsed}>Settings</SidebarLink>
           <SidebarLink href="/manufacturer/warranties" icon={FiCheckSquare} isCollapsed={isSidebarCollapsed}>Warranties</SidebarLink>
         </nav>

@@ -285,9 +285,22 @@ class LoanApplicationSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('id', 'created_at', 'updated_at')
 
+class SimpleTechnicianSerializer(serializers.ModelSerializer):
+    """A lightweight serializer for Technician information."""
+    user = SimpleUserSerializer(read_only=True)
+
+    class Meta:
+        from warranty.models import Technician
+        model = Technician
+        fields = ['id', 'user', 'technician_type', 'specialization']
+
+
 class InstallationRequestSerializer(serializers.ModelSerializer):
     customer = SimpleCustomerProfileSerializer(read_only=True)
     associated_order = OrderSerializer(read_only=True)
+    technicians = SimpleTechnicianSerializer(many=True, read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    installation_type_display = serializers.CharField(source='get_installation_type_display', read_only=True)
 
     class Meta:
         model = InstallationRequest
