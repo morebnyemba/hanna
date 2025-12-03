@@ -17,9 +17,8 @@ db.sqlite3
 test_db.sqlite3
 test_settings.py
 
-# Django migrations from PR #68 (e-commerce cart functionality)
-# Only the products_and_services migrations added in PR #68 should be excluded
-whatsappcrm_backend/products_and_services/migrations/[0-9]*.py
+# Note: products_and_services migrations are now tracked in git
+# as they are required by other apps' migrations (e.g., customer_data)
 
 # Python virtual environments
 venv/
