@@ -1,4 +1,5 @@
 from django.test import TestCase, override_settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from unittest.mock import patch, MagicMock, PropertyMock
 from .catalog_service import MetaCatalogService, PLACEHOLDER_IMAGE_PATH
 from products_and_services.models import Product, ProductCategory, ProductImage
@@ -40,31 +41,33 @@ class MetaCatalogServiceTestCase(TestCase):
         mock_config.objects.get_active_config.return_value = mock_active_config
         return mock_active_config
     
-    def _mock_product_images_context(self, product, mock_image):
+    def _mock_product_image_queryset(self, mock_image):
         """
-        Returns a context manager to mock product.images.first() return value.
-        Uses PropertyMock to properly mock the Django RelatedManager.
+        Returns a context manager to mock ProductImage.objects.filter().first() return value.
+        This is needed because _get_product_data now queries ProductImage directly
+        to avoid Django ORM caching issues with related objects.
         
         Usage:
-            with self._mock_product_images_context(product, mock_image):
-                # product.images.first() will return mock_image
+            with self._mock_product_image_queryset(mock_image):
+                # ProductImage.objects.filter(product_id=...).first() will return mock_image
                 pass
         """
-        mock_images = MagicMock()
-        mock_images.first.return_value = mock_image
-        return patch.object(type(product), 'images', new_callable=PropertyMock, return_value=mock_images)
+        mock_queryset = MagicMock()
+        mock_queryset.first.return_value = mock_image
+        mock_queryset.count.return_value = 1 if mock_image else 0
+        return patch('products_and_services.models.ProductImage.objects.filter', return_value=mock_queryset)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_relative_image_url(self, mock_config):
         """Test that relative image URLs are converted to absolute URLs"""
         self._setup_mock_config(mock_config)
         
-        # Create a product image with relative URL
+        # Create a mock image with relative URL
         mock_image = MagicMock()
         mock_image.image.url = '/media/product_images/test.png'
         
-        # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images_context(self.product, mock_image):
+        # Mock the ProductImage.objects.filter() call
+        with self._mock_product_image_queryset(mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -84,12 +87,12 @@ class MetaCatalogServiceTestCase(TestCase):
         """Test that absolute image URLs are not modified"""
         self._setup_mock_config(mock_config)
         
-        # Create a product image with absolute URL
+        # Create a mock image with absolute URL
         mock_image = MagicMock()
         mock_image.image.url = 'https://cdn.example.com/images/test.png'
         
-        # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images_context(self.product, mock_image):
+        # Mock the ProductImage.objects.filter() call
+        with self._mock_product_image_queryset(mock_image):
             service = MetaCatalogService()
             product_data = service._get_product_data(self.product)
             
@@ -125,12 +128,12 @@ class MetaCatalogServiceTestCase(TestCase):
         """Test that products with empty image URLs use placeholder URL"""
         self._setup_mock_config(mock_config)
         
-        # Create a product image with empty URL
+        # Create a mock image with empty URL
         mock_image = MagicMock()
         mock_image.image.url = ''  # Empty string
         
-        # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images_context(self.product, mock_image):
+        # Mock the ProductImage.objects.filter() call
+        with self._mock_product_image_queryset(mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -146,12 +149,12 @@ class MetaCatalogServiceTestCase(TestCase):
         """Test that products with None image URLs use placeholder URL"""
         self._setup_mock_config(mock_config)
         
-        # Create a product image with None URL
+        # Create a mock image with None URL
         mock_image = MagicMock()
         mock_image.image.url = None  # None value
         
-        # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images_context(self.product, mock_image):
+        # Mock the ProductImage.objects.filter() call
+        with self._mock_product_image_queryset(mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -167,12 +170,12 @@ class MetaCatalogServiceTestCase(TestCase):
         """Test that products with whitespace-only image URLs use placeholder URL"""
         self._setup_mock_config(mock_config)
         
-        # Create a product image with whitespace-only URL
+        # Create a mock image with whitespace-only URL
         mock_image = MagicMock()
         mock_image.image.url = '   '  # Whitespace only
         
-        # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images_context(self.product, mock_image):
+        # Mock the ProductImage.objects.filter() call
+        with self._mock_product_image_queryset(mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
@@ -193,12 +196,12 @@ class MetaCatalogServiceTestCase(TestCase):
         url_with_whitespace = '  /media/product_images/test.png  '
         expected_trimmed_url = f'https://{test_domain}/media/product_images/test.png'
         
-        # Create a product image with URL containing whitespace
+        # Create a mock image with URL containing whitespace
         mock_image = MagicMock()
         mock_image.image.url = url_with_whitespace
         
-        # Mock the images queryset using PropertyMock for Django RelatedManager
-        with self._mock_product_images_context(self.product, mock_image):
+        # Mock the ProductImage.objects.filter() call
+        with self._mock_product_image_queryset(mock_image):
             service = MetaCatalogService()
             
             with override_settings(BACKEND_DOMAIN_FOR_CSP=test_domain):

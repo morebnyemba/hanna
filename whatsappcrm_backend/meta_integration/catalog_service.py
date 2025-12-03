@@ -168,10 +168,18 @@ class MetaCatalogService:
         # Build placeholder URL - must be publicly accessible via HTTPS
         placeholder_url = f"https://{backend_domain}{PLACEHOLDER_IMAGE_PATH}"
         
-        first_image = product.images.first()
+        # IMPORTANT: Query the database directly to get fresh image data.
+        # This avoids issues with Django's ORM caching the related objects on the
+        # product instance. When products are created in Django admin with inline
+        # images, the Product post_save signal fires BEFORE ProductImage records
+        # are saved. Even when sync is triggered later by ProductImage post_save,
+        # the product instance may have stale cached data in its 'images' manager.
+        # By importing and querying ProductImage directly, we bypass the cache.
+        from products_and_services.models import ProductImage
+        first_image = ProductImage.objects.filter(product_id=product.pk).first()
         
         # Debug logging to help diagnose image detection issues
-        image_count = product.images.count()
+        image_count = ProductImage.objects.filter(product_id=product.pk).count()
         logger.debug(
             f"Product '{product.name}' (ID: {product.id}) has {image_count} image(s) in database. "
             f"First image object: {first_image}"
