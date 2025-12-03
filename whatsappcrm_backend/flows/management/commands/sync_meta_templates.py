@@ -44,7 +44,7 @@ class Command(BaseCommand):
             return
 
         # Get the version suffix from settings
-        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1.02')
+        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_03')
 
         for template in templates_to_sync:
             template_name = template.name

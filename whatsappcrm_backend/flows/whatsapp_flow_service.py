@@ -108,7 +108,7 @@ class WhatsAppFlowService:
         url = f"{self.base_url}/{self.meta_config.waba_id}/flows"
         
         # Get the version suffix from settings
-        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1.02')
+        version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_03')
         
         # Append version suffix to flow name
         flow_name = whatsapp_flow.friendly_name or whatsapp_flow.name
@@ -317,7 +317,7 @@ class WhatsAppFlowService:
         if not whatsapp_flow.flow_id:
             # Flow doesn't have a flow_id locally, but may exist on Meta
             # Build the flow name with version suffix to look it up
-            version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1.02')
+            version_suffix = getattr(settings, 'META_SYNC_VERSION_SUFFIX', 'v1_03')
             flow_name = whatsapp_flow.friendly_name or whatsapp_flow.name
             flow_name_with_version = f"{flow_name}_{version_suffix}"
             
