@@ -17,8 +17,10 @@ db.sqlite3
 test_db.sqlite3
 test_settings.py
 
-# Note: products_and_services migrations are now tracked in git
-# as they are required by other apps' migrations (e.g., customer_data)
+# Django migrations - ignored to prevent merge conflicts
+# Migrations are generated locally using: docker compose exec backend python manage.py makemigrations
+**/migrations/*.py
+!**/migrations/__init__.py
 
 # Python virtual environments
 venv/

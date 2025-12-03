@@ -12,7 +12,13 @@ Use this when you encounter migration errors such as:
 
 ## Quick Start - What Has Been Done
 
-The migration files have been **deleted** from the repository. You now need to:
+The migration files have been **deleted** from the repository and are now **ignored by git** (via `.gitignore`). This means:
+
+- Migration files will NOT be committed to the repository
+- Each deployment environment generates its own migrations locally
+- This prevents merge conflicts caused by migration files
+
+You now need to:
 
 1. **Reset the database migration table** (clears all migration history)
 2. **Regenerate migrations** (creates fresh migration files based on current models)
@@ -68,15 +74,15 @@ If this is a fresh database or you need a new superuser:
 docker compose exec backend python manage.py createsuperuser
 ```
 
-### Step 5: Commit New Migration Files
+### Step 5: Verify Migrations Work
 
-After verifying everything works:
+After running migrations, verify the app is working correctly:
 
 ```bash
-git add whatsappcrm_backend/*/migrations/*.py
-git commit -m "Regenerate all Django migrations"
-git push
+docker compose exec backend python manage.py check
 ```
+
+**Note:** Migration files are now ignored by git, so you do NOT need to commit them.
 
 ## Automated Reset Script
 
@@ -144,14 +150,17 @@ docker compose exec db psql -U postgres -d postgres -c "SELECT app, name, applie
 
 ## Important Notes
 
-1. **Always backup your data** before performing migration resets on production databases.
+1. **Migration files are now ignored by git.** They will not be tracked or committed. Each environment must generate its own migrations locally.
 
-2. The `--fake-initial` flag is useful when:
+2. **Always backup your data** before performing migration resets on production databases.
+
+3. The `--fake-initial` flag is useful when:
    - Database tables already exist from previous migrations
    - You want Django to skip the initial table creation but still record the migration as applied
 
-3. After resetting migrations, all team members will need to:
+4. After resetting migrations, all team members will need to:
    - Pull the latest code
+   - Run `docker compose exec backend python manage.py makemigrations`
    - Run `docker compose exec backend python manage.py migrate`
 
-4. If you encounter `InconsistentMigrationHistory` errors in the future, use the `fix-migration-history.sh` script first before doing a complete reset.
+5. If you encounter `InconsistentMigrationHistory` errors in the future, use the `fix-migration-history.sh` script first before doing a complete reset.
