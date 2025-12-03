@@ -1,9 +1,10 @@
 from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
 from unittest.mock import patch, MagicMock
-from .models import Product, ProductCategory, SerializedItem
+from .models import Product, ProductCategory, ProductImage, SerializedItem
 
 User = get_user_model()
 
@@ -543,6 +544,203 @@ class ProductMetaCatalogSyncTestCase(TestCase):
             self.assertIsNotNone(product.id)
         except Exception as e:
             self.fail(f"Signal should handle API errors gracefully, but raised: {e}")
+
+
+class ProductImageSyncSignalTestCase(TestCase):
+    """
+    Test cases for ProductImage signal triggering product re-sync to Meta Catalog.
+    
+    This tests the fix for the issue where product images are not detected during 
+    initial product creation because inline images are saved AFTER the parent product.
+    """
+    
+    def setUp(self):
+        """Set up test data"""
+        self.category = ProductCategory.objects.create(
+            name='Test Category',
+            description='Test category description'
+        )
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_image_creation_triggers_resync_for_product_without_catalog_id(self, mock_service_class):
+        """Test that adding an image to a product without catalog_id triggers re-sync"""
+        # Setup mock
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.return_value = {'id': 'meta_catalog_img_001'}
+        
+        # Create a product
+        product = Product.objects.create(
+            name='Test Product',
+            sku='TEST-IMG-001',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True
+        )
+        
+        # Initial sync should have happened - reset the mock
+        mock_service.reset_mock()
+        
+        # Manually clear the catalog ID to simulate failed initial sync
+        Product.objects.filter(pk=product.pk).update(whatsapp_catalog_id=None)
+        product.refresh_from_db()
+        
+        # Create a simple test image
+        test_image = SimpleUploadedFile(
+            name='test_image.jpg',
+            content=b'\x47\x49\x46\x38\x89\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x01\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b',
+            content_type='image/gif'
+        )
+        
+        # Add image to product - this should trigger re-sync
+        ProductImage.objects.create(
+            product=product,
+            image=test_image,
+            alt_text='Test image'
+        )
+        
+        # Verify create was called again (re-sync triggered)
+        self.assertTrue(mock_service.create_product_in_catalog.called)
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_image_creation_triggers_update_for_synced_product(self, mock_service_class):
+        """Test that adding a new image to a synced product triggers update"""
+        # Setup mock
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.return_value = {'id': 'meta_catalog_img_002'}
+        mock_service.update_product_in_catalog.return_value = {'success': True}
+        
+        # Create a product with catalog ID
+        product = Product.objects.create(
+            name='Test Product',
+            sku='TEST-IMG-002',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True,
+            whatsapp_catalog_id='meta_catalog_img_002'
+        )
+        
+        # Reset the mock
+        mock_service.reset_mock()
+        
+        # Create a simple test image
+        test_image = SimpleUploadedFile(
+            name='test_image2.jpg',
+            content=b'\x47\x49\x46\x38\x89\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x01\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b',
+            content_type='image/gif'
+        )
+        
+        # Add image to product - this should trigger update
+        ProductImage.objects.create(
+            product=product,
+            image=test_image,
+            alt_text='Test image 2'
+        )
+        
+        # Verify update was called (sync triggered with existing catalog_id)
+        self.assertTrue(mock_service.update_product_in_catalog.called)
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_image_creation_resets_failed_sync_attempts(self, mock_service_class):
+        """Test that adding an image resets sync attempts for previously failed products"""
+        # Setup mock
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.create_product_in_catalog.return_value = {'id': 'meta_catalog_img_003'}
+        
+        # Create a product and set it to failed state
+        product = Product.objects.create(
+            name='Test Product',
+            sku='TEST-IMG-003',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True
+        )
+        
+        # Simulate failed sync attempts
+        Product.objects.filter(pk=product.pk).update(
+            whatsapp_catalog_id=None,
+            meta_sync_attempts=3,
+            meta_sync_last_error='Previous error'
+        )
+        product.refresh_from_db()
+        
+        # Reset the mock
+        mock_service.reset_mock()
+        
+        # Create a simple test image
+        test_image = SimpleUploadedFile(
+            name='test_image3.jpg',
+            content=b'\x47\x49\x46\x38\x89\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x01\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b',
+            content_type='image/gif'
+        )
+        
+        # Add image to product - this should reset attempts and trigger re-sync
+        ProductImage.objects.create(
+            product=product,
+            image=test_image,
+            alt_text='Test image 3'
+        )
+        
+        # Verify create was called
+        self.assertTrue(mock_service.create_product_in_catalog.called)
+    
+    @patch('products_and_services.signals.MetaCatalogService')
+    def test_image_for_inactive_product_skips_sync(self, mock_service_class):
+        """Test that adding an image to an inactive product does not trigger sync"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        
+        # Create an inactive product
+        product = Product.objects.create(
+            name='Inactive Product',
+            sku='TEST-IMG-004',
+            description='Test product description',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=False
+        )
+        
+        # Reset the mock
+        mock_service.reset_mock()
+        
+        # Manually clear the catalog ID
+        Product.objects.filter(pk=product.pk).update(whatsapp_catalog_id=None)
+        product.refresh_from_db()
+        
+        # Create a simple test image
+        test_image = SimpleUploadedFile(
+            name='test_image4.jpg',
+            content=b'\x47\x49\x46\x38\x89\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x01\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b',
+            content_type='image/gif'
+        )
+        
+        # Add image to product
+        ProductImage.objects.create(
+            product=product,
+            image=test_image,
+            alt_text='Test image 4'
+        )
+        
+        # Verify sync was NOT called
+        mock_service.create_product_in_catalog.assert_not_called()
+        mock_service.update_product_in_catalog.assert_not_called()
 
 
 class PublicProductAccessTestCase(TestCase):

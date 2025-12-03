@@ -10,7 +10,7 @@ from datetime import timedelta
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
-from .models import Product
+from .models import Product, ProductImage
 
 logger = logging.getLogger(__name__)
 
@@ -263,6 +263,95 @@ def delete_product_from_meta_catalog(sender, instance, **kwargs):
             f"from Meta Catalog: {str(e)}",
             exc_info=True
         )
+
+
+# ============================================================================
+# Product Image Signals - Trigger re-sync when images are added/updated
+# ============================================================================
+
+@receiver(post_save, sender=ProductImage)
+def sync_product_on_image_change(sender, instance, created, **kwargs):
+    """
+    Trigger a re-sync of the parent product when a ProductImage is added or updated.
+    
+    This fixes the issue where images are not detected during initial product creation
+    because inline images are saved AFTER the parent product in Django admin.
+    
+    Args:
+        sender: The model class (ProductImage)
+        instance: The actual ProductImage instance being saved
+        created: Boolean indicating if this is a new instance
+        **kwargs: Additional keyword arguments
+    """
+    product = instance.product
+    
+    # Skip if product doesn't have a primary key yet (shouldn't happen normally)
+    if not product.pk:
+        logger.debug(
+            f"Skipping ProductImage signal - parent product has no PK"
+        )
+        return
+    
+    # Only trigger re-sync for products that need it:
+    # 1. Products that failed sync due to missing image (likely using placeholder)
+    # 2. Products that haven't been synced yet (no whatsapp_catalog_id)
+    # 3. New images being added (created=True)
+    
+    needs_resync = False
+    reason = ""
+    
+    if not product.whatsapp_catalog_id:
+        # Product was never synced successfully - might have failed due to missing image
+        needs_resync = True
+        reason = "product has no catalog ID (may have failed initial sync)"
+    elif created:
+        # New image added to an existing product - update the catalog
+        needs_resync = True
+        reason = "new image added to product"
+    
+    if not needs_resync:
+        logger.debug(
+            f"Skipping ProductImage signal for '{product.name}' (ID: {product.id}) - "
+            "product already synced and this is an image update, not addition"
+        )
+        return
+    
+    # Check if product is eligible for sync (has SKU and is active)
+    if not product.sku:
+        logger.debug(
+            f"Skipping ProductImage re-sync for '{product.name}' (ID: {product.id}) - no SKU"
+        )
+        return
+    
+    if not product.is_active:
+        logger.debug(
+            f"Skipping ProductImage re-sync for '{product.name}' (ID: {product.id}) - inactive"
+        )
+        return
+    
+    logger.info(
+        f"ProductImage saved for '{product.name}' (ID: {product.id}) - {reason}. "
+        f"Triggering Meta Catalog re-sync."
+    )
+    
+    # Reset sync attempts if the product failed previously
+    # This gives the product a fresh chance to sync with the new image
+    if product.meta_sync_attempts > 0:
+        logger.info(
+            f"Resetting sync attempts for '{product.name}' (ID: {product.id}) "
+            f"from {product.meta_sync_attempts} to 0 due to new image"
+        )
+        Product.objects.filter(pk=product.pk).update(
+            meta_sync_attempts=0,
+            meta_sync_last_error=None
+        )
+        # Refresh the instance to get updated values
+        product.refresh_from_db()
+    
+    # Trigger the product save which will activate the post_save signal
+    # Use update_fields to indicate this is NOT a sync-related internal update
+    # This will trigger sync_product_to_meta_catalog signal
+    product.save(update_fields=['updated_at'])
 
 
 # ============================================================================
