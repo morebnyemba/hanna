@@ -109,8 +109,12 @@ If you need to start with a completely fresh database:
 # Stop all containers
 docker compose down
 
+# Find the database volume name
+docker volume ls | grep postgres
+
 # Remove the database volume (WARNING: This deletes all data!)
-docker volume rm hanna_postgres_data  # or whatever your volume is named
+# Replace <volume_name> with the actual volume name from the previous command
+docker volume rm <volume_name>
 
 # Start containers again
 docker compose up -d

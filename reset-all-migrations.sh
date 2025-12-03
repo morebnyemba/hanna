@@ -82,13 +82,9 @@ fi
 
 # Check if db container is running
 check_db_running() {
-    if $DOCKER_COMPOSE ps db --status running --services >/dev/null 2>&1; then
-        $DOCKER_COMPOSE ps db --status running --services | grep -q db
-        return $?
-    else
-        $DOCKER_COMPOSE ps | grep -q "whatsappcrm_db.*Up"
-        return $?
-    fi
+    # Check if the db service is running using docker compose ps
+    $DOCKER_COMPOSE ps db 2>/dev/null | grep -q "running\|Up"
+    return $?
 }
 
 if check_db_running; then
@@ -109,7 +105,10 @@ if check_db_running; then
     END \$\$;
     " 2>/dev/null || {
         echo "⚠️  Could not clear django_migrations table."
-        echo "    This might happen if the table doesn't exist yet (fresh database)."
+        echo "    This might happen if:"
+        echo "    - The table doesn't exist yet (fresh database)"
+        echo "    - Database connection issues"
+        echo "    - Permission problems"
         echo "    Continuing with file deletion..."
     }
     
