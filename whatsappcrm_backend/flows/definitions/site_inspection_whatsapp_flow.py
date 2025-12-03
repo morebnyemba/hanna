@@ -6,7 +6,7 @@ This now includes assessment_type selection via dropdown to align with legacy me
 """
 
 SITE_INSPECTION_WHATSAPP_FLOW = {
-    "version": "7.3",
+    "version": "6.0",
     "screens": [
         {
             "id": "WELCOME",

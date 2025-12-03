@@ -5,7 +5,7 @@ WhatsApp Flow JSON definition for Hybrid Installation Request (Starlink + Solar)
 """
 
 HYBRID_INSTALLATION_WHATSAPP_FLOW = {
-    "version": "7.3",
+    "version": "6.0",
     "screens": [
         {
             "id": "WELCOME",
@@ -104,19 +104,19 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                             "name": "navigate",
                             "next": {"type": "screen", "name": "CONTACT_INFO"},
                             "payload": {
-                                "order_number": "${data.order_number}",
-                                "branch": "${data.branch}",
-                                "sales_person": "${data.sales_person}",
-                                   "full_name": "${data.full_name}",
-                                "contact_phone": "${data.contact_phone}",
-                                "alt_contact_name": "${data.alt_contact_name}",
-                                "alt_contact_phone": "${data.alt_contact_phone}",
-                                "preferred_date": "${data.preferred_date}",
-                                "availability": "${data.availability}",
-                                "address": "${data.address}",
-                                "starlink_kit_type": "${data.starlink_kit_type}",
-                                "solar_capacity": "${data.solar_capacity}",
-                                "mount_location": "${data.mount_location}"
+                                "order_number": "${form.order_number}",
+                                "branch": "${form.branch}",
+                                "sales_person": "${form.sales_person}",
+                                "full_name": "",
+                                "contact_phone": "",
+                                "alt_contact_name": "",
+                                "alt_contact_phone": "",
+                                "preferred_date": "",
+                                "availability": "",
+                                "address": "",
+                                "starlink_kit_type": "",
+                                "solar_capacity": "",
+                                "mount_location": ""
                             }
                         }
                     }
@@ -181,19 +181,19 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                             "name": "navigate",
                             "next": {"type": "screen", "name": "INSTALLATION_DETAILS"},
                             "payload": {
-                                   "order_number": "${data.order_number}",
+                                "order_number": "${data.order_number}",
                                 "branch": "${data.branch}",
                                 "sales_person": "${data.sales_person}",
-                                   "full_name": "${data.full_name}",
-                                   "contact_phone": "${data.contact_phone}",
-                                "alt_contact_name": "${data.alt_contact_name}",
-                                "alt_contact_phone": "${data.alt_contact_phone}",
-                                   "preferred_date": "${data.preferred_date}",
-                                "availability": "${data.availability}",
-                                "address": "${data.address}",
-                                "starlink_kit_type": "${data.starlink_kit_type}",
-                                "solar_capacity": "${data.solar_capacity}",
-                                "mount_location": "${data.mount_location}"
+                                "full_name": "${form.full_name}",
+                                "contact_phone": "${form.contact_phone}",
+                                "alt_contact_name": "${form.alt_contact_name}",
+                                "alt_contact_phone": "${form.alt_contact_phone}",
+                                "preferred_date": "",
+                                "availability": "",
+                                "address": "",
+                                "starlink_kit_type": "",
+                                "solar_capacity": "",
+                                "mount_location": ""
                             }
                         }
                     }
@@ -258,19 +258,19 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                             "name": "navigate",
                             "next": {"type": "screen", "name": "SCHEDULE_INFO"},
                             "payload": {
-                                   "order_number": "${data.order_number}",
+                                "order_number": "${data.order_number}",
                                 "branch": "${data.branch}",
                                 "sales_person": "${data.sales_person}",
-                                   "full_name": "${data.full_name}",
+                                "full_name": "${data.full_name}",
                                 "contact_phone": "${data.contact_phone}",
                                 "alt_contact_name": "${data.alt_contact_name}",
                                 "alt_contact_phone": "${data.alt_contact_phone}",
-                                   "preferred_date": "${data.preferred_date}",
-                                "availability": "${data.availability}",
-                                "address": "${data.address}",
-                                   "starlink_kit_type": "${data.starlink_kit_type}",
-                                   "solar_capacity": "${data.solar_capacity}",
-                                   "mount_location": "${data.mount_location}"
+                                "preferred_date": "",
+                                "availability": "",
+                                "address": "",
+                                "starlink_kit_type": "${form.starlink_kit_type}",
+                                "solar_capacity": "${form.solar_capacity}",
+                                "mount_location": "${form.mount_location}"
                             }
                         }
                     }
@@ -331,17 +331,17 @@ HYBRID_INSTALLATION_WHATSAPP_FLOW = {
                         "on-click-action": {
                             "name": "complete",
                             "payload": {
-                                   "order_number": "${data.order_number}",
+                                "order_number": "${data.order_number}",
                                 "branch": "${data.branch}",
                                 "sales_person": "${data.sales_person}",
                                 "full_name": "${data.full_name}",
                                 "contact_phone": "${data.contact_phone}",
                                 "alt_contact_name": "${data.alt_contact_name}",
                                 "alt_contact_phone": "${data.alt_contact_phone}",
-                                   "preferred_date": "${data.preferred_date}",
-                                "availability": "${data.availability}",
-                                "address": "${data.address}",
-                                   "starlink_kit_type": "${data.starlink_kit_type}",
+                                "preferred_date": "${form.preferred_date}",
+                                "availability": "${form.availability}",
+                                "address": "${form.address}",
+                                "starlink_kit_type": "${data.starlink_kit_type}",
                                 "solar_capacity": "${data.solar_capacity}",
                                 "mount_location": "${data.mount_location}"
                             }

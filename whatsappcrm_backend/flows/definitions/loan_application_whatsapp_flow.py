@@ -10,7 +10,7 @@ all relevant fields. The backend handler will interpret the data based on the lo
 """
 
 LOAN_APPLICATION_WHATSAPP_FLOW = {
-    "version": "7.3",
+    "version": "6.0",
     "screens": [
         {
             "id": "WELCOME",

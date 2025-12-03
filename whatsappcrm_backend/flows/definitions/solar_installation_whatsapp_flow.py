@@ -7,7 +7,7 @@ Note: Complex logic like order verification will be handled in the backend proce
 """
 
 SOLAR_INSTALLATION_WHATSAPP_FLOW = {
-    "version": "7.3",
+    "version": "6.0",
     "screens": [
         {
             "id": "WELCOME",
