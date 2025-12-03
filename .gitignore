@@ -24,3 +24,8 @@ test_settings.py
 venv/
 env/
 .venv/
+
+# Error logs and deployment logs
+runtime_errorlog
+errors_in_server_deployement
+*.log
