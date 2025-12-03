@@ -10,12 +10,12 @@ The version suffix is configured via the `META_SYNC_VERSION_SUFFIX` setting in D
 
 ### Default Configuration
 
-By default, the suffix is set to `v1_02`:
+By default, the suffix is set to `v1_03`:
 
 ```python
 # In whatsappcrm_backend/whatsappcrm_backend/settings.py
 # Note: Must use underscores only (no dots/periods) as Meta only allows lowercase letters and underscores
-META_SYNC_VERSION_SUFFIX = os.getenv('META_SYNC_VERSION_SUFFIX', 'v1_02')
+META_SYNC_VERSION_SUFFIX = os.getenv('META_SYNC_VERSION_SUFFIX', 'v1_03')
 ```
 
 ### Environment Variable Override
