@@ -67,7 +67,7 @@ class WhatsAppFlowService:
                 try:
                     error_details = e.response.json()
                     logger.error(f"Error details: {error_details}")
-                except:
+                except (ValueError, json.JSONDecodeError):
                     logger.error(f"Response: {e.response.text}")
             return []
         except Exception as e:
