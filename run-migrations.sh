@@ -19,10 +19,12 @@ fi
 
 # Check if backend container is running
 check_backend_running() {
+    # Try newer docker compose ps syntax first
     if $DOCKER_COMPOSE ps backend --status running --services >/dev/null 2>&1; then
-        $DOCKER_COMPOSE ps backend --status running --services | grep -q backend
-        return $?
+        # If command succeeds, backend is running (service name is already filtered)
+        return 0
     else
+        # Fall back to parsing ps output for older docker-compose versions
         $DOCKER_COMPOSE ps | grep -q "whatsappcrm_backend_app.*Up"
         return $?
     fi

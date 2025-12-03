@@ -139,7 +139,6 @@ class Command(BaseCommand):
         # Check if conversations.0002 is applied (required by conversations.0003)
         conversations_0002 = ('conversations', '0002_contact_intervention_requested_at_and_more') in applied
         meta_0001 = ('meta_integration', '0001_initial') in applied
-        flows_0002 = ('flows', '0002_alter_contactflowstate_unique_together_and_more') in applied
         
         migrations_to_add = []
         
