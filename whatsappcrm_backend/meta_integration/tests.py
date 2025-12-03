@@ -72,12 +72,12 @@ class MetaCatalogServiceTestCase(TestCase):
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
                 product_data = service._get_product_data(self.product)
             
-            # Verify image_link is absolute URL
-            self.assertIn('image_link', product_data)
-            self.assertTrue(product_data['image_link'].startswith('https://'))
-            self.assertIn('backend.hanna.co.zw', product_data['image_link'])
+            # Verify image_url is absolute URL
+            self.assertIn('image_url', product_data)
+            self.assertTrue(product_data['image_url'].startswith('https://'))
+            self.assertIn('backend.hanna.co.zw', product_data['image_url'])
             self.assertEqual(
-                product_data['image_link'],
+                product_data['image_url'],
                 'https://backend.hanna.co.zw/media/product_images/test.png'
             )
     
@@ -95,10 +95,10 @@ class MetaCatalogServiceTestCase(TestCase):
             service = MetaCatalogService()
             product_data = service._get_product_data(self.product)
             
-            # Verify image_link remains absolute URL
-            self.assertIn('image_link', product_data)
+            # Verify image_url remains absolute URL
+            self.assertIn('image_url', product_data)
             self.assertEqual(
-                product_data['image_link'],
+                product_data['image_url'],
                 'https://cdn.example.com/images/test.png'
             )
     
@@ -112,15 +112,15 @@ class MetaCatalogServiceTestCase(TestCase):
         with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
             product_data = service._get_product_data(self.product)
         
-        # Verify image_link is present with publicly accessible placeholder URL
+        # Verify image_url is present with publicly accessible placeholder URL
         # (Meta API does not accept data URIs)
-        self.assertIn('image_link', product_data)
+        self.assertIn('image_url', product_data)
         # Should use a static placeholder URL, not a data URI
-        self.assertFalse(product_data['image_link'].startswith('data:'))
-        self.assertTrue(product_data['image_link'].startswith('https://'))
+        self.assertFalse(product_data['image_url'].startswith('data:'))
+        self.assertTrue(product_data['image_url'].startswith('https://'))
         # Verify it uses the placeholder path
         expected_placeholder_url = f'https://backend.hanna.co.zw{PLACEHOLDER_IMAGE_PATH}'
-        self.assertEqual(product_data['image_link'], expected_placeholder_url)
+        self.assertEqual(product_data['image_url'], expected_placeholder_url)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_empty_image_url(self, mock_config):
@@ -138,10 +138,10 @@ class MetaCatalogServiceTestCase(TestCase):
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
                 product_data = service._get_product_data(self.product)
             
-            # Verify image_link uses placeholder URL when URL is empty
-            self.assertIn('image_link', product_data)
+            # Verify image_url uses placeholder URL when URL is empty
+            self.assertIn('image_url', product_data)
             expected_placeholder_url = f'https://backend.hanna.co.zw{PLACEHOLDER_IMAGE_PATH}'
-            self.assertEqual(product_data['image_link'], expected_placeholder_url)
+            self.assertEqual(product_data['image_url'], expected_placeholder_url)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_none_image_url(self, mock_config):
@@ -159,10 +159,10 @@ class MetaCatalogServiceTestCase(TestCase):
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
                 product_data = service._get_product_data(self.product)
             
-            # Verify image_link uses placeholder URL when URL is None
-            self.assertIn('image_link', product_data)
+            # Verify image_url uses placeholder URL when URL is None
+            self.assertIn('image_url', product_data)
             expected_placeholder_url = f'https://backend.hanna.co.zw{PLACEHOLDER_IMAGE_PATH}'
-            self.assertEqual(product_data['image_link'], expected_placeholder_url)
+            self.assertEqual(product_data['image_url'], expected_placeholder_url)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_whitespace_image_url(self, mock_config):
@@ -180,10 +180,10 @@ class MetaCatalogServiceTestCase(TestCase):
             with override_settings(BACKEND_DOMAIN_FOR_CSP='backend.hanna.co.zw'):
                 product_data = service._get_product_data(self.product)
             
-            # Verify image_link uses placeholder URL when URL is only whitespace
-            self.assertIn('image_link', product_data)
+            # Verify image_url uses placeholder URL when URL is only whitespace
+            self.assertIn('image_url', product_data)
             expected_placeholder_url = f'https://backend.hanna.co.zw{PLACEHOLDER_IMAGE_PATH}'
-            self.assertEqual(product_data['image_link'], expected_placeholder_url)
+            self.assertEqual(product_data['image_url'], expected_placeholder_url)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_with_url_containing_whitespace(self, mock_config):
@@ -206,11 +206,11 @@ class MetaCatalogServiceTestCase(TestCase):
             with override_settings(BACKEND_DOMAIN_FOR_CSP=test_domain):
                 product_data = service._get_product_data(self.product)
             
-            # Verify image_link is properly trimmed and converted to absolute URL
-            self.assertIn('image_link', product_data)
-            self.assertEqual(product_data['image_link'], expected_trimmed_url)
+            # Verify image_url is properly trimmed and converted to absolute URL
+            self.assertIn('image_url', product_data)
+            self.assertEqual(product_data['image_url'], expected_trimmed_url)
             # Ensure no whitespace in the final URL
-            self.assertNotIn(' ', product_data['image_link'])
+            self.assertNotIn(' ', product_data['image_url'])
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_get_product_data_required_fields(self, mock_config):

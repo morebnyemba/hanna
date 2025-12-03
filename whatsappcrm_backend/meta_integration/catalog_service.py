@@ -3,17 +3,17 @@ Meta Catalog Service for syncing products with Meta (Facebook) Product Catalog.
 
 IMPORTANT: Image URL Accessibility
 ===================================
-For products to be successfully created in Meta's catalog, the image_link URL must be:
+For products to be successfully created in Meta's catalog, the image_url URL must be:
 1. Publicly accessible (no authentication required)
 2. Reachable from Meta's servers (not behind a firewall/VPN)
 3. Return a valid image with proper Content-Type header
 4. Use HTTPS protocol (data URIs are NOT supported by Meta API)
 
-Meta API requires the image_link field for all products (error #10801). When a product 
+Meta API requires the image_url field for all products (error #10801). When a product 
 has no images, a static placeholder image URL is used. This ensures the product can be 
 created in Meta's catalog.
 
-CRITICAL: Meta API does NOT accept data URIs for the image_link field. The URL must be
+CRITICAL: Meta API does NOT accept data URIs for the image_url field. The URL must be
 a publicly accessible HTTP/HTTPS URL that Meta's servers can fetch.
 
 Infrastructure Requirements for Product Images:
@@ -115,11 +115,9 @@ class MetaCatalogService:
         - price: Price as integer in cents/minor currency units (e.g., 10000 for $100.00)
         - currency: ISO 4217 currency code (e.g., "USD")
         - link: Product URL
-        - image_link: URL to product image (must be absolute URL and publicly accessible)
-                     Note: Meta API error #10801 "(#10801) \"image_url\" must be specified."
-                     requires this field (despite the error message saying "image_url", the 
-                     actual field name is "image_link"). A placeholder image URL is used 
-                     when the product has no images.
+        - image_url: URL to product image (must be absolute URL and publicly accessible)
+                    This field is required by Meta's Marketing API for product catalogs.
+                    A placeholder image URL is used when the product has no images.
         
         Optional fields:
         - description: Product description
@@ -158,7 +156,7 @@ class MetaCatalogService:
         # Get the first image URL, if available
         # Meta API requires absolute URLs, not relative paths
         # IMPORTANT: The URL must be publicly accessible for Meta's servers to fetch
-        # Meta API now requires image_link field to be present
+        # Meta API requires image_url field to be present
         # Error #10801: "(#10801) \"image_url\" must be specified."
         # NOTE: Data URIs are NOT supported by Meta API - must be an actual HTTP/HTTPS URL
         
@@ -201,19 +199,19 @@ class MetaCatalogService:
                     # Use https as the application is behind an HTTPS proxy
                     image_url = f"https://{backend_domain}{image_url}"
                 
-                data["image_link"] = image_url
+                data["image_url"] = image_url
                 logger.debug(f"Product image URL for Meta: {image_url}")
             else:
                 # URL was only whitespace - use placeholder URL
-                data["image_link"] = placeholder_url
+                data["image_url"] = placeholder_url
                 logger.warning(
                     f"Product '{product.name}' (ID: {product.id}) has image with whitespace-only URL. "
                     f"Using placeholder image URL for Meta Catalog: {placeholder_url}"
                 )
         else:
-            # Meta API requires image_link field even when no image is available
+            # Meta API requires image_url field even when no image is available
             # Use a static placeholder image URL - data URIs are NOT supported by Meta API
-            data["image_link"] = placeholder_url
+            data["image_url"] = placeholder_url
             # Enhanced debug info to help diagnose why image was not detected
             debug_info = []
             if not first_image:
@@ -271,13 +269,13 @@ class MetaCatalogService:
                     f"═══════════════════════════════════════════════════════"
                 )
                 
-                # Check if the error is related to image_link
-                if 'image' in error_message.lower() and 'image_link' in data:
+                # Check if the error is related to image_url
+                if 'image' in error_message.lower() and 'image_url' in data:
                     logger.error(
                         f"⚠ IMAGE URL ISSUE DETECTED ⚠\n"
-                        f"Image URL: {data['image_link']}\n"
+                        f"Image URL: {data['image_url']}\n"
                         f"This URL must be publicly accessible to Meta's servers.\n"
-                        f"Test accessibility with: curl -I {data['image_link']}\n"
+                        f"Test accessibility with: curl -I {data['image_url']}\n"
                         f"Ensure nginx/NPM is properly serving media files and the URL is not behind auth."
                     )
                 
@@ -354,11 +352,11 @@ class MetaCatalogService:
                     f"═══════════════════════════════════════════════════════"
                 )
                 
-                # Check if the error is related to image_link
-                if 'image' in error_message.lower() and 'image_link' in data:
+                # Check if the error is related to image_url
+                if 'image' in error_message.lower() and 'image_url' in data:
                     logger.error(
                         f"⚠ IMAGE URL ISSUE DETECTED ⚠\n"
-                        f"Image URL: {data['image_link']}\n"
+                        f"Image URL: {data['image_url']}\n"
                         f"This URL must be publicly accessible to Meta's servers."
                     )
                 
