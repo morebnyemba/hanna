@@ -53,8 +53,8 @@ echo ""
 echo "Finding untracked migration files..."
 echo "----------------------------------------"
 
-# Find untracked migration files in whatsappcrm_backend
-UNTRACKED_MIGRATIONS=$(git status --porcelain 2>/dev/null | grep "^??" | grep "migrations/" | awk '{print $2}' || true)
+# Find untracked migration files in whatsappcrm_backend only
+UNTRACKED_MIGRATIONS=$(git status --porcelain 2>/dev/null | grep "^??" | grep "whatsappcrm_backend/.*migrations/" | awk '{print $2}' || true)
 
 if [ -z "$UNTRACKED_MIGRATIONS" ]; then
     echo "✅ No untracked migration files found."
@@ -79,8 +79,9 @@ echo "Backing up and removing untracked migrations..."
 echo "----------------------------------------"
 
 # Backup and remove each untracked migration file
-for FILE in $UNTRACKED_MIGRATIONS; do
-    if [ -f "$FILE" ]; then
+# Using while read to handle filenames with spaces safely
+echo "$UNTRACKED_MIGRATIONS" | while IFS= read -r FILE; do
+    if [ -n "$FILE" ] && [ -f "$FILE" ]; then
         # Create the directory structure in backup
         BACKUP_PATH="$BACKUP_DIR/$(dirname "$FILE")"
         mkdir -p "$BACKUP_PATH"

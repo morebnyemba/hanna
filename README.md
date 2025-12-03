@@ -183,15 +183,18 @@ docker compose exec backend python manage.py migrate
 
 **Manual fix:**
 ```bash
-# 1. Backup and remove untracked migrations
-git status  # See which files are untracked
-mv whatsappcrm_backend/*/migrations/0001_initial.py /tmp/backup/
-# Remove each untracked migration file
+# 1. See untracked migration files
+git status
 
-# 2. Reset to remote
+# 2. Backup and remove each untracked migration file shown
+#    (Replace paths with actual files from git status output)
+mkdir -p /tmp/migration_backup
+mv whatsappcrm_backend/*/migrations/*.py /tmp/migration_backup/  # or specific files
+
+# 3. Reset to remote
 git reset --hard origin/main
 
-# 3. Rebuild and migrate
+# 4. Rebuild and migrate
 docker compose down
 docker compose up -d --build
 docker compose exec backend python manage.py migrate
