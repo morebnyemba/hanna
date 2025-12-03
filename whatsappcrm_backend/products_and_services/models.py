@@ -82,6 +82,10 @@ class Product(models.Model):
     compatible_products = models.ManyToManyField('self', symmetrical=False, blank=True, related_name='compatible_with', help_text=_("e.g., A hardware device can be compatible with certain software modules."))
     manufacturer = models.ForeignKey('warranty.Manufacturer', on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
     
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
         return f"{self.name} ({self.sku or 'No SKU'})"
     
