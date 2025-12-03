@@ -81,6 +81,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarLink href="/admin/customers" icon={FiUsers}>Customers</SidebarLink>
           <SidebarLink href="/admin/users" icon={FiUsers}>Users</SidebarLink>
           <SidebarLink href="/admin/orders" icon={FiShoppingCart}>Order Tracking</SidebarLink>
+          <SidebarLink href="/admin/installations" icon={FiTool}>Installations</SidebarLink>
           <SidebarLink href="/admin/monitoring" icon={FiWifi}>Monitoring</SidebarLink>
           <SidebarLink href="/admin/check-in-out" icon={FiArchive}>Check-In/Out</SidebarLink>
           <SidebarDropdown title="Products" icon={FiPackage}>
