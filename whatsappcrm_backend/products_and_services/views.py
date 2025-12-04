@@ -38,6 +38,7 @@ from .serializers import (
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
 from users.permissions import IsRetailer, IsRetailerOrAdmin, IsRetailerBranch, IsRetailerBranchOrAdmin
+from meta_integration.catalog_service import MetaCatalogService
 
 User = get_user_model()
 
@@ -63,8 +64,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         POST /crm-api/products/products/{id}/meta-sync/
         """
-        from meta_integration.catalog_service import MetaCatalogService
-        
         product = self.get_object()
         
         if not product.sku:
@@ -122,8 +121,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             "visibility": "published"  // or "hidden"
         }
         """
-        from meta_integration.catalog_service import MetaCatalogService
-        
         product = self.get_object()
         serializer = MetaCatalogVisibilitySerializer(data=request.data)
         
@@ -173,8 +170,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         GET /crm-api/products/products/{id}/meta-status/
         """
-        from meta_integration.catalog_service import MetaCatalogService
-        
         product = self.get_object()
         
         if not product.whatsapp_catalog_id:
@@ -225,7 +220,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                     'last_attempt': product.meta_sync_last_attempt,
                     'last_success': product.meta_sync_last_success
                 }
-            }, status=status.HTTP_502_BAD_GATEWAY)
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     @action(detail=False, methods=['post'], url_path='meta-batch-visibility')
     def meta_batch_visibility(self, request):
@@ -238,8 +233,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             "visibility": "published"  // or "hidden"
         }
         """
-        from meta_integration.catalog_service import MetaCatalogService
-        
         serializer = MetaCatalogBatchUpdateSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -323,16 +316,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             "product_ids": [1, 2, 3]
         }
         """
-        from meta_integration.catalog_service import MetaCatalogService
+        serializer = MetaCatalogBatchUpdateSerializer(data=request.data)
         
-        product_ids = request.data.get('product_ids', [])
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        if not product_ids:
-            return Response(
-                {'error': 'product_ids is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        product_ids = serializer.validated_data['product_ids']
         products = Product.objects.filter(id__in=product_ids)
         results = []
         

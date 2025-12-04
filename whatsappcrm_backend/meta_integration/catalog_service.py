@@ -545,6 +545,7 @@ class MetaCatalogService:
         logger.info(f"Batch updating {len(requests_list)} products in Meta Catalog")
         logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
         
+        # Batch operations use a longer timeout (60s) to accommodate processing of multiple items
         response = requests.post(url, headers=self._get_headers(), json=payload, timeout=60)
         
         try:
@@ -553,37 +554,7 @@ class MetaCatalogService:
             logger.info(f"Batch update completed. Response: {result}")
             return result
         except requests.exceptions.HTTPError as e:
-            error_details = {}
-            try:
-                error_details = response.json()
-                error_body = json.dumps(error_details, indent=2)
-                error_message = error_details.get('error', {}).get('message', str(error_details))
-                error_code = error_details.get('error', {}).get('code', response.status_code)
-                
-                logger.error(
-                    f"═══════════════════════════════════════════════════════\n"
-                    f"META API ERROR - Batch Update Failed\n"
-                    f"═══════════════════════════════════════════════════════\n"
-                    f"Products count: {len(requests_list)}\n"
-                    f"Error Code: {error_code}\n"
-                    f"Error Message: {error_message}\n"
-                    f"HTTP Status: {response.status_code}\n"
-                    f"Full Response:\n{error_body}\n"
-                    f"═══════════════════════════════════════════════════════"
-                )
-                
-                raise ValueError(
-                    f"Meta API Error ({error_code}): {error_message}"
-                ) from e
-                
-            except (ValueError, KeyError, json.JSONDecodeError):
-                error_body = response.text
-                logger.error(
-                    f"Meta API batch update error (raw): HTTP {response.status_code}\n{error_body}"
-                )
-                raise ValueError(
-                    f"Meta API Error (HTTP {response.status_code}): {error_body[:200]}..."
-                ) from e
+            self._log_and_raise_http_error(e, response, f"Batch update of {len(requests_list)} products")
         except requests.exceptions.Timeout:
             error_msg = "Request to Meta API timed out after 60 seconds"
             logger.error(f"{error_msg} for batch update")
@@ -626,30 +597,7 @@ class MetaCatalogService:
             logger.info(f"Successfully fetched product from catalog. Response: {result}")
             return result
         except requests.exceptions.HTTPError as e:
-            error_details = {}
-            try:
-                error_details = response.json()
-                error_body = json.dumps(error_details, indent=2)
-                error_message = error_details.get('error', {}).get('message', str(error_details))
-                error_code = error_details.get('error', {}).get('code', response.status_code)
-                
-                logger.error(
-                    f"Meta API error fetching product '{product.name}' "
-                    f"(Catalog ID: {product.whatsapp_catalog_id}): {error_message}"
-                )
-                
-                raise ValueError(
-                    f"Meta API Error ({error_code}): {error_message}"
-                ) from e
-                
-            except (ValueError, KeyError, json.JSONDecodeError):
-                error_body = response.text
-                logger.error(
-                    f"Meta API fetch error (raw) for '{product.name}': HTTP {response.status_code}\n{error_body}"
-                )
-                raise ValueError(
-                    f"Meta API Error (HTTP {response.status_code}): {error_body[:200]}..."
-                ) from e
+            self._log_and_raise_http_error(e, response, f"Fetch product '{product.name}'")
         except requests.exceptions.Timeout:
             error_msg = "Request to Meta API timed out after 30 seconds"
             logger.error(f"{error_msg} for product '{product.name}'")
@@ -675,6 +623,49 @@ class MetaCatalogService:
             return self.update_product_in_catalog(product)
         else:
             return self.create_product_in_catalog(product)
+
+    def _log_and_raise_http_error(self, exception, response, operation_desc):
+        """
+        Shared helper to log and raise HTTP errors from Meta API.
+        
+        Args:
+            exception: The original HTTPError exception
+            response: The HTTP response object
+            operation_desc: Human-readable description of the operation (e.g., "Batch update of 5 products")
+        
+        Raises:
+            ValueError: Always raises with formatted error message
+        """
+        try:
+            error_details = response.json()
+            error_body = json.dumps(error_details, indent=2)
+            error_message = error_details.get('error', {}).get('message', str(error_details))
+            error_code = error_details.get('error', {}).get('code', response.status_code)
+            
+            logger.error(
+                f"═══════════════════════════════════════════════════════\n"
+                f"META API ERROR - {operation_desc} Failed\n"
+                f"═══════════════════════════════════════════════════════\n"
+                f"Error Code: {error_code}\n"
+                f"Error Message: {error_message}\n"
+                f"HTTP Status: {response.status_code}\n"
+                f"Full Response:\n{error_body}\n"
+                f"═══════════════════════════════════════════════════════"
+            )
+            
+            raise ValueError(
+                f"Meta API Error ({error_code}): {error_message}"
+            ) from exception
+            
+        except (json.JSONDecodeError, KeyError, TypeError):
+            error_body = response.text
+            logger.error(
+                f"Meta API error (raw) for '{operation_desc}': "
+                f"HTTP {response.status_code}\n{error_body}"
+            )
+            raise ValueError(
+                f"Meta API Error (HTTP {response.status_code}): {error_body[:200]}..."
+            ) from exception
 
     def _handle_batch_api_error(self, exception, response, product, operation):
         """
