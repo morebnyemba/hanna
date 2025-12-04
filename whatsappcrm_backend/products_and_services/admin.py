@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.contrib import messages
 from .models import Product, ProductCategory, ProductImage, SerializedItem, Cart, CartItem
 
 @admin.register(ProductCategory)
@@ -32,7 +33,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ('product_type', 'category', 'is_active', 'country_of_origin', 'brand')
     ordering = ('name',)
     inlines = [ProductImageInline]
-    actions = ['reset_meta_sync_attempts']
+    actions = ['reset_meta_sync_attempts', 'sync_to_meta_catalog', 'set_meta_visibility_published', 'set_meta_visibility_hidden']
     
     fieldsets = (
         (None, {
@@ -101,6 +102,128 @@ class ProductAdmin(admin.ModelAdmin):
             request,
             f'Reset sync attempts for {count} product(s). They will be synced on next save.'
         )
+
+    @admin.action(description='Sync selected products to Meta Catalog')
+    def sync_to_meta_catalog(self, request, queryset):
+        """
+        Sync selected products to Meta Catalog.
+        """
+        from meta_integration.catalog_service import MetaCatalogService
+        
+        try:
+            service = MetaCatalogService()
+        except Exception as e:
+            self.message_user(
+                request,
+                f'Failed to initialize Meta Catalog Service: {str(e)}',
+                messages.ERROR
+            )
+            return
+        
+        success_count = 0
+        error_count = 0
+        skip_count = 0
+        
+        for product in queryset:
+            if not product.sku:
+                skip_count += 1
+                continue
+            
+            if not product.is_active:
+                skip_count += 1
+                continue
+            
+            try:
+                service.sync_product_update(product)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+        
+        message_parts = []
+        if success_count:
+            message_parts.append(f'{success_count} synced successfully')
+        if error_count:
+            message_parts.append(f'{error_count} failed')
+        if skip_count:
+            message_parts.append(f'{skip_count} skipped (no SKU or inactive)')
+        
+        message = ', '.join(message_parts) if message_parts else 'No products to sync'
+        level = messages.SUCCESS if error_count == 0 else messages.WARNING
+        self.message_user(request, message, level)
+
+    @admin.action(description='Set Meta visibility to PUBLISHED (active)')
+    def set_meta_visibility_published(self, request, queryset):
+        """
+        Set visibility to 'published' for selected products in Meta Catalog.
+        """
+        self._set_meta_visibility(request, queryset, 'published')
+
+    @admin.action(description='Set Meta visibility to HIDDEN (inactive)')
+    def set_meta_visibility_hidden(self, request, queryset):
+        """
+        Set visibility to 'hidden' for selected products in Meta Catalog.
+        """
+        self._set_meta_visibility(request, queryset, 'hidden')
+
+    def _set_meta_visibility(self, request, queryset, visibility):
+        """
+        Helper method to set visibility for multiple products.
+        """
+        from meta_integration.catalog_service import MetaCatalogService
+        
+        try:
+            service = MetaCatalogService()
+        except Exception as e:
+            self.message_user(
+                request,
+                f'Failed to initialize Meta Catalog Service: {str(e)}',
+                messages.ERROR
+            )
+            return
+        
+        # Filter products that have catalog IDs
+        products_with_catalog = queryset.filter(whatsapp_catalog_id__isnull=False).exclude(whatsapp_catalog_id='')
+        
+        if not products_with_catalog.exists():
+            self.message_user(
+                request,
+                'None of the selected products have been synced to Meta Catalog yet.',
+                messages.WARNING
+            )
+            return
+        
+        # Build updates for batch operation
+        updates = []
+        for product in products_with_catalog:
+            if product.sku:
+                updates.append({
+                    'product': product,
+                    'data': {'visibility': visibility}
+                })
+        
+        if not updates:
+            self.message_user(
+                request,
+                'No eligible products found (products must have SKU and catalog ID).',
+                messages.WARNING
+            )
+            return
+        
+        try:
+            result = service.batch_update_products(updates)
+            
+            skipped = queryset.count() - len(updates)
+            message = f'Visibility set to "{visibility}" for {len(updates)} product(s).'
+            if skipped > 0:
+                message += f' {skipped} product(s) skipped (no SKU or not synced).'
+            
+            self.message_user(request, message, messages.SUCCESS)
+        except Exception as e:
+            self.message_user(
+                request,
+                f'Failed to update visibility: {str(e)}',
+                messages.ERROR
+            )
 
 @admin.register(SerializedItem)
 class SerializedItemAdmin(admin.ModelAdmin):

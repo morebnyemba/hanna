@@ -56,11 +56,31 @@ The admin list view shows color-coded sync status:
 
 ### Admin Actions
 
+The following admin actions are available for managing Meta Catalog sync:
+
 **Reset Meta sync attempts**
 - Select products with failed sync
 - Choose "Reset Meta sync attempts" from Actions dropdown
 - Click "Go"
 - Products will be retried on next save
+
+**Sync selected products to Meta Catalog**
+- Select products to sync
+- Choose "Sync selected products to Meta Catalog" from Actions dropdown
+- Click "Go"
+- Products will be immediately synced (created or updated)
+
+**Set Meta visibility to PUBLISHED (active)**
+- Select synced products
+- Choose "Set Meta visibility to PUBLISHED (active)" from Actions dropdown
+- Click "Go"
+- Products will be marked as visible/published in Meta Catalog
+
+**Set Meta visibility to HIDDEN (inactive)**
+- Select synced products
+- Choose "Set Meta visibility to HIDDEN (inactive)" from Actions dropdown
+- Click "Go"
+- Products will be hidden from Meta Catalog (not visible to customers)
 
 ### Viewing Sync Details
 
@@ -71,6 +91,136 @@ The admin list view shows color-coded sync status:
    - Last error message (if any)
    - Last attempt timestamp
    - Last successful sync timestamp
+
+## API Endpoints
+
+The following REST API endpoints are available for managing Meta Catalog sync programmatically:
+
+### Single Product Operations
+
+#### Sync Product to Meta Catalog
+```
+POST /crm-api/products/products/{id}/meta-sync/
+```
+Manually trigger sync of a product to Meta Catalog. Creates the product if it doesn't exist, updates if it does.
+
+**Response:**
+```json
+{
+  "success": true,
+  "product_id": 1,
+  "product_name": "Product Name",
+  "sku": "SKU-001",
+  "catalog_id": "meta_catalog_12345",
+  "message": "Product synced to Meta Catalog successfully"
+}
+```
+
+#### Set Product Visibility
+```
+POST /crm-api/products/products/{id}/meta-visibility/
+```
+Set the visibility of a product in Meta Catalog.
+
+**Request Body:**
+```json
+{
+  "visibility": "published"  // or "hidden"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "product_id": 1,
+  "product_name": "Product Name",
+  "visibility": "published",
+  "message": "Product visibility set to \"published\" successfully"
+}
+```
+
+#### Get Product Meta Status
+```
+GET /crm-api/products/products/{id}/meta-status/
+```
+Get the current status of a product in Meta Catalog.
+
+**Response (synced product):**
+```json
+{
+  "synced": true,
+  "product_id": 1,
+  "product_name": "Product Name",
+  "sku": "SKU-001",
+  "catalog_id": "meta_catalog_12345",
+  "meta_catalog_data": {
+    "id": "meta_catalog_12345",
+    "name": "Product Name",
+    "visibility": "published",
+    "availability": "in stock"
+  },
+  "local_sync_info": {
+    "sync_attempts": 0,
+    "last_error": null,
+    "last_attempt": "2024-01-15T10:30:00Z",
+    "last_success": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Batch Operations
+
+#### Batch Visibility Update
+```
+POST /crm-api/products/products/meta-batch-visibility/
+```
+Set visibility for multiple products at once.
+
+**Request Body:**
+```json
+{
+  "product_ids": [1, 2, 3],
+  "visibility": "published"  // or "hidden"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "updated_count": 3,
+  "visibility": "published",
+  "skipped": []
+}
+```
+
+#### Batch Sync
+```
+POST /crm-api/products/products/meta-batch-sync/
+```
+Sync multiple products to Meta Catalog at once.
+
+**Request Body:**
+```json
+{
+  "product_ids": [1, 2, 3]
+}
+```
+
+**Response:**
+```json
+{
+  "total": 3,
+  "success_count": 2,
+  "failure_count": 1,
+  "results": [
+    {"success": true, "product_id": 1, "product_name": "Product 1", "catalog_id": "meta_123"},
+    {"success": true, "product_id": 2, "product_name": "Product 2", "catalog_id": "meta_456"},
+    {"success": false, "product_id": 3, "product_name": "Product 3", "error": "No SKU"}
+  ]
+}
+```
 
 ## Troubleshooting
 

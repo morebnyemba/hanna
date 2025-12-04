@@ -426,3 +426,286 @@ class MetaCatalogService:
                     f"Response: {error_body}"
                 )
             raise
+
+    def set_product_visibility(self, product, visibility='published'):
+        """
+        Set the visibility of a product in Meta Catalog.
+        
+        Args:
+            product: The Product instance
+            visibility: 'published' (active/visible) or 'hidden' (inactive/hidden)
+        
+        Returns:
+            dict: Response from Meta API
+        
+        Raises:
+            ValueError: If product doesn't have a catalog ID or visibility is invalid
+        """
+        if not product.whatsapp_catalog_id:
+            raise ValueError("Product does not have a WhatsApp Catalog ID.")
+        
+        if visibility not in ['published', 'hidden']:
+            raise ValueError(f"Invalid visibility value: {visibility}. Must be 'published' or 'hidden'.")
+        
+        if not self.catalog_id:
+            raise ValueError("WhatsApp Catalog ID is not configured.")
+        
+        url = f"{self.base_url}/{self.catalog_id}/items_batch"
+        
+        data = {
+            "requests": [
+                {
+                    "method": "UPDATE",
+                    "retailer_id": product.sku,
+                    "data": {
+                        "visibility": visibility
+                    }
+                }
+            ]
+        }
+        
+        logger.info(
+            f"Setting product visibility in Meta Catalog: {product.name} "
+            f"(SKU: {product.sku}) to '{visibility}'"
+        )
+        logger.debug(f"Payload: {json.dumps(data, indent=2)}")
+        
+        response = requests.post(url, headers=self._get_headers(), json=data, timeout=30)
+        
+        try:
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Successfully set product visibility. Response: {result}")
+            return result
+        except requests.exceptions.HTTPError as e:
+            self._handle_batch_api_error(e, response, product, "visibility update")
+        except requests.exceptions.Timeout:
+            error_msg = "Request to Meta API timed out after 30 seconds"
+            logger.error(f"{error_msg} for product '{product.name}' visibility update")
+            raise ValueError(error_msg)
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network error connecting to Meta API: {str(e)}"
+            logger.error(f"{error_msg} for product '{product.name}' visibility update")
+            raise ValueError(error_msg) from e
+
+    def batch_update_products(self, updates):
+        """
+        Batch update multiple products in Meta Catalog.
+        
+        This is more efficient than individual updates when updating multiple products.
+        
+        Args:
+            updates: List of dicts with 'product' and 'data' keys.
+                     'product' is the Product instance
+                     'data' is a dict of fields to update (e.g., {'visibility': 'published', 'price': 10000})
+        
+        Returns:
+            dict: Response from Meta API with results for each product
+        
+        Example:
+            updates = [
+                {'product': product1, 'data': {'visibility': 'published'}},
+                {'product': product2, 'data': {'visibility': 'hidden', 'price': 5000}},
+            ]
+            result = service.batch_update_products(updates)
+        """
+        if not self.catalog_id:
+            raise ValueError("WhatsApp Catalog ID is not configured.")
+        
+        if not updates:
+            raise ValueError("No updates provided.")
+        
+        # Build batch requests
+        requests_list = []
+        for update in updates:
+            product = update.get('product')
+            data = update.get('data', {})
+            
+            if not product:
+                logger.warning("Skipping update with no product")
+                continue
+            
+            if not product.sku:
+                logger.warning(f"Skipping product '{product.name}' (ID: {product.id}) - no SKU")
+                continue
+            
+            request_item = {
+                "method": "UPDATE",
+                "retailer_id": product.sku,
+                "data": data
+            }
+            requests_list.append(request_item)
+        
+        if not requests_list:
+            raise ValueError("No valid updates to process.")
+        
+        url = f"{self.base_url}/{self.catalog_id}/items_batch"
+        payload = {"requests": requests_list}
+        
+        logger.info(f"Batch updating {len(requests_list)} products in Meta Catalog")
+        logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
+        
+        # Batch operations use a longer timeout (60s) to accommodate processing of multiple items
+        response = requests.post(url, headers=self._get_headers(), json=payload, timeout=60)
+        
+        try:
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Batch update completed. Response: {result}")
+            return result
+        except requests.exceptions.HTTPError as e:
+            self._log_and_raise_http_error(e, response, f"Batch update of {len(requests_list)} products")
+        except requests.exceptions.Timeout:
+            error_msg = "Request to Meta API timed out after 60 seconds"
+            logger.error(f"{error_msg} for batch update")
+            raise ValueError(error_msg)
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network error connecting to Meta API: {str(e)}"
+            logger.error(f"{error_msg} for batch update")
+            raise ValueError(error_msg) from e
+
+    def get_product_from_catalog(self, product):
+        """
+        Fetch product details from Meta Catalog.
+        
+        Args:
+            product: The Product instance
+        
+        Returns:
+            dict: Product data from Meta Catalog
+        
+        Raises:
+            ValueError: If product doesn't have a catalog ID
+        """
+        if not product.whatsapp_catalog_id:
+            raise ValueError("Product does not have a WhatsApp Catalog ID.")
+        
+        url = f"{self.base_url}/{product.whatsapp_catalog_id}"
+        
+        # Request common fields
+        params = {
+            "fields": "id,retailer_id,name,price,currency,availability,visibility,image_url,url,description,brand"
+        }
+        
+        logger.info(f"Fetching product from Meta Catalog: {product.name} (Catalog ID: {product.whatsapp_catalog_id})")
+        
+        response = requests.get(url, headers=self._get_headers(), params=params, timeout=30)
+        
+        try:
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Successfully fetched product from catalog. Response: {result}")
+            return result
+        except requests.exceptions.HTTPError as e:
+            self._log_and_raise_http_error(e, response, f"Fetch product '{product.name}'")
+        except requests.exceptions.Timeout:
+            error_msg = "Request to Meta API timed out after 30 seconds"
+            logger.error(f"{error_msg} for product '{product.name}'")
+            raise ValueError(error_msg)
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network error connecting to Meta API: {str(e)}"
+            logger.error(f"{error_msg} for product '{product.name}'")
+            raise ValueError(error_msg) from e
+
+    def sync_product_update(self, product):
+        """
+        Sync product updates to Meta Catalog. This is a convenience method that:
+        1. Creates the product if it doesn't exist in Meta Catalog
+        2. Updates the product if it already exists
+        
+        Args:
+            product: The Product instance
+        
+        Returns:
+            dict: Response from Meta API
+        """
+        if product.whatsapp_catalog_id:
+            return self.update_product_in_catalog(product)
+        else:
+            return self.create_product_in_catalog(product)
+
+    def _log_and_raise_http_error(self, exception, response, operation_desc):
+        """
+        Shared helper to log and raise HTTP errors from Meta API.
+        
+        Args:
+            exception: The original HTTPError exception
+            response: The HTTP response object
+            operation_desc: Human-readable description of the operation (e.g., "Batch update of 5 products")
+        
+        Raises:
+            ValueError: Always raises with formatted error message
+        """
+        try:
+            error_details = response.json()
+            error_body = json.dumps(error_details, indent=2)
+            error_message = error_details.get('error', {}).get('message', str(error_details))
+            error_code = error_details.get('error', {}).get('code', response.status_code)
+            
+            logger.error(
+                f"═══════════════════════════════════════════════════════\n"
+                f"META API ERROR - {operation_desc} Failed\n"
+                f"═══════════════════════════════════════════════════════\n"
+                f"Error Code: {error_code}\n"
+                f"Error Message: {error_message}\n"
+                f"HTTP Status: {response.status_code}\n"
+                f"Full Response:\n{error_body}\n"
+                f"═══════════════════════════════════════════════════════"
+            )
+            
+            raise ValueError(
+                f"Meta API Error ({error_code}): {error_message}"
+            ) from exception
+            
+        except (json.JSONDecodeError, KeyError, TypeError):
+            error_body = response.text
+            logger.error(
+                f"Meta API error (raw) for '{operation_desc}': "
+                f"HTTP {response.status_code}\n{error_body}"
+            )
+            raise ValueError(
+                f"Meta API Error (HTTP {response.status_code}): {error_body[:200]}..."
+            ) from exception
+
+    def _handle_batch_api_error(self, exception, response, product, operation):
+        """
+        Handle errors from batch API operations.
+        
+        Args:
+            exception: The original exception
+            response: The HTTP response object
+            product: The Product instance
+            operation: Description of the operation (e.g., "visibility update")
+        """
+        try:
+            error_details = response.json()
+            error_body = json.dumps(error_details, indent=2)
+            error_message = error_details.get('error', {}).get('message', str(error_details))
+            error_code = error_details.get('error', {}).get('code', response.status_code)
+            
+            logger.error(
+                f"═══════════════════════════════════════════════════════\n"
+                f"META API ERROR - {operation.title()} Failed\n"
+                f"═══════════════════════════════════════════════════════\n"
+                f"Product: {product.name} (ID: {product.id}, SKU: {product.sku})\n"
+                f"Error Code: {error_code}\n"
+                f"Error Message: {error_message}\n"
+                f"HTTP Status: {response.status_code}\n"
+                f"Full Response:\n{error_body}\n"
+                f"═══════════════════════════════════════════════════════"
+            )
+            
+            raise ValueError(
+                f"Meta API Error ({error_code}): {error_message}. "
+                f"Check logs for full details."
+            ) from exception
+            
+        except (ValueError, KeyError, json.JSONDecodeError):
+            error_body = response.text
+            logger.error(
+                f"Meta API {operation} error (raw) for '{product.name}': "
+                f"HTTP {response.status_code}\n{error_body}"
+            )
+            raise ValueError(
+                f"Meta API Error (HTTP {response.status_code}): {error_body[:200]}..."
+            ) from exception

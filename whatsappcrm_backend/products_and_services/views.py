@@ -29,10 +29,16 @@ from .serializers import (
     OrderDispatchSerializer,
     OrderItemScanSerializer,
     DispatchedItemSerializer,
+    # Meta catalog sync serializers
+    MetaCatalogVisibilitySerializer,
+    MetaCatalogBatchUpdateSerializer,
+    MetaCatalogProductStatusSerializer,
+    MetaCatalogSyncResultSerializer,
 )
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
 from users.permissions import IsRetailer, IsRetailerOrAdmin, IsRetailerBranch, IsRetailerBranchOrAdmin
+from meta_integration.catalog_service import MetaCatalogService
 
 User = get_user_model()
 
@@ -49,6 +55,328 @@ class ProductViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
+
+    @action(detail=True, methods=['post'], url_path='meta-sync')
+    def meta_sync(self, request, pk=None):
+        """
+        Manually trigger sync of a product to Meta Catalog.
+        Creates the product if it doesn't exist, updates if it does.
+        
+        POST /crm-api/products/products/{id}/meta-sync/
+        """
+        product = self.get_object()
+        
+        if not product.sku:
+            return Response(
+                {'error': 'Product does not have a SKU. SKU is required for Meta Catalog sync.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not product.is_active:
+            return Response(
+                {'error': 'Product is not active. Only active products can be synced to Meta Catalog.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = MetaCatalogService()
+            result = service.sync_product_update(product)
+            
+            # Refresh from DB to get updated catalog_id
+            product.refresh_from_db()
+            
+            return Response({
+                'success': True,
+                'product_id': product.id,
+                'product_name': product.name,
+                'sku': product.sku,
+                'catalog_id': product.whatsapp_catalog_id,
+                'message': 'Product synced to Meta Catalog successfully',
+                'meta_response': result
+            })
+        except ValueError as e:
+            return Response({
+                'success': False,
+                'product_id': product.id,
+                'product_name': product.name,
+                'sku': product.sku,
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'product_id': product.id,
+                'product_name': product.name,
+                'sku': product.sku,
+                'error': f'Unexpected error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'], url_path='meta-visibility')
+    def meta_visibility(self, request, pk=None):
+        """
+        Set the visibility of a product in Meta Catalog.
+        
+        POST /crm-api/products/products/{id}/meta-visibility/
+        Body: {
+            "visibility": "published"  // or "hidden"
+        }
+        """
+        product = self.get_object()
+        serializer = MetaCatalogVisibilitySerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not product.whatsapp_catalog_id:
+            return Response(
+                {'error': 'Product has not been synced to Meta Catalog yet. Sync the product first.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        visibility = serializer.validated_data['visibility']
+        
+        try:
+            service = MetaCatalogService()
+            result = service.set_product_visibility(product, visibility)
+            
+            return Response({
+                'success': True,
+                'product_id': product.id,
+                'product_name': product.name,
+                'sku': product.sku,
+                'visibility': visibility,
+                'message': f'Product visibility set to "{visibility}" successfully',
+                'meta_response': result
+            })
+        except ValueError as e:
+            return Response({
+                'success': False,
+                'product_id': product.id,
+                'product_name': product.name,
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'product_id': product.id,
+                'product_name': product.name,
+                'error': f'Unexpected error: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'], url_path='meta-status')
+    def meta_status(self, request, pk=None):
+        """
+        Get the current status of a product in Meta Catalog.
+        
+        GET /crm-api/products/products/{id}/meta-status/
+        """
+        product = self.get_object()
+        
+        if not product.whatsapp_catalog_id:
+            return Response({
+                'synced': False,
+                'product_id': product.id,
+                'product_name': product.name,
+                'sku': product.sku,
+                'message': 'Product has not been synced to Meta Catalog yet.',
+                'local_sync_info': {
+                    'sync_attempts': product.meta_sync_attempts,
+                    'last_error': product.meta_sync_last_error,
+                    'last_attempt': product.meta_sync_last_attempt,
+                    'last_success': product.meta_sync_last_success
+                }
+            })
+        
+        try:
+            service = MetaCatalogService()
+            meta_data = service.get_product_from_catalog(product)
+            
+            return Response({
+                'synced': True,
+                'product_id': product.id,
+                'product_name': product.name,
+                'sku': product.sku,
+                'catalog_id': product.whatsapp_catalog_id,
+                'meta_catalog_data': meta_data,
+                'local_sync_info': {
+                    'sync_attempts': product.meta_sync_attempts,
+                    'last_error': product.meta_sync_last_error,
+                    'last_attempt': product.meta_sync_last_attempt,
+                    'last_success': product.meta_sync_last_success
+                }
+            })
+        except ValueError as e:
+            return Response({
+                'synced': True,
+                'product_id': product.id,
+                'product_name': product.name,
+                'sku': product.sku,
+                'catalog_id': product.whatsapp_catalog_id,
+                'error': str(e),
+                'message': 'Product has a catalog ID but could not fetch status from Meta',
+                'local_sync_info': {
+                    'sync_attempts': product.meta_sync_attempts,
+                    'last_error': product.meta_sync_last_error,
+                    'last_attempt': product.meta_sync_last_attempt,
+                    'last_success': product.meta_sync_last_success
+                }
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @action(detail=False, methods=['post'], url_path='meta-batch-visibility')
+    def meta_batch_visibility(self, request):
+        """
+        Set visibility for multiple products in Meta Catalog.
+        
+        POST /crm-api/products/products/meta-batch-visibility/
+        Body: {
+            "product_ids": [1, 2, 3],
+            "visibility": "published"  // or "hidden"
+        }
+        """
+        serializer = MetaCatalogBatchUpdateSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        product_ids = serializer.validated_data['product_ids']
+        visibility = serializer.validated_data.get('visibility')
+        
+        if not visibility:
+            return Response(
+                {'error': 'visibility field is required for batch visibility update'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        products = Product.objects.filter(id__in=product_ids)
+        
+        # Build updates list
+        updates = []
+        skipped = []
+        
+        for product in products:
+            if not product.sku:
+                skipped.append({
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'reason': 'No SKU'
+                })
+                continue
+            
+            if not product.whatsapp_catalog_id:
+                skipped.append({
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'reason': 'Not synced to Meta Catalog'
+                })
+                continue
+            
+            updates.append({
+                'product': product,
+                'data': {'visibility': visibility}
+            })
+        
+        if not updates:
+            return Response({
+                'success': False,
+                'message': 'No products eligible for batch update',
+                'skipped': skipped
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            service = MetaCatalogService()
+            result = service.batch_update_products(updates)
+            
+            return Response({
+                'success': True,
+                'updated_count': len(updates),
+                'visibility': visibility,
+                'skipped': skipped,
+                'meta_response': result
+            })
+        except ValueError as e:
+            return Response({
+                'success': False,
+                'error': str(e),
+                'skipped': skipped
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': f'Unexpected error: {str(e)}',
+                'skipped': skipped
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'], url_path='meta-batch-sync')
+    def meta_batch_sync(self, request):
+        """
+        Sync multiple products to Meta Catalog.
+        
+        POST /crm-api/products/products/meta-batch-sync/
+        Body: {
+            "product_ids": [1, 2, 3]
+        }
+        """
+        serializer = MetaCatalogBatchUpdateSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        product_ids = serializer.validated_data['product_ids']
+        products = Product.objects.filter(id__in=product_ids)
+        results = []
+        
+        service = MetaCatalogService()
+        
+        for product in products:
+            if not product.sku:
+                results.append({
+                    'success': False,
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'sku': None,
+                    'error': 'No SKU'
+                })
+                continue
+            
+            if not product.is_active:
+                results.append({
+                    'success': False,
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'sku': product.sku,
+                    'error': 'Product is not active'
+                })
+                continue
+            
+            try:
+                result = service.sync_product_update(product)
+                product.refresh_from_db()
+                
+                results.append({
+                    'success': True,
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'sku': product.sku,
+                    'catalog_id': product.whatsapp_catalog_id,
+                    'message': 'Synced successfully'
+                })
+            except Exception as e:
+                results.append({
+                    'success': False,
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'sku': product.sku,
+                    'error': str(e)
+                })
+        
+        success_count = sum(1 for r in results if r.get('success'))
+        
+        return Response({
+            'total': len(results),
+            'success_count': success_count,
+            'failure_count': len(results) - success_count,
+            'results': results
+        })
 
 class ProductCategoryViewSet(viewsets.ModelViewSet):
     queryset = ProductCategory.objects.all()
