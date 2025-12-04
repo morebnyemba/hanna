@@ -466,3 +466,78 @@ class DispatchedItemSerializer(serializers.Serializer):
     quantity_ordered = serializers.IntegerField()
     is_fully_assigned = serializers.BooleanField()
     dispatch_timestamp = serializers.DateTimeField()
+
+
+# ============================================================================
+# Meta Catalog Sync Serializers
+# ============================================================================
+
+class MetaCatalogVisibilitySerializer(serializers.Serializer):
+    """
+    Serializer for setting product visibility in Meta Catalog.
+    """
+    visibility = serializers.ChoiceField(
+        choices=['published', 'hidden'],
+        required=True,
+        help_text="Product visibility: 'published' (active) or 'hidden' (inactive)"
+    )
+
+
+class MetaCatalogBatchUpdateSerializer(serializers.Serializer):
+    """
+    Serializer for batch updating products in Meta Catalog.
+    """
+    product_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=True,
+        help_text="List of product IDs to update"
+    )
+    visibility = serializers.ChoiceField(
+        choices=['published', 'hidden'],
+        required=False,
+        help_text="Product visibility: 'published' (active) or 'hidden' (inactive)"
+    )
+    
+    def validate_product_ids(self, value):
+        """Validate that all product IDs exist."""
+        if not value:
+            raise serializers.ValidationError("At least one product ID is required.")
+        
+        existing_ids = set(Product.objects.filter(id__in=value).values_list('id', flat=True))
+        missing_ids = set(value) - existing_ids
+        
+        if missing_ids:
+            raise serializers.ValidationError(
+                f"The following product IDs do not exist: {list(missing_ids)}"
+            )
+        return value
+
+
+class MetaCatalogProductStatusSerializer(serializers.Serializer):
+    """
+    Serializer for Meta Catalog product status response.
+    """
+    id = serializers.CharField(help_text="Meta Catalog product ID")
+    retailer_id = serializers.CharField(help_text="Product SKU")
+    name = serializers.CharField()
+    price = serializers.CharField(allow_null=True, required=False)
+    currency = serializers.CharField(allow_null=True, required=False)
+    availability = serializers.CharField(allow_null=True, required=False)
+    visibility = serializers.CharField(allow_null=True, required=False)
+    image_url = serializers.URLField(allow_null=True, required=False)
+    url = serializers.URLField(allow_null=True, required=False)
+    description = serializers.CharField(allow_null=True, required=False)
+    brand = serializers.CharField(allow_null=True, required=False)
+
+
+class MetaCatalogSyncResultSerializer(serializers.Serializer):
+    """
+    Serializer for sync operation results.
+    """
+    success = serializers.BooleanField()
+    product_id = serializers.IntegerField()
+    product_name = serializers.CharField()
+    sku = serializers.CharField(allow_null=True)
+    catalog_id = serializers.CharField(allow_null=True)
+    message = serializers.CharField()
+    error = serializers.CharField(allow_null=True, required=False)

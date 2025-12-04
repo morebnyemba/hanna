@@ -869,3 +869,385 @@ class PublicProductAccessTestCase(TestCase):
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['name'], 'Public Test Category')
+
+
+class MetaCatalogSyncAPITestCase(TestCase):
+    """
+    Test cases for Meta Catalog sync API endpoints.
+    """
+    
+    def setUp(self):
+        """Set up test client and test data"""
+        self.client = APIClient()
+        
+        # Create a test user
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+        self.client.force_authenticate(user=self.user)
+        
+        # Create test category
+        self.category = ProductCategory.objects.create(
+            name='Test Category',
+            description='Test category description'
+        )
+        
+        # Create test products
+        self.synced_product = Product.objects.create(
+            name='Synced Product',
+            sku='SYNCED-001',
+            description='Product synced to Meta',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True,
+            whatsapp_catalog_id='meta_catalog_12345'
+        )
+        
+        self.unsynced_product = Product.objects.create(
+            name='Unsynced Product',
+            sku='UNSYNCED-001',
+            description='Product not synced to Meta',
+            product_type='hardware',
+            category=self.category,
+            price=50.00,
+            currency='USD',
+            stock_quantity=5,
+            is_active=True
+        )
+        
+        self.no_sku_product = Product.objects.create(
+            name='No SKU Product',
+            description='Product without SKU',
+            product_type='service',
+            category=self.category,
+            price=25.00,
+            currency='USD',
+            is_active=True
+        )
+    
+    @patch('products_and_services.views.MetaCatalogService')
+    def test_meta_sync_action_success(self, mock_service_class):
+        """Test meta-sync action for a product"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.sync_product_update.return_value = {'id': 'new_catalog_id'}
+        
+        response = self.client.post(
+            f'/crm-api/products/products/{self.unsynced_product.id}/meta-sync/'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['product_id'], self.unsynced_product.id)
+        mock_service.sync_product_update.assert_called_once()
+    
+    @patch('products_and_services.views.MetaCatalogService')
+    def test_meta_sync_action_no_sku(self, mock_service_class):
+        """Test meta-sync action for a product without SKU"""
+        response = self.client.post(
+            f'/crm-api/products/products/{self.no_sku_product.id}/meta-sync/'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('SKU', response.data['error'])
+    
+    @patch('products_and_services.views.MetaCatalogService')
+    def test_meta_visibility_published(self, mock_service_class):
+        """Test setting product visibility to published"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.set_product_visibility.return_value = {'success': True}
+        
+        response = self.client.post(
+            f'/crm-api/products/products/{self.synced_product.id}/meta-visibility/',
+            {'visibility': 'published'},
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['visibility'], 'published')
+        mock_service.set_product_visibility.assert_called_once_with(
+            self.synced_product, 'published'
+        )
+    
+    @patch('products_and_services.views.MetaCatalogService')
+    def test_meta_visibility_hidden(self, mock_service_class):
+        """Test setting product visibility to hidden"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.set_product_visibility.return_value = {'success': True}
+        
+        response = self.client.post(
+            f'/crm-api/products/products/{self.synced_product.id}/meta-visibility/',
+            {'visibility': 'hidden'},
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['visibility'], 'hidden')
+    
+    def test_meta_visibility_invalid_value(self):
+        """Test setting product visibility with invalid value"""
+        response = self.client.post(
+            f'/crm-api/products/products/{self.synced_product.id}/meta-visibility/',
+            {'visibility': 'invalid'},
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_meta_visibility_unsynced_product(self):
+        """Test setting visibility for unsynced product"""
+        response = self.client.post(
+            f'/crm-api/products/products/{self.unsynced_product.id}/meta-visibility/',
+            {'visibility': 'published'},
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('not been synced', response.data['error'])
+    
+    @patch('products_and_services.views.MetaCatalogService')
+    def test_meta_status_synced_product(self, mock_service_class):
+        """Test getting meta status for a synced product"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.get_product_from_catalog.return_value = {
+            'id': 'meta_catalog_12345',
+            'name': 'Synced Product',
+            'visibility': 'published'
+        }
+        
+        response = self.client.get(
+            f'/crm-api/products/products/{self.synced_product.id}/meta-status/'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['synced'])
+        self.assertEqual(response.data['catalog_id'], 'meta_catalog_12345')
+        self.assertIn('meta_catalog_data', response.data)
+    
+    def test_meta_status_unsynced_product(self):
+        """Test getting meta status for an unsynced product"""
+        response = self.client.get(
+            f'/crm-api/products/products/{self.unsynced_product.id}/meta-status/'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['synced'])
+        self.assertIn('local_sync_info', response.data)
+    
+    @patch('products_and_services.views.MetaCatalogService')
+    def test_meta_batch_visibility(self, mock_service_class):
+        """Test batch visibility update for multiple products"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.batch_update_products.return_value = {'success': True}
+        
+        response = self.client.post(
+            '/crm-api/products/products/meta-batch-visibility/',
+            {
+                'product_ids': [self.synced_product.id],
+                'visibility': 'published'
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['visibility'], 'published')
+    
+    def test_meta_batch_visibility_no_visibility(self):
+        """Test batch visibility without visibility field"""
+        response = self.client.post(
+            '/crm-api/products/products/meta-batch-visibility/',
+            {
+                'product_ids': [self.synced_product.id]
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    @patch('products_and_services.views.MetaCatalogService')
+    def test_meta_batch_sync(self, mock_service_class):
+        """Test batch sync for multiple products"""
+        mock_service = MagicMock()
+        mock_service_class.return_value = mock_service
+        mock_service.sync_product_update.return_value = {'id': 'new_catalog_id'}
+        
+        response = self.client.post(
+            '/crm-api/products/products/meta-batch-sync/',
+            {
+                'product_ids': [self.synced_product.id, self.unsynced_product.id]
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', response.data)
+        self.assertIn('success_count', response.data)
+    
+    def test_meta_batch_sync_empty_list(self):
+        """Test batch sync with empty product list"""
+        response = self.client.post(
+            '/crm-api/products/products/meta-batch-sync/',
+            {
+                'product_ids': []
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_meta_sync_unauthenticated(self):
+        """Test that unauthenticated users cannot sync products"""
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.post(
+            f'/crm-api/products/products/{self.synced_product.id}/meta-sync/'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class MetaCatalogServiceMethodsTestCase(TestCase):
+    """
+    Test cases for MetaCatalogService methods.
+    """
+    
+    def setUp(self):
+        """Set up test data"""
+        self.category = ProductCategory.objects.create(
+            name='Test Category',
+            description='Test category description'
+        )
+        
+        self.product = Product.objects.create(
+            name='Test Product',
+            sku='TEST-001',
+            description='Test product',
+            product_type='hardware',
+            category=self.category,
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True,
+            whatsapp_catalog_id='meta_catalog_12345'
+        )
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig.objects.get_active_config')
+    @patch('meta_integration.catalog_service.requests.post')
+    def test_set_product_visibility_published(self, mock_post, mock_get_config):
+        """Test setting product visibility to published"""
+        from meta_integration.catalog_service import MetaCatalogService
+        
+        # Setup mock config
+        mock_config = MagicMock()
+        mock_config.api_version = 'v19.0'
+        mock_config.access_token = 'test_token'
+        mock_config.catalog_id = 'test_catalog_id'
+        mock_get_config.return_value = mock_config
+        
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {'success': True}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+        
+        service = MetaCatalogService()
+        result = service.set_product_visibility(self.product, 'published')
+        
+        self.assertEqual(result, {'success': True})
+        mock_post.assert_called_once()
+        
+        # Verify the payload contains visibility
+        call_kwargs = mock_post.call_args[1]
+        self.assertIn('json', call_kwargs)
+        requests_list = call_kwargs['json']['requests']
+        self.assertEqual(len(requests_list), 1)
+        self.assertEqual(requests_list[0]['data']['visibility'], 'published')
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig.objects.get_active_config')
+    @patch('meta_integration.catalog_service.requests.get')
+    def test_get_product_from_catalog(self, mock_get, mock_get_config):
+        """Test getting product from Meta catalog"""
+        from meta_integration.catalog_service import MetaCatalogService
+        
+        # Setup mock config
+        mock_config = MagicMock()
+        mock_config.api_version = 'v19.0'
+        mock_config.access_token = 'test_token'
+        mock_config.catalog_id = 'test_catalog_id'
+        mock_get_config.return_value = mock_config
+        
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            'id': 'meta_catalog_12345',
+            'name': 'Test Product',
+            'visibility': 'published'
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+        
+        service = MetaCatalogService()
+        result = service.get_product_from_catalog(self.product)
+        
+        self.assertEqual(result['id'], 'meta_catalog_12345')
+        mock_get.assert_called_once()
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig.objects.get_active_config')
+    def test_set_product_visibility_invalid(self, mock_get_config):
+        """Test setting product visibility with invalid value"""
+        from meta_integration.catalog_service import MetaCatalogService
+        
+        mock_config = MagicMock()
+        mock_config.api_version = 'v19.0'
+        mock_config.access_token = 'test_token'
+        mock_config.catalog_id = 'test_catalog_id'
+        mock_get_config.return_value = mock_config
+        
+        service = MetaCatalogService()
+        
+        with self.assertRaises(ValueError) as context:
+            service.set_product_visibility(self.product, 'invalid_visibility')
+        
+        self.assertIn('Invalid visibility', str(context.exception))
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig.objects.get_active_config')
+    def test_set_product_visibility_no_catalog_id(self, mock_get_config):
+        """Test setting visibility for product without catalog ID"""
+        from meta_integration.catalog_service import MetaCatalogService
+        
+        mock_config = MagicMock()
+        mock_config.api_version = 'v19.0'
+        mock_config.access_token = 'test_token'
+        mock_config.catalog_id = 'test_catalog_id'
+        mock_get_config.return_value = mock_config
+        
+        # Create product without catalog ID
+        product_no_catalog = Product.objects.create(
+            name='No Catalog Product',
+            sku='NO-CAT-001',
+            product_type='hardware',
+            category=self.category,
+            price=50.00,
+            is_active=True
+        )
+        
+        service = MetaCatalogService()
+        
+        with self.assertRaises(ValueError) as context:
+            service.set_product_visibility(product_no_catalog, 'published')
+        
+        self.assertIn('Catalog ID', str(context.exception))
