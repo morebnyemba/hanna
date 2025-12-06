@@ -1942,11 +1942,19 @@ def process_order_from_catalog(msg_data: dict, contact: Contact, app_config) -> 
         products = Product.objects.filter(sku__in=skus)
         product_map = {p.sku: p for p in products}
         
-        # Generate unique order number
-        while True:
-            order_num = f"WA-{random.randint(10000, 99999)}"
-            if not Order.objects.filter(order_number=order_num).exists():
+        # Generate unique order number with retry limit
+        import uuid as uuid_module
+        order_num = None
+        max_retries = 100
+        for _ in range(max_retries):
+            candidate = f"WA-{random.randint(10000, 99999)}"
+            if not Order.objects.filter(order_number=candidate).exists():
+                order_num = candidate
                 break
+        
+        if not order_num:
+            # Fall back to UUID-based number if random attempts exhausted
+            order_num = f"WA-{str(uuid_module.uuid4().hex[:8]).upper()}"
         
         # Calculate total from the items
         total_amount = Decimal('0.00')

@@ -6,14 +6,21 @@ from rest_framework.response import Response
 from rest_framework import serializers
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
+from django.urls import reverse
 import logging
 import json
+import uuid
+from decimal import Decimal, InvalidOperation
 
 from .models import PaynowConfig
 from .serializers import PaynowConfigSerializer
 from .services import PaynowService
+from customer_data.models import Order, Payment, PaymentStatus
 
 logger = logging.getLogger(__name__)
+
+# URL path constant for IPN callback - used in initiate_whatsapp_payment and paynow_ipn_handler
+PAYNOW_IPN_URL_PATH = '/api/paynow/ipn/'
 
 
 class PaynowConfigViewSet(viewsets.ModelViewSet):
@@ -64,9 +71,6 @@ def initiate_whatsapp_payment(request):
     - 200 with payment details on success
     - 400 with error on failure
     """
-    from customer_data.models import Order, Payment, PaymentStatus
-    from decimal import Decimal, InvalidOperation
-    
     try:
         data = request.data
         
@@ -112,12 +116,10 @@ def initiate_whatsapp_payment(request):
             logger.warning(f"Order {order_number} not found, proceeding with payment anyway.")
         
         # Create payment reference
-        import uuid
         payment_reference = f"PAY-{order_number}-{uuid.uuid4().hex[:8].upper()}"
         
-        # Initialize Paynow service
-        ipn_callback_url = '/api/paynow/ipn/'  # This should match your IPN endpoint
-        paynow_service = PaynowService(ipn_callback_url=ipn_callback_url)
+        # Initialize Paynow service using the constant
+        paynow_service = PaynowService(ipn_callback_url=PAYNOW_IPN_URL_PATH)
         
         # Create Payment record first
         payment = Payment.objects.create(
@@ -192,8 +194,6 @@ def paynow_ipn_handler(request):
     Instant Payment Notification (IPN) handler for Paynow callbacks.
     Paynow sends status updates to this endpoint when payment status changes.
     """
-    from customer_data.models import Payment, PaymentStatus, Order
-    
     try:
         # Paynow sends data as form-encoded
         ipn_data = request.POST.dict() if request.POST else request.data
@@ -212,9 +212,8 @@ def paynow_ipn_handler(request):
             logger.warning("IPN received without reference")
             return HttpResponse("Missing reference", status=400)
         
-        # Verify hash
-        ipn_callback_url = '/api/paynow/ipn/'
-        paynow_service = PaynowService(ipn_callback_url=ipn_callback_url)
+        # Verify hash using the constant
+        paynow_service = PaynowService(ipn_callback_url=PAYNOW_IPN_URL_PATH)
         
         if not paynow_service.verify_ipn_hash(ipn_data):
             logger.error(f"IPN hash verification failed for reference: {reference}")

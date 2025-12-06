@@ -2,6 +2,7 @@
 
 import logging
 import random
+import uuid
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, List
@@ -669,11 +670,18 @@ def process_cart_order(contact: Contact, context: Dict[str, Any], params: Dict[s
     
     try:
         with transaction.atomic():
-            # Generate order number
-            while True:
-                order_num = f"WA-{random.randint(10000, 99999)}"
-                if not Order.objects.filter(order_number=order_num).exists():
+            # Generate order number with retry limit
+            order_num = None
+            max_retries = 100
+            for _ in range(max_retries):
+                candidate = f"WA-{random.randint(10000, 99999)}"
+                if not Order.objects.filter(order_number=candidate).exists():
+                    order_num = candidate
                     break
+            
+            if not order_num:
+                # Fall back to UUID-based number if random attempts exhausted
+                order_num = f"WA-{str(uuid.uuid4().hex[:8]).upper()}"
             
             # Calculate total from the items
             total_amount = sum(
