@@ -390,6 +390,11 @@ class MetaWebhookAPIView(View):
         if message_type == "interactive" and msg_data.get("interactive", {}).get("type") == "nfm_reply":
             self._handle_flow_response(msg_data, contact, active_config, log_entry)
             return
+        
+        # Check if this is an order message from WhatsApp catalog
+        if message_type == "order":
+            self._handle_order_message(msg_data, contact, active_config, log_entry)
+            return
 
         # --- Start of _handle_message logic (ensure this aligns with your intent) ---
         message_timestamp_str = msg_data.get("timestamp")
@@ -460,6 +465,22 @@ class MetaWebhookAPIView(View):
         else:
             self._save_log(log_entry, 'failed', notes)
             logger.error(f"Flow response processing failed: {notes}")
+
+    def _handle_order_message(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog):
+        """
+        Handles order messages from WhatsApp catalog.
+        Processes the cart, creates an order, and initiates payment flow.
+        """
+        from flows.services import process_order_from_catalog
+        
+        success, notes = process_order_from_catalog(msg_data, contact, active_config)
+        
+        if success:
+            self._save_log(log_entry, 'processed', notes)
+            logger.info(f"Order message processed successfully: {notes}")
+        else:
+            self._save_log(log_entry, 'failed', notes)
+            logger.error(f"Order message processing failed: {notes}")
 
     def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig, show_typing_indicator: bool = True):
         """

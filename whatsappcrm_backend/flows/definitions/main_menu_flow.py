@@ -162,10 +162,28 @@ MAIN_MENU_FLOW = {
         },
         {
             "name": "switch_to_purchase_flow",
-            "type": "switch_flow",
+            "type": "action",
             "config": {
-                "target_flow_name": "lead_generation",
-                "initial_context_template": {"source_flow": "main_menu"}
+                "actions_to_run": [
+                    {
+                        "action_type": "send_catalog_message",
+                        "params_template": {
+                            "header_text": "🛒 Pfungwa Product Catalog",
+                            "body_text": "Browse our products below and add items to your cart. When you're ready, tap 'View Cart' to complete your order.\n\nYou can also type 'shop' to see a text-based product list.",
+                            "footer_text": "Tap on products to view details"
+                        }
+                    }
+                ]
+            },
+            "transitions": [
+                {"to_step": "end_after_catalog_sent", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "end_after_catalog_sent",
+            "type": "end_flow",
+            "config": {
+                # Catalog was sent, flow ends. User can browse and place orders through the catalog.
             },
             "transitions": []
         },
