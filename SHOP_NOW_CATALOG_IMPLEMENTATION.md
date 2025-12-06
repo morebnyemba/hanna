@@ -39,7 +39,7 @@ When a user selects "🛒 Shop Products" from the main menu, the flow executes t
 }
 ```
 
-**Action Implementation**: `whatsappcrm_backend/flows/actions.py::send_catalog_message()`
+**Action Implementation**: `whatsappcrm_backend/flows/actions.py - send_catalog_message()`
 
 This action:
 - Retrieves the active MetaAppConfig and catalog_id
@@ -49,14 +49,14 @@ This action:
 
 ### 2. Process Cart Order
 
-**Webhook Handler**: `whatsappcrm_backend/meta_integration/views.py::_handle_message()`
+**Webhook Handler**: `whatsappcrm_backend/meta_integration/views.py - _handle_message()`
 
 When a user submits their cart from WhatsApp catalog:
 - The webhook receives a message of type "order"
 - The handler calls `_handle_order_message()`
 - Which delegates to `process_order_from_catalog()` in flows/services.py
 
-**Order Processing**: `whatsappcrm_backend/flows/services.py::process_order_from_catalog()`
+**Order Processing**: `whatsappcrm_backend/flows/services.py - process_order_from_catalog()`
 
 This function:
 1. Parses the order data from the WhatsApp message
@@ -75,13 +75,13 @@ This function:
 8. Sends a confirmation message to the user
 9. Initiates the payment flow (if available)
 
-**Alternative Action**: `whatsappcrm_backend/flows/actions.py::process_cart_order()`
+**Alternative Action**: `whatsappcrm_backend/flows/actions.py - process_cart_order()`
 
 This is a flow action that can be called from within conversational flows to process cart data stored in context. It performs similar operations to `process_order_from_catalog()` but works with cart data from the flow context rather than directly from webhook messages.
 
 ### 3. Payment Initiation Flow with Endpoint
 
-**Flow Action**: `whatsappcrm_backend/flows/actions.py::initiate_payment_flow()`
+**Flow Action**: `whatsappcrm_backend/flows/actions.py - initiate_payment_flow()`
 
 This action:
 1. Retrieves order data from context
@@ -93,7 +93,7 @@ This action:
    - Flow action payload with payment screen data
 4. Sends the interactive flow message to the user
 
-**Payment Endpoint**: `whatsappcrm_backend/paynow_integration/views.py::initiate_whatsapp_payment()`
+**Payment Endpoint**: `whatsappcrm_backend/paynow_integration/views.py - initiate_whatsapp_payment()`
 
 URL: `/api/crm-api/paynow/initiate-payment/`
 
@@ -106,7 +106,7 @@ This endpoint:
 - Returns payment details and instructions
 - Updates order payment status
 
-**Payment Callback**: `whatsappcrm_backend/paynow_integration/views.py::paynow_ipn_handler()`
+**Payment Callback**: `whatsappcrm_backend/paynow_integration/views.py - paynow_ipn_handler()`
 
 URL: `/api/crm-api/paynow/ipn/`
 
