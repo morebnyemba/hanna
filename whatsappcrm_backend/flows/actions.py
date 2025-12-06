@@ -602,12 +602,15 @@ def send_catalog_message(contact: Contact, context: Dict[str, Any], params: Dict
         "type": "catalog_message",
         "body": {"text": body_text},
         "action": {
-            "name": "catalog_message",
-            "parameters": {
-                "thumbnail_product_retailer_id": thumbnail_product_retailer_id
-            } if thumbnail_product_retailer_id else {}
+            "name": "catalog_message"
         }
     }
+    
+    # Only add parameters if thumbnail is specified
+    if thumbnail_product_retailer_id:
+        interactive_payload["action"]["parameters"] = {
+            "thumbnail_product_retailer_id": thumbnail_product_retailer_id
+        }
     
     if header_text:
         interactive_payload["header"] = {"type": "text", "text": header_text}
