@@ -1893,3 +1893,174 @@ def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config)
     except Exception as e:
         logger.error(f"Error handling flow response: {e}", exc_info=True)
         return False, f'Exception processing flow: {str(e)[:200]}'
+
+
+def process_order_from_catalog(msg_data: dict, contact: Contact, app_config) -> tuple[bool, str]:
+    """
+    Processes order messages received from WhatsApp catalog.
+    
+    When a user places an order via the WhatsApp catalog, this function:
+    1. Parses the order data from the message
+    2. Creates an Order and OrderItems in the database
+    3. Sends a confirmation message
+    4. Initiates a payment flow
+    
+    Args:
+        msg_data: The message data from Meta webhook containing the order
+        contact: The Contact instance who placed the order
+        app_config: The MetaAppConfig instance
+        
+    Returns:
+        tuple: (success: bool, notes: str) indicating processing result
+    """
+    from customer_data.models import CustomerProfile, Order, OrderItem
+    from products_and_services.models import Product
+    from meta_integration.utils import send_whatsapp_message
+    from .models import WhatsAppFlow
+    from decimal import Decimal
+    import random
+    
+    try:
+        order_data = msg_data.get("order", {})
+        catalog_id = order_data.get("catalog_id")
+        product_items = order_data.get("product_items", [])
+        text_message = order_data.get("text", "")  # Optional message from customer
+        
+        if not product_items:
+            logger.warning(f"Order message has no product items: {msg_data}")
+            return False, 'No product items in order'
+        
+        logger.info(f"Processing WhatsApp catalog order for contact {contact.id} with {len(product_items)} items.")
+        
+        # Get or create customer profile
+        customer_profile, created = CustomerProfile.objects.get_or_create(contact=contact)
+        if created:
+            logger.info(f"Created new CustomerProfile for contact {contact.id}")
+        
+        # Get products by their retailer_id (SKU)
+        skus = [item.get('product_retailer_id') for item in product_items if item.get('product_retailer_id')]
+        products = Product.objects.filter(sku__in=skus)
+        product_map = {p.sku: p for p in products}
+        
+        # Generate unique order number
+        while True:
+            order_num = f"WA-{random.randint(10000, 99999)}"
+            if not Order.objects.filter(order_number=order_num).exists():
+                break
+        
+        # Calculate total from the items
+        total_amount = Decimal('0.00')
+        currency = 'USD'
+        for item in product_items:
+            item_price = Decimal(str(item.get('item_price', '0')))
+            quantity = int(item.get('quantity', 1))
+            total_amount += item_price * quantity
+            currency = item.get('currency', 'USD')
+        
+        # Create the order
+        order = Order.objects.create(
+            customer=customer_profile,
+            name=f"WhatsApp Catalog Order for {contact.name or contact.whatsapp_id}",
+            order_number=order_num,
+            stage=Order.Stage.CLOSED_WON,
+            payment_status=Order.PaymentStatus.PENDING,
+            amount=total_amount,
+            currency=currency,
+            notes=f"Order placed via WhatsApp Catalog.\nCatalog ID: {catalog_id}\nCustomer Note: {text_message}",
+            assigned_agent=customer_profile.assigned_agent
+        )
+        
+        # Create order items
+        order_items_created = []
+        for item in product_items:
+            sku = item.get('product_retailer_id')
+            quantity = int(item.get('quantity', 1))
+            item_price = Decimal(str(item.get('item_price', '0')))
+            
+            product = product_map.get(sku)
+            if product:
+                order_item = OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    quantity=quantity,
+                    unit_price=item_price or product.price,
+                    total_amount=(item_price or product.price) * quantity
+                )
+                order_items_created.append(order_item)
+            else:
+                logger.warning(f"Product with SKU '{sku}' not found in database for WhatsApp order.")
+        
+        logger.info(f"Created Order {order.order_number} with {len(order_items_created)} items for contact {contact.id}.")
+        
+        # Send confirmation message
+        confirmation_message = (
+            f"🎉 *Thank you for your order!*\n\n"
+            f"📦 *Order Number:* {order.order_number}\n\n"
+            f"*Items:*\n"
+        )
+        for item in product_items:
+            product = product_map.get(item.get('product_retailer_id'))
+            product_name = product.name if product else item.get('product_retailer_id', 'Unknown Product')
+            quantity = item.get('quantity', 1)
+            item_price = item.get('item_price', 0)
+            confirmation_message += f"• {quantity}x {product_name} - ${item_price}\n"
+        
+        confirmation_message += f"\n*Total:* ${total_amount} {currency}\n\n"
+        confirmation_message += "Our team will contact you shortly to complete your payment and arrange delivery."
+        
+        send_whatsapp_message(
+            to_phone_number=contact.whatsapp_id,
+            message_type='text',
+            data={'body': confirmation_message}
+        )
+        
+        # Try to initiate payment flow if one exists
+        try:
+            whatsapp_flow = WhatsAppFlow.objects.filter(
+                meta_app_config=app_config,
+                is_active=True,
+                sync_status='published',
+                name__icontains='payment'
+            ).first()
+            
+            if whatsapp_flow and whatsapp_flow.flow_id:
+                # Send payment flow message
+                flow_token = f"payment_{order.order_number}_{contact.id}"
+                payment_flow_data = {
+                    "type": "flow",
+                    "header": {"type": "text", "text": "Complete Your Payment"},
+                    "body": {"text": f"Please complete the payment for your order #{order.order_number}.\n\nTotal Amount: ${total_amount} {currency}"},
+                    "action": {
+                        "name": "flow",
+                        "parameters": {
+                            "flow_message_version": "3",
+                            "flow_token": flow_token,
+                            "flow_id": whatsapp_flow.flow_id,
+                            "flow_cta": "Pay Now",
+                            "flow_action": "navigate",
+                            "flow_action_payload": {
+                                "screen": "PAYMENT",
+                                "data": {
+                                    "order_number": order.order_number,
+                                    "amount": str(total_amount),
+                                    "currency": currency
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                send_whatsapp_message(
+                    to_phone_number=contact.whatsapp_id,
+                    message_type='interactive',
+                    data=payment_flow_data
+                )
+                logger.info(f"Sent payment flow message for order {order.order_number}")
+        except Exception as e:
+            logger.warning(f"Could not send payment flow: {e}. Order was still created successfully.")
+        
+        return True, f'Order {order.order_number} created with {len(order_items_created)} items.'
+        
+    except Exception as e:
+        logger.error(f"Error processing catalog order: {e}", exc_info=True)
+        return False, f'Exception processing order: {str(e)[:200]}'

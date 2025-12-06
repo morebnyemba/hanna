@@ -556,6 +556,273 @@ def normalize_order_number(contact: Contact, context: Dict[str, Any], params: Di
 
     return []
 
+
+def send_catalog_message(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Sends a WhatsApp catalog message that allows users to browse and shop from the product catalog.
+    This opens the WhatsApp catalog UI for the user.
+
+    Expected params:
+    - header_text (str, optional): Text to display in the header.
+    - body_text (str): Main text body of the message.
+    - footer_text (str, optional): Footer text.
+    - thumbnail_product_retailer_id (str, optional): SKU of the product to show as thumbnail.
+    """
+    from .services import _resolve_value
+    from meta_integration.models import MetaAppConfig
+    
+    body_text = params.get('body_text', 'Browse our product catalog and shop now!')
+    header_text = params.get('header_text')
+    footer_text = params.get('footer_text')
+    thumbnail_product_retailer_id = params.get('thumbnail_product_retailer_id')
+    
+    # Resolve templates
+    body_text = _resolve_value(body_text, context, contact)
+    if header_text:
+        header_text = _resolve_value(header_text, context, contact)
+    if footer_text:
+        footer_text = _resolve_value(footer_text, context, contact)
+    if thumbnail_product_retailer_id:
+        thumbnail_product_retailer_id = _resolve_value(thumbnail_product_retailer_id, context, contact)
+    
+    # Get catalog ID from active config
+    try:
+        active_config = MetaAppConfig.objects.get_active_config()
+        catalog_id = active_config.catalog_id
+        if not catalog_id:
+            logger.error(f"Cannot send catalog message: No catalog_id configured for active MetaAppConfig.")
+            return []
+    except MetaAppConfig.DoesNotExist:
+        logger.error(f"Cannot send catalog message: No active MetaAppConfig found.")
+        return []
+
+    # Build the interactive catalog message payload
+    interactive_payload = {
+        "type": "catalog_message",
+        "body": {"text": body_text},
+        "action": {
+            "name": "catalog_message",
+            "parameters": {
+                "thumbnail_product_retailer_id": thumbnail_product_retailer_id
+            } if thumbnail_product_retailer_id else {}
+        }
+    }
+    
+    if header_text:
+        interactive_payload["header"] = {"type": "text", "text": header_text}
+    if footer_text:
+        interactive_payload["footer"] = {"text": footer_text}
+
+    actions_to_perform = [{
+        'type': 'send_whatsapp_message',
+        'recipient_wa_id': contact.whatsapp_id,
+        'message_type': 'interactive',
+        'data': interactive_payload
+    }]
+    
+    logger.info(f"Queued catalog message for contact {contact.id}.")
+    return actions_to_perform
+
+
+def process_cart_order(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Processes a cart/order received from WhatsApp catalog.
+    The cart data should be in the context under the variable specified.
+    Creates an Order and associated OrderItems from the cart.
+
+    Expected params:
+    - cart_context_var (str): Context variable containing the cart data from WhatsApp.
+    - order_name_template (str, optional): Template for order name.
+    - save_order_to (str, optional): Context variable to save created order info.
+    """
+    from .services import _resolve_value
+    from django.db import transaction
+    from django.forms.models import model_to_dict
+    
+    cart_var = params.get('cart_context_var', 'whatsapp_order_data')
+    name_template = params.get('order_name_template', 'WhatsApp Order for {{ contact.name }}')
+    save_to_var = params.get('save_order_to')
+    
+    cart_data = context.get(cart_var)
+    if not cart_data:
+        logger.warning(f"No cart data found in context variable '{cart_var}' for contact {contact.id}.")
+        return []
+    
+    # Extract product items from the WhatsApp order structure
+    # WhatsApp order format: {"product_items": [{"product_retailer_id": "SKU", "quantity": 1, "item_price": 100, "currency": "USD"}]}
+    product_items = cart_data.get('product_items', [])
+    if not product_items:
+        logger.warning(f"No product items in cart data for contact {contact.id}.")
+        return []
+    
+    order_name = _resolve_value(name_template, context, contact)
+    customer_profile, _ = CustomerProfile.objects.get_or_create(contact=contact)
+    
+    # Get products by their retailer_id (SKU)
+    skus = [item.get('product_retailer_id') for item in product_items if item.get('product_retailer_id')]
+    products = Product.objects.filter(sku__in=skus)
+    product_map = {p.sku: p for p in products}
+    
+    if not products.exists():
+        logger.warning(f"No valid products found for SKUs {skus} in WhatsApp order.")
+        return []
+    
+    try:
+        with transaction.atomic():
+            # Generate order number
+            while True:
+                order_num = f"WA-{random.randint(10000, 99999)}"
+                if not Order.objects.filter(order_number=order_num).exists():
+                    break
+            
+            # Calculate total from the items
+            total_amount = sum(
+                Decimal(str(item.get('item_price', 0))) * item.get('quantity', 1)
+                for item in product_items
+            )
+            
+            order = Order.objects.create(
+                customer=customer_profile,
+                name=order_name,
+                order_number=order_num,
+                stage=Order.Stage.CLOSED_WON,
+                payment_status=Order.PaymentStatus.PENDING,
+                amount=total_amount,
+                currency=product_items[0].get('currency', 'USD') if product_items else 'USD',
+                notes=f"Order placed via WhatsApp Catalog. Contact: {contact.whatsapp_id}",
+                assigned_agent=customer_profile.assigned_agent
+            )
+            
+            order_items_to_create = []
+            for item in product_items:
+                sku = item.get('product_retailer_id')
+                quantity = item.get('quantity', 1)
+                item_price = Decimal(str(item.get('item_price', 0)))
+                
+                if sku in product_map:
+                    product = product_map[sku]
+                    order_items_to_create.append(OrderItem(
+                        order=order,
+                        product=product,
+                        quantity=quantity,
+                        unit_price=item_price or product.price,
+                        total_amount=(item_price or product.price) * quantity
+                    ))
+            
+            if order_items_to_create:
+                OrderItem.objects.bulk_create(order_items_to_create)
+            
+            logger.info(f"Created Order (ID: {order.id}, Number: {order_num}) with {len(order_items_to_create)} items from WhatsApp catalog for contact {contact.id}.")
+            
+            if save_to_var:
+                context[save_to_var] = {
+                    'id': str(order.id),
+                    'order_number': order.order_number,
+                    'name': order.name,
+                    'amount': str(order.amount),
+                    'currency': order.currency
+                }
+    
+    except Exception as e:
+        logger.error(f"Error processing WhatsApp cart order for contact {contact.id}: {e}", exc_info=True)
+    
+    return []
+
+
+def initiate_payment_flow(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Initiates a payment flow by sending a WhatsApp flow message for payment.
+    Uses the configured WhatsApp payment flow.
+
+    Expected params:
+    - order_context_var (str): Context variable containing order details.
+    - flow_name (str, optional): Name of the WhatsApp flow to use for payment. Defaults to 'payment_flow'.
+    - header_text (str, optional): Header text for the flow message.
+    - body_text_template (str, optional): Body text template.
+    - cta_text (str, optional): Call-to-action button text.
+    """
+    from .services import _resolve_value
+    from .models import WhatsAppFlow
+    from meta_integration.models import MetaAppConfig
+    
+    order_var = params.get('order_context_var', 'created_order')
+    flow_name = params.get('flow_name', 'payment_flow')
+    header_text = params.get('header_text', 'Complete Your Payment')
+    body_text_template = params.get('body_text_template', 
+        'Please complete the payment for your order #{{ order.order_number }}.\n\nTotal Amount: ${{ order.amount }}')
+    cta_text = params.get('cta_text', 'Pay Now')
+    
+    order_data = context.get(order_var)
+    if not order_data:
+        logger.warning(f"No order data found in context variable '{order_var}' for contact {contact.id}.")
+        return []
+    
+    # Resolve body text with order data in context
+    context['order'] = order_data
+    body_text = _resolve_value(body_text_template, context, contact)
+    header_text = _resolve_value(header_text, context, contact)
+    
+    # Get the WhatsApp flow
+    try:
+        active_config = MetaAppConfig.objects.get_active_config()
+        whatsapp_flow = WhatsAppFlow.objects.filter(
+            name=flow_name,
+            meta_app_config=active_config,
+            is_active=True,
+            sync_status='published'
+        ).first()
+        
+        if not whatsapp_flow or not whatsapp_flow.flow_id:
+            logger.warning(f"No published WhatsApp flow found with name '{flow_name}'. Sending text message instead.")
+            # Fallback to text message with payment instructions
+            return [{
+                'type': 'send_whatsapp_message',
+                'recipient_wa_id': contact.whatsapp_id,
+                'message_type': 'text',
+                'data': {'body': f"{body_text}\n\nPlease contact our team to complete your payment."}
+            }]
+    except MetaAppConfig.DoesNotExist:
+        logger.error("No active MetaAppConfig found for payment flow.")
+        return []
+    
+    # Build the interactive flow message
+    flow_token = f"payment_{order_data.get('order_number', '')}_{contact.id}"
+    
+    interactive_payload = {
+        "type": "flow",
+        "header": {"type": "text", "text": header_text},
+        "body": {"text": body_text},
+        "action": {
+            "name": "flow",
+            "parameters": {
+                "flow_message_version": "3",
+                "flow_token": flow_token,
+                "flow_id": whatsapp_flow.flow_id,
+                "flow_cta": cta_text,
+                "flow_action": "navigate",
+                "flow_action_payload": {
+                    "screen": "PAYMENT",
+                    "data": {
+                        "order_number": order_data.get('order_number', ''),
+                        "amount": str(order_data.get('amount', '0')),
+                        "currency": order_data.get('currency', 'USD')
+                    }
+                }
+            }
+        }
+    }
+    
+    actions_to_perform = [{
+        'type': 'send_whatsapp_message',
+        'recipient_wa_id': contact.whatsapp_id,
+        'message_type': 'interactive',
+        'data': interactive_payload
+    }]
+    
+    logger.info(f"Queued payment flow message for contact {contact.id}, order {order_data.get('order_number')}.")
+    return actions_to_perform
+
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
@@ -569,3 +836,6 @@ flow_action_registry.register('create_order_from_cart', create_order_from_cart)
 flow_action_registry.register('generate_unique_assessment_id', generate_unique_assessment_id_action)
 flow_action_registry.register('create_placeholder_order', create_placeholder_order)
 flow_action_registry.register('normalize_order_number', normalize_order_number)
+flow_action_registry.register('send_catalog_message', send_catalog_message)
+flow_action_registry.register('process_cart_order', process_cart_order)
+flow_action_registry.register('initiate_payment_flow', initiate_payment_flow)
