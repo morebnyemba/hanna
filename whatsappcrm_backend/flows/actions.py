@@ -610,8 +610,9 @@ def send_catalog_message(contact: Contact, context: Dict[str, Any], params: Dict
             "thumbnail_product_retailer_id": thumbnail_product_retailer_id
         }
     
-    # Note: Headers are not supported for catalog_message type per Meta API documentation
-    # Removed header support to fix Meta API error: "The parameter interactive['header'] is not allows for catalog messages."
+    # Note: Headers are not supported for catalog_message type per Meta API documentation.
+    # Removed header support to fix Meta API error #131009 (typo in original error message):
+    # "The parameter interactive['header'] is not allows for catalog messages."
     if footer_text:
         interactive_payload["footer"] = {"text": footer_text}
 
