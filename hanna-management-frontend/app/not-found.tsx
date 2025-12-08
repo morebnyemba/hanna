@@ -14,7 +14,7 @@ export default function NotFound() {
           </div>
           {/* Animated circles */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-40 border-4 border-yellow-300 rounded-full animate-ping opacity-20"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-4 border-orange-300 rounded-full animate-ping opacity-10 animation-delay-500"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-4 border-orange-300 rounded-full animate-ping opacity-10"></div>
         </div>
 
         {/* Message */}
