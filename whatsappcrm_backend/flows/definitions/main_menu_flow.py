@@ -168,8 +168,7 @@ MAIN_MENU_FLOW = {
                     {
                         "action_type": "send_catalog_message",
                         "params_template": {
-                            "header_text": "🛒 Pfungwa Product Catalog",
-                            "body_text": "Browse our products below and add items to your cart. When you're ready, tap 'View Cart' to complete your order.\n\nYou can also type 'shop' to see a text-based product list.",
+                            "body_text": "🛒 Pfungwa Product Catalog\n\nBrowse our products below and add items to your cart. When you're ready, tap 'View Cart' to complete your order.\n\nYou can also type 'shop' to see a text-based product list.",
                             "footer_text": "Tap on products to view details"
                         }
                     }

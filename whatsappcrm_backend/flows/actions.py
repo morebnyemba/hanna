@@ -564,23 +564,21 @@ def send_catalog_message(contact: Contact, context: Dict[str, Any], params: Dict
     This opens the WhatsApp catalog UI for the user.
 
     Expected params:
-    - header_text (str, optional): Text to display in the header.
     - body_text (str): Main text body of the message.
     - footer_text (str, optional): Footer text.
     - thumbnail_product_retailer_id (str, optional): SKU of the product to show as thumbnail.
+    
+    Note: Headers are not supported for catalog_message type per Meta API documentation.
     """
     from .services import _resolve_value
     from meta_integration.models import MetaAppConfig
     
     body_text = params.get('body_text', 'Browse our product catalog and shop now!')
-    header_text = params.get('header_text')
     footer_text = params.get('footer_text')
     thumbnail_product_retailer_id = params.get('thumbnail_product_retailer_id')
     
     # Resolve templates
     body_text = _resolve_value(body_text, context, contact)
-    if header_text:
-        header_text = _resolve_value(header_text, context, contact)
     if footer_text:
         footer_text = _resolve_value(footer_text, context, contact)
     if thumbnail_product_retailer_id:
@@ -612,8 +610,9 @@ def send_catalog_message(contact: Contact, context: Dict[str, Any], params: Dict
             "thumbnail_product_retailer_id": thumbnail_product_retailer_id
         }
     
-    if header_text:
-        interactive_payload["header"] = {"type": "text", "text": header_text}
+    # Note: Headers are not supported for catalog_message type per Meta API documentation.
+    # Removed header support to fix Meta API error #131009 (typo in original error message):
+    # "The parameter interactive['header'] is not allows for catalog messages."
     if footer_text:
         interactive_payload["footer"] = {"text": footer_text}
 
