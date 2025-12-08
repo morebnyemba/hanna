@@ -63,7 +63,7 @@ export default function LandingPage() {
           {/* Shop CTA - Primary Action */}
           <div className="mt-12">
             <Link 
-              href="/client/shop" 
+              href="/shop" 
               className="inline-flex items-center justify-center px-12 py-5 text-lg font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-500 hover:to-purple-500 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
             >
               <FiShoppingCart className="w-6 h-6 mr-3" />
