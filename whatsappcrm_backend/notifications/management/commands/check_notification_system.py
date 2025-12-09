@@ -2,9 +2,11 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.conf import settings
 from notifications.models import Notification, NotificationTemplate
 from conversations.models import Contact
 from meta_integration.models import MetaAppConfig
+from email_integration.models import AdminEmailRecipient
 import sys
 
 User = get_user_model()
@@ -28,6 +30,50 @@ class Command(BaseCommand):
         self.stdout.write('\n' + '=' * 70)
         self.stdout.write(self.style.SUCCESS('NOTIFICATION SYSTEM STATUS CHECK'))
         self.stdout.write('=' * 70 + '\n')
+        
+        # Check 0: SMTP Configuration
+        self.stdout.write('0. Checking SMTP Configuration...')
+        smtp_configured = True
+        
+        if not settings.EMAIL_HOST:
+            issues.append('EMAIL_HOST is not configured')
+            smtp_configured = False
+        
+        if not settings.EMAIL_HOST_USER:
+            issues.append('EMAIL_HOST_USER is not configured')
+            smtp_configured = False
+        
+        if not hasattr(settings, 'EMAIL_HOST_PASSWORD') or not settings.EMAIL_HOST_PASSWORD:
+            warnings.append('EMAIL_HOST_PASSWORD may not be configured')
+        
+        if smtp_configured:
+            self.stdout.write(self.style.SUCCESS(
+                f'   ✓ SMTP configured: {settings.EMAIL_HOST}:{settings.EMAIL_PORT}'
+            ))
+            if verbose:
+                self.stdout.write(f'      Host: {settings.EMAIL_HOST}')
+                self.stdout.write(f'      Port: {settings.EMAIL_PORT}')
+                self.stdout.write(f'      User: {settings.EMAIL_HOST_USER}')
+                self.stdout.write(f'      TLS: {settings.EMAIL_USE_TLS}')
+        else:
+            self.stdout.write(self.style.ERROR('   ✗ SMTP not properly configured'))
+        
+        # Check 0b: Admin Email Recipients
+        self.stdout.write('\n0b. Checking Admin Email Recipients...')
+        admin_recipients = AdminEmailRecipient.objects.filter(is_active=True)
+        
+        if admin_recipients.count() == 0:
+            warnings.append('No active AdminEmailRecipient configured')
+            self.stdout.write(self.style.WARNING(
+                '   ⚠ No admin email recipients configured'
+            ))
+        else:
+            self.stdout.write(self.style.SUCCESS(
+                f'   ✓ {admin_recipients.count()} admin email recipient(s) configured'
+            ))
+            if verbose:
+                for recipient in admin_recipients:
+                    self.stdout.write(f'      - {recipient.name} <{recipient.email}>')
         
         # Check 1: Required Groups
         self.stdout.write('1. Checking Required Groups...')
@@ -196,6 +242,15 @@ class Command(BaseCommand):
         # Recommendations
         self.stdout.write(self.style.SUCCESS('\nRECOMMENDATIONS:'))
         
+        if not smtp_configured:
+            self.stdout.write('   → Configure SMTP settings in .env file')
+            self.stdout.write('   → Set: EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD')
+            self.stdout.write('   → Run: python manage.py validate_notification_setup --test-email')
+        
+        if admin_recipients.count() == 0:
+            self.stdout.write('   → Add admin email recipients in Django Admin')
+            self.stdout.write('   → Or run: python manage.py validate_notification_setup --fix')
+        
         if missing_groups:
             self.stdout.write('   → Run: python manage.py create_notification_groups')
         
@@ -204,6 +259,9 @@ class Command(BaseCommand):
         
         if unlinked_users:
             self.stdout.write('   → Link staff users to WhatsApp contacts in Django Admin')
+        
+        self.stdout.write('\n   ℹ For complete validation, run:')
+        self.stdout.write('   → python manage.py validate_notification_setup --test-email
         
         if not issues and warnings:
             self.stdout.write('\n' + self.style.WARNING(
