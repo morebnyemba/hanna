@@ -44,7 +44,7 @@ export default function NotFound() {
             Go to Homepage
           </Link>
           <Link
-            href="/client/shop"
+            href="/shop"
             className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-gray-700 bg-white rounded-xl hover:bg-gray-50 border-2 border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
           >
             Visit Our Shop
