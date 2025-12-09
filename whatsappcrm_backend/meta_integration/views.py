@@ -503,10 +503,12 @@ class MetaWebhookAPIView(View):
         
         if success:
             # Queue the flow continuation task asynchronously for reliable transition
+            # Capture just the ID to avoid keeping the object in memory
+            msg_id = incoming_msg_obj.id
             transaction.on_commit(
-                lambda: process_flow_for_message_task.delay(incoming_msg_obj.id)
+                lambda: process_flow_for_message_task.delay(msg_id)
             )
-            logger.info(f"Queued flow continuation task for WhatsApp flow response message {incoming_msg_obj.id}.")
+            logger.info(f"Queued flow continuation task for WhatsApp flow response message {msg_id}.")
             self._save_log(log_entry, 'processed', f"{notes} Flow continuation queued.")
         else:
             self._save_log(log_entry, 'error', notes)

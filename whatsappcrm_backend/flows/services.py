@@ -1777,7 +1777,7 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
     return final_actions_for_meta_view
 
 
-def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config) -> tuple[bool, str]:
+def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config: 'MetaAppConfig') -> tuple[bool, str]:
     """
     Processes WhatsApp Flow response messages (nfm_reply type).
     
