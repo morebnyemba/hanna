@@ -461,18 +461,57 @@ class MetaWebhookAPIView(View):
     def _handle_flow_response(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog):
         """
         Handles WhatsApp Flow response messages (nfm_reply type).
-        Delegates processing to flows.services.process_whatsapp_flow_response.
+        Creates a message object and queues flow continuation asynchronously.
         """
         from flows.services import process_whatsapp_flow_response
+        from conversations.models import Message
+        from flows.tasks import process_flow_for_message_task
+        from datetime import datetime
         
+        whatsapp_message_id = msg_data.get("id")
+        message_timestamp_str = msg_data.get("timestamp")
+        message_timestamp = None
+        if message_timestamp_str:
+            try:
+                message_timestamp = timezone.make_aware(datetime.fromtimestamp(int(message_timestamp_str)))
+            except ValueError:
+                logger.warning(f"Could not parse message timestamp: {message_timestamp_str}")
+        if not message_timestamp:
+            message_timestamp = timezone.now()
+        
+        # Create a message object for the flow response
+        incoming_msg_obj, msg_created = Message.objects.update_or_create(
+            wamid=whatsapp_message_id,
+            defaults={
+                'contact': contact,
+                'app_config': active_config,
+                'direction': 'in',
+                'message_type': 'interactive',
+                'content_payload': msg_data,
+                'timestamp': message_timestamp,
+                'status': 'delivered',
+                'status_timestamp': message_timestamp,
+            }
+        )
+        
+        if log_entry and log_entry.pk:
+            log_entry.message = incoming_msg_obj
+            log_entry.save(update_fields=['message'])
+        
+        # Process the WhatsApp flow response data
         success, notes = process_whatsapp_flow_response(msg_data, contact, active_config)
         
         if success:
-            self._save_log(log_entry, 'processed', notes)
-            logger.info(f"Flow response processed successfully: {notes}")
+            # Queue the flow continuation task asynchronously for reliable transition
+            # Capture just the ID to avoid keeping the object in memory
+            msg_id = incoming_msg_obj.id
+            transaction.on_commit(
+                lambda: process_flow_for_message_task.delay(msg_id)
+            )
+            logger.info(f"Queued flow continuation task for WhatsApp flow response message {msg_id}.")
+            self._save_log(log_entry, 'processed', f"{notes} Flow continuation queued.")
         else:
-            self._save_log(log_entry, 'failed', notes)
-            logger.error(f"Flow response processing failed: {notes}")
+            self._save_log(log_entry, 'error', notes)
 
     def _handle_order_message(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog):
         """
