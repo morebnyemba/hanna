@@ -11,9 +11,17 @@ import os
 import sys
 import django
 
+# Status symbols as constants
+CHECK_PASS = '✅'
+CHECK_FAIL = '❌'
+CHECK_WARN = '⚠️'
+STATUS_OK = '✓'
+
 # Setup Django environment
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'whatsappcrm_backend.settings')
+# Derive settings module from directory structure
+settings_module = os.getenv('DJANGO_SETTINGS_MODULE', 'whatsappcrm_backend.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', settings_module)
 django.setup()
 
 from django.conf import settings
@@ -39,33 +47,33 @@ def check_smtp():
     issues = []
     
     if not settings.EMAIL_HOST:
-        issues.append("❌ EMAIL_HOST not set")
+        issues.append(f"{CHECK_FAIL} EMAIL_HOST not set")
     else:
-        print(f"   ✓ EMAIL_HOST: {settings.EMAIL_HOST}")
+        print(f"   {STATUS_OK} EMAIL_HOST: {settings.EMAIL_HOST}")
     
     if not settings.EMAIL_HOST_USER:
-        issues.append("❌ EMAIL_HOST_USER not set")
+        issues.append(f"{CHECK_FAIL} EMAIL_HOST_USER not set")
     else:
-        print(f"   ✓ EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
+        print(f"   {STATUS_OK} EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
     
     if not settings.EMAIL_HOST_PASSWORD:
-        issues.append("❌ EMAIL_HOST_PASSWORD not set")
+        issues.append(f"{CHECK_FAIL} EMAIL_HOST_PASSWORD not set")
     else:
-        print(f"   ✓ EMAIL_HOST_PASSWORD: ***SET***")
+        print(f"   {STATUS_OK} EMAIL_HOST_PASSWORD: ***SET***")
     
     if not settings.DEFAULT_FROM_EMAIL:
-        issues.append("❌ DEFAULT_FROM_EMAIL not set")
+        issues.append(f"{CHECK_FAIL} DEFAULT_FROM_EMAIL not set")
     else:
-        print(f"   ✓ DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+        print(f"   {STATUS_OK} DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
     
     admin_recipients = AdminEmailRecipient.objects.filter(is_active=True).count()
     if admin_recipients == 0:
-        issues.append("⚠️  No AdminEmailRecipient configured (warnings only)")
-        print(f"   ⚠️  AdminEmailRecipient: 0 (add in Django Admin)")
+        issues.append(f"{CHECK_WARN} No AdminEmailRecipient configured (warnings only)")
+        print(f"   {CHECK_WARN} AdminEmailRecipient: 0 (add in Django Admin)")
     else:
-        print(f"   ✓ AdminEmailRecipient: {admin_recipients}")
+        print(f"   {STATUS_OK} AdminEmailRecipient: {admin_recipients}")
     
-    return len([i for i in issues if i.startswith('❌')]) == 0
+    return len([i for i in issues if i.startswith(CHECK_FAIL)]) == 0
 
 
 def check_groups():
@@ -87,11 +95,11 @@ def check_groups():
             group = Group.objects.get(name=group_name)
             member_count = group.user_set.count()
             if member_count == 0:
-                print(f"   ⚠️  {group_name}: EXISTS but NO MEMBERS")
+                print(f"   {CHECK_WARN} {group_name}: EXISTS but NO MEMBERS")
             else:
-                print(f"   ✓ {group_name}: {member_count} member(s)")
+                print(f"   {STATUS_OK} {group_name}: {member_count} member(s)")
         except Group.DoesNotExist:
-            print(f"   ❌ {group_name}: NOT CREATED")
+            print(f"   {CHECK_FAIL} {group_name}: NOT CREATED")
             all_exist = False
     
     return all_exist
@@ -105,15 +113,15 @@ def check_user_linkage():
     linked_count = 0
     
     if staff_users.count() == 0:
-        print("   ⚠️  No staff users found")
+        print(f"   {CHECK_WARN} No staff users found")
         return True
     
     for user in staff_users:
         if hasattr(user, 'whatsapp_contact') and user.whatsapp_contact:
             linked_count += 1
-            print(f"   ✓ {user.username} → {user.whatsapp_contact.whatsapp_id}")
+            print(f"   {STATUS_OK} {user.username} → {user.whatsapp_contact.whatsapp_id}")
         else:
-            print(f"   ❌ {user.username} → NOT LINKED")
+            print(f"   {CHECK_FAIL} {user.username} → NOT LINKED")
     
     print(f"\n   Summary: {linked_count}/{staff_users.count()} staff users linked")
     return linked_count > 0
@@ -126,11 +134,11 @@ def check_templates():
     template_count = NotificationTemplate.objects.count()
     
     if template_count == 0:
-        print("   ❌ No templates loaded")
+        print(f"   {CHECK_FAIL} No templates loaded")
         print("   → Run: python manage.py load_notification_templates")
         return False
     else:
-        print(f"   ✓ {template_count} template(s) loaded")
+        print(f"   {STATUS_OK} {template_count} template(s) loaded")
         return True
 
 
@@ -140,11 +148,11 @@ def check_meta_api():
     
     try:
         config = MetaAppConfig.objects.get_active_config()
-        print(f"   ✓ Active config found")
+        print(f"   {STATUS_OK} Active config found")
         print(f"      Phone Number ID: {config.business_phone_number_id}")
         return True
     except MetaAppConfig.DoesNotExist:
-        print("   ❌ No active Meta API configuration")
+        print(f"   {CHECK_FAIL} No active Meta API configuration")
         return False
 
 
@@ -164,7 +172,7 @@ def main():
     print("\nCheck Results:")
     all_passed = True
     for check_name, passed in checks.items():
-        status = "✅ PASS" if passed else "❌ FAIL"
+        status = f"{CHECK_PASS} PASS" if passed else f"{CHECK_FAIL} FAIL"
         print(f"   {status}: {check_name}")
         if not passed:
             all_passed = False

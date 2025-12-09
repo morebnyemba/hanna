@@ -82,7 +82,7 @@ Your email server (`mail.hanna.co.zw`) is rejecting the password in your `.env` 
 ```env
 EMAIL_HOST=mail.hanna.co.zw
 EMAIL_HOST_USER=installations@hanna.co.zw
-EMAIL_HOST_PASSWORD=PfungwaHanna2024
+EMAIL_HOST_PASSWORD=YOUR_PASSWORD_HERE
 ```
 
 **Why it's failing:**

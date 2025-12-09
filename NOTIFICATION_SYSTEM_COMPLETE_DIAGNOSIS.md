@@ -86,7 +86,7 @@ EMAIL_HOST=mail.hanna.co.zw
 EMAIL_PORT=587
 EMAIL_USE_TLS=True
 EMAIL_HOST_USER=installations@hanna.co.zw
-EMAIL_HOST_PASSWORD=PfungwaHanna2024
+EMAIL_HOST_PASSWORD=YOUR_PASSWORD_HERE
 DEFAULT_FROM_EMAIL=installations@hanna.co.zw
 ```
 
@@ -101,7 +101,7 @@ DEFAULT_FROM_EMAIL=installations@hanna.co.zw
 
 1. **Verify credentials with your email administrator:**
    - Is `installations@hanna.co.zw` the correct email?
-   - Is `PfungwaHanna2024` the current password?
+   - Verify the password is correct
    - Does the account work when you log in via webmail?
 
 2. **Check if app password is required:**
@@ -309,8 +309,8 @@ user = User.objects.get(username='morebnyemba')  # Replace with your username
 
 # Create or get the contact (use Zimbabwe format: 263XXXXXXXXX)
 contact, created = Contact.objects.get_or_create(
-    whatsapp_id='263774635389',  # Replace with user's WhatsApp number
-    defaults={'name': 'Moreblessing Nyemba'}
+    whatsapp_id='263XXXXXXXXX',  # Replace with user's WhatsApp number
+    defaults={'name': 'User Full Name'}
 )
 
 # Link user to contact
