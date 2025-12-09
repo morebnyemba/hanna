@@ -1567,7 +1567,9 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 # If we've arrived at a question step via an internal transition (fallthrough/switch),
                 # we must stop and wait for the user's actual reply. We should not process the
                 # internal message as if it were a user's answer.
-                if is_internal_message:
+                # EXCEPTION: If this is a WhatsApp flow response (internal_whatsapp_flow_response),
+                # we should process it as the answer to the question.
+                if is_internal_message and message_data.get('type') != 'internal_whatsapp_flow_response':
                     logger.debug(f"Reached question step '{current_step.name}' via internal transition. Breaking loop to await user reply.")
                     break
                 # A question is NOT a pass-through step; it must wait for a reply.
@@ -1666,11 +1668,13 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
             
             # --- Step 1b: Pause at wait_for_whatsapp_response action step ---
             if current_step.step_type == 'action' and current_step.name == 'wait_for_whatsapp_response':
-                # If we've arrived at this step via an internal transition, break to wait for the WhatsApp flow response webhook.
-                if is_internal_message:
+                # If we've arrived at this step via an internal transition (but NOT a WhatsApp flow response),
+                # break to wait for the WhatsApp flow response webhook.
+                # If this IS a WhatsApp flow response, we should continue to evaluate transitions.
+                if is_internal_message and message_data.get('type') != 'internal_whatsapp_flow_response':
                     logger.debug(f"Reached wait step '{current_step.name}' via internal transition. Breaking loop to await WhatsApp flow response.")
                     break
-                # If this is a user message, just continue (should not happen, but for safety)
+                # If this is a user message or a WhatsApp flow response, continue to evaluate transitions
 
             # If this was a user message that was just processed (valid or not),
             # we should not continue falling through steps in the same cycle.
