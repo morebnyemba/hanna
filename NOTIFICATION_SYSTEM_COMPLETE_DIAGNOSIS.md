@@ -139,7 +139,7 @@ DEFAULT_FROM_EMAIL=installations@hanna.co.zw
 
 **Evidence from your logs:**
 ```
-[2025-12-09 22:29:33] DEBUG services Handling active flow. Contact: 263774635389...
+[2025-12-09 22:29:33] DEBUG services Handling active flow. Contact: 263XXXXXXXXX...
 ```
 
 The flow is executing, but there's no indication that notifications are being dispatched.
@@ -204,7 +204,7 @@ The flow is executing, but there's no indication that notifications are being di
 1. **Verify your SMTP credentials:**
    - Contact your email administrator
    - Test logging into `installations@hanna.co.zw` via webmail
-   - Confirm the password is `PfungwaHanna2024`
+   - Confirm you have the correct password
 
 2. **Update `.env` if needed:**
    ```bash
