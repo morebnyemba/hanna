@@ -242,6 +242,15 @@ class Order(models.Model):
         REFUNDED = 'refunded', _('Refunded')
         NOT_APPLICABLE = 'not_applicable', _('Not Applicable')
 
+    class PaymentMethod(models.TextChoices):
+        """Payment method options for orders"""
+        PAYNOW_ECOCASH = 'paynow_ecocash', _('Paynow - Ecocash')
+        PAYNOW_ONEMONEY = 'paynow_onemoney', _('Paynow - OneMoney')
+        PAYNOW_INNBUCKS = 'paynow_innbucks', _('Paynow - Innbucks')
+        MANUAL_BANK_TRANSFER = 'manual_bank_transfer', _('Manual - Bank Transfer')
+        MANUAL_CASH = 'manual_cash', _('Manual - Cash Payment')
+        MANUAL_OTHER = 'manual_other', _('Manual - Other')
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order_number = models.CharField(_("Order Number"), max_length=100, unique=True, blank=True, null=True, help_text=_("Unique order number or reference for this order."))
     name = models.CharField(
@@ -281,6 +290,15 @@ class Order(models.Model):
     )
     currency = models.CharField(_("Currency"), max_length=3, default='USD')
     expected_close_date = models.DateField(_("Expected Close Date"), null=True, blank=True)
+    payment_method = models.CharField(
+        _("Payment Method"),
+        max_length=50,
+        choices=PaymentMethod.choices,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text=_("The payment method selected by the customer.")
+    )
     
     assigned_agent = models.ForeignKey(
         settings.AUTH_USER_MODEL,
