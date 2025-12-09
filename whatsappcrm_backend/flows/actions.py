@@ -1000,7 +1000,8 @@ def confirm_payment_method_and_initiate(contact: Contact, context: Dict[str, Any
     actions_to_perform = []
     
     # Check if it's a Paynow method (automated) or manual
-    if payment_method.startswith('paynow_'):
+    from customer_data.payment_utils import is_automated_payment_method
+    if is_automated_payment_method(payment_method):
         # Automated Paynow payment - send confirmation and initiate payment
         paynow_method_map = {
             'paynow_ecocash': 'Ecocash',

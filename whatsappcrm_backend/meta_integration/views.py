@@ -496,16 +496,20 @@ class MetaWebhookAPIView(View):
         Processes the selected payment method and initiates appropriate payment flow.
         """
         from customer_data.models import Order
+        from customer_data.payment_utils import parse_payment_button_id
         from meta_integration.utils import send_whatsapp_message
         
         try:
-            # Extract order number from button ID
-            # Format: pay_paynow_WA-12345 or pay_manual_WA-12345 or paynow_ecocash_WA-12345
-            parts = button_id.split('_')
+            # Parse button ID into components
+            action, method_or_type, order_number = parse_payment_button_id(button_id)
             
-            if button_id.startswith('pay_paynow_'):
+            if not all([action, method_or_type, order_number]):
+                logger.error(f"Invalid payment button ID format: {button_id}")
+                self._save_log(log_entry, 'failed', 'Invalid button ID format')
+                return
+            
+            if action == 'pay' and method_or_type == 'paynow':
                 # User selected Paynow, show Paynow method options
-                order_number = button_id.replace('pay_paynow_', '')
                 
                 try:
                     order = Order.objects.get(order_number=order_number)
@@ -559,9 +563,8 @@ class MetaWebhookAPIView(View):
                 self._save_log(log_entry, 'processed', f'Sent Paynow method selection for order {order_number}')
                 logger.info(f"Sent Paynow method selection for order {order_number}")
                 
-            elif button_id.startswith('pay_manual_'):
+            elif action == 'pay' and method_or_type == 'manual':
                 # User selected manual payment
-                order_number = button_id.replace('pay_manual_', '')
                 
                 try:
                     order = Order.objects.get(order_number=order_number)
@@ -590,22 +593,20 @@ class MetaWebhookAPIView(View):
                 self._save_log(log_entry, 'processed', f'Sent manual payment instructions for order {order_number}')
                 logger.info(f"Sent manual payment instructions for order {order_number}")
                 
-            elif button_id.startswith('paynow_'):
+            elif action == 'paynow':
                 # User selected specific Paynow method (ecocash, onemoney, innbucks)
-                # Format: paynow_{method}_{order_number}
-                # Extract method and order number more safely
-                button_parts = button_id.split('_', 2)  # Split into max 3 parts
-                if len(button_parts) < 3:
-                    logger.error(f"Invalid Paynow button ID format: {button_id}")
-                    self._save_log(log_entry, 'failed', 'Invalid button ID format')
-                    return
-                
-                method = button_parts[1]
-                order_number = button_parts[2]
+                # method_or_type contains the payment method (ecocash, onemoney, innbucks)
+                method = method_or_type
                 
                 try:
                     order = Order.objects.get(order_number=order_number)
-                    order.payment_method = f'paynow_{method}'
+                    # Map to correct enum value
+                    payment_method_map = {
+                        'ecocash': Order.PaymentMethod.PAYNOW_ECOCASH,
+                        'onemoney': Order.PaymentMethod.PAYNOW_ONEMONEY,
+                        'innbucks': Order.PaymentMethod.PAYNOW_INNBUCKS,
+                    }
+                    order.payment_method = payment_method_map.get(method, Order.PaymentMethod.PAYNOW_ECOCASH)
                     order.save(update_fields=['payment_method'])
                 except Order.DoesNotExist:
                     logger.error(f"Order {order_number} not found for Paynow payment")
