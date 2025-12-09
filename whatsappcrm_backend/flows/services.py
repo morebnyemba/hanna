@@ -1782,8 +1782,7 @@ def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config)
     Processes WhatsApp Flow response messages (nfm_reply type).
     
     This function handles interactive flow responses from Meta's WhatsApp Flows API.
-    It identifies the flow, processes the response data, and creates appropriate
-    business entities (InstallationRequest, SolarCleaningRequest, etc.).
+    It identifies the flow, processes the response data, and updates the flow context.
     
     Args:
         msg_data: The message data from Meta webhook containing the flow response
@@ -1821,35 +1820,6 @@ def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config)
             is_active=True,
             sync_status='published'
         )
-        
-        # Try to find the matching flow
-        # This is a simplified approach - in production you might want to encode
-        # the flow ID in the flow_token when sending the flow
-        whatsapp_flow = None
-        
-        interactive_data = msg_data.get("interactive", {})
-        nfm_reply = interactive_data.get("nfm_reply", {})
-
-        response_json = nfm_reply.get("response_json")
-        flow_token = nfm_reply.get("flow_token", "")
-
-        if not response_json:
-            logger.warning(f"Flow response has no response_json: {msg_data}")
-            return False, 'No response_json in flow response'
-
-        # Parse the response JSON
-        try:
-            response_data = json.loads(response_json) if isinstance(response_json, str) else response_json
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse flow response JSON: {e}")
-            return False, f'Invalid JSON: {e}'
-
-        # Try to identify which flow this is for
-        whatsapp_flows = WhatsAppFlow.objects.filter(
-            meta_app_config=app_config,
-            is_active=True,
-            sync_status='published'
-        )
 
         whatsapp_flow = None
         if whatsapp_flows.exists():
@@ -1880,11 +1850,8 @@ def process_whatsapp_flow_response(msg_data: dict, contact: Contact, app_config)
         )
         if processor_result and processor_result.get("success"):
             logger.info(f"Successfully updated flow context for WhatsApp flow response.")
-            # Trigger the flow engine to resume from the wait step
-            try:
-                process_message_for_flow(contact, {"type": "internal_whatsapp_flow_response"}, None)
-            except Exception as e:
-                logger.error(f"Error auto-resuming flow after WhatsApp flow response: {e}", exc_info=True)
+            # Note: Flow continuation will be triggered asynchronously by the calling code
+            # via process_flow_for_message_task to ensure reliable transaction handling
             return True, 'Flow context updated with WhatsApp flow data.'
         else:
             error_note = processor_result.get("notes") if processor_result else "Unknown error"
