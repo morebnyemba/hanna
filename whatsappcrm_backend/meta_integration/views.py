@@ -395,6 +395,14 @@ class MetaWebhookAPIView(View):
         if message_type == "order":
             self._handle_order_message(msg_data, contact, active_config, log_entry)
             return
+        
+        # Check if this is a payment method selection button reply
+        if message_type == "interactive" and msg_data.get("interactive", {}).get("type") == "button_reply":
+            button_reply = msg_data.get("interactive", {}).get("button_reply", {})
+            button_id = button_reply.get("id", "")
+            if button_id.startswith("pay_") or button_id.startswith("paynow_"):
+                self._handle_payment_method_selection(msg_data, contact, active_config, log_entry, button_id)
+                return
 
         # --- Start of _handle_message logic (ensure this aligns with your intent) ---
         message_timestamp_str = msg_data.get("timestamp")
@@ -481,6 +489,245 @@ class MetaWebhookAPIView(View):
         else:
             self._save_log(log_entry, 'failed', notes)
             logger.error(f"Order message processing failed: {notes}")
+
+    def _handle_payment_method_selection(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog, button_id: str):
+        """
+        Handles payment method selection button clicks.
+        Processes the selected payment method and initiates appropriate payment flow.
+        """
+        from customer_data.models import Order
+        from meta_integration.utils import send_whatsapp_message
+        
+        try:
+            # Extract order number from button ID
+            # Format: pay_paynow_WA-12345 or pay_manual_WA-12345 or paynow_ecocash_WA-12345
+            parts = button_id.split('_')
+            
+            if button_id.startswith('pay_paynow_'):
+                # User selected Paynow, show Paynow method options
+                order_number = button_id.replace('pay_paynow_', '')
+                
+                try:
+                    order = Order.objects.get(order_number=order_number)
+                except Order.DoesNotExist:
+                    logger.error(f"Order {order_number} not found for payment method selection")
+                    self._save_log(log_entry, 'failed', f'Order {order_number} not found')
+                    return
+                
+                # Send Paynow method selection
+                paynow_selection_message = {
+                    "type": "button",
+                    "header": {"type": "text", "text": "📱 Select Paynow Method"},
+                    "body": {
+                        "text": f"Please select your preferred mobile money provider:\n\n"
+                                f"Order: #{order.order_number}\n"
+                                f"Amount: ${order.amount} {order.currency}"
+                    },
+                    "action": {
+                        "buttons": [
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": f"paynow_ecocash_{order.order_number}",
+                                    "title": "📞 Ecocash"
+                                }
+                            },
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": f"paynow_onemoney_{order.order_number}",
+                                    "title": "💵 OneMoney"
+                                }
+                            },
+                            {
+                                "type": "reply",
+                                "reply": {
+                                    "id": f"paynow_innbucks_{order.order_number}",
+                                    "title": "💳 Innbucks"
+                                }
+                            }
+                        ]
+                    }
+                }
+                
+                send_whatsapp_message(
+                    to_phone_number=contact.whatsapp_id,
+                    message_type='interactive',
+                    data=paynow_selection_message
+                )
+                
+                self._save_log(log_entry, 'processed', f'Sent Paynow method selection for order {order_number}')
+                logger.info(f"Sent Paynow method selection for order {order_number}")
+                
+            elif button_id.startswith('pay_manual_'):
+                # User selected manual payment
+                order_number = button_id.replace('pay_manual_', '')
+                
+                try:
+                    order = Order.objects.get(order_number=order_number)
+                    order.payment_method = 'manual_bank_transfer'  # Default to bank transfer
+                    order.save(update_fields=['payment_method'])
+                except Order.DoesNotExist:
+                    logger.error(f"Order {order_number} not found for payment method selection")
+                    self._save_log(log_entry, 'failed', f'Order {order_number} not found')
+                    return
+                
+                # Send manual payment instructions
+                instructions_msg = (
+                    f"✅ *Payment Method Confirmed*\n\n"
+                    f"You have selected: *Manual Payment*\n\n"
+                    f"Order: #{order.order_number}\n"
+                    f"Amount: ${order.amount} {order.currency}\n\n"
+                    f"📋 *Bank Transfer Instructions:*\n\n"
+                    f"*Bank Details:*\n"
+                    f"Bank: [Your Bank Name]\n"
+                    f"Account Name: [Your Account Name]\n"
+                    f"Account Number: [Your Account Number]\n"
+                    f"Branch: [Branch Name]\n\n"
+                    f"Please use order number *{order.order_number}* as your reference.\n\n"
+                    f"After making the payment, please send us the proof of payment (screenshot or receipt).\n\n"
+                    f"Our team will confirm your payment and process your order."
+                )
+                
+                send_whatsapp_message(
+                    to_phone_number=contact.whatsapp_id,
+                    message_type='text',
+                    data={'body': instructions_msg}
+                )
+                
+                self._save_log(log_entry, 'processed', f'Sent manual payment instructions for order {order_number}')
+                logger.info(f"Sent manual payment instructions for order {order_number}")
+                
+            elif button_id.startswith('paynow_'):
+                # User selected specific Paynow method (ecocash, onemoney, innbucks)
+                method = parts[1] if len(parts) > 1 else 'ecocash'
+                order_number = '_'.join(parts[2:]) if len(parts) > 2 else ''
+                
+                try:
+                    order = Order.objects.get(order_number=order_number)
+                    order.payment_method = f'paynow_{method}'
+                    order.save(update_fields=['payment_method'])
+                except Order.DoesNotExist:
+                    logger.error(f"Order {order_number} not found for Paynow payment")
+                    self._save_log(log_entry, 'failed', f'Order {order_number} not found')
+                    return
+                
+                method_display_map = {
+                    'ecocash': 'Ecocash',
+                    'onemoney': 'OneMoney',
+                    'innbucks': 'Innbucks'
+                }
+                method_display = method_display_map.get(method, 'Paynow')
+                
+                # Send confirmation
+                confirmation_msg = (
+                    f"✅ *Payment Method Confirmed*\n\n"
+                    f"You have selected: *{method_display}*\n\n"
+                    f"Order: #{order.order_number}\n"
+                    f"Amount: ${order.amount} {order.currency}\n\n"
+                    f"Initiating payment... Please check your phone for the payment prompt."
+                )
+                
+                send_whatsapp_message(
+                    to_phone_number=contact.whatsapp_id,
+                    message_type='text',
+                    data={'body': confirmation_msg}
+                )
+                
+                # Initiate Paynow payment
+                try:
+                    from paynow_integration.services import PaynowService
+                    from customer_data.models import Payment, PaymentStatus
+                    from decimal import Decimal
+                    import uuid
+                    
+                    # Create payment reference
+                    payment_reference = f"PAY-{order.order_number}-{uuid.uuid4().hex[:8].upper()}"
+                    
+                    # Initialize Paynow service
+                    paynow_service = PaynowService(ipn_callback_url='/api/paynow/ipn/')
+                    
+                    # Create Payment record
+                    payment = Payment.objects.create(
+                        customer=order.customer,
+                        order=order,
+                        amount=order.amount,
+                        currency=order.currency,
+                        status=PaymentStatus.PENDING,
+                        payment_method=method,
+                        provider_transaction_id=payment_reference
+                    )
+                    
+                    # Initiate Paynow express checkout
+                    result = paynow_service.initiate_express_checkout_payment(
+                        amount=Decimal(str(order.amount)),
+                        reference=payment_reference,
+                        phone_number=contact.whatsapp_id,
+                        email='',
+                        paynow_method_type=method,
+                        description=f"Payment for Order {order.order_number}"
+                    )
+                    
+                    if result.get('success'):
+                        # Update payment with Paynow details
+                        payment.poll_url = result.get('poll_url')
+                        payment.provider_response = result
+                        payment.save(update_fields=['poll_url', 'provider_response'])
+                        
+                        success_msg = (
+                            f"💳 *Payment Request Sent*\n\n"
+                            f"Please approve the payment on your phone.\n\n"
+                            f"Reference: {result.get('paynow_reference', 'N/A')}\n\n"
+                            f"You will receive a confirmation once payment is complete."
+                        )
+                        
+                        send_whatsapp_message(
+                            to_phone_number=contact.whatsapp_id,
+                            message_type='text',
+                            data={'body': success_msg}
+                        )
+                        
+                        self._save_log(log_entry, 'processed', f'Paynow payment initiated for order {order_number}')
+                        logger.info(f"Paynow payment initiated for order {order_number}")
+                    else:
+                        # Payment initiation failed
+                        payment.status = PaymentStatus.FAILED
+                        payment.provider_response = result
+                        payment.save(update_fields=['status', 'provider_response'])
+                        
+                        error_msg = (
+                            f"❌ Payment initiation failed.\n\n"
+                            f"Reason: {result.get('message', 'Unknown error')}\n\n"
+                            f"Please try again or contact our support team."
+                        )
+                        
+                        send_whatsapp_message(
+                            to_phone_number=contact.whatsapp_id,
+                            message_type='text',
+                            data={'body': error_msg}
+                        )
+                        
+                        self._save_log(log_entry, 'failed', f'Paynow payment failed: {result.get("message")}')
+                        logger.error(f"Paynow payment failed for order {order_number}: {result.get('message')}")
+                        
+                except Exception as e:
+                    logger.error(f"Error initiating Paynow payment: {e}", exc_info=True)
+                    error_msg = (
+                        f"❌ An error occurred while processing your payment.\n\n"
+                        f"Please contact our support team with order number: {order.order_number}"
+                    )
+                    
+                    send_whatsapp_message(
+                        to_phone_number=contact.whatsapp_id,
+                        message_type='text',
+                        data={'body': error_msg}
+                    )
+                    
+                    self._save_log(log_entry, 'failed', f'Exception processing Paynow payment: {str(e)[:200]}')
+            
+        except Exception as e:
+            logger.error(f"Error handling payment method selection: {e}", exc_info=True)
+            self._save_log(log_entry, 'failed', f'Exception handling payment selection: {str(e)[:200]}')
 
     def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig, show_typing_indicator: bool = True):
         """

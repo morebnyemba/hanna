@@ -833,6 +833,259 @@ def initiate_payment_flow(contact: Contact, context: Dict[str, Any], params: Dic
     return actions_to_perform
 
 
+def prompt_payment_method_selection(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Sends an interactive button message to prompt the user to select a payment method.
+    
+    Expected params:
+    - order_context_var (str): Context variable containing order details.
+    - header_text (str, optional): Header text for the message.
+    - body_text_template (str, optional): Body text template.
+    - footer_text (str, optional): Footer text.
+    """
+    from .services import _resolve_value
+    
+    order_var = params.get('order_context_var', 'created_order')
+    header_text = params.get('header_text', '💳 Select Payment Method')
+    body_text_template = params.get('body_text_template', 
+        'Your order #{{ order.order_number }} totaling ${{ order.amount }} {{ order.currency }} has been created.\n\n'
+        'Please select how you would like to pay:')
+    footer_text = params.get('footer_text', 'Tap a button below to proceed')
+    
+    order_data = context.get(order_var)
+    if not order_data:
+        logger.warning(f"No order data found in context variable '{order_var}' for contact {contact.id}.")
+        return []
+    
+    # Resolve body text with order data in context
+    context['order'] = order_data
+    body_text = _resolve_value(body_text_template, context, contact)
+    
+    # Build interactive button message with payment method options
+    interactive_payload = {
+        "type": "button",
+        "header": {"type": "text", "text": header_text},
+        "body": {"text": body_text},
+        "footer": {"text": footer_text},
+        "action": {
+            "buttons": [
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": f"pay_paynow_{order_data.get('order_number', '')}",
+                        "title": "💰 Pay with Paynow"
+                    }
+                },
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": f"pay_manual_{order_data.get('order_number', '')}",
+                        "title": "🏦 Manual Payment"
+                    }
+                }
+            ]
+        }
+    }
+    
+    actions_to_perform = [{
+        'type': 'send_whatsapp_message',
+        'recipient_wa_id': contact.whatsapp_id,
+        'message_type': 'interactive',
+        'data': interactive_payload
+    }]
+    
+    logger.info(f"Queued payment method selection for contact {contact.id}, order {order_data.get('order_number')}.")
+    return actions_to_perform
+
+
+def prompt_paynow_method_selection(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Sends an interactive button message to prompt the user to select a specific Paynow method.
+    
+    Expected params:
+    - order_context_var (str): Context variable containing order details.
+    - header_text (str, optional): Header text for the message.
+    - body_text_template (str, optional): Body text template.
+    """
+    from .services import _resolve_value
+    
+    order_var = params.get('order_context_var', 'created_order')
+    header_text = params.get('header_text', '📱 Select Paynow Method')
+    body_text_template = params.get('body_text_template', 
+        'Please select your preferred mobile money provider:')
+    
+    order_data = context.get(order_var)
+    if not order_data:
+        logger.warning(f"No order data found in context variable '{order_var}' for contact {contact.id}.")
+        return []
+    
+    context['order'] = order_data
+    body_text = _resolve_value(body_text_template, context, contact)
+    
+    # Build interactive button message with Paynow method options
+    interactive_payload = {
+        "type": "button",
+        "header": {"type": "text", "text": header_text},
+        "body": {"text": body_text},
+        "action": {
+            "buttons": [
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": f"paynow_ecocash_{order_data.get('order_number', '')}",
+                        "title": "📞 Ecocash"
+                    }
+                },
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": f"paynow_onemoney_{order_data.get('order_number', '')}",
+                        "title": "💵 OneMoney"
+                    }
+                },
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": f"paynow_innbucks_{order_data.get('order_number', '')}",
+                        "title": "💳 Innbucks"
+                    }
+                }
+            ]
+        }
+    }
+    
+    actions_to_perform = [{
+        'type': 'send_whatsapp_message',
+        'recipient_wa_id': contact.whatsapp_id,
+        'message_type': 'interactive',
+        'data': interactive_payload
+    }]
+    
+    logger.info(f"Queued Paynow method selection for contact {contact.id}, order {order_data.get('order_number')}.")
+    return actions_to_perform
+
+
+def confirm_payment_method_and_initiate(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Confirms the selected payment method and initiates the appropriate payment flow.
+    Updates the order with the selected payment method.
+    
+    Expected params:
+    - order_context_var (str): Context variable containing order details.
+    - payment_method_context_var (str): Context variable containing selected payment method.
+    """
+    from .services import _resolve_value
+    
+    order_var = params.get('order_context_var', 'created_order')
+    payment_method_var = params.get('payment_method_context_var', 'selected_payment_method')
+    
+    order_data = context.get(order_var)
+    payment_method = context.get(payment_method_var)
+    
+    if not order_data or not payment_method:
+        logger.warning(f"Missing order data or payment method for contact {contact.id}.")
+        return []
+    
+    # Update order with payment method
+    try:
+        order = Order.objects.get(order_number=order_data.get('order_number'))
+        order.payment_method = payment_method
+        order.save(update_fields=['payment_method'])
+        logger.info(f"Updated order {order.order_number} with payment method: {payment_method}")
+    except Order.DoesNotExist:
+        logger.error(f"Order not found: {order_data.get('order_number')}")
+        return []
+    
+    actions_to_perform = []
+    
+    # Check if it's a Paynow method (automated) or manual
+    if payment_method.startswith('paynow_'):
+        # Automated Paynow payment - send confirmation and initiate payment
+        paynow_method_map = {
+            'paynow_ecocash': 'Ecocash',
+            'paynow_onemoney': 'OneMoney',
+            'paynow_innbucks': 'Innbucks'
+        }
+        method_display = paynow_method_map.get(payment_method, 'Paynow')
+        
+        confirmation_msg = (
+            f"✅ *Payment Method Confirmed*\n\n"
+            f"You have selected: *{method_display}*\n\n"
+            f"Order: #{order.order_number}\n"
+            f"Amount: ${order.amount} {order.currency}\n\n"
+            f"Please check your phone for the payment prompt..."
+        )
+        
+        actions_to_perform.append({
+            'type': 'send_whatsapp_message',
+            'recipient_wa_id': contact.whatsapp_id,
+            'message_type': 'text',
+            'data': {'body': confirmation_msg}
+        })
+        
+        # Store order data back to context for payment initiation
+        context[order_var] = {
+            'id': str(order.id),
+            'order_number': order.order_number,
+            'amount': str(order.amount),
+            'currency': order.currency,
+            'payment_method': payment_method
+        }
+        
+    else:
+        # Manual payment - send instructions
+        manual_method_map = {
+            'manual_bank_transfer': 'Bank Transfer',
+            'manual_cash': 'Cash Payment',
+            'manual_other': 'Other Payment Method'
+        }
+        method_display = manual_method_map.get(payment_method, 'Manual Payment')
+        
+        instructions_msg = (
+            f"✅ *Payment Method Confirmed*\n\n"
+            f"You have selected: *{method_display}*\n\n"
+            f"Order: #{order.order_number}\n"
+            f"Amount: ${order.amount} {order.currency}\n\n"
+            f"📋 *Payment Instructions:*\n"
+        )
+        
+        if payment_method == 'manual_bank_transfer':
+            instructions_msg += (
+                f"\n*Bank Details:*\n"
+                f"Bank: [Your Bank Name]\n"
+                f"Account Name: [Your Account Name]\n"
+                f"Account Number: [Your Account Number]\n"
+                f"Branch: [Branch Name]\n\n"
+                f"Please use order number *{order.order_number}* as your reference.\n\n"
+                f"After making the payment, please send us the proof of payment (screenshot or receipt)."
+            )
+        elif payment_method == 'manual_cash':
+            instructions_msg += (
+                f"\nPlease visit our office to complete your cash payment.\n\n"
+                f"*Office Address:*\n"
+                f"[Your Office Address]\n\n"
+                f"*Operating Hours:*\n"
+                f"Monday - Friday: 8:00 AM - 5:00 PM\n"
+                f"Saturday: 9:00 AM - 1:00 PM\n\n"
+                f"Quote order number *{order.order_number}* when making payment."
+            )
+        else:
+            instructions_msg += (
+                f"\nOur team will contact you shortly with payment details.\n\n"
+                f"Order reference: *{order.order_number}*"
+            )
+        
+        actions_to_perform.append({
+            'type': 'send_whatsapp_message',
+            'recipient_wa_id': contact.whatsapp_id,
+            'message_type': 'text',
+            'data': {'body': instructions_msg}
+        })
+    
+    logger.info(f"Confirmed payment method {payment_method} for order {order.order_number}")
+    return actions_to_perform
+
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
@@ -849,3 +1102,6 @@ flow_action_registry.register('normalize_order_number', normalize_order_number)
 flow_action_registry.register('send_catalog_message', send_catalog_message)
 flow_action_registry.register('process_cart_order', process_cart_order)
 flow_action_registry.register('initiate_payment_flow', initiate_payment_flow)
+flow_action_registry.register('prompt_payment_method_selection', prompt_payment_method_selection)
+flow_action_registry.register('prompt_paynow_method_selection', prompt_paynow_method_selection)
+flow_action_registry.register('confirm_payment_method_and_initiate', confirm_payment_method_and_initiate)
