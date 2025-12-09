@@ -2014,6 +2014,7 @@ def process_order_from_catalog(msg_data: dict, contact: Contact, app_config) -> 
             confirmation_message += f"• {quantity}x {product_name} - ${item_price}\n"
         
         confirmation_message += f"\n*Total:* ${total_amount} {currency}\n\n"
+        confirmation_message += "💡 Having issues? Reply 'menu' for help or contact our support team."
         
         send_whatsapp_message(
             to_phone_number=contact.whatsapp_id,

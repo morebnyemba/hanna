@@ -975,6 +975,7 @@ def confirm_payment_method_and_initiate(contact: Contact, context: Dict[str, Any
     - payment_method_context_var (str): Context variable containing selected payment method.
     """
     from .services import _resolve_value
+    from customer_data.models import Order
     
     order_var = params.get('order_context_var', 'created_order')
     payment_method_var = params.get('payment_method_context_var', 'selected_payment_method')
@@ -1034,44 +1035,28 @@ def confirm_payment_method_and_initiate(contact: Contact, context: Dict[str, Any
         
     else:
         # Manual payment - send instructions
-        manual_method_map = {
-            'manual_bank_transfer': 'Bank Transfer',
-            'manual_cash': 'Cash Payment',
-            'manual_other': 'Other Payment Method'
-        }
-        method_display = manual_method_map.get(payment_method, 'Manual Payment')
-        
-        instructions_msg = (
-            f"✅ *Payment Method Confirmed*\n\n"
-            f"You have selected: *{method_display}*\n\n"
-            f"Order: #{order.order_number}\n"
-            f"Amount: ${order.amount} {order.currency}\n\n"
-            f"📋 *Payment Instructions:*\n"
-        )
+        from customer_data.payment_utils import get_bank_transfer_instructions, get_cash_payment_instructions
         
         if payment_method == 'manual_bank_transfer':
-            instructions_msg += (
-                f"\n*Bank Details:*\n"
-                f"Bank: [Your Bank Name]\n"
-                f"Account Name: [Your Account Name]\n"
-                f"Account Number: [Your Account Number]\n"
-                f"Branch: [Branch Name]\n\n"
-                f"Please use order number *{order.order_number}* as your reference.\n\n"
-                f"After making the payment, please send us the proof of payment (screenshot or receipt)."
+            instructions_msg = get_bank_transfer_instructions(
+                order.order_number, 
+                str(order.amount), 
+                order.currency
             )
         elif payment_method == 'manual_cash':
-            instructions_msg += (
-                f"\nPlease visit our office to complete your cash payment.\n\n"
-                f"*Office Address:*\n"
-                f"[Your Office Address]\n\n"
-                f"*Operating Hours:*\n"
-                f"Monday - Friday: 8:00 AM - 5:00 PM\n"
-                f"Saturday: 9:00 AM - 1:00 PM\n\n"
-                f"Quote order number *{order.order_number}* when making payment."
+            instructions_msg = get_cash_payment_instructions(
+                order.order_number, 
+                str(order.amount), 
+                order.currency
             )
         else:
-            instructions_msg += (
-                f"\nOur team will contact you shortly with payment details.\n\n"
+            # Other manual payment method
+            instructions_msg = (
+                f"✅ *Payment Method Confirmed*\n\n"
+                f"You have selected: *Manual Payment*\n\n"
+                f"Order: #{order.order_number}\n"
+                f"Amount: ${order.amount} {order.currency}\n\n"
+                f"Our team will contact you shortly with payment details.\n\n"
                 f"Order reference: *{order.order_number}*"
             )
         

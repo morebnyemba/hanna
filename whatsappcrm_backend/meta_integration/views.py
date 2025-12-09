@@ -565,28 +565,20 @@ class MetaWebhookAPIView(View):
                 
                 try:
                     order = Order.objects.get(order_number=order_number)
-                    order.payment_method = 'manual_bank_transfer'  # Default to bank transfer
+                    # Use enum value for consistency
+                    order.payment_method = Order.PaymentMethod.MANUAL_BANK_TRANSFER
                     order.save(update_fields=['payment_method'])
                 except Order.DoesNotExist:
                     logger.error(f"Order {order_number} not found for payment method selection")
                     self._save_log(log_entry, 'failed', f'Order {order_number} not found')
                     return
                 
-                # Send manual payment instructions
-                instructions_msg = (
-                    f"✅ *Payment Method Confirmed*\n\n"
-                    f"You have selected: *Manual Payment*\n\n"
-                    f"Order: #{order.order_number}\n"
-                    f"Amount: ${order.amount} {order.currency}\n\n"
-                    f"📋 *Bank Transfer Instructions:*\n\n"
-                    f"*Bank Details:*\n"
-                    f"Bank: [Your Bank Name]\n"
-                    f"Account Name: [Your Account Name]\n"
-                    f"Account Number: [Your Account Number]\n"
-                    f"Branch: [Branch Name]\n\n"
-                    f"Please use order number *{order.order_number}* as your reference.\n\n"
-                    f"After making the payment, please send us the proof of payment (screenshot or receipt).\n\n"
-                    f"Our team will confirm your payment and process your order."
+                # Send manual payment instructions using utility function
+                from customer_data.payment_utils import get_bank_transfer_instructions
+                instructions_msg = get_bank_transfer_instructions(
+                    order.order_number, 
+                    str(order.amount), 
+                    order.currency
                 )
                 
                 send_whatsapp_message(
@@ -600,8 +592,16 @@ class MetaWebhookAPIView(View):
                 
             elif button_id.startswith('paynow_'):
                 # User selected specific Paynow method (ecocash, onemoney, innbucks)
-                method = parts[1] if len(parts) > 1 else 'ecocash'
-                order_number = '_'.join(parts[2:]) if len(parts) > 2 else ''
+                # Format: paynow_{method}_{order_number}
+                # Extract method and order number more safely
+                button_parts = button_id.split('_', 2)  # Split into max 3 parts
+                if len(button_parts) < 3:
+                    logger.error(f"Invalid Paynow button ID format: {button_id}")
+                    self._save_log(log_entry, 'failed', 'Invalid button ID format')
+                    return
+                
+                method = button_parts[1]
+                order_number = button_parts[2]
                 
                 try:
                     order = Order.objects.get(order_number=order_number)
@@ -638,8 +638,32 @@ class MetaWebhookAPIView(View):
                 try:
                     from paynow_integration.services import PaynowService
                     from customer_data.models import Payment, PaymentStatus
+                    from customer_data.payment_utils import validate_phone_number
                     from decimal import Decimal
                     import uuid
+                    
+                    # Validate and format phone number
+                    try:
+                        validated_phone = validate_phone_number(contact.whatsapp_id)
+                    except ValueError as e:
+                        logger.error(f"Phone number validation failed: {e}")
+                        error_msg = (
+                            f"❌ Invalid phone number format.\n\n"
+                            f"Please contact our support team to complete your payment.\n"
+                            f"Order: #{order.order_number}"
+                        )
+                        send_whatsapp_message(
+                            to_phone_number=contact.whatsapp_id,
+                            message_type='text',
+                            data={'body': error_msg}
+                        )
+                        self._save_log(log_entry, 'failed', str(e))
+                        return
+                    
+                    # Get customer email if available, otherwise use default
+                    customer_email = ''
+                    if order.customer:
+                        customer_email = order.customer.email or ''
                     
                     # Create payment reference
                     payment_reference = f"PAY-{order.order_number}-{uuid.uuid4().hex[:8].upper()}"
@@ -662,8 +686,8 @@ class MetaWebhookAPIView(View):
                     result = paynow_service.initiate_express_checkout_payment(
                         amount=Decimal(str(order.amount)),
                         reference=payment_reference,
-                        phone_number=contact.whatsapp_id,
-                        email='',
+                        phone_number=validated_phone,
+                        email=customer_email,
                         paynow_method_type=method,
                         description=f"Payment for Order {order.order_number}"
                     )
