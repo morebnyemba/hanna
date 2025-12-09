@@ -71,11 +71,12 @@ class Command(BaseCommand):
                 superusers = User.objects.filter(is_superuser=True, email__isnull=False).exclude(email='')
                 created_count = 0
                 for su in superusers:
-                    AdminEmailRecipient.objects.get_or_create(
+                    _, created = AdminEmailRecipient.objects.get_or_create(
                         email=su.email,
                         defaults={'name': su.get_full_name() or su.username}
                     )
-                    created_count += 1
+                    if created:
+                        created_count += 1
                 if created_count > 0:
                     fixed.append(f'Created {created_count} AdminEmailRecipient(s) from superuser accounts')
                     self.stdout.write(self.style.SUCCESS(
@@ -186,13 +187,21 @@ class Command(BaseCommand):
         
         missing_vars = []
         for var_name, var_value in env_vars.items():
-            if not var_value or (isinstance(var_value, str) and not var_value.strip()):
+            # Check if value is missing or empty (handle both strings and other types)
+            is_missing = (
+                var_value is None or
+                (isinstance(var_value, str) and not var_value.strip()) or
+                (isinstance(var_value, (list, dict)) and not var_value)
+            )
+            
+            if is_missing:
                 missing_vars.append(var_name)
                 self.stdout.write(self.style.WARNING(f'   ⚠ {var_name} is not set'))
             else:
-                # Mask password
+                # Mask sensitive data
                 display_value = var_value
-                if 'PASSWORD' in var_name or 'SECRET' in var_name:
+                sensitive_keywords = ['PASSWORD', 'SECRET', 'PASS', 'PWD', 'KEY', 'TOKEN']
+                if any(keyword in var_name.upper() for keyword in sensitive_keywords):
                     display_value = '***HIDDEN***'
                 self.stdout.write(f'   ✓ {var_name}: {display_value}')
         

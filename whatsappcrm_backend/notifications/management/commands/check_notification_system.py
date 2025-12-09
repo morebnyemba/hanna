@@ -261,7 +261,7 @@ class Command(BaseCommand):
             self.stdout.write('   → Link staff users to WhatsApp contacts in Django Admin')
         
         self.stdout.write('\n   ℹ For complete validation, run:')
-        self.stdout.write('   → python manage.py validate_notification_setup --test-email
+        self.stdout.write('   → python manage.py validate_notification_setup --test-email')
         
         if not issues and warnings:
             self.stdout.write('\n' + self.style.WARNING(
