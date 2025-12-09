@@ -1550,6 +1550,17 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
             
             logger.debug(f"Handling active flow. Contact: {contact.whatsapp_id}, Current Step: '{current_step.name}' (Type: {current_step.step_type}). Context: {flow_context}")
 
+            # --- Special handling for WhatsApp Flow responses that have already been processed ---
+            # If we receive an nfm_reply message but the context already has whatsapp_flow_response_received=True,
+            # it means the response was already processed by process_whatsapp_flow_response and we should treat
+            # this as an internal continuation to trigger transition evaluation, not as a question answer.
+            if (message_data.get('type') == 'interactive' and 
+                message_data.get('interactive', {}).get('type') == 'nfm_reply' and
+                flow_context.get('whatsapp_flow_response_received') is True):
+                logger.info(f"Detected already-processed WhatsApp flow response for contact {contact.id}. "
+                           f"Converting to internal message to trigger transition evaluation.")
+                message_data = {'type': 'internal_whatsapp_flow_response'}
+                is_internal_message = True
 
             # --- Step 1: Process incoming message if the current step is a question ---
             if current_step.step_type == 'question' and '_question_awaiting_reply_for' in flow_context:
@@ -1582,6 +1593,20 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                                 nfm_response_data = json.loads(response_json_str)
                             except json.JSONDecodeError: 
                                 logger.warning(f"Could not parse nfm_reply response_json for question step {current_step.name}")
+                # Handle resumption from WhatsApp Flow response that was already saved to context
+                elif message_data.get('type') == 'internal_whatsapp_flow_response':
+                    # The WhatsApp Flow response was already processed and saved to the flow context
+                    # by the WhatsAppFlowResponseProcessor. Retrieve it from there.
+                    has_response_flag = flow_context.get('whatsapp_flow_response_received', False)
+                    saved_flow_data = flow_context.get('whatsapp_flow_data')
+                    if has_response_flag and saved_flow_data:
+                        nfm_response_data = saved_flow_data
+                        logger.info(f"Resuming flow with pre-saved WhatsApp flow data for question step '{current_step.name}'.")
+                    else:
+                        logger.warning(
+                            f"Received internal_whatsapp_flow_response but context is incomplete for step '{current_step.name}'. "
+                            f"Response flag: {has_response_flag}, Data present: {saved_flow_data is not None}"
+                        )
                 
                 image_payload = message_data.get('image') if message_data.get('type') == 'image' else None
                 location_payload = message_data.get('location') if message_data.get('type') == 'location' else None
