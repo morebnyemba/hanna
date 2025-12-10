@@ -158,7 +158,7 @@ def check_and_send_24h_window_reminders():
     user_ids_to_remind = list(potential_users_to_remind.values_list('id', flat=True))
     if user_ids_to_remind:
         queue_notifications_to_users(
-            template_name='admin_24h_window_reminder',
+            template_name='hanna_admin_24h_window_reminder',
             user_ids=user_ids_to_remind
         )
         dispatched_count = len(user_ids_to_remind)

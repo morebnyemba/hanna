@@ -19,7 +19,7 @@ def handle_failed_message_notification(sender, message_instance, **kwargs):
         )
 
         queue_notifications_to_users(
-            template_name='message_send_failure',
+            template_name='hanna_message_send_failure',
             group_names=["Technical Admin"],
             related_contact=contact,
             template_context={'message': message_instance}
