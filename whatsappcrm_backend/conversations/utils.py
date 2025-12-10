@@ -40,13 +40,17 @@ def normalize_phone_number(phone_number: str, default_country_code: str = '263')
     if cleaned.startswith('0'):
         cleaned = default_country_code + cleaned[1:]
     
-    # If the number doesn't start with a country code, add the default
-    # Most country codes are 1-3 digits. Zimbabwe is 263 (3 digits).
-    # We'll check if it starts with the default country code
+    # If the number doesn't start with the default country code, check if it needs one
     elif not cleaned.startswith(default_country_code):
-        # Only add country code if the number doesn't already have one
-        # This is a simple heuristic: if the number is too short, add country code
-        if len(cleaned) < 10:
+        # Common country codes (1-3 digits) - this is a heuristic check
+        # Most country codes: 1 (US/Canada), 20-99 (various), 200-999 (various)
+        # If number doesn't start with a likely country code and is short, add default
+        likely_has_country_code = (
+            cleaned.startswith('1') and len(cleaned) >= 11 or  # US/Canada format
+            (len(cleaned) >= 11 and cleaned[0] != '0')  # Other international formats
+        )
+        
+        if not likely_has_country_code:
             cleaned = default_country_code + cleaned
     
     # Validate the result

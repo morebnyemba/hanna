@@ -51,9 +51,14 @@ def process_flow_for_message_task(message_id: int):
                 if action.get('type') == 'send_whatsapp_message':
                     recipient_wa_id = action.get('recipient_wa_id', contact.whatsapp_id)
                     # Normalize phone number to E.164 format if it's not already
-                    normalized_wa_id = normalize_phone_number(recipient_wa_id) if recipient_wa_id else recipient_wa_id
+                    if recipient_wa_id:
+                        normalized_wa_id = normalize_phone_number(recipient_wa_id)
+                        # Use normalized if successful, otherwise use original
+                        final_wa_id = normalized_wa_id if normalized_wa_id else recipient_wa_id
+                    else:
+                        final_wa_id = recipient_wa_id
                     
-                    recipient_contact, _ = Contact.objects.get_or_create(whatsapp_id=normalized_wa_id or recipient_wa_id)
+                    recipient_contact, _ = Contact.objects.get_or_create(whatsapp_id=final_wa_id)
 
                     outgoing_msg = Message.objects.create(
                         contact=recipient_contact, app_config=config_to_use, direction='out',

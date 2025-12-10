@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -19,7 +20,6 @@ class SimpleContactSerializer(serializers.ModelSerializer):
     def validate_whatsapp_id(self, value):
         """Normalize whatsapp_id to E.164 format if it looks like a phone number."""
         # Only normalize if it looks like a phone number (contains only digits and possibly +)
-        import re
         if re.match(r'^[\d+\s\-()]+$', value):
             normalized = normalize_phone_number(value)
             if normalized:
