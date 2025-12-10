@@ -74,7 +74,7 @@ class WhatsAppFlowServiceUpdateFlowJsonTest(TestCase):
         # Verify data parameter (form fields)
         data = call_args[1]['data']
         self.assertIn('name', data)
-        self.assertEqual(data['name'], 'Test Flow')
+        self.assertEqual(data['name'], 'flow.json')  # Asset filename, not flow name
         self.assertIn('asset_type', data)
         self.assertEqual(data['asset_type'], 'FLOW_JSON')
         
