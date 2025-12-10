@@ -3,6 +3,7 @@
 import requests
 import json
 import logging
+import time
 from typing import Optional, Dict, Any, List
 from django.utils import timezone
 from django.conf import settings
@@ -165,12 +166,16 @@ class WhatsAppFlowService:
             whatsapp_flow.save()
             return False
     
-    def update_flow_json(self, whatsapp_flow: WhatsAppFlow) -> bool:
+    def update_flow_json(self, whatsapp_flow: WhatsAppFlow, max_retries: int = 3) -> bool:
         """
-        Updates the flow JSON definition on Meta's platform.
+        Updates the flow JSON definition on Meta's platform with retry logic.
+        
+        Retries on specific Meta processing errors (error code 139001, subcode 4016012)
+        which indicate the JSON was saved but processing failed.
         
         Args:
             whatsapp_flow: The WhatsAppFlow instance with updated JSON
+            max_retries: Maximum number of retry attempts (default: 3)
             
         Returns:
             bool: True if successful, False otherwise
@@ -199,47 +204,75 @@ class WhatsAppFlowService:
             "Authorization": f"Bearer {self.meta_config.access_token}"
         }
         
-        try:
-            whatsapp_flow.sync_status = 'syncing'
-            whatsapp_flow.save(update_fields=['sync_status'])
-            
-            response = requests.post(url, headers=headers, data=data, files=files, timeout=20)
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            if result.get('success'):
-                whatsapp_flow.sync_status = 'draft'
-                whatsapp_flow.last_synced_at = timezone.now()
-                whatsapp_flow.sync_error = None
+        # Retry loop with exponential backoff
+        for attempt in range(max_retries):
+            try:
+                if attempt == 0:
+                    whatsapp_flow.sync_status = 'syncing'
+                    whatsapp_flow.save(update_fields=['sync_status'])
+                else:
+                    logger.info(f"Retry attempt {attempt + 1}/{max_retries} for flow ID: {whatsapp_flow.flow_id}")
+                
+                response = requests.post(url, headers=headers, data=data, files=files, timeout=30)
+                response.raise_for_status()
+                
+                result = response.json()
+                
+                if result.get('success'):
+                    whatsapp_flow.sync_status = 'draft'
+                    whatsapp_flow.last_synced_at = timezone.now()
+                    whatsapp_flow.sync_error = None
+                    whatsapp_flow.save()
+                    
+                    logger.info(f"Successfully updated flow JSON for flow ID: {whatsapp_flow.flow_id}")
+                    return True
+                else:
+                    raise ValueError(f"Flow JSON update failed: {result}")
+                    
+            except requests.exceptions.RequestException as e:
+                error_msg = f"Error updating flow JSON: {e}"
+                error_details = None
+                is_retryable = False
+                
+                if hasattr(e, 'response') and e.response is not None:
+                    try:
+                        error_details = e.response.json()
+                        error_msg += f" - Details: {error_details}"
+                        
+                        # Check if this is the specific Meta processing error that can be retried
+                        # Error code 139001 with subcode 4016012: "Flow JSON has been saved, but processing has failed"
+                        error_obj = error_details.get('error', {})
+                        error_code = error_obj.get('code')
+                        error_subcode = error_obj.get('error_subcode')
+                        
+                        if error_code == 139001 and error_subcode == 4016012:
+                            is_retryable = True
+                            logger.warning(f"Meta flow processing error detected (retryable): {error_obj.get('error_user_msg')}")
+                    except (ValueError, json.JSONDecodeError, KeyError):
+                        error_msg += f" - Response: {e.response.text}"
+                
+                # If this is a retryable error and we have attempts left, retry
+                if is_retryable and attempt < max_retries - 1:
+                    # Exponential backoff: 5s, 10s, 20s
+                    delay = 5 * (2 ** attempt)
+                    logger.info(f"Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                    continue
+                
+                # If not retryable or out of retries, fail
+                logger.error(error_msg)
+                whatsapp_flow.sync_status = 'error'
+                whatsapp_flow.sync_error = error_msg
                 whatsapp_flow.save()
+                return False
                 
-                logger.info(f"Successfully updated flow JSON for flow ID: {whatsapp_flow.flow_id}")
-                return True
-            else:
-                raise ValueError(f"Flow JSON update failed: {result}")
-                
-        except requests.exceptions.RequestException as e:
-            error_msg = f"Error updating flow JSON: {e}"
-            if hasattr(e, 'response') and e.response is not None:
-                try:
-                    error_details = e.response.json()
-                    error_msg += f" - Details: {error_details}"
-                except:
-                    error_msg += f" - Response: {e.response.text}"
-            
-            logger.error(error_msg)
-            whatsapp_flow.sync_status = 'error'
-            whatsapp_flow.sync_error = error_msg
-            whatsapp_flow.save()
-            return False
-        except Exception as e:
-            error_msg = f"Unexpected error updating flow JSON: {e}"
-            logger.error(error_msg, exc_info=True)
-            whatsapp_flow.sync_status = 'error'
-            whatsapp_flow.sync_error = error_msg
-            whatsapp_flow.save()
-            return False
+            except Exception as e:
+                error_msg = f"Unexpected error updating flow JSON: {e}"
+                logger.error(error_msg, exc_info=True)
+                whatsapp_flow.sync_status = 'error'
+                whatsapp_flow.sync_error = error_msg
+                whatsapp_flow.save()
+                return False
     
     def publish_flow(self, whatsapp_flow: WhatsAppFlow) -> bool:
         """

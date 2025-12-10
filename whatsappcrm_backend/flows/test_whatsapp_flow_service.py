@@ -3,7 +3,8 @@ Unit tests for WhatsAppFlowService update_flow_json fix.
 Tests that the file parameter is correctly sent as multipart/form-data.
 """
 import json
-from unittest.mock import Mock, patch
+import time
+from unittest.mock import Mock, patch, call
 from django.test import TestCase
 from flows.whatsapp_flow_service import WhatsAppFlowService
 from flows.models import WhatsAppFlow
@@ -73,7 +74,7 @@ class WhatsAppFlowServiceUpdateFlowJsonTest(TestCase):
         # Verify data parameter (form fields)
         data = call_args[1]['data']
         self.assertIn('name', data)
-        self.assertEqual(data['name'], 'Test Flow')
+        self.assertEqual(data['name'], 'flow.json')  # Asset filename, not flow name
         self.assertIn('asset_type', data)
         self.assertEqual(data['asset_type'], 'FLOW_JSON')
         
@@ -312,3 +313,166 @@ class WhatsAppFlowServiceSyncFlowTest(TestCase):
         
         # Should succeed
         self.assertTrue(result)
+
+
+class WhatsAppFlowServiceRetryLogicTest(TestCase):
+    """Test the retry logic for update_flow_json with Meta processing errors"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.meta_config = Mock(spec=MetaAppConfig)
+        self.meta_config.access_token = "test_access_token"
+        self.meta_config.api_version = "v23.0"
+        self.meta_config.waba_id = "1234567890"
+        
+        self.service = WhatsAppFlowService(self.meta_config)
+        
+        # Create a mock WhatsAppFlow
+        self.whatsapp_flow = Mock(spec=WhatsAppFlow)
+        self.whatsapp_flow.flow_id = "test_flow_id_123"
+        self.whatsapp_flow.name = "test_flow"
+        self.whatsapp_flow.friendly_name = "Test Flow"
+        self.whatsapp_flow.flow_json = {
+            "version": "3.0",
+            "screens": [{"id": "WELCOME", "title": "Welcome"}]
+        }
+        self.whatsapp_flow.sync_status = 'draft'
+        self.whatsapp_flow.save = Mock()
+    
+    @patch('flows.whatsapp_flow_service.time.sleep')
+    @patch('flows.whatsapp_flow_service.requests.post')
+    def test_update_flow_json_retries_on_meta_processing_error(self, mock_post, mock_sleep):
+        """Test that update_flow_json retries on Meta processing error 139001/4016012"""
+        from requests.exceptions import HTTPError
+        
+        # First two attempts fail with Meta processing error
+        error_response = Mock()
+        error_response.status_code = 400
+        error_response.json.return_value = {
+            'error': {
+                'message': 'Updating attempt failed',
+                'type': 'OAuthException',
+                'code': 139001,
+                'error_subcode': 4016012,
+                'is_transient': False,
+                'error_user_title': 'Error while processing WELJ',
+                'error_user_msg': 'Flow JSON has been saved, but processing has failed. Please try uploading flow JSON again.',
+                'fbtrace_id': 'test_trace_id'
+            }
+        }
+        error_response.raise_for_status.side_effect = HTTPError(response=error_response)
+        
+        # Third attempt succeeds
+        success_response = Mock()
+        success_response.status_code = 200
+        success_response.json.return_value = {'success': True}
+        
+        mock_post.side_effect = [error_response, error_response, success_response]
+        
+        result = self.service.update_flow_json(self.whatsapp_flow, max_retries=3)
+        
+        # Should succeed after retries
+        self.assertTrue(result)
+        
+        # Should have made 3 attempts
+        self.assertEqual(mock_post.call_count, 3)
+        
+        # Should have slept twice (between attempts 1-2 and 2-3)
+        self.assertEqual(mock_sleep.call_count, 2)
+        
+        # Verify exponential backoff: 5s, 10s
+        mock_sleep.assert_has_calls([call(5), call(10)])
+        
+        # Final status should be 'draft'
+        self.assertEqual(self.whatsapp_flow.sync_status, 'draft')
+    
+    @patch('flows.whatsapp_flow_service.time.sleep')
+    @patch('flows.whatsapp_flow_service.requests.post')
+    def test_update_flow_json_fails_after_max_retries(self, mock_post, mock_sleep):
+        """Test that update_flow_json fails after exhausting retries"""
+        from requests.exceptions import HTTPError
+        
+        # All attempts fail with Meta processing error
+        error_response = Mock()
+        error_response.status_code = 400
+        error_response.json.return_value = {
+            'error': {
+                'message': 'Updating attempt failed',
+                'type': 'OAuthException',
+                'code': 139001,
+                'error_subcode': 4016012,
+                'error_user_msg': 'Flow JSON has been saved, but processing has failed.'
+            }
+        }
+        error_response.raise_for_status.side_effect = HTTPError(response=error_response)
+        
+        mock_post.return_value = error_response
+        
+        result = self.service.update_flow_json(self.whatsapp_flow, max_retries=3)
+        
+        # Should fail after all retries
+        self.assertFalse(result)
+        
+        # Should have made 3 attempts
+        self.assertEqual(mock_post.call_count, 3)
+        
+        # Should have slept twice
+        self.assertEqual(mock_sleep.call_count, 2)
+        
+        # Final status should be 'error'
+        self.assertEqual(self.whatsapp_flow.sync_status, 'error')
+    
+    @patch('flows.whatsapp_flow_service.time.sleep')
+    @patch('flows.whatsapp_flow_service.requests.post')
+    def test_update_flow_json_does_not_retry_non_retryable_errors(self, mock_post, mock_sleep):
+        """Test that update_flow_json does not retry on non-retryable errors"""
+        from requests.exceptions import HTTPError
+        
+        # Different error (not the Meta processing error)
+        error_response = Mock()
+        error_response.status_code = 401
+        error_response.json.return_value = {
+            'error': {
+                'message': 'Invalid access token',
+                'type': 'OAuthException',
+                'code': 190
+            }
+        }
+        error_response.raise_for_status.side_effect = HTTPError(response=error_response)
+        
+        mock_post.return_value = error_response
+        
+        result = self.service.update_flow_json(self.whatsapp_flow, max_retries=3)
+        
+        # Should fail immediately
+        self.assertFalse(result)
+        
+        # Should have made only 1 attempt (no retries)
+        self.assertEqual(mock_post.call_count, 1)
+        
+        # Should not have slept
+        self.assertEqual(mock_sleep.call_count, 0)
+        
+        # Final status should be 'error'
+        self.assertEqual(self.whatsapp_flow.sync_status, 'error')
+    
+    @patch('flows.whatsapp_flow_service.requests.post')
+    def test_update_flow_json_succeeds_on_first_attempt(self, mock_post):
+        """Test that update_flow_json succeeds on first attempt when no error"""
+        # First attempt succeeds
+        success_response = Mock()
+        success_response.status_code = 200
+        success_response.json.return_value = {'success': True}
+        
+        mock_post.return_value = success_response
+        
+        result = self.service.update_flow_json(self.whatsapp_flow, max_retries=3)
+        
+        # Should succeed
+        self.assertTrue(result)
+        
+        # Should have made only 1 attempt
+        self.assertEqual(mock_post.call_count, 1)
+        
+        # Final status should be 'draft'
+        self.assertEqual(self.whatsapp_flow.sync_status, 'draft')
