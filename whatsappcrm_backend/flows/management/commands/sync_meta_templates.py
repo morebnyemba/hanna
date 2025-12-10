@@ -95,53 +95,56 @@ class Command(BaseCommand):
             })
 
             # Handle buttons if present
-            if hasattr(template, 'buttons') and template.buttons:
-                button_payloads = []
-                url_parameters_map = {}
-                url_param_counter = 0
+            # COMMENTED OUT: Button handling logic causing Meta API validation errors
+            # The button URL format was causing templates to be rejected with "invalid URL format" errors
+            # TODO: Fix button URL format to comply with Meta's requirements before re-enabling
+            # if hasattr(template, 'buttons') and template.buttons:
+            #     button_payloads = []
+            #     url_parameters_map = {}
+            #     url_param_counter = 0
 
-                for button_data in template.buttons[:3]:  # Max 3 buttons
-                    if isinstance(button_data, dict):
-                        button_type = button_data.get("type", "QUICK_REPLY").upper()
-                        text = button_data.get("text")
-                        if not text:
-                            continue
+            #     for button_data in template.buttons[:3]:  # Max 3 buttons
+            #         if isinstance(button_data, dict):
+            #             button_type = button_data.get("type", "QUICK_REPLY").upper()
+            #             text = button_data.get("text")
+            #             if not text:
+            #                 continue
 
-                        if button_type == "URL":
-                            original_url = button_data.get("url")
-                            if not original_url:
-                                continue
-                            
-                            processed_url = original_url
-                            jinja_vars_in_url = re.findall(r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}', original_url)
-                            
-                            url_example_values = []
-                            for jinja_var in jinja_vars_in_url:
-                                if jinja_var not in url_parameters_map:
-                                    url_param_counter += 1
-                                    url_parameters_map[jinja_var] = url_param_counter
-                                
-                                var_regex = r'\{\{\s*' + re.escape(jinja_var) + r'\s*\}\}'
-                                processed_url = re.sub(var_regex, f'{{{{{url_parameters_map[jinja_var]}}}}}', processed_url, 1)
-                                url_example_values.append(f"https://www.example.com/d/{jinja_var.split('.')[-1]}")  # Correct example format
+            #             if button_type == "URL":
+            #                 original_url = button_data.get("url")
+            #                 if not original_url:
+            #                     continue
+            #             
+            #                 processed_url = original_url
+            #                 jinja_vars_in_url = re.findall(r'\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}', original_url)
+            #             
+            #                 url_example_values = []
+            #                 for jinja_var in jinja_vars_in_url:
+            #                     if jinja_var not in url_parameters_map:
+            #                         url_param_counter += 1
+            #                         url_parameters_map[jinja_var] = url_param_counter
+            #                 
+            #                     var_regex = r'\{\{\s*' + re.escape(jinja_var) + r'\s*\}\}'
+            #                     processed_url = re.sub(var_regex, f'{{{{{url_parameters_map[jinja_var]}}}}}', processed_url, 1)
+            #                     url_example_values.append(f"https://www.example.com/d/{jinja_var.split('.')[-1]}")  # Correct example format
 
-                            button_payload = {
-                                "type": "URL",
-                                "text": text,
-                                "url": processed_url
-                            }
-                            if url_example_values:
-                                button_payload["example"] = url_example_values  # Correctly formatted example
-                            button_payloads.append(button_payload)
-                        else:  # Default to QUICK_REPLY
-                            button_payloads.append({
-                                "type": "QUICK_REPLY",
-                                "text": text
-                            })
-                if button_payloads:
-                    components.append({"type": "BUTTONS", "buttons": button_payloads})
-                
-                template.url_parameters = url_parameters_map
+            #                 button_payload = {
+            #                     "type": "URL",
+            #                     "text": text,
+            #                     "url": processed_url
+            #                 }
+            #                 if url_example_values:
+            #                     button_payload["example"] = url_example_values  # Correctly formatted example
+            #                 button_payloads.append(button_payload)
+            #             else:  # Default to QUICK_REPLY
+            #                 button_payloads.append({
+            #                     "type": "QUICK_REPLY",
+            #                     "text": text
+            #                 })
+            #     if button_payloads:
+            #         components.append({"type": "BUTTONS", "buttons": button_payloads})
+            # 
+            #     template.url_parameters = url_parameters_map
             
             # Determine if we are creating or updating
             if template.meta_template_id:
