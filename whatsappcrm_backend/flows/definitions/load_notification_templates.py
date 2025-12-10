@@ -135,6 +135,29 @@ A new cleaning request has been submitted by *{{ contact_name }}*.
 Please follow up to provide a quote and schedule the service."""
     },
     {
+        "name": "hanna_new_custom_furniture_installation_request",
+        "description": "Sent to admins when a customer submits a new custom furniture installation/delivery request.",
+        "template_type": "whatsapp",
+        "body": """New Custom Furniture Installation Request 🪑
+
+A new furniture installation request has been submitted by *{{ contact_name }}*.
+
+*Order Details:*
+- Order #: {{ furniture_order_number }}
+- Furniture Type: {{ furniture_type }}
+- Specifications: {{ furniture_specifications }}
+
+*Client Details:*
+- Name: {{ furniture_full_name }}
+- Phone: {{ furniture_contact_phone }}{{ furniture_alt_contact_line }}
+
+*Delivery/Installation Info:*
+- Address: {{ furniture_address }}{{ furniture_location_pin_line }}
+- Preferred Date: {{ furniture_preferred_date }} ({{ furniture_availability }})
+
+Please follow up to confirm the delivery/installation schedule."""
+    },
+    {
         "name": "hanna_admin_order_and_install_created",
         "description": "Sent to admins when another admin creates a new order and installation request via the admin flow.",
         "template_type": "whatsapp",

@@ -142,6 +142,43 @@ class WhatsAppFlowResponseProcessor:
             )
             logger.info(f"[CustomFurniture] Created InstallationRequest {inst.id} for {customer.full_name}")
 
+            # Send notification to admins about the new request
+            try:
+                from notifications.services import queue_notifications_to_users
+                
+                # Prepare context for notification template
+                alt_name = data.get('alt_contact_name', '')
+                alt_phone = data.get('alt_contact_phone', '')
+                furniture_alt_contact_line = ''
+                if alt_name and alt_name.lower() != 'n/a':
+                    furniture_alt_contact_line = f"\n- Alt. Contact: {alt_name} ({alt_phone})"
+                
+                # Location pin line (will be empty since WhatsApp flow doesn't collect it)
+                furniture_location_pin_line = ''
+                
+                notification_context = {
+                    'contact_name': contact.name or contact.whatsapp_id,
+                    'furniture_order_number': data['order_number'],
+                    'furniture_type': data.get('furniture_type', 'Not specified'),
+                    'furniture_specifications': data.get('specifications', 'None'),
+                    'furniture_full_name': data['full_name'],
+                    'furniture_contact_phone': data['contact_phone'],
+                    'furniture_alt_contact_line': furniture_alt_contact_line,
+                    'furniture_address': data['address'],
+                    'furniture_location_pin_line': furniture_location_pin_line,
+                    'furniture_preferred_date': data.get('preferred_date', 'Not specified'),
+                    'furniture_availability': (data.get('availability', 'Not specified')).replace('_', ' ').title(),
+                }
+                
+                queue_notifications_to_users(
+                    template_name='hanna_new_custom_furniture_installation_request',
+                    template_context=notification_context,
+                    group_names=['Pfungwa Staff', 'System Admins']
+                )
+                logger.info(f"[CustomFurniture] Notification queued for InstallationRequest {inst.id}")
+            except Exception as notif_exc:
+                logger.error(f"[CustomFurniture] Failed to queue notification: {notif_exc}", exc_info=True)
+
             # Feedback message
             feedback = (
                 f"Your *custom furniture installation* request has been submitted!\n"
