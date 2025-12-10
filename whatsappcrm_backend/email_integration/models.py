@@ -1,5 +1,120 @@
 from django.db import models
 from django.utils.timezone import now
+from django.core.exceptions import ValidationError
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class SMTPConfigManager(models.Manager):
+    def get_active_config(self):
+        """
+        Retrieves the single, globally active SMTPConfig.
+        
+        This is used as the default configuration for sending emails.
+        If no active config exists, falls back to Django settings.
+        """
+        try:
+            return self.get(is_active=True)
+        except SMTPConfig.DoesNotExist:
+            logger.warning("No active SMTP Configuration found in database. Falling back to Django settings.")
+            return None
+        except SMTPConfig.MultipleObjectsReturned:
+            logger.error(
+                "CRITICAL: Multiple SMTP Configurations are marked as active. "
+                "Using most recently updated config. Please fix this in Django Admin."
+            )
+            # Use most recently updated config for predictable behavior
+            return self.filter(is_active=True).order_by('-updated_at').first()
+
+
+class SMTPConfig(models.Model):
+    """
+    Stores SMTP configuration for sending emails.
+    Allows managing email settings via Django Admin instead of .env file.
+    """
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="A descriptive name for this SMTP configuration (e.g., 'Primary Mail Server', 'Backup SMTP')"
+    )
+    host = models.CharField(
+        max_length=255,
+        help_text="SMTP server hostname (e.g., 'mail.example.com')"
+    )
+    port = models.PositiveIntegerField(
+        default=587,
+        help_text="SMTP server port. Common ports: 587 (TLS), 465 (SSL), 25 (plain)"
+    )
+    username = models.CharField(
+        max_length=255,
+        help_text="SMTP authentication username (usually an email address)"
+    )
+    password = models.CharField(
+        max_length=255,
+        help_text=(
+            "SMTP authentication password. "
+            "⚠️ WARNING: Stored as plain text in database. "
+            "Use app-specific passwords and limit admin access. "
+            "For production, consider implementing field-level encryption."
+        )
+    )
+    use_tls = models.BooleanField(
+        default=True,
+        help_text="Use TLS (STARTTLS) encryption. Recommended for port 587."
+    )
+    use_ssl = models.BooleanField(
+        default=False,
+        help_text="Use SSL encryption. Recommended for port 465. Cannot be used with TLS."
+    )
+    from_email = models.EmailField(
+        help_text="Default 'From' email address for outgoing emails"
+    )
+    timeout = models.PositiveIntegerField(
+        default=10,
+        help_text="Connection timeout in seconds"
+    )
+    is_active = models.BooleanField(
+        default=False,
+        help_text="Set to True to use this configuration. Only one configuration should be active."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = SMTPConfigManager()
+
+    class Meta:
+        verbose_name = "SMTP Configuration"
+        verbose_name_plural = "SMTP Configurations"
+        ordering = ['-is_active', 'name']
+
+    def __str__(self):
+        return f"{self.name} - {self.host}:{self.port} ({'Active' if self.is_active else 'Inactive'})"
+
+    def clean(self):
+        """Validate that TLS and SSL are not both enabled."""
+        super().clean()
+        if self.use_tls and self.use_ssl:
+            raise ValidationError(
+                "Cannot use both TLS and SSL. Please enable only one encryption method."
+            )
+
+    def save(self, *args, **kwargs):
+        """Auto-deactivate other configs when this one is set to active."""
+        from django.db import transaction
+        
+        self.full_clean()
+        
+        if self.is_active:
+            # Use atomic transaction to prevent race conditions
+            with transaction.atomic():
+                # Deactivate all other configs atomically
+                SMTPConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                logger.info(f"SMTP Config '{self.name}' set as active. Other configs deactivated.")
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
+
 
 class EmailAccount(models.Model):
     name = models.CharField(max_length=100, help_text="A friendly name for the email account, e.g., 'Sales Inbox'")

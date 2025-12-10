@@ -279,24 +279,39 @@ class Command(BaseCommand):
     
     def _check_smtp_config(self):
         """Check if SMTP configuration is set up properly."""
+        from email_integration.models import SMTPConfig
+        
         issues = []
         
+        # Check for database SMTP config first
+        smtp_config = SMTPConfig.objects.get_active_config()
+        
+        if smtp_config:
+            self.stdout.write(f'   ℹ Using SMTP config from database: {smtp_config.name}')
+            # Database config is available, no further checks needed
+            return issues
+        
+        # Fallback to checking Django settings
+        self.stdout.write('   ℹ No database SMTP config found, checking Django settings...')
+        
         if not settings.EMAIL_HOST:
-            issues.append('EMAIL_HOST is not configured')
+            issues.append('EMAIL_HOST is not configured in settings or database')
         
         if not settings.EMAIL_HOST_USER:
-            issues.append('EMAIL_HOST_USER is not configured')
+            issues.append('EMAIL_HOST_USER is not configured in settings or database')
         
         if not hasattr(settings, 'EMAIL_HOST_PASSWORD') or not settings.EMAIL_HOST_PASSWORD:
-            issues.append('EMAIL_HOST_PASSWORD is not configured')
+            issues.append('EMAIL_HOST_PASSWORD is not configured in settings or database')
         
         if not settings.DEFAULT_FROM_EMAIL:
-            issues.append('DEFAULT_FROM_EMAIL is not configured')
+            issues.append('DEFAULT_FROM_EMAIL is not configured in settings or database')
         
         return issues
     
     def _test_smtp_connection(self):
         """Test SMTP connection by sending a test email to AdminEmailRecipients."""
+        from email_integration.smtp_utils import get_smtp_connection, get_from_email
+        
         try:
             # Get active admin recipients
             recipients = list(
@@ -309,12 +324,17 @@ class Command(BaseCommand):
                     'message': 'No active AdminEmailRecipient found to send test email'
                 }
             
+            # Get SMTP connection (database or settings)
+            connection = get_smtp_connection()
+            from_email = get_from_email()
+            
             # Try to send a test email
             send_mail(
                 subject='Notification System Test Email',
                 message='This is a test email from the notification system validation command.',
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=from_email,
                 recipient_list=recipients[:1],  # Send to first recipient only
+                connection=connection,
                 fail_silently=False,
             )
             
@@ -325,7 +345,7 @@ class Command(BaseCommand):
         except smtplib.SMTPAuthenticationError as e:
             return {
                 'success': False,
-                'message': f'SMTP authentication failed: {e}. Check EMAIL_HOST_USER and EMAIL_HOST_PASSWORD'
+                'message': f'SMTP authentication failed: {e}. Check credentials in database or settings'
             }
         except smtplib.SMTPException as e:
             return {
