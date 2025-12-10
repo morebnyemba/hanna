@@ -24,7 +24,7 @@ def on_new_order_created(sender, instance, created, **kwargs):
         # Construct a serializable context dictionary
         context = {
             'order': {
-                'id': instance.id,
+                'id': str(instance.id),  # Convert UUID to string for JSON serialization
                 'name': instance.name,
                 'order_number': instance.order_number,
                 'amount': float(instance.amount) if instance.amount is not None else 0.0,
