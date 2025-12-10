@@ -156,21 +156,19 @@ class WhatsAppFlowResponseProcessor:
                 furniture_location_pin_line = ''
                 
                 # Handle availability formatting safely
-                availability = data.get('availability', 'Not specified')
-                if availability:
+                availability = data.get('availability') or 'Not specified'
+                if availability != 'Not specified':
                     availability = str(availability).replace('_', ' ').title()
-                else:
-                    availability = 'Not specified'
                 
                 notification_context = {
                     'contact_name': contact.name or contact.whatsapp_id,
-                    'furniture_order_number': data['order_number'],
+                    'furniture_order_number': data.get('order_number', 'Not specified'),
                     'furniture_type': data.get('furniture_type', 'Not specified'),
                     'furniture_specifications': data.get('specifications', 'None'),
-                    'furniture_full_name': data['full_name'],
-                    'furniture_contact_phone': data['contact_phone'],
+                    'furniture_full_name': data.get('full_name', 'Not specified'),
+                    'furniture_contact_phone': data.get('contact_phone', 'Not specified'),
                     'furniture_alt_contact_line': furniture_alt_contact_line,
-                    'furniture_address': data['address'],
+                    'furniture_address': data.get('address', 'Not specified'),
                     'furniture_location_pin_line': furniture_location_pin_line,
                     'furniture_preferred_date': data.get('preferred_date', 'Not specified'),
                     'furniture_availability': availability,
@@ -189,7 +187,7 @@ class WhatsAppFlowResponseProcessor:
             feedback = (
                 f"Your *custom furniture installation* request has been submitted!\n"
                 f"Order: {inst.order_number}\n"
-                f"Type: {data['furniture_type']}\n"
+                f"Type: {data.get('furniture_type', 'Not specified')}\n"
                 f"We will contact you at {inst.contact_phone} to confirm details."
             )
 
