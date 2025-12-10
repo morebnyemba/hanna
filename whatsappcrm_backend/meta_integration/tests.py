@@ -2,6 +2,7 @@ from django.test import TestCase, override_settings
 from unittest.mock import patch, MagicMock, PropertyMock
 from .catalog_service import MetaCatalogService, PLACEHOLDER_IMAGE_PATH
 from products_and_services.models import Product, ProductCategory, ProductImage
+from .signals import message_send_failed
 
 
 class MetaCatalogServiceTestCase(TestCase):
@@ -272,3 +273,35 @@ class MetaCatalogServiceTestCase(TestCase):
             service._get_product_data(mock_product)
         
         self.assertIn('missing an SKU', str(context.exception))
+
+
+class SignalImportTest(TestCase):
+    """Test case to ensure signal is properly imported in tasks.py"""
+    
+    def test_message_send_failed_signal_import(self):
+        """Test that message_send_failed signal is properly imported in tasks module"""
+        # Import the tasks module
+        from . import tasks
+        
+        # Verify that message_send_failed is accessible in the tasks module
+        self.assertTrue(hasattr(tasks, 'message_send_failed'))
+        
+        # Verify it's the correct signal from signals module
+        from .signals import message_send_failed as expected_signal
+        self.assertIs(tasks.message_send_failed, expected_signal)
+    
+    def test_signal_can_be_sent(self):
+        """Test that signal can be sent without errors"""
+        # This test ensures the signal is properly defined and can be used
+        from .signals import message_send_failed
+        
+        # Create a mock message instance
+        mock_message = MagicMock()
+        mock_message.id = 999
+        mock_message.status = 'failed'
+        
+        # This should not raise any errors
+        try:
+            message_send_failed.send(sender=self.__class__, message_instance=mock_message)
+        except Exception as e:
+            self.fail(f"Signal send raised exception: {e}")

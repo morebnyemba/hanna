@@ -10,6 +10,7 @@ from datetime import timedelta
 
 from .utils import send_whatsapp_message, send_read_receipt_api, download_whatsapp_media
 from .models import MetaAppConfig
+from .signals import message_send_failed
 from conversations.models import Message, Contact # To update message status
 from products_and_services.models import Product
 from .catalog_service import MetaCatalogService
