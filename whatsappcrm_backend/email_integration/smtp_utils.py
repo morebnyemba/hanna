@@ -21,8 +21,12 @@ def get_smtp_connection():
     Note: For high-volume scenarios, consider implementing caching of the active
     configuration to reduce database queries. Cache would need to be invalidated
     when SMTP configuration is changed.
+    
+    Note: Import is inside function to avoid circular import issues since
+    models.py imports from Django core which may import this utility module.
     """
-    from .models import SMTPConfig
+    # Import inside function to avoid circular import
+    from email_integration.models import SMTPConfig
     
     # Try to get active SMTP config from database
     # TODO: Consider caching this for high-volume email scenarios
@@ -58,8 +62,11 @@ def get_from_email():
     
     Returns:
         str: Email address to use as sender
+    
+    Note: Import is inside function to avoid circular import issues.
     """
-    from .models import SMTPConfig
+    # Import inside function to avoid circular import
+    from email_integration.models import SMTPConfig
     
     smtp_config = SMTPConfig.objects.get_active_config()
     
