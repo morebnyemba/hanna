@@ -12,6 +12,7 @@ from .models import WhatsAppFlow, WhatsAppFlowResponse
 from conversations.models import Contact
 from customer_data.models import InstallationRequest, SolarCleaningRequest, CustomerProfile, SiteAssessmentRequest, LoanApplication, Order
 from meta_integration.utils import send_whatsapp_message
+from notifications.services import queue_notifications_to_users
 
 logger = logging.getLogger(__name__)
 
@@ -144,8 +145,6 @@ class WhatsAppFlowResponseProcessor:
 
             # Send notification to admins about the new request
             try:
-                from notifications.services import queue_notifications_to_users
-                
                 # Prepare context for notification template
                 alt_name = data.get('alt_contact_name', '')
                 alt_phone = data.get('alt_contact_phone', '')
@@ -155,6 +154,13 @@ class WhatsAppFlowResponseProcessor:
                 
                 # Location pin line (will be empty since WhatsApp flow doesn't collect it)
                 furniture_location_pin_line = ''
+                
+                # Handle availability formatting safely
+                availability = data.get('availability', 'Not specified')
+                if availability:
+                    availability = str(availability).replace('_', ' ').title()
+                else:
+                    availability = 'Not specified'
                 
                 notification_context = {
                     'contact_name': contact.name or contact.whatsapp_id,
@@ -167,7 +173,7 @@ class WhatsAppFlowResponseProcessor:
                     'furniture_address': data['address'],
                     'furniture_location_pin_line': furniture_location_pin_line,
                     'furniture_preferred_date': data.get('preferred_date', 'Not specified'),
-                    'furniture_availability': (data.get('availability', 'Not specified')).replace('_', ' ').title(),
+                    'furniture_availability': availability,
                 }
                 
                 queue_notifications_to_users(
