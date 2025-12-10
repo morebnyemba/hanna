@@ -16,6 +16,7 @@ from decimal import Decimal, InvalidOperation
 # --- ADD JobCard to imports ---
 from customer_data.models import CustomerProfile, Order, OrderItem, JobCard, InstallationRequest
 from conversations.models import Contact
+from conversations.utils import normalize_phone_number
 from products_and_services.models import Product, SerializedItem
 from notifications.services import queue_notifications_to_users
 from django.core.exceptions import ObjectDoesNotExist
@@ -469,7 +470,12 @@ def _get_or_create_customer_profile(customer_data: dict, log_prefix: str) -> Cus
         logger.warning(f"{log_prefix} No phone number found for customer '{customer_name}'. Cannot create profile.")
         return None
 
-    normalized_phone = re.sub(r'\D', '', customer_phone)
+    # Normalize phone number to E.164 format for WhatsApp (e.g., "0772354523" -> "263772354523")
+    normalized_phone = normalize_phone_number(customer_phone)
+    if not normalized_phone:
+        logger.warning(f"{log_prefix} Failed to normalize phone number '{customer_phone}' for customer '{customer_name}'. Cannot create profile.")
+        return None
+    
     contact, _ = Contact.objects.get_or_create(
         whatsapp_id=normalized_phone,
         defaults={'name': customer_name or f"Customer {normalized_phone}"}
