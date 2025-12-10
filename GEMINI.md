@@ -1,4 +1,3 @@
-
 # Project Overview
 
 This project is a multi-service application consisting of two frontend applications, a backend API, and several supporting services. The entire stack is containerized using Docker.
@@ -9,6 +8,41 @@ This project is a multi-service application consisting of two frontend applicati
 - **`db`**: A PostgreSQL database for data persistence.
 - **`redis`**: A Redis instance for caching and as a message broker for Celery.
 - **`npm`**: Nginx Proxy Manager to handle reverse proxying and SSL termination.
+
+## AI-Assisted Development
+
+This project uses Gemini AI workflows for automated code review, issue triage, and development assistance.
+
+### Available Commands
+
+- **`@gemini-cli /review`** - Trigger an automated code review on pull requests
+- **`@gemini-cli /triage`** - Automatically triage and label issues
+- **`@gemini-cli /cloud-agent [task description]`** - Delegate complex coding tasks to a cloud-based AI agent with advanced capabilities
+- **`@gemini-cli [request]`** - General purpose invocation for various tasks
+
+### Cloud Agent
+
+The cloud agent is a powerful AI assistant that can handle sophisticated development tasks including:
+
+- Multi-file code changes and refactoring
+- Feature implementation with tests and documentation
+- Architectural improvements and system design
+- Complex bug fixes requiring cross-file analysis
+- Code migration and modernization
+
+**Usage Example:**
+```
+@gemini-cli /cloud-agent Add user authentication with JWT tokens, including login/logout endpoints, middleware, and tests
+```
+
+The cloud agent will:
+1. Analyze the codebase and understand the architecture
+2. Design a comprehensive solution
+3. Post a detailed plan for review
+4. Wait for approval (`/approve` comment)
+5. Execute the plan incrementally with proper commits
+6. Run tests and validation
+7. Create a pull request with the changes
 
 ## Building and Running
 
