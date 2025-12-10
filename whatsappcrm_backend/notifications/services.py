@@ -49,15 +49,165 @@ def queue_notifications_to_users(
             # Build the context for rendering. Start with a copy of the provided context.
             render_context = (template_context or {}).copy()
 
-            # Add related objects to the context, ensuring they are serializable if they are models.
-            # This is crucial because the context will be saved to a JSONField.
+            # Flatten nested variables for Meta-compatible templates
+            # Contact name
             if related_contact:
                 render_context['contact'] = str(related_contact) # Convert model to string
+                # Add contact_name for templates that need it
+                render_context['contact_name'] = related_contact.name or related_contact.whatsapp_id
                 # Add related_contact_name for templates that need it
                 render_context['related_contact_name'] = related_contact.name or related_contact.whatsapp_id
                 if hasattr(related_contact, 'customer_profile'):
                     # Assuming customer_profile might be needed. Convert it as well.
                     render_context['customer_profile'] = str(related_contact.customer_profile)
+            
+            # Flatten common nested patterns
+            # Handle created_order_details
+            if 'created_order_details' in render_context:
+                order_details = render_context['created_order_details']
+                if isinstance(order_details, dict):
+                    render_context['order_number'] = order_details.get('order_number', '')
+                    render_context['order_amount'] = order_details.get('amount', '0.00')
+            
+            # Handle cart_items for list rendering
+            if 'cart_items' in render_context:
+                cart_items = render_context['cart_items']
+                if isinstance(cart_items, list):
+                    items_text = '\n'.join([f"- {item.get('quantity', 0)} x {item.get('name', '')}" for item in cart_items])
+                    render_context['cart_items_list'] = items_text if items_text else '(No items)'
+            
+            # Handle order.* patterns
+            if 'order' in render_context:
+                order = render_context['order']
+                if isinstance(order, dict):
+                    render_context['order_name'] = order.get('name', '')
+                    render_context['order_number'] = render_context.get('order_number') or order.get('order_number', '')
+                    render_context['order_amount'] = render_context.get('order_amount') or order.get('amount', '0.00')
+                    # Handle nested customer
+                    if 'customer' in order and isinstance(order['customer'], dict):
+                        customer = order['customer']
+                        render_context['customer_name'] = (
+                            customer.get('get_full_name') or 
+                            customer.get('contact', {}).get('name', '') if isinstance(customer.get('contact'), dict) else ''
+                        )
+            
+            # Handle target_contact
+            if 'target_contact' in render_context:
+                target = render_context['target_contact']
+                if isinstance(target, list) and len(target) > 0:
+                    render_context['customer_name'] = target[0].get('name', render_context.get('customer_whatsapp_id', ''))
+            
+            # Handle admin name
+            if 'contact' in render_context and isinstance(render_context['contact'], str):
+                # Contact already converted to string above, use contact_name
+                render_context['admin_name'] = render_context.get('contact_name', '')
+            
+            # Handle recipient name
+            if 'recipient' in render_context:
+                recipient = render_context['recipient']
+                if isinstance(recipient, dict):
+                    render_context['recipient_name'] = recipient.get('first_name') or recipient.get('username', '')
+            
+            # Handle or expressions and defaults
+            render_context['order_number'] = render_context.get('order_number', 'N/A')
+            render_context['assessment_number'] = render_context.get('assessment_number', 'N/A')
+            
+            # Handle install_alt_name conditional
+            install_alt_name = render_context.get('install_alt_name', '')
+            if install_alt_name and install_alt_name.lower() != 'n/a':
+                install_alt_phone = render_context.get('install_alt_phone', '')
+                render_context['install_alt_contact_line'] = f"- Alt. Contact: {install_alt_name} ({install_alt_phone})"
+            else:
+                render_context['install_alt_contact_line'] = ''
+            
+            # Handle location pin conditionals
+            install_pin = render_context.get('install_location_pin')
+            if install_pin and isinstance(install_pin, dict):
+                lat = install_pin.get('latitude')
+                lon = install_pin.get('longitude')
+                if lat and lon:
+                    render_context['install_location_pin_line'] = f"- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                else:
+                    render_context['install_location_pin_line'] = ''
+            else:
+                render_context['install_location_pin_line'] = ''
+            
+            # Handle cleaning location pin
+            cleaning_pin = render_context.get('cleaning_location_pin')
+            if cleaning_pin and isinstance(cleaning_pin, dict):
+                lat = cleaning_pin.get('latitude')
+                lon = cleaning_pin.get('longitude')
+                if lat and lon:
+                    render_context['cleaning_location_pin_line'] = f"- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                else:
+                    render_context['cleaning_location_pin_line'] = ''
+            else:
+                render_context['cleaning_location_pin_line'] = ''
+            
+            # Handle title filters
+            for field in ['install_availability', 'cleaning_roof_type', 'cleaning_panel_type', 
+                         'cleaning_availability', 'install_kit_type', 'new_status']:
+                if field in render_context and render_context[field]:
+                    render_context[field] = str(render_context[field]).title()
+            
+            # Handle replace filters for loan types
+            if 'loan_type' in render_context:
+                render_context['loan_type'] = str(render_context.get('loan_type', '')).replace('_', ' ').title()
+            if 'loan_employment_status' in render_context:
+                render_context['loan_employment_status'] = str(render_context.get('loan_employment_status', '')).replace('_', ' ').title()
+            
+            # Handle conditional lines for loan
+            loan_amount = render_context.get('loan_request_amount')
+            render_context['loan_amount_line'] = f"- Amount Requested: *${loan_amount}*" if loan_amount else ''
+            
+            loan_product = render_context.get('loan_product_interest')
+            render_context['loan_product_line'] = f"- Product of Interest: *{loan_product}*" if loan_product else ''
+            
+            # Handle loan application ID
+            if 'created_loan_application' in render_context:
+                loan_app = render_context['created_loan_application']
+                if isinstance(loan_app, dict):
+                    render_context['loan_application_id'] = loan_app.get('id', '')
+            
+            # Handle warranty details
+            if 'found_warranty' in render_context:
+                warranty = render_context['found_warranty']
+                if isinstance(warranty, list) and len(warranty) > 0:
+                    render_context['warranty_product_name'] = warranty[0].get('product__name', '')
+                    render_context['warranty_serial_number'] = warranty[0].get('product_serial_number', '')
+            
+            # Handle resolution notes conditional
+            resolution_notes = render_context.get('resolution_notes', '')
+            if resolution_notes:
+                render_context['resolution_notes_section'] = f"*Notes from our team:*\n{resolution_notes}\n"
+            else:
+                render_context['resolution_notes_section'] = ''
+            
+            # Handle job card details
+            if 'job_card' in render_context:
+                job_card = render_context['job_card']
+                if isinstance(job_card, dict):
+                    render_context['job_card_number'] = job_card.get('job_card_number', '')
+                    render_context['product_description'] = job_card.get('product_description', '')
+                    render_context['product_serial_number'] = job_card.get('product_serial_number', '')
+                    render_context['reported_fault'] = job_card.get('reported_fault', '')
+            
+            # Handle customer details for job card
+            if 'customer' in render_context:
+                customer = render_context['customer']
+                if isinstance(customer, dict):
+                    first_name = customer.get('first_name', '')
+                    last_name = customer.get('last_name', '')
+                    render_context['customer_name'] = f"{first_name} {last_name}".strip() or render_context.get('customer_name', '')
+            
+            # Handle template_context nested patterns
+            if 'template_context' in render_context:
+                tpl_ctx = render_context['template_context']
+                if isinstance(tpl_ctx, dict):
+                    render_context['last_bot_message'] = tpl_ctx.get('last_bot_message', 'User requested help or an error occurred.')
+            else:
+                render_context['last_bot_message'] = render_context.get('last_bot_message', 'User requested help or an error occurred.')
+            
             if related_flow:
                 render_context['flow'] = str(related_flow)
             
