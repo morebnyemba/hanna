@@ -13,11 +13,11 @@ NOTIFICATION_TEMPLATES = [
         "description": "Sent to admins when a new order is created via a signal.",
         "body": """New Order Created! 📦
 
-A new order has been created for customer *{{ order.customer.get_full_name or order.customer.contact.name }}*.
+A new order has been created for customer *{{ customer_name }}*.
 
-- Order Name: *{{ order.name }}*
-- Order #: *{{ order.order_number }}*
-- Amount: *${{ order.amount or '0.00' }}*
+- Order Name: *{{ order_name }}*
+- Order #: *{{ order_number }}*
+- Amount: *${{ order_amount }}*
 
 Please see the admin panel for full details."""
     },
@@ -26,11 +26,11 @@ Please see the admin panel for full details."""
         "description": "Sent to admins when a customer places a new order through the 'Purchase Product' flow.",
         "body": """New Online Order Placed! 🛍️
 
-A new order has been placed via WhatsApp by *{{ contact.name or contact.whatsapp_id }}*.
+A new order has been placed via WhatsApp by *{{ contact_name }}*.
 
 *Order Details:*
-- Order #: *{{ created_order_details.order_number }}*
-- Total Amount: *${{ created_order_details.amount }}*
+- Order #: *{{ order_number }}*
+- Total Amount: *${{ order_amount }}*
 - Payment Status: Pending
 
 *Customer & Delivery:*
@@ -39,8 +39,7 @@ A new order has been placed via WhatsApp by *{{ contact.name or contact.whatsapp
 - Address: {{ delivery_address }}
 
 *Items Ordered:*
-{% for item in cart_items %}- {{ item.quantity }} x {{ item.name }}
-{% endfor %}
+{{ cart_items_list }}
 
 Please follow up with the customer to arrange payment."""
     },
@@ -67,22 +66,22 @@ Our team will be in touch with the next steps. Thank you!"""
         "description": "Sent to admins when a customer submits a new solar installation request.",
         "body": """New Installation Request 🛠️
 
-A new installation request has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+A new installation request has been submitted by *{{ contact_name }}*.
 
 *Request Details:*
 - Type: {{ installation_type }}
-- Order #: {{ order_number or 'N/A' }}
-- Assessment #: {{ assessment_number or 'N/A' }}
+- Order #: {{ order_number }}
+- Assessment #: {{ assessment_number }}
 
 *Installation Info:*
 - Branch: {{ install_branch }}
 - Sales Person: {{ install_sales_person }}
 - Client Name: {{ install_full_name }}
-- Client Phone: {{ install_phone }}{% if install_alt_name and install_alt_name|lower != 'n/a' %}
-- Alt. Contact: {{ install_alt_name }} ({{ install_alt_phone }}){% endif %}
-- Address: {{ install_address }}{% if install_location_pin and install_location_pin.latitude %}
-- Location Pin: https://www.google.com/maps/search/?api=1&query={{ install_location_pin.latitude }},{{ install_location_pin.longitude }}{% endif %}
-- Preferred Date: {{ install_datetime }} ({{ install_availability|title }})
+- Client Phone: {{ install_phone }}
+{{ install_alt_contact_line }}
+- Address: {{ install_address }}
+{{ install_location_pin_line }}
+- Preferred Date: {{ install_datetime }} ({{ install_availability }})
 
 Please review and schedule the installation."""
     },
@@ -91,19 +90,19 @@ Please review and schedule the installation."""
         "description": "Sent to admins when a customer submits a new Starlink installation request.",
         "body": """New Starlink Installation Request 🛰️
 
-A new Starlink installation request has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+A new Starlink installation request has been submitted by *{{ contact_name }}*.
 
 *Client & Location:*
 - Name: {{ install_full_name }}
 - Phone: {{ install_phone }}
 - Address: {{ install_address }}
-{% if install_location_pin and install_location_pin.latitude %}- Location Pin: https://www.google.com/maps/search/?api=1&query={{ install_location_pin.latitude }},{{ install_location_pin.longitude }}{% endif %}
+{{ install_location_pin_line }}
 
 *Scheduling:*
-- Preferred Date: {{ install_datetime }} ({{ install_availability|title }})
+- Preferred Date: {{ install_datetime }} ({{ install_availability }})
 
 *Job Details:*
-- Kit Type: {{ install_kit_type|title }}
+- Kit Type: {{ install_kit_type }}
 - Desired Mount: {{ install_mount_location }}
 
 Please follow up to confirm the schedule."""
@@ -113,18 +112,18 @@ Please follow up to confirm the schedule."""
         "description": "Sent to admins when a customer submits a new solar panel cleaning request.",
         "body": """New Solar Cleaning Request 💧
 
-A new cleaning request has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+A new cleaning request has been submitted by *{{ contact_name }}*.
 
 *Client Details:*
 - Name: {{ cleaning_full_name }}
 - Phone: {{ cleaning_phone }}
 
 *Job Details:*
-- Roof Type: {{ cleaning_roof_type|title }}
-- Panels: {{ cleaning_panel_count }} x {{ cleaning_panel_type|title }}
-- Preferred Date: {{ cleaning_date }} ({{ cleaning_availability|title }})
-- Address: {{ cleaning_address }}{% if cleaning_location_pin and cleaning_location_pin.latitude %}
-- Location Pin: https://www.google.com/maps/search/?api=1&query={{ cleaning_location_pin.latitude }},{{ cleaning_location_pin.longitude }}{% endif %}
+- Roof Type: {{ cleaning_roof_type }}
+- Panels: {{ cleaning_panel_count }} x {{ cleaning_panel_type }}
+- Preferred Date: {{ cleaning_date }} ({{ cleaning_availability }})
+- Address: {{ cleaning_address }}
+{{ cleaning_location_pin_line }}
 
 Please follow up to provide a quote and schedule the service."""
     },
@@ -133,8 +132,8 @@ Please follow up to provide a quote and schedule the service."""
         "description": "Sent to admins when another admin creates a new order and installation request via the admin flow.",
         "body": """Admin Action: New Order & Install Created 📝
 
-Admin *{{ contact.name or contact.username }}* has created a new order and installation request.
-*Customer:* {{ target_contact.0.name or customer_whatsapp_id }}
+Admin *{{ admin_name }}* has created a new order and installation request.
+*Customer:* {{ customer_name }}
 *Order #:* {{ order_number_ref }}/PO
 *Order Name:* {{ order_description }}
 
@@ -145,7 +144,7 @@ Please see the admin panel for full details."""
         "description": "Sent to admins when a customer books a new site assessment.",
         "body": """New Site Assessment Request 📋
 
-A new site assessment has been requested by *{{ contact.name or contact.whatsapp_id }}*.
+A new site assessment has been requested by *{{ contact_name }}*.
 
 *Request Details:*
 - Name: {{ assessment_full_name }}
@@ -163,11 +162,11 @@ Please follow up to schedule the assessment."""
 
 A new job card has been automatically created from an email attachment.
 
-*Job Card #*: {{ job_card.job_card_number }}
-*Customer*: {{ customer.first_name }} {{ customer.last_name }}
-*Product*: {{ job_card.product_description }}
-*Serial #*: {{ job_card.product_serial_number }}
-*Reported Fault*: {{ job_card.reported_fault }}
+*Job Card #*: {{ job_card_number }}
+*Customer*: {{ customer_name }}
+*Product*: {{ product_description }}
+*Serial #*: {{ product_serial_number }}
+*Reported Fault*: {{ reported_fault }}
 
 Please review the job card in the admin panel and assign it to a technician."""
     },
@@ -188,7 +187,7 @@ Please respond to them in the main inbox."""
         "description": "Sent to admins when a placeholder order is created via the order receiver number.",
         "body": """New Placeholder Order Created 📦
 
-A new placeholder order has been created by *{{ contact.name or contact.whatsapp_id }}*.
+A new placeholder order has been created by *{{ contact_name }}*.
 
 *Order #:* {{ normalized_order_number }}
 
@@ -208,7 +207,7 @@ Please check the system logs for more details."""
     {
         "name": "hanna_admin_24h_window_reminder",
         "description": "Sent to an admin user when their 24-hour interaction window is about to close.",
-        "body": """Hi {{ recipient.first_name or recipient.username }},
+        "body": """Hi {{ recipient_name }},
 
 This is an automated reminder. Your 24-hour interaction window for receiving system notifications on WhatsApp is closing soon.
 

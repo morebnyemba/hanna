@@ -14,11 +14,11 @@ NOTIFICATION_TEMPLATES = [
         "template_type": "whatsapp",
         "body": """New Online Order Placed! 🛍️
 
-A new order has been placed via WhatsApp by *{{ contact.name or contact.whatsapp_id }}*.
+A new order has been placed via WhatsApp by *{{ contact_name }}*.
 
 *Order Details:*
-- Order #: *{{ created_order_details.order_number }}*
-- Total Amount: *${{ created_order_details.amount }}*
+- Order #: *{{ order_number }}*
+- Total Amount: *${{ order_amount }}*
 - Payment Status: Pending
 
 *Customer & Delivery:*
@@ -27,8 +27,7 @@ A new order has been placed via WhatsApp by *{{ contact.name or contact.whatsapp
 - Address: {{ delivery_address }}
 
 *Items Ordered:*
-{% for item in cart_items %}- {{ item.quantity }} x {{ item.name }}
-{% endfor %}
+{{ cart_items_list }}
 
 Please follow up with the customer to arrange payment."""
     },
@@ -58,22 +57,22 @@ Our team will be in touch with the next steps. Thank you!"""
         "template_type": "whatsapp",
         "body": """New Installation Request 🛠️
 
-A new installation request has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+A new installation request has been submitted by *{{ contact_name }}*.
 
 *Request Details:*
 - Type: {{ installation_type }}
-- Order #: {{ order_number or 'N/A' }}
-- Assessment #: {{ assessment_number or 'N/A' }}
+- Order #: {{ order_number }}
+- Assessment #: {{ assessment_number }}
 
 *Installation Info:*
 - Branch: {{ install_branch }}
 - Sales Person: {{ install_sales_person }}
 - Client Name: {{ install_full_name }}
-- Client Phone: {{ install_phone }}{% if install_alt_name and install_alt_name|lower != 'n/a' %}
-- Alt. Contact: {{ install_alt_name }} ({{ install_alt_phone }}){% endif %}
-- Address: {{ install_address }}{% if install_location_pin and install_location_pin.latitude %}
-- Location Pin: https://www.google.com/maps/search/?api=1&query={{ install_location_pin.latitude }},{{ install_location_pin.longitude }}{% endif %}
-- Preferred Date: {{ install_datetime }} ({{ install_availability|title }})
+- Client Phone: {{ install_phone }}
+{{ install_alt_contact_line }}
+- Address: {{ install_address }}
+{{ install_location_pin_line }}
+- Preferred Date: {{ install_datetime }} ({{ install_availability }})
 
 Please review and schedule the installation."""
     },
@@ -83,9 +82,9 @@ Please review and schedule the installation."""
         "template_type": "whatsapp",
         "body": """Admin Action: New Order & Install Created 📝
 
-Admin *{{ contact.name or contact.username }}* has created a new order and installation request.
+Admin *{{ admin_name }}* has created a new order and installation request.
 
-*Customer:* {{ target_contact.0.name or customer_whatsapp_id }}
+*Customer:* {{ customer_name }}
 *Order #:* PO-{{ order_number_ref }}
 *Order Name:* {{ order_description }}
 
@@ -97,7 +96,7 @@ Please see the admin panel for full details."""
         "template_type": "whatsapp",
         "body": """New Site Assessment Request 📋
 
-A new site assessment has been requested by *{{ contact.name or contact.whatsapp_id }}*.
+A new site assessment has been requested by *{{ contact_name }}*.
 
 *Request Details:*
 - Name: {{ assessment_full_name }}
@@ -114,10 +113,10 @@ Please follow up to schedule the assessment."""
         "template_type": "whatsapp",
         "body": """Human Intervention Required ⚠️
 
-Contact *{{ related_contact.name or related_contact.whatsapp_id }}* requires assistance.
+Contact *{{ related_contact_name }}* requires assistance.
 
 *Reason:*
-{{ template_context.last_bot_message or 'User requested help or an error occurred.' }}
+{{ last_bot_message }}
 
 Please respond to them in the main inbox."""
     },
@@ -127,7 +126,7 @@ Please respond to them in the main inbox."""
         "template_type": "whatsapp",
         "body": """New Placeholder Order Created 📦
 
-A new placeholder order has been created by *{{ contact.name or contact.whatsapp_id }}*.
+A new placeholder order has been created by *{{ contact_name }}*.
 
 *Order #:* {{ order_number_from_message }}
 
@@ -139,17 +138,17 @@ Please update the order details in the admin panel as soon as possible."""
         "template_type": "whatsapp",
         "body": """New Loan Application Received 💰
 
-A new loan application has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+A new loan application has been submitted by *{{ contact_name }}*.
 
 *Application Details:*
-- Application ID: *#{{ created_loan_application.id }}*
+- Application ID: *#{{ loan_application_id }}*
 - Name: *{{ loan_applicant_name }}*
 - National ID: {{ loan_national_id }}
-- Loan Type: {{ loan_type|replace('_', ' ')|title }}
-- Employment: {{ loan_employment_status|replace('_', ' ')|title }}
+- Loan Type: {{ loan_type }}
+- Employment: {{ loan_employment_status }}
 - Monthly Income: ${{ loan_monthly_income }}
-{% if loan_request_amount %}- Amount Requested: *${{ loan_request_amount }}*{% endif %}
-{% if loan_product_interest %}- Product of Interest: *{{ loan_product_interest }}*{% endif %}
+{{ loan_amount_line }}
+{{ loan_product_line }}
 
 Please review the application in the admin panel and follow up with the customer."""
     },
@@ -159,12 +158,12 @@ Please review the application in the admin panel and follow up with the customer
         "template_type": "whatsapp",
         "body": """New Warranty Claim Submitted 🛡️
 
-A new warranty claim has been submitted by *{{ contact.name or contact.whatsapp_id }}*.
+A new warranty claim has been submitted by *{{ contact_name }}*.
 
 *Claim Details:*
 - Claim ID: *{{ generated_claim_id }}*
-- Product: *{{ found_warranty.0.product__name }}*
-- Serial Number: `{{ found_warranty.0.product_serial_number }}`
+- Product: *{{ warranty_product_name }}*
+- Serial Number: `{{ warranty_serial_number }}`
 
 *Fault Description:*
 {{ fault_description }}
@@ -177,11 +176,9 @@ Please review the claim in the admin panel and update its status."""
         "template_type": "whatsapp",
         "body": """Hello! 👋
 
-The status for your Warranty Claim (#{{ claim_id }}) for product `{{ serial_number }}` has been updated to: *{{ new_status|title }}*.
+The status for your Warranty Claim (#{{ claim_id }}) for product `{{ serial_number }}` has been updated to: *{{ new_status }}*.
 
-{% if resolution_notes %}*Notes from our team:*
-{{ resolution_notes }}
-{% endif %}
+{{ resolution_notes_section }}
 Thank you for your patience!"""
     },
     {
