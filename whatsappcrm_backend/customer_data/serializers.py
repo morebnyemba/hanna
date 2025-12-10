@@ -1,9 +1,11 @@
+import re
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Order, OrderItem, InstallationRequest, SiteAssessmentRequest, CustomerProfile, Interaction, JobCard, LoanApplication
 from conversations.models import Contact
+from conversations.utils import normalize_phone_number
 from products_and_services.models import SerializedItem
 
 User = get_user_model()
@@ -14,6 +16,15 @@ class SimpleContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = ['id', 'whatsapp_id', 'name']
+    
+    def validate_whatsapp_id(self, value):
+        """Normalize whatsapp_id to E.164 format if it looks like a phone number."""
+        # Only normalize if it looks like a phone number (contains only digits and possibly +)
+        if re.match(r'^[\d+\s\-()]+$', value):
+            normalized = normalize_phone_number(value)
+            if normalized:
+                return normalized
+        return value
 
 class SimpleUserSerializer(serializers.ModelSerializer):
     """A lightweight serializer for basic User (agent) information."""
