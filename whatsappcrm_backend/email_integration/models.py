@@ -20,8 +20,12 @@ class SMTPConfigManager(models.Manager):
             logger.warning("No active SMTP Configuration found in database. Falling back to Django settings.")
             return None
         except SMTPConfig.MultipleObjectsReturned:
-            logger.error("Multiple SMTP Configurations are marked as active. Using the first one found.")
-            return self.filter(is_active=True).first()
+            logger.error(
+                "CRITICAL: Multiple SMTP Configurations are marked as active. "
+                "Using most recently updated config. Please fix this in Django Admin."
+            )
+            # Use most recently updated config for predictable behavior
+            return self.filter(is_active=True).order_by('-updated_at').first()
 
 
 class SMTPConfig(models.Model):
@@ -48,7 +52,12 @@ class SMTPConfig(models.Model):
     )
     password = models.CharField(
         max_length=255,
-        help_text="SMTP authentication password. Consider using app-specific passwords for better security."
+        help_text=(
+            "SMTP authentication password. "
+            "⚠️ WARNING: Stored as plain text in database. "
+            "Use app-specific passwords and limit admin access. "
+            "For production, consider implementing field-level encryption."
+        )
     )
     use_tls = models.BooleanField(
         default=True,
@@ -92,14 +101,19 @@ class SMTPConfig(models.Model):
 
     def save(self, *args, **kwargs):
         """Auto-deactivate other configs when this one is set to active."""
+        from django.db import transaction
+        
         self.full_clean()
         
         if self.is_active:
-            # Deactivate all other configs
-            SMTPConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
-            logger.info(f"SMTP Config '{self.name}' set as active. Other configs deactivated.")
-        
-        super().save(*args, **kwargs)
+            # Use atomic transaction to prevent race conditions
+            with transaction.atomic():
+                # Deactivate all other configs atomically
+                SMTPConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                logger.info(f"SMTP Config '{self.name}' set as active. Other configs deactivated.")
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
 
 class EmailAccount(models.Model):

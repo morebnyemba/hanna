@@ -152,18 +152,30 @@ The system will fall back to `.env` settings.
 
 ### Password Storage
 
-- Passwords are stored in the database (encrypted at rest if you use Django encryption)
-- Consider using **app-specific passwords** instead of main account passwords
-- For Gmail/Google Workspace: Generate an "App Password"
-- For Microsoft 365: Use app-specific password or OAuth
+⚠️ **IMPORTANT SECURITY NOTICE:**
+- Passwords are stored as **plain text** in the database by default
+- Database should have proper access controls and backups
+- Only admin users can access SMTP configurations
+- Consider implementing field-level encryption for production use
 
-### Recommendations
+### Best Practices
 
-1. **Use app-specific passwords** when available
-2. **Limit admin access** - Only trusted users should access SMTP configs
-3. **Enable database encryption** - Use Django's encryption tools
-4. **Monitor changes** - Check admin logs for configuration changes
-5. **Backup configurations** - Include in database backups
+1. **Use app-specific passwords** - Generate dedicated passwords for SMTP (Gmail, Office 365)
+2. **Never use main account passwords** - Always use app-specific or service-specific passwords
+3. **Limit admin access** - Only trusted administrators should access SMTP configs
+4. **Enable database encryption** - Encrypt database backups and consider field-level encryption
+5. **Monitor changes** - Regularly review admin logs for configuration changes
+6. **Rotate credentials** - Periodically update SMTP passwords
+7. **Use TLS/SSL** - Always enable encryption for SMTP connections
+8. **Backup configurations** - Include in database backups with proper encryption
+
+### For Production Environments
+
+Consider implementing:
+- **Django encrypted fields** - Use libraries like `django-encrypted-model-fields`
+- **Environment-based secrets** - Use secrets management services (AWS Secrets Manager, etc.)
+- **Access auditing** - Log all SMTP configuration access
+- **Two-factor authentication** - Require 2FA for admin access
 
 ---
 

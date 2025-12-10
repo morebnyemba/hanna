@@ -17,10 +17,15 @@ def get_smtp_connection():
     
     Returns:
         EmailBackend: Configured SMTP backend for sending emails
+    
+    Note: For high-volume scenarios, consider implementing caching of the active
+    configuration to reduce database queries. Cache would need to be invalidated
+    when SMTP configuration is changed.
     """
     from .models import SMTPConfig
     
     # Try to get active SMTP config from database
+    # TODO: Consider caching this for high-volume email scenarios
     smtp_config = SMTPConfig.objects.get_active_config()
     
     if smtp_config:
