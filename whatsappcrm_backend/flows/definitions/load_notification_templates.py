@@ -141,8 +141,9 @@ Please follow up to provide a quote and schedule the service."""
         "body": """Admin Action: New Order & Install Created 📝
 
 Admin *{{ admin_name }}* has created a new order and installation request.
+
 *Customer:* {{ customer_name }}
-*Order #:* {{ order_number_ref }}/PO
+*Order #:* PO-{{ order_number_ref }}
 *Order Name:* {{ order_description }}
 
 Please see the admin panel for full details."""
@@ -201,7 +202,7 @@ Please respond to them in the main inbox."""
 
 A new placeholder order has been created by *{{ contact_name }}*.
 
-*Order #:* {{ normalized_order_number }}
+*Order #:* {{ order_number_from_message }}
 
 Please update the order details in the admin panel as soon as possible."""
     },
