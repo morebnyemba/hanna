@@ -300,8 +300,9 @@ class SignalImportTest(TestCase):
         mock_message.id = 999
         mock_message.status = 'failed'
         
-        # This should not raise any errors
-        try:
-            message_send_failed.send(sender=self.__class__, message_instance=mock_message)
-        except Exception as e:
-            self.fail(f"Signal send raised exception: {e}")
+        # Signal.send() should not raise any errors
+        # The send() method returns a list of (receiver, response) tuples
+        result = message_send_failed.send(sender=self.__class__, message_instance=mock_message)
+        
+        # Verify the result is a list (even if empty)
+        self.assertIsInstance(result, list)
