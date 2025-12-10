@@ -1,7 +1,45 @@
 from django.contrib import admin
 from django.utils.html import format_html
 import json
-from .models import EmailAttachment, ParsedInvoice, EmailAccount, AdminEmailRecipient
+from .models import EmailAttachment, ParsedInvoice, EmailAccount, AdminEmailRecipient, SMTPConfig
+
+
+@admin.register(SMTPConfig)
+class SMTPConfigAdmin(admin.ModelAdmin):
+    list_display = ('name', 'host', 'port', 'username', 'use_tls', 'use_ssl', 'is_active', 'updated_at')
+    list_filter = ('is_active', 'use_tls', 'use_ssl')
+    search_fields = ('name', 'host', 'username')
+    list_editable = ('is_active',)
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Configuration Name', {
+            'fields': ('name', 'is_active')
+        }),
+        ('SMTP Server Settings', {
+            'fields': ('host', 'port', 'username', 'password')
+        }),
+        ('Encryption', {
+            'fields': ('use_tls', 'use_ssl'),
+            'description': 'Enable TLS for port 587 or SSL for port 465. Do not enable both.'
+        }),
+        ('Email Settings', {
+            'fields': ('from_email', 'timeout')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """Log when SMTP config is changed."""
+        if change:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Admin {request.user.username} updated SMTP config: {obj.name}")
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(AdminEmailRecipient)
 class AdminEmailRecipientAdmin(admin.ModelAdmin):

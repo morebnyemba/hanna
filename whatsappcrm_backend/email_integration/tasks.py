@@ -20,13 +20,14 @@ from products_and_services.models import Product, SerializedItem
 from notifications.services import queue_notifications_to_users
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management import call_command
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMessage
 from django.db import transaction
 from django.db.models import Q
 
 # Import the new model to fetch credentials
 from ai_integration.models import AIProvider
 from django.conf import settings
+from .smtp_utils import get_smtp_connection, get_from_email
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +88,20 @@ def send_receipt_confirmation_email(self, attachment_id):
         </html>
         """
 
-        from_email = settings.DEFAULT_FROM_EMAIL
+        from_email = get_from_email()
         recipient_list = [attachment.sender]
-
-        send_mail(subject, text_message, from_email, recipient_list, html_message=html_message)
+        
+        # Use database SMTP config if available
+        connection = get_smtp_connection()
+        
+        send_mail(
+            subject, 
+            text_message, 
+            from_email, 
+            recipient_list, 
+            html_message=html_message,
+            connection=connection
+        )
 
         logger.info(f"{log_prefix} Successfully sent confirmation email to {attachment.sender} for attachment {attachment_id}.")
         return f"Confirmation sent to {attachment.sender}."
@@ -131,9 +142,11 @@ def send_duplicate_invoice_email(self, attachment_id, order_number):
             f"Thank you,\n"
             f"Hanna Installations"
         )
-        from_email = settings.DEFAULT_FROM_EMAIL
+        from_email = get_from_email()
         recipient_list = [attachment.sender]
-        send_mail(subject, message, from_email, recipient_list)
+        connection = get_smtp_connection()
+        
+        send_mail(subject, message, from_email, recipient_list, connection=connection)
         logger.info(f"{log_prefix} Successfully sent duplicate invoice email to {attachment.sender}.")
         return f"Duplicate notification sent to {attachment.sender}."
     except EmailAttachment.DoesNotExist:
@@ -216,12 +229,15 @@ def send_error_notification_email(task_name, attachment_id, error_message, raw_r
             )
             return
         
+        connection = get_smtp_connection()
+        
         send_mail(
             subject=subject,
             message=f"Critical task failure in {task_name} for attachment {attachment_id}. Error: {error_message}", # Plain text fallback
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=get_from_email(),
             recipient_list=recipient_list,
             html_message=html_message,
+            connection=connection,
             fail_silently=False,
         )
         logger.info(f"Successfully sent error notification email for task {task_name} and attachment {attachment_id} to {len(recipient_list)} recipient(s).")
