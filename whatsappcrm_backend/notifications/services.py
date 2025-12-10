@@ -332,10 +332,16 @@ def queue_notifications_to_users(
                     for index, jinja_var_path in sorted_body_params:
                         try:
                             param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
-                            body_params_list.append({"type": "text", "text": str(param_value)})
+                            # Meta API requires text parameters to have non-empty values
+                            # Use a space as placeholder if the value is empty
+                            param_text = str(param_value).strip()
+                            if not param_text:
+                                param_text = " "
+                            body_params_list.append({"type": "text", "text": param_text})
                         except Exception as e:
                             logger.error(f"Error rendering body parameter '{jinja_var_path}' for template '{template_name}': {e}")
-                            body_params_list.append({"type": "text", "text": ""}) # Fallback
+                            # Use a space instead of empty string to satisfy Meta API requirements
+                            body_params_list.append({"type": "text", "text": " "})
 
                     if body_params_list:
                         template_components.append({
