@@ -248,7 +248,7 @@ class WhatsAppFlowService:
                         if error_code == 139001 and error_subcode == 4016012:
                             is_retryable = True
                             logger.warning(f"Meta flow processing error detected (retryable): {error_obj.get('error_user_msg')}")
-                    except:
+                    except (ValueError, json.JSONDecodeError, KeyError):
                         error_msg += f" - Response: {e.response.text}"
                 
                 # If this is a retryable error and we have attempts left, retry
@@ -273,14 +273,6 @@ class WhatsAppFlowService:
                 whatsapp_flow.sync_error = error_msg
                 whatsapp_flow.save()
                 return False
-        
-        # If we exhausted all retries
-        error_msg = f"Failed to update flow JSON after {max_retries} attempts"
-        logger.error(error_msg)
-        whatsapp_flow.sync_status = 'error'
-        whatsapp_flow.sync_error = error_msg
-        whatsapp_flow.save()
-        return False
     
     def publish_flow(self, whatsapp_flow: WhatsAppFlow) -> bool:
         """
