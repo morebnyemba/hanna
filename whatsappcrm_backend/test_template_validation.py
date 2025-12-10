@@ -88,7 +88,7 @@ def main():
     
     for template_name in templates_to_validate:
         # Find the template in the file
-        pattern = f'"name": "{template_name}"[^}}]+?"body": """([^"]+)"""'
+        pattern = f'"name": "{template_name}"[^}}]*?"body": """([^"]+)"""'
         match = re.search(pattern, content, re.DOTALL)
         
         if match:
