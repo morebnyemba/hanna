@@ -98,6 +98,8 @@ class Command(BaseCommand):
             # COMMENTED OUT: Button handling logic causing Meta API validation errors
             # The button URL format was causing templates to be rejected with "invalid URL format" errors
             # TODO: Fix button URL format to comply with Meta's requirements before re-enabling
+            #       Meta requires URLs to follow specific format rules (see Meta Business API docs)
+            #       Likely issues: variable placement, URL structure, or example format
             # if hasattr(template, 'buttons') and template.buttons:
             #     button_payloads = []
             #     url_parameters_map = {}
@@ -145,6 +147,10 @@ class Command(BaseCommand):
             #         components.append({"type": "BUTTONS", "buttons": button_payloads})
             # 
             #     template.url_parameters = url_parameters_map
+            
+            # Ensure url_parameters is initialized even when button handling is disabled
+            if not hasattr(template, 'url_parameters') or template.url_parameters is None:
+                template.url_parameters = {}
             
             # Determine if we are creating or updating
             if template.meta_template_id:
