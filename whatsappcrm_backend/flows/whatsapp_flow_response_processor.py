@@ -12,6 +12,7 @@ from .models import WhatsAppFlow, WhatsAppFlowResponse
 from conversations.models import Contact
 from customer_data.models import InstallationRequest, SolarCleaningRequest, CustomerProfile, SiteAssessmentRequest, LoanApplication, Order
 from meta_integration.utils import send_whatsapp_message
+from notifications.services import queue_notifications_to_users
 
 logger = logging.getLogger(__name__)
 
@@ -142,11 +143,51 @@ class WhatsAppFlowResponseProcessor:
             )
             logger.info(f"[CustomFurniture] Created InstallationRequest {inst.id} for {customer.full_name}")
 
+            # Send notification to admins about the new request
+            try:
+                # Prepare context for notification template
+                alt_name = data.get('alt_contact_name', '')
+                alt_phone = data.get('alt_contact_phone', '')
+                furniture_alt_contact_line = ''
+                if alt_name and alt_name.lower() != 'n/a' and alt_phone and alt_phone.lower() != 'n/a':
+                    furniture_alt_contact_line = f"\n- Alt. Contact: {alt_name} ({alt_phone})"
+                
+                # Location pin line (will be empty since WhatsApp flow doesn't collect it)
+                furniture_location_pin_line = ''
+                
+                # Handle availability formatting safely
+                availability = data.get('availability') or 'Not specified'
+                if availability != 'Not specified':
+                    availability = str(availability).replace('_', ' ').title()
+                
+                notification_context = {
+                    'contact_name': contact.name or contact.whatsapp_id,
+                    'furniture_order_number': data.get('order_number', 'Not specified'),
+                    'furniture_type': data.get('furniture_type', 'Not specified'),
+                    'furniture_specifications': data.get('specifications', 'None'),
+                    'furniture_full_name': data.get('full_name', 'Not specified'),
+                    'furniture_contact_phone': data.get('contact_phone', 'Not specified'),
+                    'furniture_alt_contact_line': furniture_alt_contact_line,
+                    'furniture_address': data.get('address', 'Not specified'),
+                    'furniture_location_pin_line': furniture_location_pin_line,
+                    'furniture_preferred_date': data.get('preferred_date', 'Not specified'),
+                    'furniture_availability': availability,
+                }
+                
+                queue_notifications_to_users(
+                    template_name='hanna_new_custom_furniture_installation_request',
+                    template_context=notification_context,
+                    group_names=['Pfungwa Staff', 'System Admins']
+                )
+                logger.info(f"[CustomFurniture] Notification queued for InstallationRequest {inst.id}")
+            except Exception as notif_exc:
+                logger.error(f"[CustomFurniture] Failed to queue notification: {notif_exc}", exc_info=True)
+
             # Feedback message
             feedback = (
                 f"Your *custom furniture installation* request has been submitted!\n"
                 f"Order: {inst.order_number}\n"
-                f"Type: {data['furniture_type']}\n"
+                f"Type: {data.get('furniture_type', 'Not specified')}\n"
                 f"We will contact you at {inst.contact_phone} to confirm details."
             )
 
