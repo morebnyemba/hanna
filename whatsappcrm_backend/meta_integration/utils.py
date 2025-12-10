@@ -36,7 +36,9 @@ def send_whatsapp_message(to_phone_number: str, message_type: str, data: dict, c
         config (MetaAppConfig, optional): The MetaAppConfig instance to use. 
                                           If None, tries to fetch the active one.
     Returns:
-        dict: The JSON response from Meta API, or None if an error occurs.
+        dict: The JSON response from Meta API on success.
+              On error, returns a dict with 'error' key containing error details.
+              Returns None only if config is not available.
     """
     if not config:
         config = get_active_meta_config_for_sending()
@@ -86,17 +88,34 @@ def send_whatsapp_message(to_phone_number: str, message_type: str, data: dict, c
         return response_json
     except requests.exceptions.HTTPError as e:
         logger.error(f"HTTP error sending message to {to_phone_number} via config '{config.name}': {e.response.status_code} - {e.response.text}")
+        # Try to parse Meta API error details
         try:
             error_details = e.response.json()
             logger.error(f"Meta API error details: {error_details}")
+            return {
+                'error': error_details,
+                'status_code': e.response.status_code,
+                'error_type': 'HTTPError'
+            }
         except json.JSONDecodeError:
             logger.error("Could not decode Meta API error response as JSON.")
+            return {
+                'error': e.response.text,
+                'status_code': e.response.status_code,
+                'error_type': 'HTTPError'
+            }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error sending message to {to_phone_number} via config '{config.name}': {e}")
+        return {
+            'error': str(e),
+            'error_type': 'RequestException'
+        }
     except Exception as e:
         logger.error(f"An unexpected error occurred while sending message to {to_phone_number} via config '{config.name}': {e}", exc_info=True)
-        
-    return None
+        return {
+            'error': str(e),
+            'error_type': type(e).__name__
+        }
 
 def send_read_receipt_api(wamid: str, config: MetaAppConfig, show_typing_indicator: bool = False):
     """

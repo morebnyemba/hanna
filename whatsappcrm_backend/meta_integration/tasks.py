@@ -124,7 +124,18 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
         else:
             # Handle failure from Meta API
             error_info = api_response or {'error': 'Meta API call failed or returned unexpected response.'}
-            logger.error(f"Failed to send Message ID {outgoing_message_id} via Meta API. Response: {error_info}")
+            
+            # Log Facebook/Meta API errors prominently
+            if api_response and 'error' in api_response:
+                logger.error(
+                    f"FACEBOOK API ERROR for Message ID {outgoing_message_id}: "
+                    f"Status Code: {api_response.get('status_code', 'N/A')}, "
+                    f"Error Type: {api_response.get('error_type', 'Unknown')}, "
+                    f"Details: {api_response.get('error')}"
+                )
+            else:
+                logger.error(f"Failed to send Message ID {outgoing_message_id} via Meta API. Response: {error_info}")
+            
             outgoing_msg.status = 'failed'
             outgoing_msg.error_details = error_info
             raise ValueError("Meta API call failed or returned unexpected response.")
