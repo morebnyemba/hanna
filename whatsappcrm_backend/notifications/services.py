@@ -68,6 +68,7 @@ def queue_notifications_to_users(
                 if isinstance(order_details, dict):
                     render_context['order_number'] = order_details.get('order_number', '')
                     render_context['order_amount'] = order_details.get('amount', '0.00')
+                    render_context['order_id'] = order_details.get('id', '')
             
             # Handle cart_items for list rendering
             if 'cart_items' in render_context:
@@ -84,6 +85,8 @@ def queue_notifications_to_users(
             if 'order' in render_context:
                 order = render_context['order']
                 if isinstance(order, dict):
+                    if not render_context.get('order_id'):
+                        render_context['order_id'] = order.get('id', '')
                     if not render_context.get('order_name'):
                         render_context['order_name'] = order.get('name', '')
                     if not render_context.get('order_number'):
@@ -105,12 +108,23 @@ def queue_notifications_to_users(
             if 'target_contact' in render_context:
                 target = render_context['target_contact']
                 if isinstance(target, list) and len(target) > 0:
-                    render_context['customer_name'] = target[0].get('name', render_context.get('customer_whatsapp_id', ''))
+                    if isinstance(target[0], dict):
+                        render_context['customer_name'] = target[0].get('name', render_context.get('customer_whatsapp_id', ''))
+                    else:
+                        # target_contact[0] might be a Contact object
+                        render_context['customer_name'] = getattr(target[0], 'name', None) or render_context.get('customer_whatsapp_id', '')
             
-            # Handle admin name
-            if 'contact' in render_context and isinstance(render_context['contact'], str):
-                # Contact already converted to string above, use contact_name
-                render_context['admin_name'] = render_context.get('contact_name', '')
+            # Handle admin name - check both 'contact' field and username
+            if 'contact' in render_context:
+                contact_obj = render_context['contact']
+                if isinstance(contact_obj, str):
+                    # Contact already converted to string above, use contact_name
+                    render_context['admin_name'] = render_context.get('contact_name', '')
+                elif hasattr(contact_obj, 'name'):
+                    # Contact object
+                    render_context['admin_name'] = contact_obj.name or getattr(contact_obj, 'username', '')
+                elif isinstance(contact_obj, dict):
+                    render_context['admin_name'] = contact_obj.get('name') or contact_obj.get('username', '')
             
             # Handle recipient name
             if 'recipient' in render_context:
@@ -129,7 +143,7 @@ def queue_notifications_to_users(
             install_alt_name = render_context.get('install_alt_name', '')
             if install_alt_name and install_alt_name.lower() != 'n/a':
                 install_alt_phone = render_context.get('install_alt_phone', '')
-                render_context['install_alt_contact_line'] = f"- Alt. Contact: {install_alt_name} ({install_alt_phone})"
+                render_context['install_alt_contact_line'] = f"\n- Alt. Contact: {install_alt_name} ({install_alt_phone})"
             else:
                 render_context['install_alt_contact_line'] = ''
             
@@ -139,7 +153,7 @@ def queue_notifications_to_users(
                 lat = install_pin.get('latitude')
                 lon = install_pin.get('longitude')
                 if lat and lon:
-                    render_context['install_location_pin_line'] = f"- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                    render_context['install_location_pin_line'] = f"\n- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                 else:
                     render_context['install_location_pin_line'] = ''
             else:
@@ -151,7 +165,7 @@ def queue_notifications_to_users(
                 lat = cleaning_pin.get('latitude')
                 lon = cleaning_pin.get('longitude')
                 if lat and lon:
-                    render_context['cleaning_location_pin_line'] = f"- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                    render_context['cleaning_location_pin_line'] = f"\n- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                 else:
                     render_context['cleaning_location_pin_line'] = ''
             else:
@@ -204,6 +218,31 @@ def queue_notifications_to_users(
                     render_context['product_description'] = job_card.get('product_description', '')
                     render_context['product_serial_number'] = job_card.get('product_serial_number', '')
                     render_context['reported_fault'] = job_card.get('reported_fault', '')
+            
+            # Handle created_installation_request
+            if 'created_installation_request' in render_context:
+                install_req = render_context['created_installation_request']
+                if isinstance(install_req, dict):
+                    render_context['installation_request_id'] = install_req.get('id', '')
+            
+            # Handle created_assessment_request
+            if 'created_assessment_request' in render_context:
+                assess_req = render_context['created_assessment_request']
+                if isinstance(assess_req, dict):
+                    render_context['assessment_request_id'] = assess_req.get('id', '')
+            
+            # Handle created_cleaning_request
+            if 'created_cleaning_request' in render_context:
+                clean_req = render_context['created_cleaning_request']
+                if isinstance(clean_req, dict):
+                    render_context['cleaning_request_id'] = clean_req.get('id', '')
+            
+            # Handle created_order
+            if 'created_order' in render_context:
+                created_order = render_context['created_order']
+                if isinstance(created_order, dict):
+                    if not render_context.get('order_id'):
+                        render_context['order_id'] = created_order.get('id', '')
             
             # Handle customer details for job card
             if 'customer' in render_context:
