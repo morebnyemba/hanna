@@ -50,13 +50,13 @@ def queue_notifications_to_users(
             render_context = (template_context or {}).copy()
 
             # Flatten nested variables for Meta-compatible templates
-            # Contact name
+            # Contact name - both contact_name and related_contact_name are set for backward compatibility
+            # Some templates use contact_name (when contact is the subject), others use related_contact_name (when contact is related)
             if related_contact:
                 render_context['contact'] = str(related_contact) # Convert model to string
-                # Add contact_name for templates that need it
-                render_context['contact_name'] = related_contact.name or related_contact.whatsapp_id
-                # Add related_contact_name for templates that need it
-                render_context['related_contact_name'] = related_contact.name or related_contact.whatsapp_id
+                contact_display_name = related_contact.name or related_contact.whatsapp_id
+                render_context['contact_name'] = contact_display_name
+                render_context['related_contact_name'] = contact_display_name
                 if hasattr(related_contact, 'customer_profile'):
                     # Assuming customer_profile might be needed. Convert it as well.
                     render_context['customer_profile'] = str(related_contact.customer_profile)
@@ -73,23 +73,33 @@ def queue_notifications_to_users(
             if 'cart_items' in render_context:
                 cart_items = render_context['cart_items']
                 if isinstance(cart_items, list):
-                    items_text = '\n'.join([f"- {item.get('quantity', 0)} x {item.get('name', '')}" for item in cart_items])
+                    items_text = '\n'.join([
+                        f"- {item.get('quantity', 1)} x {item.get('name', '')}" 
+                        for item in cart_items 
+                        if item.get('quantity', 1) > 0  # Skip items with zero quantity
+                    ])
                     render_context['cart_items_list'] = items_text if items_text else '(No items)'
             
             # Handle order.* patterns
             if 'order' in render_context:
                 order = render_context['order']
                 if isinstance(order, dict):
-                    render_context['order_name'] = order.get('name', '')
-                    render_context['order_number'] = render_context.get('order_number') or order.get('order_number', '')
-                    render_context['order_amount'] = render_context.get('order_amount') or order.get('amount', '0.00')
-                    # Handle nested customer
+                    if not render_context.get('order_name'):
+                        render_context['order_name'] = order.get('name', '')
+                    if not render_context.get('order_number'):
+                        render_context['order_number'] = order.get('order_number', '')
+                    if not render_context.get('order_amount'):
+                        render_context['order_amount'] = order.get('amount', '0.00')
+                    
+                    # Handle nested customer - extract to helper logic for clarity
                     if 'customer' in order and isinstance(order['customer'], dict):
                         customer = order['customer']
-                        render_context['customer_name'] = (
-                            customer.get('get_full_name') or 
-                            customer.get('contact', {}).get('name', '') if isinstance(customer.get('contact'), dict) else ''
-                        )
+                        # Try get_full_name first, then contact.name
+                        customer_name = customer.get('get_full_name')
+                        if not customer_name and isinstance(customer.get('contact'), dict):
+                            customer_name = customer.get('contact', {}).get('name', '')
+                        if not render_context.get('customer_name'):
+                            render_context['customer_name'] = customer_name or ''
             
             # Handle target_contact
             if 'target_contact' in render_context:
@@ -108,9 +118,12 @@ def queue_notifications_to_users(
                 if isinstance(recipient, dict):
                     render_context['recipient_name'] = recipient.get('first_name') or recipient.get('username', '')
             
-            # Handle or expressions and defaults
-            render_context['order_number'] = render_context.get('order_number', 'N/A')
-            render_context['assessment_number'] = render_context.get('assessment_number', 'N/A')
+            # Apply defaults only if value is None or empty string (not already set)
+            # This happens after flattening to provide fallback values
+            if not render_context.get('order_number'):
+                render_context['order_number'] = 'N/A'
+            if not render_context.get('assessment_number'):
+                render_context['assessment_number'] = 'N/A'
             
             # Handle install_alt_name conditional
             install_alt_name = render_context.get('install_alt_name', '')
