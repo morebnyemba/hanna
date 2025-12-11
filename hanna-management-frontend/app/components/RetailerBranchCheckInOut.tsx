@@ -109,7 +109,15 @@ export default function RetailerBranchCheckInOut() {
         />
       )}
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'checkout' | 'checkin')} className="w-full">
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(v) => {
+          if (v === 'checkout' || v === 'checkin') {
+            setActiveTab(v);
+          }
+        }} 
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="checkout" className="flex items-center gap-2">
             <ArrowUpCircle className="w-4 h-4" />

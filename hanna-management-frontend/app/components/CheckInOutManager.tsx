@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle, Truck, Package, History, TrendingUp } from 'lucide-react';
 import { extractErrorMessage } from '@/app/lib/apiUtils';
+import { 
+  ItemData, 
+  OrderSummary, 
+  ItemHistory,
+  CheckoutRequestBody 
+} from '@/app/types/checkInOut';
 
 const LOCATIONS = [
   { value: 'warehouse', label: 'Warehouse' },
@@ -18,45 +24,6 @@ const LOCATIONS = [
   { value: 'outsourced', label: 'Outsourced' },
   { value: 'disposed', label: 'Disposed' }
 ];
-
-interface ItemData {
-  id: string;
-  serial_number: string;
-  barcode: string;
-  status: string;
-  current_location: string;
-  product: { 
-    name: string;
-    sku?: string;
-    id?: string;
-  };
-}
-
-interface OrderItem {
-  id: number;
-  product_name: string;
-  product_sku: string;
-  quantity: number;
-  units_assigned: number;
-  is_fully_assigned: boolean;
-  fulfillment_percentage: number;
-}
-
-interface OrderSummary {
-  id: string;
-  order_number: string;
-  items: OrderItem[];
-}
-
-interface ItemHistory {
-  id: number;
-  timestamp: string;
-  from_location: string;
-  to_location: string;
-  reason: string;
-  notes: string;
-  transferred_by: { username: string };
-}
 
 interface CheckInOutManagerProps {
   defaultLocation?: string;
@@ -159,11 +126,7 @@ export default function CheckInOutManager({
     setFulfillmentMessage(null);
     
     try {
-      const body: {
-        destination_location: string;
-        notes: string;
-        order_item_id?: number;
-      } = { 
+      const body: CheckoutRequestBody = { 
         destination_location: destination, 
         notes 
       };
@@ -429,7 +392,9 @@ export default function CheckInOutManager({
                         <select
                           className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                           value={selectedOrderItemId ?? ''}
-                          onChange={e => setSelectedOrderItemId(Number(e.target.value))}
+                          onChange={e => setSelectedOrderItemId(
+                            e.target.value === '' ? null : Number(e.target.value)
+                          )}
                         >
                           <option value="">-- Choose line item --</option>
                           {selectedOrder?.items.map(line => (
