@@ -155,3 +155,136 @@ class CreateOrderFromInvoiceDataTests(TestCase):
 
         # Notification should not be sent if there's no customer profile
         mock_queue_notifications.assert_not_called()
+
+
+class AdminActionsTests(TestCase):
+    """Test cases for admin actions in email_integration app."""
+
+    def setUp(self):
+        """Set up common objects for tests."""
+        from django.contrib.auth import get_user_model
+        from django.test import RequestFactory
+        
+        User = get_user_model()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_superuser(
+            username='admin',
+            email='admin@test.com',
+            password='testpass123'
+        )
+        
+        # Create test attachments
+        dummy_file = SimpleUploadedFile("test.pdf", b"file_content", content_type="application/pdf")
+        self.attachment1 = EmailAttachment.objects.create(
+            file=dummy_file,
+            filename="test1.pdf",
+            sender="test1@example.com",
+            processed=True
+        )
+        
+        dummy_file2 = SimpleUploadedFile("test2.pdf", b"file_content2", content_type="application/pdf")
+        self.attachment2 = EmailAttachment.objects.create(
+            file=dummy_file2,
+            filename="test2.pdf",
+            sender="test2@example.com",
+            processed=False
+        )
+
+    @patch('email_integration.admin.process_attachment_with_gemini')
+    def test_retrigger_gemini_processing(self, mock_task):
+        """Test the retrigger_gemini_processing admin action."""
+        from email_integration.admin import retrigger_gemini_processing, EmailAttachmentAdmin
+        
+        # Mock the delay method
+        mock_task.delay = MagicMock()
+        
+        # Create request
+        request = self.factory.post('/admin/email_integration/emailattachment/')
+        request.user = self.user
+        
+        # Create queryset
+        queryset = EmailAttachment.objects.filter(id=self.attachment1.id)
+        
+        # Create mock admin instance
+        modeladmin = EmailAttachmentAdmin(EmailAttachment, None)
+        
+        # Call the admin action
+        retrigger_gemini_processing(modeladmin, request, queryset)
+        
+        # Verify the attachment was marked as unprocessed
+        self.attachment1.refresh_from_db()
+        self.assertFalse(self.attachment1.processed)
+        
+        # Verify the task was queued
+        mock_task.delay.assert_called_once_with(self.attachment1.id)
+
+    def test_mark_as_unprocessed(self):
+        """Test the mark_as_unprocessed admin action."""
+        from email_integration.admin import mark_as_unprocessed, EmailAttachmentAdmin
+        
+        # Create request
+        request = self.factory.post('/admin/email_integration/emailattachment/')
+        request.user = self.user
+        
+        # Create queryset with a processed attachment
+        queryset = EmailAttachment.objects.filter(id=self.attachment1.id)
+        
+        # Verify it's currently processed
+        self.assertTrue(self.attachment1.processed)
+        
+        # Create mock admin instance
+        modeladmin = EmailAttachmentAdmin(EmailAttachment, None)
+        
+        # Call the admin action
+        mark_as_unprocessed(modeladmin, request, queryset)
+        
+        # Verify the attachment was marked as unprocessed
+        self.attachment1.refresh_from_db()
+        self.assertFalse(self.attachment1.processed)
+
+    def test_mark_as_processed(self):
+        """Test the mark_as_processed admin action."""
+        from email_integration.admin import mark_as_processed, EmailAttachmentAdmin
+        
+        # Create request
+        request = self.factory.post('/admin/email_integration/emailattachment/')
+        request.user = self.user
+        
+        # Create queryset with an unprocessed attachment
+        queryset = EmailAttachment.objects.filter(id=self.attachment2.id)
+        
+        # Verify it's currently unprocessed
+        self.assertFalse(self.attachment2.processed)
+        
+        # Create mock admin instance
+        modeladmin = EmailAttachmentAdmin(EmailAttachment, None)
+        
+        # Call the admin action
+        mark_as_processed(modeladmin, request, queryset)
+        
+        # Verify the attachment was marked as processed
+        self.attachment2.refresh_from_db()
+        self.assertTrue(self.attachment2.processed)
+
+    def test_mark_multiple_as_processed(self):
+        """Test marking multiple attachments as processed at once."""
+        from email_integration.admin import mark_as_processed, EmailAttachmentAdmin
+        
+        # Create request
+        request = self.factory.post('/admin/email_integration/emailattachment/')
+        request.user = self.user
+        
+        # Create queryset with both attachments
+        queryset = EmailAttachment.objects.all()
+        
+        # Create mock admin instance
+        modeladmin = EmailAttachmentAdmin(EmailAttachment, None)
+        
+        # Call the admin action
+        mark_as_processed(modeladmin, request, queryset)
+        
+        # Verify both attachments were marked as processed
+        self.attachment1.refresh_from_db()
+        self.attachment2.refresh_from_db()
+        self.assertTrue(self.attachment1.processed)
+        self.assertTrue(self.attachment2.processed)
