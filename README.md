@@ -258,6 +258,16 @@ docker-compose restart
 - ✅ OCSP stapling
 - ✅ Security headers (X-Frame-Options, CSP, etc.)
 
+## Improvement Roadmap
+
+Looking to improve the application? Check out our comprehensive improvement analysis:
+
+- **[APP_IMPROVEMENT_ANALYSIS.md](APP_IMPROVEMENT_ANALYSIS.md)** - 📊 Complete analysis with 76 identified improvements
+- **[SUGGESTED_GITHUB_ISSUES.md](SUGGESTED_GITHUB_ISSUES.md)** - 📝 Ready-to-create GitHub issues
+- **[IMPROVEMENT_QUICK_START.md](IMPROVEMENT_QUICK_START.md)** - 🚀 Quick start guide for implementing improvements
+
+These documents cover testing, security, monitoring, performance, documentation, and feature enhancements.
+
 ## Support
 
 For issues or questions:
@@ -272,4 +282,11 @@ For issues or questions:
 
 ## Contributing
 
-[Add contributing guidelines here]
+We welcome contributions! To get started:
+1. Review [IMPROVEMENT_QUICK_START.md](IMPROVEMENT_QUICK_START.md) for improvement opportunities
+2. Check [SUGGESTED_GITHUB_ISSUES.md](SUGGESTED_GITHUB_ISSUES.md) for specific tasks
+3. Fork the repository and create a feature branch
+4. Make your changes with tests
+5. Submit a pull request
+
+For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md) (coming soon).
