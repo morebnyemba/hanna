@@ -164,6 +164,7 @@ class AdminActionsTests(TestCase):
         """Set up common objects for tests."""
         from django.contrib.auth import get_user_model
         from django.test import RequestFactory
+        import uuid
         
         User = get_user_model()
         self.factory = RequestFactory()
@@ -173,19 +174,28 @@ class AdminActionsTests(TestCase):
             password='testpass123'
         )
         
-        # Create test attachments
-        dummy_file = SimpleUploadedFile("test.pdf", b"file_content", content_type="application/pdf")
+        # Create test attachments with unique filenames
+        unique_id = str(uuid.uuid4())[:8]
+        dummy_file = SimpleUploadedFile(
+            f"test_{unique_id}_1.pdf", 
+            b"file_content", 
+            content_type="application/pdf"
+        )
         self.attachment1 = EmailAttachment.objects.create(
             file=dummy_file,
-            filename="test1.pdf",
+            filename=f"test_{unique_id}_1.pdf",
             sender="test1@example.com",
             processed=True
         )
         
-        dummy_file2 = SimpleUploadedFile("test2.pdf", b"file_content2", content_type="application/pdf")
+        dummy_file2 = SimpleUploadedFile(
+            f"test_{unique_id}_2.pdf", 
+            b"file_content2", 
+            content_type="application/pdf"
+        )
         self.attachment2 = EmailAttachment.objects.create(
             file=dummy_file2,
-            filename="test2.pdf",
+            filename=f"test_{unique_id}_2.pdf",
             sender="test2@example.com",
             processed=False
         )

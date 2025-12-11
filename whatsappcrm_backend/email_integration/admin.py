@@ -185,14 +185,16 @@ def test_imap_connection(modeladmin, request, queryset):
     for account in queryset:
         try:
             # Determine SSL context based on protocol setting
+            context = ssl.create_default_context()
+            
             if account.ssl_protocol == 'tls_v1_2':
-                context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+                # Set minimum TLS version to 1.2
+                context.minimum_version = ssl.TLSVersion.TLSv1_2
+                context.maximum_version = ssl.TLSVersion.TLSv1_2
             elif account.ssl_protocol == 'tls_v1_3':
-                context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                # Set minimum TLS version to 1.3
                 context.minimum_version = ssl.TLSVersion.TLSv1_3
-            else:
-                # Auto - use default secure context
-                context = ssl.create_default_context()
+            # For 'auto', use default secure context (no version constraints)
             
             # Connect to IMAP server
             mail = imaplib.IMAP4_SSL(account.imap_host, account.port, ssl_context=context)
