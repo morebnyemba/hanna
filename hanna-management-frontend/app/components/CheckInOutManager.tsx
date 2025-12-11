@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle, Truck, Package, History, TrendingUp } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const LOCATIONS = [
   { value: 'warehouse', label: 'Warehouse' },
@@ -99,8 +98,9 @@ export default function CheckInOutManager({
     try {
       const res = await apiClient.get('/crm-api/orders/pending-fulfillment/');
       setPendingOrders(res.data);
-    } catch (e: any) {
-      setFulfillmentError(e.response?.data?.error || 'Failed to load pending orders');
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { error?: string } } };
+      setFulfillmentError(error.response?.data?.error || 'Failed to load pending orders');
     } finally { 
       setOrdersLoading(false); 
     }
@@ -112,7 +112,7 @@ export default function CheckInOutManager({
       const res = await apiClient.get(`/crm-api/items/${itemId}/history/`);
       setItemHistory(res.data);
       setShowHistory(true);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to load item history:', e);
     } finally {
       setHistoryLoading(false);
@@ -145,8 +145,9 @@ export default function CheckInOutManager({
       } else {
         setError('Serialized item not found');
       }
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Lookup failed');
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Lookup failed');
     }
   };
 
@@ -159,7 +160,7 @@ export default function CheckInOutManager({
     setFulfillmentMessage(null);
     
     try {
-      const body: any = { 
+      const body: Record<string, string | number> = { 
         destination_location: destination, 
         notes 
       };
@@ -190,8 +191,9 @@ export default function CheckInOutManager({
       setSelectedOrderId('');
       setSelectedOrderItemId(null);
       
-    } catch (e: any) {
-      setError(e.response?.data?.error || 'Checkout failed');
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Checkout failed');
     } finally { 
       setLoading(false); 
     }
@@ -221,8 +223,9 @@ export default function CheckInOutManager({
       // Clear form
       setNotes('');
       
-    } catch (e: any) {
-      setError(e.response?.data?.error || 'Check-in failed');
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Check-in failed');
     } finally { 
       setLoading(false); 
     }
