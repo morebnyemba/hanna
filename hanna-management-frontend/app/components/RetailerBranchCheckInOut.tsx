@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle, Truck, Package, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface CheckoutForm {
   serial_number: string;
@@ -67,8 +68,7 @@ export default function RetailerBranchCheckInOut() {
         notes: '' 
       });
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } }; message?: string };
-      setError(error.response?.data?.error || error.message || 'Failed to checkout item.');
+      setError(extractErrorMessage(err, 'Failed to checkout item'));
     } finally {
       setLoading(false);
     }
@@ -85,8 +85,7 @@ export default function RetailerBranchCheckInOut() {
       setMessage(response.data.message || '✓ Item checked in successfully!');
       setCheckinForm({ serial_number: '', notes: '' });
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } }; message?: string };
-      setError(error.response?.data?.error || error.message || 'Failed to check-in item.');
+      setError(extractErrorMessage(err, 'Failed to check-in item'));
     } finally {
       setLoading(false);
     }

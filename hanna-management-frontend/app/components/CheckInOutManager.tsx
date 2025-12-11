@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle, Truck, Package, History, TrendingUp } from 'lucide-react';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 const LOCATIONS = [
   { value: 'warehouse', label: 'Warehouse' },
@@ -99,8 +100,7 @@ export default function CheckInOutManager({
       const res = await apiClient.get('/crm-api/orders/pending-fulfillment/');
       setPendingOrders(res.data);
     } catch (e: unknown) {
-      const error = e as { response?: { data?: { error?: string } } };
-      setFulfillmentError(error.response?.data?.error || 'Failed to load pending orders');
+      setFulfillmentError(extractErrorMessage(e, 'Failed to load pending orders'));
     } finally { 
       setOrdersLoading(false); 
     }
@@ -146,8 +146,7 @@ export default function CheckInOutManager({
         setError('Serialized item not found');
       }
     } catch (e: unknown) {
-      const error = e as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Lookup failed');
+      setError(extractErrorMessage(e, 'Lookup failed'));
     }
   };
 
@@ -160,7 +159,11 @@ export default function CheckInOutManager({
     setFulfillmentMessage(null);
     
     try {
-      const body: Record<string, string | number> = { 
+      const body: {
+        destination_location: string;
+        notes: string;
+        order_item_id?: number;
+      } = { 
         destination_location: destination, 
         notes 
       };
@@ -192,8 +195,7 @@ export default function CheckInOutManager({
       setSelectedOrderItemId(null);
       
     } catch (e: unknown) {
-      const error = e as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Checkout failed');
+      setError(extractErrorMessage(e, 'Checkout failed'));
     } finally { 
       setLoading(false); 
     }
@@ -224,8 +226,7 @@ export default function CheckInOutManager({
       setNotes('');
       
     } catch (e: unknown) {
-      const error = e as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Check-in failed');
+      setError(extractErrorMessage(e, 'Check-in failed'));
     } finally { 
       setLoading(false); 
     }
