@@ -109,7 +109,7 @@ export default function CheckInOutManager({
   const loadItemHistory = async (itemId: string) => {
     setHistoryLoading(true);
     try {
-      const res = await apiClient.get(`/crm-api/items/${itemId}/history/`);
+      const res = await apiClient.get(`/crm-api/items/${itemId}/location-history/`);
       setItemHistory(res.data);
       setShowHistory(true);
     } catch (e: unknown) {
