@@ -1072,6 +1072,240 @@ def confirm_payment_method_and_initiate(contact: Contact, context: Dict[str, Any
     return actions_to_perform
 
 
+def add_products_to_cart_bulk(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Adds multiple products to the contact's cart at once.
+    Used by AI Shopping Assistant to add selected products.
+    
+    Params expected:
+    - product_ids (list): List of product IDs to add to cart
+    - quantities (list, optional): List of quantities, defaults to 1 for each
+    """
+    actions_to_perform = []
+    
+    try:
+        from products_and_services.models import Cart, CartItem
+        
+        product_ids = params.get('product_ids', [])
+        quantities = params.get('quantities', [1] * len(product_ids))
+        
+        if not product_ids:
+            logger.warning(f"No product_ids provided for add_products_to_cart_bulk for contact {contact.id}")
+            return actions_to_perform
+        
+        # Get or create cart for the contact
+        # Use contact's whatsapp_id as session_key
+        cart, created = Cart.objects.get_or_create(
+            session_key=contact.whatsapp_id,
+            defaults={'user': getattr(contact, 'user', None)}
+        )
+        
+        added_products = []
+        for i, product_id in enumerate(product_ids):
+            try:
+                product = Product.objects.get(id=product_id)
+                quantity = quantities[i] if i < len(quantities) else 1
+                
+                # Add or update cart item
+                cart_item, item_created = CartItem.objects.get_or_create(
+                    cart=cart,
+                    product=product,
+                    defaults={'quantity': quantity}
+                )
+                
+                if not item_created:
+                    cart_item.quantity += quantity
+                    cart_item.save()
+                
+                added_products.append(f"{product.name} (x{quantity})")
+                logger.info(f"Added {quantity}x {product.name} to cart for contact {contact.id}")
+                
+            except Product.DoesNotExist:
+                logger.error(f"Product with ID {product_id} not found while adding to cart")
+                continue
+        
+        # Save cart info to context
+        context['cart_id'] = cart.id
+        context['cart_total_items'] = cart.total_items
+        context['cart_total_price'] = float(cart.total_price)
+        context['added_products'] = added_products
+        
+    except Exception as e:
+        logger.error(f"Error in add_products_to_cart_bulk for contact {contact.id}: {e}", exc_info=True)
+    
+    return actions_to_perform
+
+
+def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Generates a branded PDF recommendation document for products.
+    Used when user requests a recommendation instead of purchasing.
+    
+    Params expected:
+    - product_ids (list): List of recommended product IDs
+    - user_requirements (str): Description of user's needs
+    - ai_analysis (str): AI's analysis and recommendations
+    """
+    actions_to_perform = []
+    
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from io import BytesIO
+        import os
+        from django.conf import settings
+        
+        product_ids = params.get('product_ids', [])
+        user_requirements = params.get('user_requirements', 'Not specified')
+        ai_analysis = params.get('ai_analysis', 'Product recommendations based on your requirements.')
+        
+        # Create PDF in memory
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.75*inch, bottomMargin=0.75*inch)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Create custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1a4d2e'),
+            spaceAfter=12,
+            alignment=TA_CENTER
+        )
+        
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#1a4d2e'),
+            spaceAfter=10,
+            spaceBefore=15
+        )
+        
+        # Add branding - Title
+        story.append(Paragraph("Pfungwa Solar Solutions", title_style))
+        story.append(Paragraph("AI-Powered Product Recommendation", styles['Heading3']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Add customer info
+        story.append(Paragraph("Customer Information", heading_style))
+        customer_data = [
+            ["Contact:", contact.name or contact.whatsapp_id],
+            ["WhatsApp:", contact.whatsapp_id],
+            ["Date:", timezone.now().strftime("%Y-%m-%d %H:%M")],
+        ]
+        customer_table = Table(customer_data, colWidths=[2*inch, 4*inch])
+        customer_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        story.append(customer_table)
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Add user requirements
+        story.append(Paragraph("Your Requirements", heading_style))
+        story.append(Paragraph(user_requirements, styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Add AI analysis
+        story.append(Paragraph("AI Analysis & Recommendations", heading_style))
+        story.append(Paragraph(ai_analysis, styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Add recommended products
+        if product_ids:
+            story.append(Paragraph("Recommended Products", heading_style))
+            
+            products = Product.objects.filter(id__in=product_ids)
+            product_data = [["Product", "Description", "Price"]]
+            
+            total_price = Decimal('0.0')
+            for product in products:
+                product_data.append([
+                    product.name,
+                    (product.description[:80] + '...') if product.description and len(product.description) > 80 else (product.description or 'N/A'),
+                    f"${product.price} {product.currency}" if product.price else "Contact for price"
+                ])
+                if product.price:
+                    total_price += product.price
+            
+            # Add total row
+            product_data.append(["", "Total:", f"${total_price} USD"])
+            
+            product_table = Table(product_data, colWidths=[2*inch, 3*inch, 1.5*inch])
+            product_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a4d2e')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
+                ('GRID', (0, 0), (-1, -2), 1, colors.grey),
+                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#d4edda')),
+                ('LINEABOVE', (0, -1), (-1, -1), 2, colors.HexColor('#1a4d2e')),
+            ]))
+            story.append(product_table)
+        
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Add footer/contact info
+        story.append(Paragraph("Next Steps", heading_style))
+        next_steps = """
+        To proceed with your order, simply reply to this message with 'ORDER' and we'll guide you through the purchase process.
+        For any questions or custom requirements, our team is ready to assist you.
+        """
+        story.append(Paragraph(next_steps, styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        footer_text = """
+        <b>Pfungwa Solar Solutions</b><br/>
+        Your trusted partner in renewable energy<br/>
+        WhatsApp: +263 77 123 4567 | Email: info@pfungwa.co.zw<br/>
+        <i>Powered by AI-driven recommendations</i>
+        """
+        story.append(Paragraph(footer_text, styles['Normal']))
+        
+        # Build PDF
+        doc.build(story)
+        
+        # Save PDF to media directory
+        from django.core.files.base import ContentFile
+        pdf_content = buffer.getvalue()
+        buffer.close()
+        
+        # Generate filename
+        filename = f"recommendation_{contact.whatsapp_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = os.path.join(settings.MEDIA_ROOT, 'recommendations', filename)
+        
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        # Save file
+        with open(filepath, 'wb') as f:
+            f.write(pdf_content)
+        
+        # Save path to context
+        context['recommendation_pdf_path'] = filepath
+        context['recommendation_pdf_url'] = f"{settings.MEDIA_URL}recommendations/{filename}"
+        
+        logger.info(f"Generated recommendation PDF for contact {contact.id}: {filepath}")
+        
+    except Exception as e:
+        logger.error(f"Error generating recommendation PDF for contact {contact.id}: {e}", exc_info=True)
+    
+    return actions_to_perform
+
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
@@ -1091,3 +1325,5 @@ flow_action_registry.register('initiate_payment_flow', initiate_payment_flow)
 flow_action_registry.register('prompt_payment_method_selection', prompt_payment_method_selection)
 flow_action_registry.register('prompt_paynow_method_selection', prompt_paynow_method_selection)
 flow_action_registry.register('confirm_payment_method_and_initiate', confirm_payment_method_and_initiate)
+flow_action_registry.register('add_products_to_cart_bulk', add_products_to_cart_bulk)
+flow_action_registry.register('generate_shopping_recommendation_pdf', generate_shopping_recommendation_pdf)

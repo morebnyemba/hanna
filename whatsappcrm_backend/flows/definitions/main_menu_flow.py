@@ -41,6 +41,7 @@ MAIN_MENU_FLOW = {
                                     "title": "Our Services",
                                     "rows": [
                                         {"id": "purchase_product", "title": "🛒 Shop Products", "description": "Browse and buy solar products."},
+                                        {"id": "ai_shopping", "title": "🛍️ AI Shopping Assistant", "description": "Get AI-powered product recommendations."},
                                         {"id": "request_installation", "title": "🛠️ Request Installation", "description": "Schedule a Solar or Starlink installation."},
                                         {"id": "site_assessment", "title": "📋 Book Site Assessment", "description": "Book a site visit with our experts."},
                                         {"id": "solar_cleaning", "title": "💧 Solar Panel Cleaning", "description": "Request a cleaning service."},
@@ -63,13 +64,14 @@ MAIN_MENU_FLOW = {
             },
             "transitions": [
                 {"to_step": "switch_to_purchase_flow", "priority": 0, "condition_config": {"type": "interactive_reply_id_equals", "value": "purchase_product"}},
-                {"to_step": "show_installation_submenu", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_installation"}},
-                {"to_step": "switch_to_assessment_flow", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "site_assessment"}},
-                {"to_step": "switch_to_cleaning_flow", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "solar_cleaning"}},
-                {"to_step": "switch_to_loan_application_flow", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "apply_for_loan"}},
-                {"to_step": "switch_to_warranty_claim_flow", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
-                {"to_step": "start_ai_troubleshooting_session", "priority": 6, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
-                {"to_step": "show_about_pfungwa", "priority": 7, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
+                {"to_step": "start_ai_shopping_session", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_shopping"}},
+                {"to_step": "show_installation_submenu", "priority": 2, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_installation"}},
+                {"to_step": "switch_to_assessment_flow", "priority": 3, "condition_config": {"type": "interactive_reply_id_equals", "value": "site_assessment"}},
+                {"to_step": "switch_to_cleaning_flow", "priority": 4, "condition_config": {"type": "interactive_reply_id_equals", "value": "solar_cleaning"}},
+                {"to_step": "switch_to_loan_application_flow", "priority": 5, "condition_config": {"type": "interactive_reply_id_equals", "value": "apply_for_loan"}},
+                {"to_step": "switch_to_warranty_claim_flow", "priority": 6, "condition_config": {"type": "interactive_reply_id_equals", "value": "request_warranty"}},
+                {"to_step": "start_ai_troubleshooting_session", "priority": 7, "condition_config": {"type": "interactive_reply_id_equals", "value": "ai_troubleshooter"}},
+                {"to_step": "show_about_pfungwa", "priority": 8, "condition_config": {"type": "interactive_reply_id_equals", "value": "about_pfungwa"}}
             ]
         },
         {
@@ -157,6 +159,50 @@ MAIN_MENU_FLOW = {
             "config": {
                 # No final message is needed here, as the welcome message was already sent.
                 # The flow simply needs to terminate.
+            },
+            "transitions": []
+        },
+        {
+            "name": "start_ai_shopping_session",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {
+                        "action_type": "update_contact_field",
+                        "field_path": "conversation_mode",
+                        "value_template": "ai_shopping"
+                    }
+                ]
+            },
+            "transitions": [
+                {"to_step": "send_ai_shopping_welcome_message", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "send_ai_shopping_welcome_message",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {
+                    "body": "🛍️ Welcome to your AI Shopping Assistant!\n\n"
+                            "I'm Hanna, and I'm here to help you find the perfect solar products for your needs.\n\n"
+                            "*How it works:*\n"
+                            "1. Tell me what you need (e.g., 'I need a solar system for 2 fridges, 4 TVs, and 2 lights')\n"
+                            "2. I'll analyze your requirements and recommend products\n"
+                            "3. You can either buy immediately or get a detailed PDF recommendation\n\n"
+                            "*What can I help you with today?*\n\n"
+                            "Type 'menu' at any time to return to the main menu."
+                }
+            },
+            "transitions": [
+                {"to_step": "end_flow_after_ai_shopping_handoff", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "end_flow_after_ai_shopping_handoff",
+            "type": "end_flow",
+            "config": {
+                # Flow ends, AI shopping mode takes over
             },
             "transitions": []
         },
