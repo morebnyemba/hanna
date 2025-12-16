@@ -1,7 +1,9 @@
 # whatsappcrm_backend/opensolar_integration/tasks.py
 
 import logging
+from datetime import timedelta
 from celery import shared_task
+from django.db import models
 from django.utils import timezone
 from .models import OpenSolarProject
 from .services import ProjectSyncService
@@ -61,7 +63,6 @@ def fetch_opensolar_project_updates():
     service = ProjectSyncService()
     
     # Get projects that haven't been synced in the last 24 hours
-    from datetime import timedelta
     cutoff_time = timezone.now() - timedelta(hours=24)
     
     projects = OpenSolarProject.objects.filter(
@@ -88,8 +89,6 @@ def retry_failed_syncs():
     """
     Retry failed sync operations.
     """
-    from django.db import models
-    
     # Get projects with failed sync that haven't exceeded retry limit
     failed_projects = OpenSolarProject.objects.filter(
         sync_status='sync_failed',

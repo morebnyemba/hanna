@@ -63,6 +63,7 @@ class OpenSolarAPIClient:
                 response.raise_for_status()
                 
                 logger.info(f"OpenSolar API {method} {url} - Success")
+                # Return parsed JSON if content exists, otherwise empty dict
                 return response.json() if response.content else {}
                 
             except requests.exceptions.RequestException as e:

@@ -3,6 +3,7 @@
 import logging
 import hashlib
 import hmac
+from datetime import datetime
 from typing import Dict, Any, Optional
 from django.utils import timezone
 from .models import OpenSolarWebhookLog, OpenSolarProject
@@ -183,7 +184,6 @@ class WebhookProcessor:
         
         install_date = payload.get('project', {}).get('installation_date')
         if install_date:
-            from datetime import datetime
             project.installation_scheduled_date = datetime.fromisoformat(install_date).date()
             project.save()
         

@@ -6,6 +6,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.views import View
@@ -66,14 +67,11 @@ class OpenSolarProjectViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class OpenSolarWebhookView(View):
     """
     Receive webhooks from OpenSolar.
     """
-    
-    @csrf_exempt
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
     
     def post(self, request):
         """
