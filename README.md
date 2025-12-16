@@ -244,6 +244,12 @@ docker-compose restart
 - **[PRODUCT_SYNC_VISUAL_GUIDE.md](PRODUCT_SYNC_VISUAL_GUIDE.md)** - Product sync
 - **[META_SYNC_VERSION_SUFFIX.md](META_SYNC_VERSION_SUFFIX.md)** - Version suffixes for Meta sync
 
+### OpenSolar Integration
+- **[OPENSOLAR_INTEGRATION_GUIDE.md](OPENSOLAR_INTEGRATION_GUIDE.md)** - 🌞 Complete OpenSolar integration guide
+- **[OPENSOLAR_QUICK_START.md](OPENSOLAR_QUICK_START.md)** - ⚡ Quick start for business team
+- **[OPENSOLAR_BENEFITS_ANALYSIS.md](OPENSOLAR_BENEFITS_ANALYSIS.md)** - 📊 Benefits & ROI analysis
+- **[OPENSOLAR_IMPLEMENTATION.md](OPENSOLAR_IMPLEMENTATION.md)** - 🔧 Technical implementation details
+
 ### Media & Configuration
 - **[MEDIA_FIX_SUMMARY.md](MEDIA_FIX_SUMMARY.md)** - Media file handling
 - **[NPM_MEDIA_FIX_GUIDE.md](NPM_MEDIA_FIX_GUIDE.md)** - Media configuration
