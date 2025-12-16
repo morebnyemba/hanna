@@ -1416,8 +1416,17 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
         else:
             # Not an exit command, so process as part of the AI conversation
             logger.info(f"Contact {contact.id} is in '{contact.conversation_mode}' mode. Triggering AI conversation task.")
-            from .tasks import handle_ai_conversation_task # Local import to avoid circular dependency issues
-            handle_ai_conversation_task.delay(contact_id=contact.id, message_id=incoming_message_obj.id)
+            # Import appropriate AI task based on conversation mode
+            if contact.conversation_mode == 'ai_troubleshooting':
+                from .tasks import handle_ai_conversation_task
+                handle_ai_conversation_task.delay(contact_id=contact.id, message_id=incoming_message_obj.id)
+            elif contact.conversation_mode == 'ai_shopping':
+                from .tasks import handle_ai_shopping_task
+                handle_ai_shopping_task.delay(contact_id=contact.id, message_id=incoming_message_obj.id)
+            else:
+                # Default to troubleshooting for any other AI mode
+                from .tasks import handle_ai_conversation_task
+                handle_ai_conversation_task.delay(contact_id=contact.id, message_id=incoming_message_obj.id)
             return [] # Stop further flow processing
 
     # --- Original Flow Logic Starts Here ---

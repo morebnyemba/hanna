@@ -45,6 +45,7 @@ class Contact(models.Model):
     CONVERSATION_MODE_CHOICES = [
         ('flow', 'Flow-based Conversation'),
         ('ai_troubleshooting', 'AI Troubleshooting Mode'),
+        ('ai_shopping', 'AI Shopping Assistant Mode'),
         # Add other AI modes here, e.g., 'ai_sales_assistant'
     ]
     conversation_mode = models.CharField(
