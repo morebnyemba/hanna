@@ -1239,14 +1239,14 @@ def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, An
                 product_data.append([
                     product.name,
                     (product.description[:80] + '...') if product.description and len(product.description) > 80 else (product.description or 'N/A'),
-                    f"${product.price} {product.currency}" if product.price else "Contact for price"
+                    f"{product.price} {product.currency}" if product.price else "Contact for price"
                 ])
                 # Only add to total if currency matches (avoid mixing currencies)
                 if product.price and product.currency == currency:
                     total_price += product.price
             
             # Add total row with detected currency
-            product_data.append(["", "Total:", f"${total_price} {currency}"])
+            product_data.append(["", "Total:", f"{total_price} {currency}"])
             
             product_table = Table(product_data, colWidths=[2*inch, 3*inch, 1.5*inch])
             product_table.setStyle(TableStyle([
@@ -1298,7 +1298,8 @@ def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, An
         buffer.close()
         
         # Generate filename - sanitize whatsapp_id to prevent path traversal
-        safe_whatsapp_id = re.sub(r'[^\w\-]', '', contact.whatsapp_id)  # Remove non-alphanumeric except dash
+        # WhatsApp IDs can contain + for country codes, so preserve alphanumeric, plus, and dash
+        safe_whatsapp_id = re.sub(r'[^a-zA-Z0-9\+\-]', '', contact.whatsapp_id)
         filename = f"recommendation_{safe_whatsapp_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         filepath = os.path.join(settings.MEDIA_ROOT, 'recommendations', filename)
         

@@ -338,7 +338,8 @@ def handle_ai_shopping_task(contact_id: int, message_id: int):
             # Create structured product catalog for AI
             product_catalog_text = "**Available Products:**\n"
             for p in products_list[:AI_SHOPPING_MAX_PRODUCTS]:  # Limit products to avoid token limits
-                product_catalog_text += f"\n- ID: {p['id']}, Name: {p['name']}, Price: ${p['price']} {p['currency']}, Category: {p.get('category__name', 'N/A')}, Type: {p['product_type']}, Stock: {p['stock_quantity']}"
+                price_str = f"{p['price']} {p['currency']}" if p['price'] else "Contact for price"
+                product_catalog_text += f"\n- ID: {p['id']}, Name: {p['name']}, Price: {price_str}, Category: {p.get('category__name', 'N/A')}, Type: {p['product_type']}, Stock: {p['stock_quantity']}"
                 if p.get('description'):
                     product_catalog_text += f", Description: {p['description'][:100]}"
             
@@ -492,7 +493,6 @@ Would you like to:
             final_reply = ai_response_text
             
             # Check for ADD_TO_CART command
-            import re
             add_to_cart_match = re.search(r'ADD_TO_CART:\s*\[([\d,\s]+)\]', ai_response_text)
             if add_to_cart_match:
                 product_ids_str = add_to_cart_match.group(1)
@@ -507,9 +507,15 @@ Would you like to:
                     # Get cart details
                     cart = Cart.objects.filter(session_key=contact.whatsapp_id).first()
                     if cart:
+                        # Get currency from cart items (use first item's currency)
+                        cart_currency = 'USD'  # Default
+                        first_item = cart.items.select_related('product').first()
+                        if first_item and first_item.product.currency:
+                            cart_currency = first_item.product.currency
+                        
                         cart_summary = f"\n\n✅ **Products Added to Cart!**\n\n"
                         cart_summary += f"**Total Items:** {cart.total_items}\n"
-                        cart_summary += f"**Total Price:** ${cart.total_price} USD\n\n"
+                        cart_summary += f"**Total Price:** {cart.total_price} {cart_currency}\n\n"
                         cart_summary += "To complete your order, reply with **CHECKOUT** or type **VIEW CART** to review."
                         
                         # Remove control token from response
