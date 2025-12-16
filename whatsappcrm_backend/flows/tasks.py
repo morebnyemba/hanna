@@ -6,6 +6,7 @@ import re
 from datetime import timedelta
 from celery import shared_task
 from django.db import transaction
+from django.conf import settings
 
 # --- Gemini AI Integration Imports ---
 from google import genai
@@ -507,8 +508,8 @@ Would you like to:
                     # Get cart details
                     cart = Cart.objects.filter(session_key=contact.whatsapp_id).first()
                     if cart:
-                        # Get currency from cart items (use first item's currency)
-                        cart_currency = 'USD'  # Default
+                        # Get currency from cart items (use first item's currency or settings default)
+                        cart_currency = getattr(settings, 'DEFAULT_CURRENCY', 'USD')
                         first_item = cart.items.select_related('product').first()
                         if first_item and first_item.product.currency:
                             cart_currency = first_item.product.currency

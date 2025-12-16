@@ -1230,7 +1230,8 @@ def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, An
             product_data = [["Product", "Description", "Price"]]
             
             total_price = Decimal('0.0')
-            currency = 'USD'  # Default currency
+            # Get default currency from settings or use USD
+            currency = getattr(settings, 'DEFAULT_CURRENCY', 'USD')
             for product in products:
                 # Use first product's currency as reference
                 if product.price and not total_price:
@@ -1297,10 +1298,11 @@ def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, An
         pdf_content = buffer.getvalue()
         buffer.close()
         
-        # Generate filename - sanitize whatsapp_id to prevent path traversal
-        # WhatsApp IDs can contain + for country codes, so preserve alphanumeric, plus, and dash
-        safe_whatsapp_id = re.sub(r'[^a-zA-Z0-9\+\-]', '', contact.whatsapp_id)
-        filename = f"recommendation_{safe_whatsapp_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Generate filename using UUID to eliminate path traversal concerns
+        # Include contact ID for reference but use UUID for uniqueness and security
+        unique_id = uuid.uuid4().hex[:12]  # Use first 12 chars of UUID for brevity
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"recommendation_contact{contact.id}_{timestamp}_{unique_id}.pdf"
         filepath = os.path.join(settings.MEDIA_ROOT, 'recommendations', filename)
         
         # Create directory if it doesn't exist
