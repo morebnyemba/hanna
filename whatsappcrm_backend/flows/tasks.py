@@ -2,6 +2,7 @@
 import logging
 import tempfile
 import os
+import re
 from datetime import timedelta
 from celery import shared_task
 from django.db import transaction
@@ -23,6 +24,10 @@ from .services import process_message_for_flow, _clear_contact_flow_state
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+# --- AI Shopping Configuration ---
+AI_SHOPPING_MAX_PRODUCTS = 50  # Maximum products to include in AI context (token limit consideration)
+# ---------------------------------
 
 @shared_task(queue='celery') # Use your main I/O queue
 def process_flow_for_message_task(message_id: int):
@@ -332,7 +337,7 @@ def handle_ai_shopping_task(contact_id: int, message_id: int):
             
             # Create structured product catalog for AI
             product_catalog_text = "**Available Products:**\n"
-            for p in products_list[:50]:  # Limit to first 50 products to avoid token limits
+            for p in products_list[:AI_SHOPPING_MAX_PRODUCTS]:  # Limit products to avoid token limits
                 product_catalog_text += f"\n- ID: {p['id']}, Name: {p['name']}, Price: ${p['price']} {p['currency']}, Category: {p.get('category__name', 'N/A')}, Type: {p['product_type']}, Stock: {p['stock_quantity']}"
                 if p.get('description'):
                     product_catalog_text += f", Description: {p['description'][:100]}"

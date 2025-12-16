@@ -3,6 +3,7 @@
 import logging
 import random
 import uuid
+import re
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation
@@ -1229,17 +1230,23 @@ def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, An
             product_data = [["Product", "Description", "Price"]]
             
             total_price = Decimal('0.0')
+            currency = 'USD'  # Default currency
             for product in products:
+                # Use first product's currency as reference
+                if product.price and not total_price:
+                    currency = product.currency
+                
                 product_data.append([
                     product.name,
                     (product.description[:80] + '...') if product.description and len(product.description) > 80 else (product.description or 'N/A'),
                     f"${product.price} {product.currency}" if product.price else "Contact for price"
                 ])
-                if product.price:
+                # Only add to total if currency matches (avoid mixing currencies)
+                if product.price and product.currency == currency:
                     total_price += product.price
             
-            # Add total row
-            product_data.append(["", "Total:", f"${total_price} USD"])
+            # Add total row with detected currency
+            product_data.append(["", "Total:", f"${total_price} {currency}"])
             
             product_table = Table(product_data, colWidths=[2*inch, 3*inch, 1.5*inch])
             product_table.setStyle(TableStyle([
@@ -1268,10 +1275,16 @@ def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, An
         story.append(Paragraph(next_steps, styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        footer_text = """
-        <b>Pfungwa Solar Solutions</b><br/>
-        Your trusted partner in renewable energy<br/>
-        WhatsApp: +263 77 123 4567 | Email: info@pfungwa.co.zw<br/>
+        # Get company details from settings or use defaults
+        company_name = getattr(settings, 'COMPANY_NAME', 'Pfungwa Solar Solutions')
+        company_tagline = getattr(settings, 'COMPANY_TAGLINE', 'Your trusted partner in renewable energy')
+        company_whatsapp = getattr(settings, 'COMPANY_WHATSAPP', '+263 77 123 4567')
+        company_email = getattr(settings, 'COMPANY_EMAIL', 'info@pfungwa.co.zw')
+        
+        footer_text = f"""
+        <b>{company_name}</b><br/>
+        {company_tagline}<br/>
+        WhatsApp: {company_whatsapp} | Email: {company_email}<br/>
         <i>Powered by AI-driven recommendations</i>
         """
         story.append(Paragraph(footer_text, styles['Normal']))
@@ -1284,8 +1297,9 @@ def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, An
         pdf_content = buffer.getvalue()
         buffer.close()
         
-        # Generate filename
-        filename = f"recommendation_{contact.whatsapp_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Generate filename - sanitize whatsapp_id to prevent path traversal
+        safe_whatsapp_id = re.sub(r'[^\w\-]', '', contact.whatsapp_id)  # Remove non-alphanumeric except dash
+        filename = f"recommendation_{safe_whatsapp_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         filepath = os.path.join(settings.MEDIA_ROOT, 'recommendations', filename)
         
         # Create directory if it doesn't exist
