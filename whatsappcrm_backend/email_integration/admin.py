@@ -173,10 +173,7 @@ def reprocess_unprocessed_pdfs(modeladmin, request, queryset):
     success_count = 0
     for attachment in pdf_attachments:
         try:
-            # Reset to ensure clean processing
-            attachment.processed = False
-            attachment.save(update_fields=['processed'])
-            
+            # Note: attachments are already unprocessed, no need to update
             process_attachment_with_gemini.delay(attachment.id)
             success_count += 1
             logger.info(f"Admin {request.user.username} queued PDF attachment {attachment.id} for reprocessing")

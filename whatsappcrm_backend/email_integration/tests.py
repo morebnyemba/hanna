@@ -366,6 +366,7 @@ class ReprocessUnprocessedPDFsTaskTests(TestCase):
         """Test the reprocess_unprocessed_pdf_attachments task."""
         from email_integration.tasks import reprocess_unprocessed_pdf_attachments
         from django.utils import timezone
+        from datetime import timedelta
         import uuid
         
         # Mock the delay method
@@ -384,7 +385,7 @@ class ReprocessUnprocessedPDFsTaskTests(TestCase):
             filename=f"test_{unique_id}_recent.pdf",
             sender="test@example.com",
             processed=False,
-            email_date=timezone.now() - timezone.timedelta(days=1)
+            email_date=timezone.now() - timedelta(days=1)
         )
         
         # Create an unprocessed PDF from 3 days ago (should NOT be processed)
@@ -398,7 +399,7 @@ class ReprocessUnprocessedPDFsTaskTests(TestCase):
             filename=f"test_{unique_id}_old.pdf",
             sender="test@example.com",
             processed=False,
-            email_date=timezone.now() - timezone.timedelta(days=3)
+            email_date=timezone.now() - timedelta(days=3)
         )
         
         # Create a processed PDF (should NOT be processed again)
@@ -412,7 +413,7 @@ class ReprocessUnprocessedPDFsTaskTests(TestCase):
             filename=f"test_{unique_id}_processed.pdf",
             sender="test@example.com",
             processed=True,
-            email_date=timezone.now() - timezone.timedelta(days=1)
+            email_date=timezone.now() - timedelta(days=1)
         )
         
         # Run the task
@@ -429,6 +430,7 @@ class ReprocessUnprocessedPDFsTaskTests(TestCase):
         """Test the task when there are no unprocessed PDFs."""
         from email_integration.tasks import reprocess_unprocessed_pdf_attachments
         from django.utils import timezone
+        from datetime import timedelta
         import uuid
         
         # Mock the delay method
