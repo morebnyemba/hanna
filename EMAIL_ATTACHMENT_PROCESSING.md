@@ -2,7 +2,10 @@
 
 ## Overview
 
-This document describes the automated email attachment processing system, including scheduled reprocessing of unprocessed PDF attachments and Django admin management capabilities.
+This document describes the automated email attachment processing system, including:
+1. Scheduled reprocessing of unprocessed PDF attachments (Celery Beat task)
+2. Real-time mailbox monitoring for missing attachments (Idle Email Fetcher)
+3. Django admin management capabilities
 
 ## Features
 
@@ -37,7 +40,44 @@ CELERY_BEAT_SCHEDULE = {
 }
 ```
 
-### 2. Django Admin Actions
+### 2. Idle Email Fetcher - Missing Attachments Detection
+
+The idle email fetcher now includes automatic detection and retrieval of missing attachments from recent emails in the mailbox.
+
+**Service:** `idle_email_fetcher` management command
+
+**Behavior:**
+- Monitors mailbox in real-time for new emails (IDLE protocol)
+- **NEW:** Periodically checks emails from the last 2 days in the mailbox
+- Compares attachments in those emails with what exists in the database
+- If attachments don't exist in our system, automatically fetches and saves them
+- Queues missing attachments for processing
+- Runs every ~2 hours (4 IDLE cycles of 29 minutes each)
+- Performs initial check on connection/reconnection
+
+**How It Works:**
+1. When the service starts or reconnects, it immediately scans the last 2 days of emails
+2. For each email, it checks if attachments exist in the database (by filename, sender, and date)
+3. If attachments are missing, they are downloaded and saved
+4. Missing attachments are automatically queued for Gemini AI processing
+5. This process repeats approximately every 2 hours during idle times
+
+**Key Features:**
+- Prevents missed attachments due to service downtime
+- Catches attachments that failed to save during initial processing
+- Uses the same configurable time window as the reprocessing task (`EMAIL_ATTACHMENT_REPROCESS_DAYS`)
+- Duplicate detection prevents saving the same attachment multiple times
+
+**Logs to Monitor:**
+```
+[AccountName] Checking for missing attachments from emails since DD-Mon-YYYY...
+[AccountName] Found N emails from last X days. Checking for missing attachments...
+[AccountName] Found missing attachment: filename.pdf (DB id: 123)
+[AccountName] Retrieved N missing attachment(s) from recent emails.
+[AccountName] All attachments from recent emails are already in the system.
+```
+
+### 3. Django Admin Actions
 
 The Email Attachment admin interface (`/admin/email_integration/emailattachment/`) includes several actions for managing attachment processing:
 
@@ -127,6 +167,55 @@ The scheduled task logs its activity. Check your logs for entries like:
 5. Click "Go"
 
 The attachment will be reset to unprocessed and queued for processing immediately.
+
+### Scenario 4: Monitoring Idle Fetcher for Missing Attachments
+
+The idle email fetcher automatically checks for and retrieves missing attachments. Monitor its activity in the logs:
+
+```
+[Sales Inbox] Checking for missing attachments from emails since 15-Dec-2024...
+[Sales Inbox] Found 45 emails from last 2 days. Checking for missing attachments...
+[Sales Inbox] Found missing attachment: invoice_123.pdf (DB id: 456)
+[Sales Inbox] Found missing attachment: receipt.pdf (DB id: 457)
+[Sales Inbox] Retrieved 2 missing attachment(s) from recent emails.
+```
+
+If all attachments are already in the system:
+```
+[Sales Inbox] All attachments from recent emails are already in the system.
+```
+
+**What This Means:**
+- The service is actively checking the mailbox for emails from the last 2 days
+- Any attachments that weren't previously saved are now being retrieved
+- This catches attachments missed due to service downtime or errors
+- All newly found attachments are automatically queued for processing
+
+## How The Complete System Works Together
+
+The email attachment processing system uses three complementary approaches:
+
+### 1. Real-Time Processing (Idle Fetcher - IDLE Mode)
+- **When:** As new emails arrive
+- **What:** Immediately saves and processes attachments from new emails
+- **Purpose:** Primary method for handling incoming attachments
+
+### 2. Missing Attachments Detection (Idle Fetcher - Periodic Check)
+- **When:** Every ~2 hours during idle times + on connection
+- **What:** Scans mailbox for emails from last 2 days and retrieves missing attachments
+- **Purpose:** Catches attachments missed due to downtime, errors, or connection issues
+- **How:** Compares mailbox contents with database to find gaps
+
+### 3. Unprocessed PDF Reprocessing (Celery Beat Task)
+- **When:** Every 4 hours
+- **What:** Finds unprocessed PDF attachments in the database and retries processing
+- **Purpose:** Ensures PDFs that failed processing are retried automatically
+
+**Together, these three mechanisms ensure:**
+- ✅ No attachments are missed during service downtime
+- ✅ Failed processing attempts are automatically retried
+- ✅ The system self-heals and catches up after interruptions
+- ✅ All PDF attachments eventually get processed
 
 ## Monitoring and Troubleshooting
 

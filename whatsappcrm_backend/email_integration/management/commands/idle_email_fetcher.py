@@ -64,20 +64,36 @@ import imaplib
 import socket
 import ssl
 import threading
+import hashlib
+from datetime import datetime, timedelta
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 from django.core.management.base import BaseCommand
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from email.utils import parsedate_to_datetime
+from django.utils import timezone
+from django.conf import settings
 
 from email_integration.tasks import process_attachment_with_gemini
 from email_integration.models import EmailAttachment, EmailAccount
 
 logger = logging.getLogger(__name__)
 
-def process_message(account, message_data):
-    """Processes a single email message, extracting attachments."""
+def get_attachment_hash(file_content, filename, sender):
+    """Generate a unique hash for an attachment to detect duplicates."""
+    hash_input = f"{filename}:{sender}:{len(file_content)}".encode('utf-8')
+    return hashlib.md5(hash_input).hexdigest()
+
+def process_message(account, message_data, check_existing=False):
+    """
+    Processes a single email message, extracting attachments.
+    
+    Args:
+        account: EmailAccount instance
+        message_data: Raw email message data
+        check_existing: If True, check if attachment already exists before saving
+    """
     msg = email.message_from_bytes(message_data[b'RFC822'])
     sender = msg.get('From', '')
     subject = msg.get('Subject', '')
@@ -90,13 +106,28 @@ def process_message(account, message_data):
         
         filename = part.get_filename()
         if filename:
-            unique_name = f"mailu_{uuid.uuid4().hex}_{filename}"
             file_content = part.get_payload(decode=True)
             
             if file_content is None:
                 logger.warning(f"Skipping attachment '{filename}' from '{account.name}' due to empty content.")
                 continue
+            
+            # Check if attachment already exists (for retroactive scanning)
+            if check_existing:
+                attachment_hash = get_attachment_hash(file_content, filename, sender)
+                # Check if similar attachment exists from same sender with same filename
+                existing = EmailAttachment.objects.filter(
+                    account=account,
+                    filename=filename,
+                    sender=sender,
+                    email_date=email_date_obj
+                ).exists()
+                
+                if existing:
+                    logger.debug(f"Attachment '{filename}' from '{sender}' already exists in system. Skipping.")
+                    continue
 
+            unique_name = f"mailu_{uuid.uuid4().hex}_{filename}"
             attachment = EmailAttachment.objects.create(
                 account=account,
                 file=ContentFile(file_content, name="attachments/" + unique_name),
@@ -110,10 +141,92 @@ def process_message(account, message_data):
             process_attachment_with_gemini.delay(attachment.id)
             logger.info(f"Triggered Gemini processing for attachment id: {attachment.id}")
 
+def check_recent_emails_for_missing_attachments(account, server):
+    """
+    Check emails from the last 2 days and save any attachments that don't exist in our system.
+    This is called periodically to catch any missed attachments.
+    
+    Args:
+        account: EmailAccount instance
+        server: Connected IMAPClient instance
+    """
+    try:
+        # Get configurable days setting (same as reprocessing task)
+        days_to_check = getattr(settings, 'EMAIL_ATTACHMENT_REPROCESS_DAYS', 2)
+        
+        # Calculate date N days ago
+        cutoff_date = datetime.now() - timedelta(days=days_to_check)
+        date_str = cutoff_date.strftime("%d-%b-%Y")
+        
+        logger.info(f"[{account.name}] Checking for missing attachments from emails since {date_str}...")
+        
+        # Search for emails from the last N days
+        messages = server.search(['SINCE', date_str])
+        
+        if not messages:
+            logger.info(f"[{account.name}] No emails found from the last {days_to_check} days.")
+            return
+        
+        logger.info(f"[{account.name}] Found {len(messages)} emails from last {days_to_check} days. Checking for missing attachments...")
+        
+        new_attachments_count = 0
+        for uid, message_data in server.fetch(messages, 'RFC822').items():
+            # Process with duplicate checking enabled
+            msg = email.message_from_bytes(message_data[b'RFC822'])
+            sender = msg.get('From', '')
+            subject = msg.get('Subject', '')
+            date_str = msg.get('Date', '')
+            email_date_obj = parsedate_to_datetime(date_str) if date_str else None
+            
+            for part in msg.walk():
+                if part.get_content_maintype() == 'multipart' or part.get('Content-Disposition') is None:
+                    continue
+                
+                filename = part.get_filename()
+                if filename:
+                    file_content = part.get_payload(decode=True)
+                    
+                    if file_content is None:
+                        continue
+                    
+                    # Check if attachment already exists
+                    existing = EmailAttachment.objects.filter(
+                        account=account,
+                        filename=filename,
+                        sender=sender,
+                        email_date=email_date_obj
+                    ).exists()
+                    
+                    if not existing:
+                        # This attachment is missing from our system, save it
+                        unique_name = f"mailu_{uuid.uuid4().hex}_{filename}"
+                        attachment = EmailAttachment.objects.create(
+                            account=account,
+                            file=ContentFile(file_content, name="attachments/" + unique_name),
+                            filename=filename,
+                            sender=sender,
+                            subject=subject,
+                            email_date=email_date_obj
+                        )
+                        logger.info(f"[{account.name}] Found missing attachment: {filename} (DB id: {attachment.id})")
+                        
+                        # Queue for processing
+                        process_attachment_with_gemini.delay(attachment.id)
+                        new_attachments_count += 1
+        
+        if new_attachments_count > 0:
+            logger.info(f"[{account.name}] Retrieved {new_attachments_count} missing attachment(s) from recent emails.")
+        else:
+            logger.info(f"[{account.name}] All attachments from recent emails are already in the system.")
+            
+    except Exception as e:
+        logger.error(f"[{account.name}] Error checking recent emails for missing attachments: {e}", exc_info=True)
+
 def monitor_account(account):
     """
     The main worker function for a single email account.
     Connects to the IMAP server and enters a persistent IDLE loop.
+    Also periodically checks for missing attachments from recent emails.
     """
     logger.info(f"[{account.name}] Starting monitoring thread for host {account.imap_host} and user {account.imap_user}.")
     
@@ -125,6 +238,10 @@ def monitor_account(account):
     elif account.ssl_protocol == 'tls_v1_3':
         ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
 
+    idle_cycle_count = 0
+    # Check for missing attachments every N IDLE cycles (approximately every 2 hours)
+    CHECK_INTERVAL_CYCLES = 4  # 4 cycles * 29 minutes ≈ 2 hours
+
     while True:
         try:
             logger.info(f"[{account.name}] Attempting to connect to {account.imap_host}:{account.port} with SSL protocol {account.ssl_protocol}.")
@@ -133,6 +250,12 @@ def monitor_account(account):
             server.login(account.imap_user, account.imap_password)
             server.select_folder('INBOX')
             logger.info(f"[{account.name}] Successfully connected and selected INBOX.")
+
+            # Perform initial check for missing attachments on connect
+            try:
+                check_recent_emails_for_missing_attachments(account, server)
+            except Exception as e:
+                logger.error(f"[{account.name}] Error during initial missing attachments check: {e}")
 
             # Main IDLE loop for the connection
             while True:
@@ -147,6 +270,16 @@ def monitor_account(account):
                         messages = server.search(['UNSEEN'])
                         for uid, message_data in server.fetch(messages, 'RFC822').items():
                             process_message(account, message_data)
+                    
+                    # Periodically check for missing attachments from recent emails
+                    idle_cycle_count += 1
+                    if idle_cycle_count >= CHECK_INTERVAL_CYCLES:
+                        logger.info(f"[{account.name}] Performing periodic check for missing attachments from recent emails...")
+                        try:
+                            check_recent_emails_for_missing_attachments(account, server)
+                        except Exception as e:
+                            logger.error(f"[{account.name}] Error during periodic missing attachments check: {e}")
+                        idle_cycle_count = 0  # Reset counter
                 
                 except (IMAPClientError, OSError, imaplib.IMAP4.error) as idle_error:
                     logger.error(f"[{account.name}] Error during IDLE: {idle_error}. Reconnecting...")
