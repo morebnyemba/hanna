@@ -753,30 +753,36 @@ def fetch_email_attachments_task():
 @shared_task(name="email_integration.reprocess_unprocessed_pdf_attachments")
 def reprocess_unprocessed_pdf_attachments():
     """
-    Celery task to check and reprocess unprocessed PDF attachments from the last 2 days.
+    Celery task to check and reprocess unprocessed PDF attachments from the last N days.
     This task runs during idle times to ensure all PDF attachments are processed.
+    The number of days is configurable via EMAIL_ATTACHMENT_REPROCESS_DAYS setting (default: 2).
     """
     from django.utils import timezone
+    from django.conf import settings
     
     log_prefix = "[Reprocess PDFs Task]"
-    logger.info(f"{log_prefix} Starting scheduled task to reprocess unprocessed PDF attachments from last 2 days.")
+    
+    # Get configurable days setting (default to 2 days if not set)
+    days_to_check = getattr(settings, 'EMAIL_ATTACHMENT_REPROCESS_DAYS', 2)
+    
+    logger.info(f"{log_prefix} Starting scheduled task to reprocess unprocessed PDF attachments from last {days_to_check} days.")
     
     try:
-        # Calculate the date 2 days ago
-        two_days_ago = timezone.now() - timezone.timedelta(days=2)
+        # Calculate the date N days ago
+        cutoff_date = timezone.now() - timezone.timedelta(days=days_to_check)
         
-        # Find unprocessed attachments from the last 2 days that are PDFs
+        # Find unprocessed attachments from the last N days that are PDFs
         unprocessed_pdfs = EmailAttachment.objects.filter(
             processed=False,
-            email_date__gte=two_days_ago,
+            email_date__gte=cutoff_date,
             filename__iendswith='.pdf'
         )
         
         count = unprocessed_pdfs.count()
-        logger.info(f"{log_prefix} Found {count} unprocessed PDF attachment(s) from the last 2 days.")
+        logger.info(f"{log_prefix} Found {count} unprocessed PDF attachment(s) from the last {days_to_check} days.")
         
         if count == 0:
-            return f"No unprocessed PDF attachments found from the last 2 days."
+            return f"No unprocessed PDF attachments found from the last {days_to_check} days."
         
         # Queue each unprocessed PDF for processing
         requeued_count = 0

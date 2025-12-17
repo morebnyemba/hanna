@@ -306,6 +306,9 @@ CONVERSATION_EXPIRY_DAYS = int(os.getenv('CONVERSATION_EXPIRY_DAYS', '60'))
 ADMIN_WHATSAPP_NUMBER = os.getenv('ADMIN_WHATSAPP_NUMBER', None) # e.g., '15551234567'
 ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME = os.getenv('ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME', 'admin_notification_alert')
 
+# Email Attachment Processing Settings
+EMAIL_ATTACHMENT_REPROCESS_DAYS = int(os.getenv('EMAIL_ATTACHMENT_REPROCESS_DAYS', '2'))  # Number of days to look back for unprocessed PDFs
+
 
 # --- Logging Configuration ---
 LOGGING = {

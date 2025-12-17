@@ -173,7 +173,7 @@ def reprocess_unprocessed_pdfs(modeladmin, request, queryset):
     success_count = 0
     for attachment in pdf_attachments:
         try:
-            # Note: attachments are already unprocessed, no need to update
+            # Queue the attachment for processing (already filtered as unprocessed)
             process_attachment_with_gemini.delay(attachment.id)
             success_count += 1
             logger.info(f"Admin {request.user.username} queued PDF attachment {attachment.id} for reprocessing")
@@ -307,8 +307,10 @@ class EmailAttachmentAdmin(admin.ModelAdmin):
     def file_type(self, obj):
         """Display the file type based on extension."""
         if obj.filename:
-            ext = obj.filename.lower().split('.')[-1] if '.' in obj.filename else 'unknown'
-            return ext.upper()
+            parts = obj.filename.lower().split('.')
+            # Handle edge cases: no extension or ends with dot
+            if len(parts) > 1 and parts[-1]:
+                return parts[-1].upper()
         return 'N/A'
     file_type.short_description = 'Type'
     

@@ -203,12 +203,25 @@ The scheduled task depends on:
 
 ### Adjusting the Time Window
 
-To change from 2 days to a different period, modify the task in `email_integration/tasks.py`:
+The time window for checking unprocessed PDFs is configurable via environment variable or Django settings.
 
-```python
-# Change from 2 days to 7 days
-two_days_ago = timezone.now() - timezone.timedelta(days=7)  # Changed from days=2
+**Method 1: Environment Variable (Recommended for production)**
+
+Add to your `.env` file:
+```bash
+# Number of days to look back for unprocessed PDFs (default: 2)
+EMAIL_ATTACHMENT_REPROCESS_DAYS=7
 ```
+
+**Method 2: Direct Settings Modification**
+
+In `whatsappcrm_backend/whatsappcrm_backend/settings.py`:
+```python
+# Email Attachment Processing Settings
+EMAIL_ATTACHMENT_REPROCESS_DAYS = 7  # Changed from default of 2 days
+```
+
+**Note:** Changes to environment variables require a restart of Celery workers and beat scheduler.
 
 ### Adjusting the Schedule
 
