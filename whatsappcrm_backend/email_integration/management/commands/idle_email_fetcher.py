@@ -64,8 +64,7 @@ import imaplib
 import socket
 import ssl
 import threading
-import hashlib
-from datetime import datetime, timedelta
+from datetime import timedelta
 from imapclient import IMAPClient
 from imapclient.exceptions import IMAPClientError
 from django.core.management.base import BaseCommand
@@ -79,11 +78,6 @@ from email_integration.tasks import process_attachment_with_gemini
 from email_integration.models import EmailAttachment, EmailAccount
 
 logger = logging.getLogger(__name__)
-
-def get_attachment_hash(file_content, filename, sender):
-    """Generate a unique hash for an attachment to detect duplicates."""
-    hash_input = f"{filename}:{sender}:{len(file_content)}".encode('utf-8')
-    return hashlib.md5(hash_input).hexdigest()
 
 def process_message(account, message_data, check_existing=False):
     """
@@ -114,8 +108,7 @@ def process_message(account, message_data, check_existing=False):
             
             # Check if attachment already exists (for retroactive scanning)
             if check_existing:
-                attachment_hash = get_attachment_hash(file_content, filename, sender)
-                # Check if similar attachment exists from same sender with same filename
+                # Check if similar attachment exists from same sender with same filename and date
                 existing = EmailAttachment.objects.filter(
                     account=account,
                     filename=filename,
@@ -154,8 +147,8 @@ def check_recent_emails_for_missing_attachments(account, server):
         # Get configurable days setting (same as reprocessing task)
         days_to_check = getattr(settings, 'EMAIL_ATTACHMENT_REPROCESS_DAYS', 2)
         
-        # Calculate date N days ago
-        cutoff_date = datetime.now() - timedelta(days=days_to_check)
+        # Calculate date N days ago - use timezone-aware datetime
+        cutoff_date = timezone.now() - timedelta(days=days_to_check)
         date_str = cutoff_date.strftime("%d-%b-%Y")
         
         logger.info(f"[{account.name}] Checking for missing attachments from emails since {date_str}...")
