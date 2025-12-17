@@ -146,6 +146,50 @@ def retrigger_gemini_processing(modeladmin, request, queryset):
         )
 
 
+@admin.action(description='Reprocess unprocessed PDF attachments (last 2 days)')
+def reprocess_unprocessed_pdfs(modeladmin, request, queryset):
+    """
+    Admin action to specifically reprocess unprocessed PDF attachments.
+    This action can be used on any selected attachments, but is optimized for PDFs.
+    """
+    from django.utils import timezone
+    
+    # Filter for unprocessed PDFs in the selection
+    pdf_attachments = queryset.filter(
+        processed=False,
+        filename__iendswith='.pdf'
+    )
+    
+    count = pdf_attachments.count()
+    
+    if count == 0:
+        modeladmin.message_user(
+            request,
+            "No unprocessed PDF attachments found in your selection.",
+            messages.WARNING
+        )
+        return
+    
+    success_count = 0
+    for attachment in pdf_attachments:
+        try:
+            # Reset to ensure clean processing
+            attachment.processed = False
+            attachment.save(update_fields=['processed'])
+            
+            process_attachment_with_gemini.delay(attachment.id)
+            success_count += 1
+            logger.info(f"Admin {request.user.username} queued PDF attachment {attachment.id} for reprocessing")
+        except Exception as e:
+            logger.error(f"Failed to queue PDF attachment {attachment.id} for reprocessing: {e}")
+    
+    modeladmin.message_user(
+        request,
+        f"Successfully queued {success_count} out of {count} unprocessed PDF(s) for processing.",
+        messages.SUCCESS
+    )
+
+
 @admin.action(description='Mark selected attachments as unprocessed')
 def mark_as_unprocessed(modeladmin, request, queryset):
     """
@@ -246,17 +290,35 @@ class EmailAccountAdmin(admin.ModelAdmin):
 
 @admin.register(EmailAttachment)
 class EmailAttachmentAdmin(admin.ModelAdmin):
-    list_display = ('filename', 'sender', 'processed', 'email_date', 'saved_at')
-    list_filter = ('processed', 'email_date', 'sender')
+    list_display = ('filename', 'file_type', 'sender', 'processed', 'email_date', 'saved_at')
+    list_filter = ('processed', 'email_date', 'sender', 'account')
     search_fields = ('filename', 'sender', 'subject')
     readonly_fields = ('saved_at', 'updated_at', 'pretty_extracted_data')
-    actions = [retrigger_gemini_processing, mark_as_unprocessed, mark_as_processed]
+    actions = [
+        retrigger_gemini_processing, 
+        reprocess_unprocessed_pdfs,
+        mark_as_unprocessed, 
+        mark_as_processed
+    ]
     fieldsets = (
         (None, {'fields': ('filename', 'sender', 'subject', 'email_date', 'processed')}),
-        ('File Info', {'fields': ('file',)}),
+        ('File Info', {'fields': ('file', 'account')}),
         ('Extracted Data', {'fields': ('pretty_extracted_data',)}),
         ('Timestamps', {'fields': ('saved_at', 'updated_at')}),
     )
+
+    def file_type(self, obj):
+        """Display the file type based on extension."""
+        if obj.filename:
+            ext = obj.filename.lower().split('.')[-1] if '.' in obj.filename else 'unknown'
+            return ext.upper()
+        return 'N/A'
+    file_type.short_description = 'Type'
+    
+    def get_queryset(self, request):
+        """Add custom annotations to the queryset."""
+        qs = super().get_queryset(request)
+        return qs.select_related('account')
 
     def pretty_extracted_data(self, instance):
         """Displays the JSON data in a readable format."""

@@ -749,3 +749,49 @@ def fetch_email_attachments_task():
     except Exception as e:
         logger.error(f"{log_prefix} The 'fetch_mail_attachments' command failed: {e}", exc_info=True)
         raise
+
+@shared_task(name="email_integration.reprocess_unprocessed_pdf_attachments")
+def reprocess_unprocessed_pdf_attachments():
+    """
+    Celery task to check and reprocess unprocessed PDF attachments from the last 2 days.
+    This task runs during idle times to ensure all PDF attachments are processed.
+    """
+    from django.utils import timezone
+    
+    log_prefix = "[Reprocess PDFs Task]"
+    logger.info(f"{log_prefix} Starting scheduled task to reprocess unprocessed PDF attachments from last 2 days.")
+    
+    try:
+        # Calculate the date 2 days ago
+        two_days_ago = timezone.now() - timezone.timedelta(days=2)
+        
+        # Find unprocessed attachments from the last 2 days that are PDFs
+        unprocessed_pdfs = EmailAttachment.objects.filter(
+            processed=False,
+            email_date__gte=two_days_ago,
+            filename__iendswith='.pdf'
+        )
+        
+        count = unprocessed_pdfs.count()
+        logger.info(f"{log_prefix} Found {count} unprocessed PDF attachment(s) from the last 2 days.")
+        
+        if count == 0:
+            return f"No unprocessed PDF attachments found from the last 2 days."
+        
+        # Queue each unprocessed PDF for processing
+        requeued_count = 0
+        for attachment in unprocessed_pdfs:
+            try:
+                process_attachment_with_gemini.delay(attachment.id)
+                logger.info(f"{log_prefix} Queued PDF attachment {attachment.id} ('{attachment.filename}') for processing.")
+                requeued_count += 1
+            except Exception as e:
+                logger.error(f"{log_prefix} Failed to queue attachment {attachment.id} for processing: {e}")
+        
+        logger.info(f"{log_prefix} Successfully queued {requeued_count} out of {count} PDF attachments for reprocessing.")
+        return f"Queued {requeued_count} PDF attachments for reprocessing."
+        
+    except Exception as e:
+        error_msg = f"Failed to reprocess unprocessed PDF attachments: {e}"
+        logger.error(f"{log_prefix} {error_msg}", exc_info=True)
+        raise

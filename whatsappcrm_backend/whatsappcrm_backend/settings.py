@@ -289,6 +289,12 @@ CELERY_BEAT_SCHEDULE = {
         # Runs every 5 minutes to check for idle sessions.
         'schedule': crontab(minute='*/5'),
     },
+    'reprocess-unprocessed-pdf-attachments': {
+        'task': 'email_integration.reprocess_unprocessed_pdf_attachments',
+        # Runs every 4 hours to check for unprocessed PDF attachments from the last 2 days
+        # This ensures all PDF attachments are eventually processed during idle times
+        'schedule': crontab(minute=0, hour='*/4'),
+    },
     # 'fetch-mailu-attachments-periodically': {
     #     'task': 'email_integration.fetch_email_attachments_task',
     #     'schedule': 5.0,  # This is now replaced by the idle_email_fetcher service
