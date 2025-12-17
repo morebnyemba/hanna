@@ -298,3 +298,163 @@ class AdminActionsTests(TestCase):
         self.attachment2.refresh_from_db()
         self.assertTrue(self.attachment1.processed)
         self.assertTrue(self.attachment2.processed)
+
+    @patch('email_integration.admin.process_attachment_with_gemini')
+    def test_reprocess_unprocessed_pdfs(self, mock_task):
+        """Test the reprocess_unprocessed_pdfs admin action."""
+        from email_integration.admin import reprocess_unprocessed_pdfs, EmailAttachmentAdmin
+        from django.utils import timezone
+        import uuid
+        
+        # Mock the delay method
+        mock_task.delay = MagicMock()
+        
+        # Create additional test attachments
+        unique_id = str(uuid.uuid4())[:8]
+        
+        # Create an unprocessed PDF attachment
+        pdf_file = SimpleUploadedFile(
+            f"test_{unique_id}_unprocessed.pdf", 
+            b"pdf_content", 
+            content_type="application/pdf"
+        )
+        unprocessed_pdf = EmailAttachment.objects.create(
+            file=pdf_file,
+            filename=f"test_{unique_id}_unprocessed.pdf",
+            sender="test@example.com",
+            processed=False,
+            email_date=timezone.now()
+        )
+        
+        # Create an unprocessed non-PDF attachment
+        txt_file = SimpleUploadedFile(
+            f"test_{unique_id}_unprocessed.txt", 
+            b"text_content", 
+            content_type="text/plain"
+        )
+        unprocessed_txt = EmailAttachment.objects.create(
+            file=txt_file,
+            filename=f"test_{unique_id}_unprocessed.txt",
+            sender="test@example.com",
+            processed=False,
+            email_date=timezone.now()
+        )
+        
+        # Create request
+        request = self.factory.post('/admin/email_integration/emailattachment/')
+        request.user = self.user
+        
+        # Create queryset with all attachments
+        queryset = EmailAttachment.objects.all()
+        
+        # Create mock admin instance
+        modeladmin = EmailAttachmentAdmin(EmailAttachment, None)
+        
+        # Call the admin action
+        reprocess_unprocessed_pdfs(modeladmin, request, queryset)
+        
+        # Verify only the PDF was queued for processing
+        # Should be called once for the new unprocessed PDF
+        mock_task.delay.assert_called_once_with(unprocessed_pdf.id)
+
+
+class ReprocessUnprocessedPDFsTaskTests(TestCase):
+    """Test cases for the reprocess_unprocessed_pdf_attachments task."""
+    
+    @patch('email_integration.tasks.process_attachment_with_gemini')
+    def test_reprocess_unprocessed_pdfs_task(self, mock_task):
+        """Test the reprocess_unprocessed_pdf_attachments task."""
+        from email_integration.tasks import reprocess_unprocessed_pdf_attachments
+        from django.utils import timezone
+        import uuid
+        
+        # Mock the delay method
+        mock_task.delay = MagicMock()
+        
+        unique_id = str(uuid.uuid4())[:8]
+        
+        # Create an unprocessed PDF from 1 day ago
+        pdf_file = SimpleUploadedFile(
+            f"test_{unique_id}_recent.pdf", 
+            b"pdf_content", 
+            content_type="application/pdf"
+        )
+        recent_pdf = EmailAttachment.objects.create(
+            file=pdf_file,
+            filename=f"test_{unique_id}_recent.pdf",
+            sender="test@example.com",
+            processed=False,
+            email_date=timezone.now() - timezone.timedelta(days=1)
+        )
+        
+        # Create an unprocessed PDF from 3 days ago (should NOT be processed)
+        old_pdf_file = SimpleUploadedFile(
+            f"test_{unique_id}_old.pdf", 
+            b"pdf_content", 
+            content_type="application/pdf"
+        )
+        old_pdf = EmailAttachment.objects.create(
+            file=old_pdf_file,
+            filename=f"test_{unique_id}_old.pdf",
+            sender="test@example.com",
+            processed=False,
+            email_date=timezone.now() - timezone.timedelta(days=3)
+        )
+        
+        # Create a processed PDF (should NOT be processed again)
+        processed_pdf_file = SimpleUploadedFile(
+            f"test_{unique_id}_processed.pdf", 
+            b"pdf_content", 
+            content_type="application/pdf"
+        )
+        processed_pdf = EmailAttachment.objects.create(
+            file=processed_pdf_file,
+            filename=f"test_{unique_id}_processed.pdf",
+            sender="test@example.com",
+            processed=True,
+            email_date=timezone.now() - timezone.timedelta(days=1)
+        )
+        
+        # Run the task
+        result = reprocess_unprocessed_pdf_attachments()
+        
+        # Verify only the recent unprocessed PDF was queued
+        mock_task.delay.assert_called_once_with(recent_pdf.id)
+        
+        # Verify the result message
+        self.assertIn("Queued 1 PDF", result)
+    
+    @patch('email_integration.tasks.process_attachment_with_gemini')
+    def test_reprocess_no_unprocessed_pdfs(self, mock_task):
+        """Test the task when there are no unprocessed PDFs."""
+        from email_integration.tasks import reprocess_unprocessed_pdf_attachments
+        from django.utils import timezone
+        import uuid
+        
+        # Mock the delay method
+        mock_task.delay = MagicMock()
+        
+        unique_id = str(uuid.uuid4())[:8]
+        
+        # Create only processed PDFs
+        pdf_file = SimpleUploadedFile(
+            f"test_{unique_id}_processed.pdf", 
+            b"pdf_content", 
+            content_type="application/pdf"
+        )
+        EmailAttachment.objects.create(
+            file=pdf_file,
+            filename=f"test_{unique_id}_processed.pdf",
+            sender="test@example.com",
+            processed=True,
+            email_date=timezone.now()
+        )
+        
+        # Run the task
+        result = reprocess_unprocessed_pdf_attachments()
+        
+        # Verify no PDFs were queued
+        mock_task.delay.assert_not_called()
+        
+        # Verify the result message
+        self.assertIn("No unprocessed PDF", result)
