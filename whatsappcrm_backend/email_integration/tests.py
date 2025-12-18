@@ -99,7 +99,8 @@ class ParseJsonRobustTests(TestCase):
         """Test JSON with unescaped newline characters within string values."""
         json_with_newlines = '{"text": "Line 1\nLine 2", "value": 123}'
         result = parse_json_robust(json_with_newlines)
-        self.assertEqual(result["text"], "Line 1\\nLine 2")
+        # After parsing, Python's json.loads will convert \\n back to \n
+        self.assertEqual(result["text"], "Line 1\nLine 2")
         self.assertEqual(result["value"], 123)
 
     def test_empty_string_raises_error(self):

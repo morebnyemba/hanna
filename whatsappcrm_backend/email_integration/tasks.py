@@ -68,7 +68,8 @@ def parse_json_robust(text: str) -> dict:
     # Strategy 2a: Fix pattern where closing brace is missing before comma on next line
     # Pattern: value\n      , -> value\n      },
     # This handles the case from Gemini API: "total_amount": 749.00\n      ,
-    cleaned = re.sub(r'([0-9.]+|"[^"]*"|true|false|null)\s*\n\s*,', r'\1\n      },', cleaned)
+    # Use a better pattern that handles escaped quotes in strings
+    cleaned = re.sub(r'([0-9.]+|"(?:[^"\\]|\\.)*"|true|false|null)\s*\n\s*,', r'\1\n      },', cleaned)
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
@@ -84,13 +85,14 @@ def parse_json_robust(text: str) -> dict:
     
     # Strategy 3: Escape unescaped newlines within string values
     # This handles cases where AI models put literal newlines in string values
+    # Use a better pattern that handles escaped quotes in strings
     def fix_newlines_in_strings(match):
         string_content = match.group(1)
         # Replace literal newlines with escaped newlines
         fixed = string_content.replace('\n', '\\n')
         return f'"{fixed}"'
     
-    cleaned = re.sub(r'"([^"]*)"', fix_newlines_in_strings, cleaned)
+    cleaned = re.sub(r'"((?:[^"\\]|\\.)*)"', fix_newlines_in_strings, cleaned)
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
