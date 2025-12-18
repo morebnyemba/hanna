@@ -33,6 +33,96 @@ from .smtp_utils import get_smtp_connection, get_from_email
 logger = logging.getLogger(__name__)
 
 
+def parse_json_robust(text: str) -> dict:
+    """
+    Robustly parse JSON text that may contain common formatting issues from AI models.
+    
+    This function attempts multiple strategies to parse JSON:
+    1. Direct parsing
+    2. Fix missing closing braces before commas on new lines
+    3. Remove trailing commas before closing brackets/braces
+    4. Escape unescaped newlines within string values
+    5. Remove comments (// and /* */)
+    6. Fix multiple consecutive commas
+    
+    Args:
+        text: The JSON text to parse, potentially malformed
+        
+    Returns:
+        Parsed JSON as a dictionary
+        
+    Raises:
+        json.JSONDecodeError: If JSON cannot be parsed after all cleanup attempts
+    """
+    if not text or not text.strip():
+        raise json.JSONDecodeError("Empty JSON text", "", 0)
+    
+    # Strategy 1: Try direct parsing first
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    
+    cleaned = text
+    
+    # Strategy 2a: Fix pattern where closing brace is missing before comma on next line
+    # Pattern: value\n      , -> value\n      },
+    # This handles the case from Gemini API: "total_amount": 749.00\n      ,
+    cleaned = re.sub(r'([0-9.]+|"[^"]*"|true|false|null)\s*\n\s*,', r'\1\n      },', cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    
+    # Strategy 2b: Remove trailing commas before closing brackets/braces
+    # Matches: , followed by optional whitespace/newlines followed by } or ]
+    cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    
+    # Strategy 3: Escape unescaped newlines within string values
+    # This handles cases where AI models put literal newlines in string values
+    def fix_newlines_in_strings(match):
+        string_content = match.group(1)
+        # Replace literal newlines with escaped newlines
+        fixed = string_content.replace('\n', '\\n')
+        return f'"{fixed}"'
+    
+    cleaned = re.sub(r'"([^"]*)"', fix_newlines_in_strings, cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    
+    # Strategy 4: Remove single-line comments (//)
+    cleaned = re.sub(r'//[^\n]*\n', '\n', cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    
+    # Strategy 5: Remove multi-line comments (/* */)
+    cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    
+    # Strategy 6: Fix multiple consecutive commas
+    cleaned = re.sub(r',\s*,+', ',', cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        # All strategies failed, raise the last error
+        raise json.JSONDecodeError(
+            f"Failed to parse JSON after all cleanup attempts. Last error: {e.msg}",
+            e.doc,
+            e.pos
+        ) from e
+
+
 @shared_task(
     bind=True,
     name="email_integration.send_receipt_confirmation_email",
@@ -390,9 +480,12 @@ def process_attachment_with_gemini(self, attachment_id):
             
             if not cleaned_text:
                 raise json.JSONDecodeError("Empty response from Gemini", "", 0)
-            extracted_data = json.loads(cleaned_text)
+            
+            # Use robust JSON parser that handles common AI model formatting issues
+            extracted_data = parse_json_robust(cleaned_text)
+            logger.info(f"{log_prefix} Successfully parsed JSON response from Gemini.")
         except json.JSONDecodeError as e:
-            error_message = f"Failed to decode JSON from Gemini response. Error: {e}."
+            error_message = f"Failed to decode JSON from Gemini response. Error: {e.msg}"
             logger.error(f"{log_prefix} {error_message} Raw response text: '{response.text}'")
             attachment.processed = True
             attachment.extracted_data = {"error": error_message, "status": "failed", "raw_response": response.text}

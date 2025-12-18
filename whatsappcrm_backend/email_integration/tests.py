@@ -1,11 +1,156 @@
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from unittest.mock import patch, MagicMock
+import json
 
 from .models import EmailAttachment
-from .tasks import _create_order_from_invoice_data
+from .tasks import _create_order_from_invoice_data, parse_json_robust
 from customer_data.models import CustomerProfile, Order, OrderItem, Contact
 from products_and_services.models import Product
+
+
+class ParseJsonRobustTests(TestCase):
+    """Test cases for robust JSON parsing function."""
+
+    def test_valid_json(self):
+        """Test that valid JSON is parsed correctly."""
+        valid_json = '{"name": "test", "value": 123}'
+        result = parse_json_robust(valid_json)
+        self.assertEqual(result, {"name": "test", "value": 123})
+
+    def test_json_with_trailing_comma_in_object(self):
+        """Test JSON with trailing comma in object."""
+        json_with_trailing = '{"name": "test", "value": 123,}'
+        result = parse_json_robust(json_with_trailing)
+        self.assertEqual(result, {"name": "test", "value": 123})
+
+    def test_json_with_trailing_comma_in_array(self):
+        """Test JSON with trailing comma in array."""
+        json_with_trailing = '{"items": [1, 2, 3,]}'
+        result = parse_json_robust(json_with_trailing)
+        self.assertEqual(result, {"items": [1, 2, 3]})
+
+    def test_json_with_trailing_comma_multiline(self):
+        """Test JSON with trailing comma on separate line (real-world Gemini case)."""
+        json_with_trailing = """{
+  "line_items": [
+    {
+      "product_code": "OB-MP-GB-920001211",
+      "total_amount": 749.00
+    ,
+    {
+      "product_code": "OB-MP-GB-920001212",
+      "total_amount": 650.00
+    }
+  ]
+}"""
+        result = parse_json_robust(json_with_trailing)
+        self.assertEqual(len(result["line_items"]), 2)
+        self.assertEqual(result["line_items"][0]["total_amount"], 749.00)
+
+    def test_json_with_single_line_comment(self):
+        """Test JSON with single-line comment."""
+        json_with_comment = '{"name": "test", // this is a comment\n"value": 123}'
+        result = parse_json_robust(json_with_comment)
+        self.assertEqual(result, {"name": "test", "value": 123})
+
+    def test_json_with_multiline_comment(self):
+        """Test JSON with multi-line comment."""
+        json_with_comment = '{"name": "test", /* this is a \nmulti-line comment */ "value": 123}'
+        result = parse_json_robust(json_with_comment)
+        self.assertEqual(result, {"name": "test", "value": 123})
+
+    def test_json_with_multiple_consecutive_commas(self):
+        """Test JSON with multiple consecutive commas."""
+        json_with_multiple = '{"items": [1,, 2, 3]}'
+        result = parse_json_robust(json_with_multiple)
+        self.assertEqual(result["items"], [1, 2, 3])
+
+    def test_complex_nested_json_with_trailing_commas(self):
+        """Test complex nested JSON with multiple trailing commas."""
+        complex_json = """{
+  "document_type": "invoice",
+  "data": {
+    "issuer": {
+      "name": "Test Company",
+      "email": "test@example.com",
+    },
+    "line_items": [
+      {
+        "description": "Item 1",
+        "quantity": 1,
+        "total": 100,
+      },
+      {
+        "description": "Item 2",
+        "quantity": 2,
+        "total": 200,
+      },
+    ],
+    "total_amount": 300,
+  }
+}"""
+        result = parse_json_robust(complex_json)
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(len(result["data"]["line_items"]), 2)
+        self.assertEqual(result["data"]["total_amount"], 300)
+
+    def test_json_with_unescaped_newlines_in_strings(self):
+        """Test JSON with unescaped newline characters within string values."""
+        json_with_newlines = '{"text": "Line 1\nLine 2", "value": 123}'
+        result = parse_json_robust(json_with_newlines)
+        self.assertEqual(result["text"], "Line 1\\nLine 2")
+        self.assertEqual(result["value"], 123)
+
+    def test_empty_string_raises_error(self):
+        """Test that empty string raises JSONDecodeError."""
+        with self.assertRaises(json.JSONDecodeError):
+            parse_json_robust("")
+
+    def test_invalid_json_raises_error(self):
+        """Test that truly invalid JSON still raises error."""
+        with self.assertRaises(json.JSONDecodeError):
+            parse_json_robust("not json at all {invalid]")
+
+    def test_gemini_real_world_example(self):
+        """Test with the exact error case from the issue."""
+        gemini_response = """{
+  "document_type": "invoice",
+  "data": {
+    "issuer": {
+      "tin": "2000018528",
+      "name": "AV AVONDALE"
+    },
+    "line_items": [
+      {
+        "product_code": "OB-MP-GB-920001211",
+        "description": "SOLAR BATTERY DEYE SE-G5.1 100AH 51.2V 1P16S",
+        "quantity": 1,
+        "unit_price": 651.30,
+        "vat_amount": 97.70,
+        "total_amount": 749.00
+      ,
+      {
+        "product_code": "OB-MP-GB-920001212",
+        "description": "SOLAR INVERTER DEYE 6KW",
+        "quantity": 1,
+        "unit_price": 565.22,
+        "vat_amount": 84.78,
+        "total_amount": 650.00
+      }
+    ],
+    "invoice_number": "0",
+    "customer_reference_no": "AV01/0036838",
+    "invoice_date": "2025-12-18",
+    "total_amount": 2569.00
+  }
+}"""
+        result = parse_json_robust(gemini_response)
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(len(result["data"]["line_items"]), 2)
+        self.assertEqual(result["data"]["line_items"][0]["total_amount"], 749.00)
+        self.assertEqual(result["data"]["line_items"][1]["total_amount"], 650.00)
+
 
 class CreateOrderFromInvoiceDataTests(TestCase):
 
