@@ -13,6 +13,7 @@ drf-nested-routers
 paynow
 # --- Celery for Background Tasks ---
 celery
+kombu
 redis
 django-celery-beat
 django-celery-results

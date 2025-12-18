@@ -80,10 +80,9 @@ INSTALLED_APPS = [
     'customer_data.apps.CustomerDataConfig',
     'ai_integration.apps.AiIntegrationConfig',
     'analytics.apps.AnalyticsConfig',
-    
+    'email_integration.apps.EmailIntegrationConfig',
     'warranty.apps.WarrantyConfig',
 ]
-INSTALLED_APPS.insert(0, 'email_integration.apps.EmailIntegrationConfig') # Add our new app
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
