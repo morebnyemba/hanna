@@ -27,6 +27,10 @@ venv/
 env/
 .venv/
 
+# Media files (user uploads and test files)
+mediafiles/
+**/mediafiles/
+
 # Error logs and deployment logs
 runtime_errorlog
 errors_in_server_deployement
