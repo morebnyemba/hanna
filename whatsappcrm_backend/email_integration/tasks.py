@@ -304,37 +304,44 @@ def _parse_gemini_json_response(raw_text: str, log_prefix: str) -> dict:
         ("direct", cleaned_text),
     ]
     
+    # Apply multiple fix strategies, building on previous fixes
+    current_text = cleaned_text
+    
     # Strategy 4: Fix trailing commas before closing braces/brackets
-    fixed_text = re.sub(r',(\s*[}\]])', r'\1', cleaned_text)
-    if fixed_text != cleaned_text:
+    fixed_text = re.sub(r',(\s*[}\]])', r'\1', current_text)
+    if fixed_text != current_text:
         parse_attempts.append(("trailing_comma_fix", fixed_text))
         logger.debug(f"{log_prefix} Applied trailing comma fix")
+        current_text = fixed_text
     
     # Strategy 5: Fix missing closing brace before comma (e.g., "value": 123\n      ,\n      {)
     # This handles the exact pattern from the GitHub issue where a closing brace is missing
     # Pattern: number, whitespace, newline, comma, whitespace, opening brace
     # Replace with: number, closing brace, comma, whitespace, opening brace
-    fixed_text2 = re.sub(r'(\d+\.?\d*)(\s*\n\s*),(\s*\n\s*\{)', r'\1},\3', fixed_text if 'fixed_text' in locals() else cleaned_text)
-    if fixed_text2 not in [attempt[1] for attempt in parse_attempts]:
-        parse_attempts.append(("missing_brace_before_comma_fix", fixed_text2))
+    fixed_text = re.sub(r'(\d+\.?\d*)(\s*\n\s*),(\s*\n\s*\{)', r'\1},\3', current_text)
+    if fixed_text != current_text:
+        parse_attempts.append(("missing_brace_before_comma_fix", fixed_text))
         logger.debug(f"{log_prefix} Applied missing brace before comma fix")
+        current_text = fixed_text
     
     # Strategy 6: Fix trailing commas before newlines followed by object/array start
-    fixed_text3 = re.sub(r',(\s*\n\s*[{\[])', r'\1', fixed_text2 if 'fixed_text2' in locals() else cleaned_text)
-    if fixed_text3 not in [attempt[1] for attempt in parse_attempts]:
-        parse_attempts.append(("newline_comma_fix", fixed_text3))
+    fixed_text = re.sub(r',(\s*\n\s*[{\[])', r'\1', current_text)
+    if fixed_text != current_text:
+        parse_attempts.append(("newline_comma_fix", fixed_text))
         logger.debug(f"{log_prefix} Applied newline comma fix")
+        current_text = fixed_text
     
     # Strategy 7: More aggressive - fix any pattern of value, newline, comma, newline, opening brace
     # Matches numbers, strings, booleans, null followed by comma on separate line
-    fixed_text4 = re.sub(
-        r'(["\d\w]+|true|false|null)(\s*\n\s*),(\s*\n\s*[{\[])',
+    fixed_text = re.sub(
+        r'([\d\w]+|true|false|null)(\s*\n\s*),(\s*\n\s*[{\[])',
         r'\1},\3',
-        fixed_text3 if 'fixed_text3' in locals() else cleaned_text
+        current_text
     )
-    if fixed_text4 not in [attempt[1] for attempt in parse_attempts]:
-        parse_attempts.append(("aggressive_missing_brace_fix", fixed_text4))
+    if fixed_text != current_text:
+        parse_attempts.append(("aggressive_missing_brace_fix", fixed_text))
         logger.debug(f"{log_prefix} Applied aggressive missing brace fix")
+        current_text = fixed_text
     
     # Try each parsing attempt
     last_error = None
