@@ -156,10 +156,12 @@ def _extract_and_fix_json(raw_text: str) -> dict:
                     line_after_comma = lines[i + 2].strip()
                     if line_after_comma.startswith(('{', '[')):
                         # This looks like a missing closing brace situation
-                        # Add closing brace to current line
-                        fixed_lines.append(current_line.rstrip() + ' }')
-                        logger.debug(f"Added missing closing brace at line {i+1}")
-                        i += 1  # Skip the comma line
+                        # Add closing brace and comma to current line
+                        fixed_lines.append(current_line.rstrip() + ' },')
+                        logger.debug(f"Added missing closing brace and comma at line {i+1}")
+                        i += 2  # Skip both the comma line and move to the line with {
+                        fixed_lines.append(lines[i])  # Add the { line
+                        i += 1
                         continue
         fixed_lines.append(current_line)
         i += 1
@@ -172,6 +174,19 @@ def _extract_and_fix_json(raw_text: str) -> dict:
         except json.JSONDecodeError as e:
             parsing_errors.append(f"After standalone comma fix: {e}")
             logger.debug(f"Parse after standalone comma fix failed: {e}")
+            # If the error mentions "Invalid control character", try escaping newlines in strings
+            if "Invalid control character" in str(e):
+                # Try escaping literal newlines and other control chars within JSON strings
+                # This regex finds strings and escapes control characters within them
+                import codecs
+                fixed_text_escaped = fixed_text
+                # Replace literal newlines in string values with escaped newlines
+                fixed_text_escaped = re.sub(r'("(?:[^"\\]|\\.)*?")', lambda m: m.group(1).replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t'), fixed_text)
+                try:
+                    return json.loads(fixed_text_escaped)
+                except json.JSONDecodeError as e2:
+                    parsing_errors.append(f"After control char escaping: {e2}")
+                    logger.debug(f"Parse after escaping control chars failed: {e2}")
     
     # Fix Strategy 5: Try to auto-complete missing closing braces at the end
     # Count opening and closing braces
