@@ -38,10 +38,10 @@ export default function AdminOverviewPage() {
       color: 'bg-indigo-500',
     },
     {
-      title: 'Email Configuration',
-      description: 'SMTP and email account settings',
+      title: 'SMTP Configurations',
+      description: 'Manage SMTP email settings',
       icon: FiMail,
-      path: '/admin/email-config',
+      path: '/admin/smtp-configs',
       color: 'bg-green-500',
     },
     {
