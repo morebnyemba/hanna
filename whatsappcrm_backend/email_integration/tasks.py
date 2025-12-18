@@ -33,6 +33,197 @@ from .smtp_utils import get_smtp_connection, get_from_email
 logger = logging.getLogger(__name__)
 
 
+def _extract_and_fix_json(raw_text: str) -> dict:
+    """
+    Robustly extract and parse JSON from Gemini API response text.
+    
+    Handles multiple edge cases:
+    1. JSON wrapped in markdown code blocks (```json ... ```)
+    2. Trailing commas before closing braces/brackets
+    3. Multiple extraction strategies with fallbacks
+    
+    Args:
+        raw_text: Raw response text from Gemini API
+        
+    Returns:
+        Parsed JSON data as a dictionary
+        
+    Raises:
+        json.JSONDecodeError: If all parsing strategies fail
+    """
+    if not raw_text or not raw_text.strip():
+        raise json.JSONDecodeError("Empty response from Gemini", "", 0)
+    
+    cleaned_text = None
+    parsing_errors = []
+    
+    # Strategy 1: Extract JSON from markdown code blocks (```json ... ```)
+    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text, re.IGNORECASE)
+    if json_match:
+        cleaned_text = json_match.group(1).strip()
+        logger.debug("Found JSON in markdown code block")
+    
+    # Strategy 2: Extract any markdown code block (``` ... ```)
+    if not cleaned_text:
+        code_block_match = re.search(r'```\s*([\s\S]*?)\s*```', raw_text)
+        if code_block_match:
+            cleaned_text = code_block_match.group(1).strip()
+            logger.debug("Found JSON in generic code block")
+    
+    # Strategy 3: Find JSON object by braces
+    if not cleaned_text:
+        json_object_match = re.search(r'(\{[\s\S]*\})', raw_text)
+        if json_object_match:
+            cleaned_text = json_object_match.group(1).strip()
+            logger.debug("Found JSON object by brace matching")
+    
+    # Strategy 4: Use entire text as fallback
+    if not cleaned_text:
+        cleaned_text = raw_text.strip()
+        logger.debug("Using entire response as JSON")
+    
+    # Try to parse the extracted JSON
+    try:
+        return json.loads(cleaned_text)
+    except json.JSONDecodeError as e:
+        parsing_errors.append(f"Initial parse failed: {e}")
+        logger.debug(f"First parse attempt failed: {e}")
+    
+    # Fix Strategy 1: Remove trailing commas before closing braces/brackets
+    # This handles cases like: {"key": "value",} or [1, 2, 3,]
+    fixed_text = re.sub(r',(\s*[}\]])', r'\1', cleaned_text)
+    if fixed_text != cleaned_text:
+        logger.debug("Applied trailing comma fix")
+        try:
+            return json.loads(fixed_text)
+        except json.JSONDecodeError as e:
+            parsing_errors.append(f"After trailing comma fix: {e}")
+            logger.debug(f"Parse after trailing comma fix failed: {e}")
+    
+    # Fix Strategy 2: Try to fix common line-ending comma issues
+    # This handles cases where there's a comma at the end of a line followed by a closing brace
+    lines = cleaned_text.split('\n')
+    fixed_lines = []
+    for i, line in enumerate(lines):
+        # If this line ends with a comma and the next line (after stripping) starts with } or ]
+        if line.rstrip().endswith(','):
+            # Look ahead to see if the next non-empty line is a closing brace/bracket
+            next_line_idx = i + 1
+            while next_line_idx < len(lines) and not lines[next_line_idx].strip():
+                next_line_idx += 1
+            
+            if next_line_idx < len(lines) and lines[next_line_idx].strip() and lines[next_line_idx].strip()[0] in ']}':
+                # Remove the trailing comma
+                fixed_lines.append(line.rstrip()[:-1])
+                logger.debug(f"Removed trailing comma from line {i+1}")
+                continue
+        fixed_lines.append(line)
+    
+    fixed_text = '\n'.join(fixed_lines)
+    if fixed_text != cleaned_text:
+        try:
+            return json.loads(fixed_text)
+        except json.JSONDecodeError as e:
+            parsing_errors.append(f"After line-ending comma fix: {e}")
+            logger.debug(f"Parse after line-ending fix failed: {e}")
+    
+    # Fix Strategy 3: Handle missing closing brace before comma in array items
+    # Pattern: "key": value,\n  ,\n  { should become "key": value},\n  {
+    fixed_text = re.sub(r'(\w+|\"[^\"]*\")\s*,\s*\n\s*,\s*\n\s*\{', r'\1},\n  {', cleaned_text)
+    if fixed_text != cleaned_text:
+        logger.debug("Applied missing brace before comma fix")
+        try:
+            return json.loads(fixed_text)
+        except json.JSONDecodeError as e:
+            parsing_errors.append(f"After missing brace before comma fix: {e}")
+            logger.debug(f"Parse after missing brace fix failed: {e}")
+    
+    # Fix Strategy 4: More aggressive - fix lines that end with a value followed by just a comma on next line
+    # This handles the exact pattern from the issue: "total_amount": 749.00\n      ,\n      {
+    lines = cleaned_text.split('\n')
+    fixed_lines = []
+    i = 0
+    while i < len(lines):
+        current_line = lines[i]
+        # Check if this line contains a value (number, string, boolean, null)
+        # and there's a next line that's just whitespace and a comma
+        if i + 1 < len(lines):
+            next_line = lines[i + 1]
+            # If next line is just whitespace and comma, and current line doesn't end with comma or brace
+            if next_line.strip() == ',' and not current_line.rstrip().endswith((',', '}', ']', '{')):
+                # Check if the line after the comma starts a new object/array element
+                if i + 2 < len(lines):
+                    line_after_comma = lines[i + 2].strip()
+                    if line_after_comma.startswith(('{', '[')):
+                        # This looks like a missing closing brace situation
+                        # Add closing brace to current line
+                        fixed_lines.append(current_line.rstrip() + ' }')
+                        logger.debug(f"Added missing closing brace at line {i+1}")
+                        i += 1  # Skip the comma line
+                        continue
+        fixed_lines.append(current_line)
+        i += 1
+    
+    fixed_text = '\n'.join(fixed_lines)
+    if fixed_text != cleaned_text:
+        logger.debug("Applied standalone comma fix")
+        try:
+            return json.loads(fixed_text)
+        except json.JSONDecodeError as e:
+            parsing_errors.append(f"After standalone comma fix: {e}")
+            logger.debug(f"Parse after standalone comma fix failed: {e}")
+    
+    # Fix Strategy 5: Try to auto-complete missing closing braces at the end
+    # Count opening and closing braces
+    open_braces = cleaned_text.count('{')
+    close_braces = cleaned_text.count('}')
+    open_brackets = cleaned_text.count('[')
+    close_brackets = cleaned_text.count(']')
+    
+    if open_braces > close_braces or open_brackets > close_brackets:
+        logger.debug(f"Detected missing closing characters: braces {open_braces}/{close_braces}, brackets {open_brackets}/{close_brackets}")
+        
+        # First, try with just trailing comma removal on the base text
+        test_text = re.sub(r',(\s*[}\]])', r'\1', cleaned_text)
+        
+        # Strategy A: If we have more open brackets than close brackets, but braces match or close braces exceed,
+        # it likely means brackets are missing before closing braces. Try inserting ] before the whitespace before }
+        if open_brackets > close_brackets:
+            # Find the position of the first closing brace and insert brackets before any preceding whitespace
+            bracket_deficit = open_brackets - close_brackets
+            # Use regex to find closing brace possibly preceded by whitespace, and insert ] before the whitespace
+            test_text_with_bracket = re.sub(r'(\s*)\}', ']' * bracket_deficit + r'\1}', test_text, count=1)
+            
+            # Also need to add any missing closing braces at the end
+            if open_braces > close_braces:
+                test_text_with_bracket += '}' * (open_braces - close_braces)
+            
+            try:
+                return json.loads(test_text_with_bracket)
+            except json.JSONDecodeError:
+                pass  # Try the append strategy instead
+        
+        # Strategy B: Simply append missing closing characters at the end
+        # Add missing closing brackets first (they're usually nested inside braces)
+        test_text += ']' * (open_brackets - close_brackets)
+        # Then add missing closing braces
+        test_text += '}' * (open_braces - close_braces)
+        
+        try:
+            return json.loads(test_text)
+        except json.JSONDecodeError as e:
+            parsing_errors.append(f"After auto-complete missing braces: {e}")
+            logger.debug(f"Parse after auto-completing braces failed: {e}")
+    
+    # All strategies failed, raise the original error with context
+    error_summary = "; ".join(parsing_errors[:3])  # Limit to first 3 errors
+    raise json.JSONDecodeError(
+        f"Failed to parse JSON after multiple fix attempts. Errors: {error_summary}",
+        cleaned_text,
+        0
+    )
+
+
 @shared_task(
     bind=True,
     name="email_integration.send_receipt_confirmation_email",
@@ -370,27 +561,10 @@ def process_attachment_with_gemini(self, attachment_id):
             contents=[prompt, uploaded_file],
         )
 
-        # 5. Parse the extracted JSON data
+        # 5. Parse the extracted JSON data using robust parser
         try:
             raw_text = response.text.strip()
-            cleaned_text = None
-            
-            # First, try to find JSON within markdown code blocks (```json ... ```)
-            json_match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text)
-            if json_match:
-                cleaned_text = json_match.group(1).strip()
-            else:
-                # Fallback: Try to find a JSON object starting with { and ending with }
-                json_object_match = re.search(r'(\{[\s\S]*\})', raw_text)
-                if json_object_match:
-                    cleaned_text = json_object_match.group(1).strip()
-                else:
-                    # Last resort: Use the entire text (backward compatibility)
-                    cleaned_text = raw_text.replace('```json', '').replace('```', '').strip()
-            
-            if not cleaned_text:
-                raise json.JSONDecodeError("Empty response from Gemini", "", 0)
-            extracted_data = json.loads(cleaned_text)
+            extracted_data = _extract_and_fix_json(raw_text)
         except json.JSONDecodeError as e:
             error_message = f"Failed to decode JSON from Gemini response. Error: {e}."
             logger.error(f"{log_prefix} {error_message} Raw response text: '{response.text}'")

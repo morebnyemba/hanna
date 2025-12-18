@@ -1,9 +1,10 @@
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from unittest.mock import patch, MagicMock
+import json
 
 from .models import EmailAttachment
-from .tasks import _create_order_from_invoice_data
+from .tasks import _create_order_from_invoice_data, _extract_and_fix_json
 from customer_data.models import CustomerProfile, Order, OrderItem, Contact
 from products_and_services.models import Product
 
@@ -298,3 +299,187 @@ class AdminActionsTests(TestCase):
         self.attachment2.refresh_from_db()
         self.assertTrue(self.attachment1.processed)
         self.assertTrue(self.attachment2.processed)
+
+
+class JSONParsingTests(TestCase):
+    """Test cases for robust JSON parsing from Gemini API responses."""
+
+    def test_parse_valid_json(self):
+        """Test parsing valid JSON without any issues."""
+        valid_json = '{"document_type": "invoice", "data": {"invoice_number": "123"}}'
+        result = _extract_and_fix_json(valid_json)
+        self.assertEqual(result['document_type'], 'invoice')
+        self.assertEqual(result['data']['invoice_number'], '123')
+
+    def test_parse_json_in_markdown_code_block(self):
+        """Test extracting JSON from markdown code blocks."""
+        markdown_json = '''```json
+{
+  "document_type": "invoice",
+  "data": {
+    "invoice_number": "INV-001"
+  }
+}
+```'''
+        result = _extract_and_fix_json(markdown_json)
+        self.assertEqual(result['document_type'], 'invoice')
+        self.assertEqual(result['data']['invoice_number'], 'INV-001')
+
+    def test_parse_json_with_trailing_comma_in_object(self):
+        """Test fixing trailing comma before closing brace."""
+        json_with_trailing_comma = '''{
+  "document_type": "invoice",
+  "data": {
+    "invoice_number": "123",
+  }
+}'''
+        result = _extract_and_fix_json(json_with_trailing_comma)
+        self.assertEqual(result['document_type'], 'invoice')
+        self.assertEqual(result['data']['invoice_number'], '123')
+
+    def test_parse_json_with_trailing_comma_in_array(self):
+        """Test fixing trailing comma before closing bracket."""
+        json_with_trailing_comma = '''{
+  "document_type": "invoice",
+  "data": {
+    "line_items": [
+      {"item": "A"},
+      {"item": "B"},
+    ]
+  }
+}'''
+        result = _extract_and_fix_json(json_with_trailing_comma)
+        self.assertEqual(len(result['data']['line_items']), 2)
+
+    def test_parse_json_with_multiple_trailing_commas(self):
+        """Test fixing multiple trailing commas in nested structures."""
+        json_with_multiple_commas = '''{
+  "document_type": "invoice",
+  "data": {
+    "items": [1, 2, 3,],
+    "info": {"key": "value",},
+  }
+}'''
+        result = _extract_and_fix_json(json_with_multiple_commas)
+        self.assertEqual(result['document_type'], 'invoice')
+        self.assertEqual(result['data']['items'], [1, 2, 3])
+
+    def test_parse_real_world_gemini_error(self):
+        """Test parsing the actual error case from the issue."""
+        problematic_json = '''```json
+{
+  "document_type": "invoice",
+  "data": {
+    "line_items": [
+      {
+        "product_code": "OB-MP-GB-920001211",
+        "quantity": 1,
+        "unit_price": 651.30,
+        "total_amount": 749.00
+      ,
+      {
+        "product_code": "OB-MP-GB-920001212",
+        "quantity": 1,
+        "unit_price": 565.22,
+        "total_amount": 650.00
+      }
+    ]
+  }
+}
+```'''
+        # This should handle the missing closing brace after 749.00
+        result = _extract_and_fix_json(problematic_json)
+        self.assertEqual(result['document_type'], 'invoice')
+        self.assertEqual(len(result['data']['line_items']), 2)
+
+    def test_parse_json_with_missing_closing_brace(self):
+        """Test auto-completing missing closing braces."""
+        json_missing_brace = '''{
+  "document_type": "invoice",
+  "data": {
+    "invoice_number": "123"
+  }
+'''  # Missing final closing brace
+        result = _extract_and_fix_json(json_missing_brace)
+        self.assertEqual(result['document_type'], 'invoice')
+
+    def test_parse_json_with_missing_closing_bracket(self):
+        """Test auto-completing missing closing brackets at end of JSON."""
+        json_missing_bracket = '''{
+  "document_type": "invoice",
+  "data": {
+    "items": [1, 2, 3
+  }'''
+        # Missing final closing brace - this should be fixable by appending ]
+        result = _extract_and_fix_json(json_missing_bracket)
+        self.assertEqual(result['data']['items'], [1, 2, 3])
+
+    def test_parse_json_in_generic_code_block(self):
+        """Test extracting JSON from generic code blocks without 'json' marker."""
+        generic_code_block = '''```
+{"document_type": "job_card", "data": {"job_card_number": "456"}}
+```'''
+        result = _extract_and_fix_json(generic_code_block)
+        self.assertEqual(result['document_type'], 'job_card')
+
+    def test_parse_json_with_extra_text_before(self):
+        """Test extracting JSON when there's extra text before it."""
+        text_with_json = '''Here is the extracted data:
+```json
+{"document_type": "invoice", "data": {"invoice_number": "789"}}
+```
+That's all the data.'''
+        result = _extract_and_fix_json(text_with_json)
+        self.assertEqual(result['document_type'], 'invoice')
+
+    def test_empty_response_raises_error(self):
+        """Test that empty response raises appropriate error."""
+        with self.assertRaises(json.JSONDecodeError):
+            _extract_and_fix_json('')
+
+    def test_whitespace_only_response_raises_error(self):
+        """Test that whitespace-only response raises appropriate error."""
+        with self.assertRaises(json.JSONDecodeError):
+            _extract_and_fix_json('   \n\t  ')
+
+    def test_completely_invalid_json_raises_error(self):
+        """Test that completely invalid JSON still raises error after all fixes."""
+        with self.assertRaises(json.JSONDecodeError):
+            _extract_and_fix_json('this is not json at all')
+
+    def test_parse_json_case_insensitive_code_block(self):
+        """Test that code block detection is case insensitive."""
+        json_upper = '''```JSON
+{"document_type": "invoice"}
+```'''
+        result = _extract_and_fix_json(json_upper)
+        self.assertEqual(result['document_type'], 'invoice')
+
+    def test_parse_complex_nested_structure_with_commas(self):
+        """Test complex nested structure with multiple trailing comma issues."""
+        complex_json = '''```json
+{
+  "document_type": "invoice",
+  "data": {
+    "issuer": {
+      "name": "Company",
+      "phone": "123",
+    },
+    "line_items": [
+      {
+        "code": "A",
+        "price": 100,
+      },
+      {
+        "code": "B",
+        "price": 200,
+      },
+    ],
+    "total": 300,
+  }
+}
+```'''
+        result = _extract_and_fix_json(complex_json)
+        self.assertEqual(result['document_type'], 'invoice')
+        self.assertEqual(result['data']['total'], 300)
+        self.assertEqual(len(result['data']['line_items']), 2)
