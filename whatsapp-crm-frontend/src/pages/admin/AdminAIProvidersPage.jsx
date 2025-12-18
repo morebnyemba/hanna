@@ -112,6 +112,7 @@ export default function AdminAIProvidersPage() {
         }}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onSearch={(value) => fetchData({ search: value })}
         isLoading={isLoading}
       />
       <AdminFormModal

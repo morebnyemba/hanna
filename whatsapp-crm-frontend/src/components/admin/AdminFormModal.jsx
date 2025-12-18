@@ -46,6 +46,11 @@ export default function AdminFormModal({
     defaultValues,
   });
 
+  // Reset form when defaultValues change (e.g., switching between edit and create)
+  React.useEffect(() => {
+    form.reset(defaultValues);
+  }, [defaultValues, form]);
+
   const handleSubmit = async (data) => {
     await onSubmit(data);
     form.reset();
