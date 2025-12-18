@@ -135,9 +135,10 @@ class EmptyParameterHandlingTest(TestCase):
                              if c['type'] == 'BODY'), None)
         parameters = body_component['parameters']
         
-        # All parameters should be N/A (not empty string)
-        # Note: contact_name and install_address would get defaults 'Contact' and empty->N/A
-        # But since we explicitly set them as empty in context, they should be N/A
+        # All parameters should have non-empty values
+        # Note: contact_name would get default 'Contact', but install_address has no default
+        # so it falls back to 'N/A'. Since we explicitly set them as empty in context,
+        # contact_name gets default and install_address gets 'N/A'
         for i, param in enumerate(parameters):
             # Parameters can be either default values or N/A fallback
             self.assertNotEqual(param['text'], '', 
@@ -241,7 +242,9 @@ class EmptyParameterHandlingTest(TestCase):
         )
         
         # Context similar to what's generated in customer_data/signals.py
-        # when customer has no name or get_full_name returns empty string
+        # when customer has no name (get_full_name() method returns empty string)
+        # Note: 'get_full_name' here is the result of calling customer.get_full_name(),
+        # not the method itself - this matches the actual signal structure
         context = {
             'order': {
                 'id': '123',
@@ -249,7 +252,7 @@ class EmptyParameterHandlingTest(TestCase):
                 'order_number': '289634',
                 'amount': 0.0,
                 'customer': {
-                    'get_full_name': '',  # Empty customer name - the bug!
+                    'get_full_name': '',  # Result of customer.get_full_name() - empty!
                     'contact': {
                         'name': ''  # Also empty
                     }
