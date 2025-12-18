@@ -11,15 +11,18 @@ from django.conf.urls.static import static
 from customer_data.views import MyTokenObtainPairView, UserRegistrationView
 from stats.views import DashboardSummaryStatsAPIView
 from warranty.views import ManufacturerDashboardStatsAPIView, ManufacturerJobCardListView, ManufacturerJobCardDetailView, ManufacturerWarrantyClaimListView
-# Import the new landing page view
-from .views import LandingPageView
+# Import the new landing page view and admin redirect
+from .views import LandingPageView, AdminRedirectView
 
 urlpatterns = [
     # Landing Page at the root
     path('', LandingPageView.as_view(), name='landing_page'),
 
-    # Django Admin interface - useful for backend management via Jazzmin
-    path('admin/', admin.site.urls),
+    # Django Admin interface - redirected to frontend for centralized management
+    # To access the Django admin for development, use a superuser account
+    # and navigate directly to /django-admin/
+    path('admin/', AdminRedirectView.as_view(), name='admin_redirect'),
+    path('django-admin/', admin.site.urls),  # Alternative path for Django admin access if needed
     path('prometheus/', include('django_prometheus.urls')),
     # API endpoints for 'meta_integration' application
     # This includes:
