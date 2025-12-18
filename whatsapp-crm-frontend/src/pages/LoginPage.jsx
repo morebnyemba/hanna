@@ -118,7 +118,7 @@ export default function LoginPage() {
           </Form>
         </CardContent>
         <CardFooter className="flex flex-col items-center text-xs text-gray-500 dark:text-gray-400 pt-4">
-          <p>&copy; {new Date().getFullYear()} AutoWhatsapp CRM</p>
+          <p>&copy; {new Date().getFullYear()} Hanna by Pfungwa</p>
         </CardFooter>
       </Card>
     </div>

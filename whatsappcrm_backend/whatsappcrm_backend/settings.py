@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'django_prometheus', # For metrics collection
 
     # Our apps
+    'admin_api',  # Centralized Admin API for frontend
     'users',
     "paynow_integration.apps.PaynowIntegrationConfig",
     "stats",
@@ -299,6 +300,8 @@ CELERY_BEAT_SCHEDULE = {
 CONVERSATION_EXPIRY_DAYS = int(os.getenv('CONVERSATION_EXPIRY_DAYS', '60'))
 ADMIN_WHATSAPP_NUMBER = os.getenv('ADMIN_WHATSAPP_NUMBER', None) # e.g., '15551234567'
 ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME = os.getenv('ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME', 'admin_notification_alert')
+# Frontend Dashboard URL for admin redirects (configurable across environments)
+FRONTEND_DASHBOARD_URL = os.getenv('FRONTEND_DASHBOARD_URL', 'https://dashboard.hanna.co.zw')
 
 
 # --- Logging Configuration ---
@@ -325,13 +328,13 @@ WHATSAPP_APP_SECRET = os.getenv('WHATSAPP_APP_SECRET', None)
 # --- Jazzmin Admin Theme Settings ---
 JAZZMIN_SETTINGS = {
     "site_title": "Hanna",
-    "site_header": os.getenv('SITE_HEADER', 'AutoWhats CRM'),
+    "site_header": os.getenv('SITE_HEADER', 'Hanna by Pfungwa'),
     "site_brand": "A-W",
     "site_logo_classes": "img-circle",
     # Path to logo, relative to static files.
     # It should not include /static/ in the path.
     "site_logo": "admin/img/hanna_logo.png",
-    "welcome_sign": "Welcome to the Hanna AutoWhats Admin",
+    "welcome_sign": "Welcome to Hanna by Pfungwa Admin",
     "copyright": "Slyker Tech Web Services and Patners.",
     "search_model": ["auth.User", "meta_integration.MetaAppConfig", "conversations.Contact", "flows.Flow"],
     "user_avatar": None,

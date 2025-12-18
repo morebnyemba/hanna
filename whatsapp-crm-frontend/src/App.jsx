@@ -28,6 +28,21 @@ import MinistriesPage from './pages/MinistriesPage';
 import MinistryFormPage from './pages/MinistryFormPage';
 import BarcodeScannerPage from './pages/BarcodeScannerPage';
 
+// Admin Pages
+import AdminOverviewPage from './pages/admin/AdminOverviewPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminNotificationsPage from './pages/admin/AdminNotificationsPage';
+import AdminNotificationTemplatesPage from './pages/admin/AdminNotificationTemplatesPage';
+import AdminAIProvidersPage from './pages/admin/AdminAIProvidersPage';
+import AdminSMTPConfigsPage from './pages/admin/AdminSMTPConfigsPage';
+import AdminRetailersPage from './pages/admin/AdminRetailersPage';
+import AdminManufacturersPage from './pages/admin/AdminManufacturersPage';
+import AdminTechniciansPage from './pages/admin/AdminTechniciansPage';
+import AdminWarrantiesPage from './pages/admin/AdminWarrantiesPage';
+import AdminWarrantyClaimsPage from './pages/admin/AdminWarrantyClaimsPage';
+import AdminDailyStatsPage from './pages/admin/AdminDailyStatsPage';
+import AdminCartsPage from './pages/admin/AdminCartsPage';
+
 const NotFoundPage = () => (
   <div className="p-10 text-center">
     <h1 className="text-3xl font-bold text-red-600 dark:text-red-400">404 - Page Not Found</h1>
@@ -86,6 +101,21 @@ const router = createBrowserRouter([
   { path: 'ministries', element: <MinistriesPage /> },
   { path: 'ministries/new', element: <MinistryFormPage /> },
   { path: 'ministries/edit/:ministryId', element: <MinistryFormPage /> },
+
+  // Admin Panel
+  { path: 'admin', element: <AdminOverviewPage /> },
+  { path: 'admin/users', element: <AdminUsersPage /> },
+  { path: 'admin/notifications', element: <AdminNotificationsPage /> },
+  { path: 'admin/notification-templates', element: <AdminNotificationTemplatesPage /> },
+  { path: 'admin/ai-providers', element: <AdminAIProvidersPage /> },
+  { path: 'admin/smtp-configs', element: <AdminSMTPConfigsPage /> },
+  { path: 'admin/retailers', element: <AdminRetailersPage /> },
+  { path: 'admin/manufacturers', element: <AdminManufacturersPage /> },
+  { path: 'admin/technicians', element: <AdminTechniciansPage /> },
+  { path: 'admin/warranties', element: <AdminWarrantiesPage /> },
+  { path: 'admin/warranty-claims', element: <AdminWarrantyClaimsPage /> },
+  { path: 'admin/daily-stats', element: <AdminDailyStatsPage /> },
+  { path: 'admin/carts', element: <AdminCartsPage /> },
 
   { path: 'saved-data', element: <SavedData /> },
   { path: 'conversation', element: <Conversation /> },

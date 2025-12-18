@@ -67,6 +67,7 @@ export default function DashboardLayout() {
     { to: '/analytics', label: 'Analytics', icon: <FiBarChart2 className="h-5 w-5" /> },
     { to: '/billing', label: 'Billing', icon: <FiCreditCard className="h-5 w-5" /> },
     { to: '/media-library', label: 'Media Library', icon: <FiImage className="h-5 w-5" /> },
+    { to: '/admin', label: 'Admin Panel', icon: <FiSettings className="h-5 w-5" /> },
     { to: '/api-settings', label: 'API Settings', icon: <FiSettings className="h-5 w-5" /> },
   ];
 
