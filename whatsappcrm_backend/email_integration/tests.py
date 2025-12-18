@@ -1,9 +1,10 @@
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from unittest.mock import patch, MagicMock
+import json
 
 from .models import EmailAttachment
-from .tasks import _create_order_from_invoice_data
+from .tasks import _create_order_from_invoice_data, _parse_gemini_json_response
 from customer_data.models import CustomerProfile, Order, OrderItem, Contact
 from products_and_services.models import Product
 
@@ -298,3 +299,170 @@ class AdminActionsTests(TestCase):
         self.attachment2.refresh_from_db()
         self.assertTrue(self.attachment1.processed)
         self.assertTrue(self.attachment2.processed)
+
+
+class GeminiJSONParsingTests(TestCase):
+    """Test cases for robust JSON parsing from Gemini API responses."""
+    
+    def test_parse_valid_json_with_markdown(self):
+        """Test parsing valid JSON wrapped in markdown code blocks."""
+        raw_response = '''```json
+{
+  "document_type": "invoice",
+  "data": {
+    "invoice_number": "INV-123",
+    "total_amount": 100.50
+  }
+}
+```'''
+        result = _parse_gemini_json_response(raw_response, "[Test]")
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(result["data"]["invoice_number"], "INV-123")
+        self.assertEqual(result["data"]["total_amount"], 100.50)
+    
+    def test_parse_valid_json_without_markdown(self):
+        """Test parsing valid JSON without markdown wrapper."""
+        raw_response = '''{
+  "document_type": "job_card",
+  "data": {
+    "job_card_number": "JC-456"
+  }
+}'''
+        result = _parse_gemini_json_response(raw_response, "[Test]")
+        self.assertEqual(result["document_type"], "job_card")
+        self.assertEqual(result["data"]["job_card_number"], "JC-456")
+    
+    def test_parse_json_with_trailing_comma_in_object(self):
+        """Test parsing JSON with trailing comma before closing brace."""
+        raw_response = '''```json
+{
+  "document_type": "invoice",
+  "data": {
+    "invoice_number": "INV-123",
+    "total_amount": 100.50,
+  }
+}
+```'''
+        result = _parse_gemini_json_response(raw_response, "[Test]")
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(result["data"]["total_amount"], 100.50)
+    
+    def test_parse_json_with_trailing_comma_in_array(self):
+        """Test parsing JSON with trailing comma in array."""
+        raw_response = '''```json
+{
+  "document_type": "invoice",
+  "data": {
+    "line_items": [
+      {"product": "Item 1"},
+      {"product": "Item 2"},
+    ]
+  }
+}
+```'''
+        result = _parse_gemini_json_response(raw_response, "[Test]")
+        self.assertEqual(len(result["data"]["line_items"]), 2)
+        self.assertEqual(result["data"]["line_items"][0]["product"], "Item 1")
+    
+    def test_parse_json_with_missing_brace_after_trailing_comma(self):
+        """Test parsing JSON with missing closing brace after value and trailing comma."""
+        # This simulates the exact error from the issue
+        raw_response = '''```json
+{
+  "document_type": "invoice",
+  "data": {
+    "line_items": [
+      {
+        "product_code": "ABC-123",
+        "quantity": 1,
+        "total_amount": 749.00
+      ,
+      {
+        "product_code": "DEF-456",
+        "quantity": 2,
+        "total_amount": 650.00
+      }
+    ]
+  }
+}
+```'''
+        result = _parse_gemini_json_response(raw_response, "[Test]")
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(len(result["data"]["line_items"]), 2)
+        self.assertEqual(result["data"]["line_items"][0]["product_code"], "ABC-123")
+        self.assertEqual(result["data"]["line_items"][1]["product_code"], "DEF-456")
+    
+    def test_parse_json_with_text_before_and_after(self):
+        """Test parsing JSON when there's extra text before/after the JSON object."""
+        raw_response = '''Here is the analysis:
+{
+  "document_type": "invoice",
+  "data": {
+    "invoice_number": "INV-789"
+  }
+}
+That's the complete data.'''
+        result = _parse_gemini_json_response(raw_response, "[Test]")
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(result["data"]["invoice_number"], "INV-789")
+    
+    def test_parse_empty_response_raises_error(self):
+        """Test that empty response raises appropriate error."""
+        with self.assertRaises(json.JSONDecodeError) as context:
+            _parse_gemini_json_response("", "[Test]")
+        self.assertIn("Empty response", str(context.exception))
+    
+    def test_parse_whitespace_only_response_raises_error(self):
+        """Test that whitespace-only response raises appropriate error."""
+        with self.assertRaises(json.JSONDecodeError) as context:
+            _parse_gemini_json_response("   \n  \t  ", "[Test]")
+        self.assertIn("Empty response", str(context.exception))
+    
+    def test_parse_completely_invalid_json(self):
+        """Test that completely invalid JSON raises error with context."""
+        raw_response = "This is not JSON at all, just random text."
+        with self.assertRaises(json.JSONDecodeError) as context:
+            _parse_gemini_json_response(raw_response, "[Test]")
+        # Should contain information about all strategies failing
+        self.assertIn("All parsing strategies failed", str(context.exception))
+    
+    def test_parse_actual_error_from_issue(self):
+        """Test parsing the actual malformed JSON from the GitHub issue."""
+        # Simplified version of the actual error from the issue
+        raw_response = '''```json
+{
+  "document_type": "invoice",
+  "data": {
+    "issuer": {
+      "name": "AV AVONDALE"
+    },
+    "line_items": [
+      {
+        "product_code": "OB-MP-GB-920001211",
+        "description": "SOLAR BATTERY",
+        "quantity": 1,
+        "unit_price": 651.30,
+        "total_amount": 749.00
+      ,
+      {
+        "product_code": "OB-MP-GB-920001212",
+        "description": "SOLAR INVERTER",
+        "quantity": 1,
+        "unit_price": 565.22,
+        "total_amount": 650.00
+      }
+    ],
+    "invoice_number": "0",
+    "customer_reference_no": "AV01/0036838",
+    "total_amount": 2569.00
+  }
+}
+```'''
+        result = _parse_gemini_json_response(raw_response, "[Test]")
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(result["data"]["issuer"]["name"], "AV AVONDALE")
+        self.assertEqual(len(result["data"]["line_items"]), 2)
+        self.assertEqual(result["data"]["line_items"][0]["product_code"], "OB-MP-GB-920001211")
+        self.assertEqual(result["data"]["line_items"][1]["product_code"], "OB-MP-GB-920001212")
+        self.assertEqual(result["data"]["total_amount"], 2569.00)
+
