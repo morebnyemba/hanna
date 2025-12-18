@@ -404,13 +404,13 @@ class JSONParsingTests(TestCase):
         self.assertEqual(result['document_type'], 'invoice')
 
     def test_parse_json_with_missing_closing_bracket(self):
-        """Test auto-completing missing closing brackets at end of JSON."""
+        """Test auto-completing missing closing bracket and brace at end of JSON."""
         json_missing_bracket = '''{
   "document_type": "invoice",
   "data": {
     "items": [1, 2, 3
   }'''
-        # Missing final closing brace - this should be fixable by appending ]
+        # Missing both closing bracket ] for array and closing brace } for outer object
         result = _extract_and_fix_json(json_missing_bracket)
         self.assertEqual(result['data']['items'], [1, 2, 3])
 

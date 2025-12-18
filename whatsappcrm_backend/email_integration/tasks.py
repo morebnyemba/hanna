@@ -178,7 +178,6 @@ def _extract_and_fix_json(raw_text: str) -> dict:
             if "Invalid control character" in str(e):
                 # Try escaping literal newlines and other control chars within JSON strings
                 # This regex finds strings and escapes control characters within them
-                import codecs
                 fixed_text_escaped = fixed_text
                 # Replace literal newlines in string values with escaped newlines
                 fixed_text_escaped = re.sub(r'("(?:[^"\\]|\\.)*?")', lambda m: m.group(1).replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t'), fixed_text)
