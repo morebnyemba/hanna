@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'django_prometheus', # For metrics collection
 
     # Our apps
+    'admin_api',  # Centralized Admin API for frontend
     'users',
     "paynow_integration.apps.PaynowIntegrationConfig",
     "stats",
