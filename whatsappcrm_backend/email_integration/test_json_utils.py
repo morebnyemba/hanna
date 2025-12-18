@@ -158,12 +158,15 @@ class ParseJsonRobustlyTests(TestCase):
     
     def test_parse_json_with_markdown_and_trailing_comma(self):
         """Test parsing markdown-wrapped JSON with syntax error."""
+        # Intentionally malformed JSON to test error handling
         text = '```json\n{"items": [{"id": 1,}]}\n```'
         result = parse_json_robustly(text)
         self.assertEqual(result, {"items": [{"id": 1}]})
     
     def test_parse_complex_gemini_response(self):
         """Test parsing a complex response similar to Gemini's output."""
+        # This simulates the actual bug from GitHub issue - missing closing brace
+        # before comma on line 9 (749.00\n      ,\n)
         text = '''```json
 {
   "document_type": "invoice",
@@ -302,6 +305,8 @@ class IntegrationTests(TestCase):
     
     def test_full_pipeline_with_syntax_error(self):
         """Test the full pipeline with a response containing syntax errors."""
+        # Intentionally malformed JSON with multiple trailing commas
+        # to test the parser's ability to fix syntax errors
         text = '''```json
 {
   "document_type": "invoice",
