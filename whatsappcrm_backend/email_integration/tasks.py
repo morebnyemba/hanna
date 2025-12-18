@@ -37,19 +37,33 @@ def _extract_and_fix_json(raw_text: str) -> dict:
     """
     Robustly extract and parse JSON from Gemini API response text.
     
-    Handles multiple edge cases:
-    1. JSON wrapped in markdown code blocks (```json ... ```)
-    2. Trailing commas before closing braces/brackets
-    3. Multiple extraction strategies with fallbacks
+    This function implements multiple strategies to handle common JSON formatting issues
+    that can occur in AI-generated responses, particularly from the Gemini API:
+    
+    1. **Markdown Code Block Extraction**: Extracts JSON from ```json...``` or ```...``` blocks
+    2. **Trailing Comma Removal**: Fixes commas before closing braces/brackets
+    3. **Standalone Comma Fix**: Handles missing closing braces before standalone comma lines
+       Example: `"value": 123\n,\n{` becomes `"value": 123},\n{`
+    4. **Control Character Escaping**: Escapes literal newlines and tabs in JSON strings
+    5. **Auto-completion**: Adds missing closing braces and brackets at the end
+    
+    The function tries each strategy in sequence, returning as soon as one succeeds.
+    This allows it to handle multiple errors in the same JSON response.
     
     Args:
-        raw_text: Raw response text from Gemini API
+        raw_text: Raw response text from Gemini API, may contain markdown formatting
         
     Returns:
         Parsed JSON data as a dictionary
         
     Raises:
-        json.JSONDecodeError: If all parsing strategies fail
+        json.JSONDecodeError: If all parsing strategies fail, includes summary of attempted fixes
+        
+    Example:
+        >>> raw = '```json\\n{"key": "value",}\\n```'  # Has trailing comma
+        >>> result = _extract_and_fix_json(raw)
+        >>> print(result)
+        {'key': 'value'}
     """
     if not raw_text or not raw_text.strip():
         raise json.JSONDecodeError("Empty response from Gemini", "", 0)
