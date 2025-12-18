@@ -134,10 +134,24 @@ def queue_notifications_to_users(
             
             # Apply defaults only if value is None or empty string (not already set)
             # This happens after flattening to provide fallback values
+            if not render_context.get('customer_name'):
+                render_context['customer_name'] = 'Customer'
+            if not render_context.get('contact_name'):
+                render_context['contact_name'] = 'Contact'
+            if not render_context.get('related_contact_name'):
+                render_context['related_contact_name'] = 'Contact'
+            if not render_context.get('order_name'):
+                render_context['order_name'] = 'Order'
             if not render_context.get('order_number'):
                 render_context['order_number'] = 'N/A'
+            if not render_context.get('order_amount'):
+                render_context['order_amount'] = '0.00'
             if not render_context.get('assessment_number'):
                 render_context['assessment_number'] = 'N/A'
+            if not render_context.get('admin_name'):
+                render_context['admin_name'] = 'Admin'
+            if not render_context.get('recipient_name'):
+                render_context['recipient_name'] = 'User'
             
             # Handle install_alt_name conditional
             install_alt_name = render_context.get('install_alt_name', '')
@@ -333,15 +347,16 @@ def queue_notifications_to_users(
                         try:
                             param_value = render_template_string(f"{{{{ {jinja_var_path} }}}}", render_context)
                             # Meta API requires text parameters to have non-empty values
-                            # Use a space as placeholder if the value is empty
+                            # If somehow we get an empty value (despite defaults), use "N/A" as placeholder
                             param_text = str(param_value).strip()
                             if not param_text:
-                                param_text = " "
+                                logger.warning(f"Empty parameter value for '{jinja_var_path}' in template '{template_name}'. Using 'N/A' as fallback.")
+                                param_text = "N/A"
                             body_params_list.append({"type": "text", "text": param_text})
                         except Exception as e:
                             logger.error(f"Error rendering body parameter '{jinja_var_path}' for template '{template_name}': {e}")
-                            # Use a space instead of empty string to satisfy Meta API requirements
-                            body_params_list.append({"type": "text", "text": " "})
+                            # Use "N/A" instead of empty string to satisfy Meta API requirements
+                            body_params_list.append({"type": "text", "text": "N/A"})
 
                     if body_params_list:
                         template_components.append({
