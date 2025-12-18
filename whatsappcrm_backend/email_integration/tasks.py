@@ -249,6 +249,118 @@ def send_error_notification_email(task_name, attachment_id, error_message, raw_r
             exc_info=True
         )
 
+def _parse_gemini_json_response(raw_text: str, log_prefix: str) -> dict:
+    """
+    Robustly parse JSON from Gemini API response with multiple fallback strategies.
+    
+    Handles common issues:
+    - Markdown code blocks (```json ... ```)
+    - Trailing commas in arrays and objects
+    - Missing closing braces
+    - Extra text before/after JSON
+    
+    Args:
+        raw_text: The raw response text from Gemini API
+        log_prefix: Logging prefix for context
+        
+    Returns:
+        Parsed JSON as a dictionary
+        
+    Raises:
+        json.JSONDecodeError: If all parsing strategies fail
+    """
+    if not raw_text or not raw_text.strip():
+        raise json.JSONDecodeError("Empty response from Gemini", "", 0)
+    
+    cleaned_text = None
+    parsing_strategy = None
+    
+    # Strategy 1: Extract JSON from markdown code blocks (```json ... ```)
+    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text)
+    if json_match:
+        cleaned_text = json_match.group(1).strip()
+        parsing_strategy = "markdown_extraction"
+        logger.debug(f"{log_prefix} Using markdown extraction strategy")
+    
+    # Strategy 2: Find JSON object starting with { and ending with }
+    if not cleaned_text:
+        json_object_match = re.search(r'(\{[\s\S]*\})', raw_text)
+        if json_object_match:
+            cleaned_text = json_object_match.group(1).strip()
+            parsing_strategy = "regex_extraction"
+            logger.debug(f"{log_prefix} Using regex extraction strategy")
+    
+    # Strategy 3: Use entire text after removing markdown markers (backward compatibility)
+    if not cleaned_text:
+        cleaned_text = raw_text.replace('```json', '').replace('```', '').strip()
+        parsing_strategy = "simple_cleanup"
+        logger.debug(f"{log_prefix} Using simple cleanup strategy")
+    
+    if not cleaned_text:
+        raise json.JSONDecodeError("Could not extract JSON content from response", "", 0)
+    
+    # Try parsing the cleaned text
+    parse_attempts = [
+        ("direct", cleaned_text),
+    ]
+    
+    # Strategy 4: Fix trailing commas before closing braces/brackets
+    fixed_text = re.sub(r',(\s*[}\]])', r'\1', cleaned_text)
+    if fixed_text != cleaned_text:
+        parse_attempts.append(("trailing_comma_fix", fixed_text))
+        logger.debug(f"{log_prefix} Applied trailing comma fix")
+    
+    # Strategy 5: Fix missing closing brace before comma (e.g., "value": 123\n      ,\n      {)
+    # This handles the exact pattern from the GitHub issue where a closing brace is missing
+    # Pattern: number, whitespace, newline, comma, whitespace, opening brace
+    # Replace with: number, closing brace, comma, whitespace, opening brace
+    fixed_text2 = re.sub(r'(\d+\.?\d*)(\s*\n\s*),(\s*\n\s*\{)', r'\1},\3', fixed_text if 'fixed_text' in locals() else cleaned_text)
+    if fixed_text2 not in [attempt[1] for attempt in parse_attempts]:
+        parse_attempts.append(("missing_brace_before_comma_fix", fixed_text2))
+        logger.debug(f"{log_prefix} Applied missing brace before comma fix")
+    
+    # Strategy 6: Fix trailing commas before newlines followed by object/array start
+    fixed_text3 = re.sub(r',(\s*\n\s*[{\[])', r'\1', fixed_text2 if 'fixed_text2' in locals() else cleaned_text)
+    if fixed_text3 not in [attempt[1] for attempt in parse_attempts]:
+        parse_attempts.append(("newline_comma_fix", fixed_text3))
+        logger.debug(f"{log_prefix} Applied newline comma fix")
+    
+    # Strategy 7: More aggressive - fix any pattern of value, newline, comma, newline, opening brace
+    # Matches numbers, strings, booleans, null followed by comma on separate line
+    fixed_text4 = re.sub(
+        r'(["\d\w]+|true|false|null)(\s*\n\s*),(\s*\n\s*[{\[])',
+        r'\1},\3',
+        fixed_text3 if 'fixed_text3' in locals() else cleaned_text
+    )
+    if fixed_text4 not in [attempt[1] for attempt in parse_attempts]:
+        parse_attempts.append(("aggressive_missing_brace_fix", fixed_text4))
+        logger.debug(f"{log_prefix} Applied aggressive missing brace fix")
+    
+    # Try each parsing attempt
+    last_error = None
+    for strategy_name, text_to_parse in parse_attempts:
+        try:
+            result = json.loads(text_to_parse)
+            logger.info(f"{log_prefix} Successfully parsed JSON using strategy: {strategy_name}")
+            return result
+        except json.JSONDecodeError as e:
+            last_error = e
+            logger.debug(f"{log_prefix} Strategy '{strategy_name}' failed: {e}")
+            continue
+    
+    # All strategies failed - provide detailed error information
+    error_context = f"All parsing strategies failed. Last error: {last_error}"
+    logger.error(f"{log_prefix} {error_context}")
+    logger.error(f"{log_prefix} Original text length: {len(raw_text)}, Cleaned text length: {len(cleaned_text)}")
+    logger.error(f"{log_prefix} First 500 chars of cleaned text: {cleaned_text[:500]}")
+    
+    # Re-raise the last error with additional context
+    raise json.JSONDecodeError(
+        f"{error_context}. {last_error.msg}",
+        last_error.doc,
+        last_error.pos
+    )
+
 @shared_task(
     bind=True,
     name="email_integration.process_attachment_with_gemini",
@@ -373,24 +485,7 @@ def process_attachment_with_gemini(self, attachment_id):
         # 5. Parse the extracted JSON data
         try:
             raw_text = response.text.strip()
-            cleaned_text = None
-            
-            # First, try to find JSON within markdown code blocks (```json ... ```)
-            json_match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text)
-            if json_match:
-                cleaned_text = json_match.group(1).strip()
-            else:
-                # Fallback: Try to find a JSON object starting with { and ending with }
-                json_object_match = re.search(r'(\{[\s\S]*\})', raw_text)
-                if json_object_match:
-                    cleaned_text = json_object_match.group(1).strip()
-                else:
-                    # Last resort: Use the entire text (backward compatibility)
-                    cleaned_text = raw_text.replace('```json', '').replace('```', '').strip()
-            
-            if not cleaned_text:
-                raise json.JSONDecodeError("Empty response from Gemini", "", 0)
-            extracted_data = json.loads(cleaned_text)
+            extracted_data = _parse_gemini_json_response(raw_text, log_prefix)
         except json.JSONDecodeError as e:
             error_message = f"Failed to decode JSON from Gemini response. Error: {e}."
             logger.error(f"{log_prefix} {error_message} Raw response text: '{response.text}'")
