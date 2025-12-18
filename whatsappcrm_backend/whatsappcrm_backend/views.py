@@ -14,4 +14,6 @@ class AdminRedirectView(RedirectView):
     
     def get_redirect_url(self, *args, **kwargs):
         # Redirect to the frontend dashboard
-        return "https://dashboard.hanna.co.zw"
+        # Use environment variable for flexibility across environments
+        frontend_url = getattr(settings, 'FRONTEND_DASHBOARD_URL', 'https://dashboard.hanna.co.zw')
+        return frontend_url

@@ -299,6 +299,8 @@ CELERY_BEAT_SCHEDULE = {
 CONVERSATION_EXPIRY_DAYS = int(os.getenv('CONVERSATION_EXPIRY_DAYS', '60'))
 ADMIN_WHATSAPP_NUMBER = os.getenv('ADMIN_WHATSAPP_NUMBER', None) # e.g., '15551234567'
 ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME = os.getenv('ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME', 'admin_notification_alert')
+# Frontend Dashboard URL for admin redirects (configurable across environments)
+FRONTEND_DASHBOARD_URL = os.getenv('FRONTEND_DASHBOARD_URL', 'https://dashboard.hanna.co.zw')
 
 
 # --- Logging Configuration ---
