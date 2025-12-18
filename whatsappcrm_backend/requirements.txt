@@ -9,6 +9,7 @@ whitenoise
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
+django-filter
 drf-nested-routers
 paynow
 # --- Celery for Background Tasks ---
@@ -35,6 +36,8 @@ pytesseract
 django-jazzmin
 django-extensions
 django-countries
+openpyxl
+reportlab
 
 # --- API, Monitoring & Other ---
 drf-spectacular
