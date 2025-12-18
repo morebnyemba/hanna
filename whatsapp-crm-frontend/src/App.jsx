@@ -28,6 +28,10 @@ import MinistriesPage from './pages/MinistriesPage';
 import MinistryFormPage from './pages/MinistryFormPage';
 import BarcodeScannerPage from './pages/BarcodeScannerPage';
 
+// Admin Pages
+import AdminOverviewPage from './pages/admin/AdminOverviewPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+
 const NotFoundPage = () => (
   <div className="p-10 text-center">
     <h1 className="text-3xl font-bold text-red-600 dark:text-red-400">404 - Page Not Found</h1>
@@ -86,6 +90,10 @@ const router = createBrowserRouter([
   { path: 'ministries', element: <MinistriesPage /> },
   { path: 'ministries/new', element: <MinistryFormPage /> },
   { path: 'ministries/edit/:ministryId', element: <MinistryFormPage /> },
+
+  // Admin Panel
+  { path: 'admin', element: <AdminOverviewPage /> },
+  { path: 'admin/users', element: <AdminUsersPage /> },
 
   { path: 'saved-data', element: <SavedData /> },
   { path: 'conversation', element: <Conversation /> },
