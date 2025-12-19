@@ -70,3 +70,23 @@ class PhoneNumberNormalizationTestCase(TestCase):
         """Test number with + and spaces."""
         result = normalize_phone_number("+263 77 235 4523", default_country_code='263')
         self.assertEqual(result, "263772354523")
+    
+    def test_normalize_multiple_numbers_separated_by_slash(self):
+        """Test multiple numbers separated by slash - should use first."""
+        result = normalize_phone_number("0775014661/0773046797", default_country_code='263')
+        self.assertEqual(result, "263775014661")
+    
+    def test_normalize_multiple_numbers_separated_by_comma(self):
+        """Test multiple numbers separated by comma - should use first."""
+        result = normalize_phone_number("0772354523, 0773456789", default_country_code='263')
+        self.assertEqual(result, "263772354523")
+    
+    def test_normalize_multiple_numbers_separated_by_pipe(self):
+        """Test multiple numbers separated by pipe - should use first."""
+        result = normalize_phone_number("0772354523|0773456789", default_country_code='263')
+        self.assertEqual(result, "263772354523")
+    
+    def test_normalize_multiple_numbers_separated_by_or(self):
+        """Test multiple numbers separated by 'or' - should use first."""
+        result = normalize_phone_number("0772354523 or 0773456789", default_country_code='263')
+        self.assertEqual(result, "263772354523")
