@@ -585,27 +585,12 @@ Would you like to:
                         cart_summary += f"**Total Items (needed):** {cart.total_items}\n"
                         cart_summary += f"**Total Price:** {cart.total_price} {cart_currency}\n\n"
                         cart_summary += "To complete your order, reply with **CHECKOUT** or type **VIEW CART** to review."
-                                    # If AI suggests checkout directly, place the order immediately
-                                    if re.search(r'\bCHECKOUT\b', ai_response_text, flags=re.IGNORECASE):
-                                        try:
-                                            from flows.actions import checkout_cart_for_contact
-                                            checkout_context = {}
-                                            checkout_cart_for_contact(contact, checkout_context, {})
-                                            order_info = checkout_context.get('order_info')
-                                            if order_info:
-                                                final_reply = (
-                                                    f"✅ Order placed successfully!\n\n"
-                                                    f"Order Number: {order_info['order_number']}\n"
-                                                    f"Total Amount: {order_info['amount']} {order_info['currency']}\n\n"
-                                                    f"We will contact you shortly to confirm payment and delivery details."
-                                                )
-                                        except Exception as e:
-                                            logger.error(f"{log_prefix} Error during checkout: {e}", exc_info=True)
-                                            final_reply = "❌ Sorry, something went wrong while placing your order. Please try again or type 'VIEW CART'."
                         
                         # Remove control token from response
                         final_reply = re.sub(r'ADD_TO_CART:\s*\[[\d,\s]+\]', '', ai_response_text).strip()
                         final_reply += cart_summary
+            
+            # Check for GENERATE_PDF command
             
             # Check for GENERATE_PDF command
             generate_pdf_match = re.search(r'GENERATE_PDF:\s*\[([\d,\s]+)\]', ai_response_text)
