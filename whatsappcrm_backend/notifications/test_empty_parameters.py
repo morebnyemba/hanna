@@ -189,7 +189,7 @@ class EmptyParameterHandlingTest(TestCase):
         context = {
             'contact_name': 'Jane Smith',  # Valid
             'install_address': '',  # Empty
-            'install_alt_contact_line': '\n- Alt: John (123-456)',  # Valid
+            'install_alt_contact_line': '- Alt: John (123-456)',  # Valid (newline removed)
             'install_location_pin_line': ''  # Empty
         }
         

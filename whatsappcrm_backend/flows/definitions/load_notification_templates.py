@@ -149,11 +149,11 @@ A new furniture installation request has been submitted by *{{ contact_name }}*.
 
 *Client Details:*
 - Name: {{ furniture_full_name }}
-- Phone: {{ furniture_contact_phone }}{{ furniture_alt_contact_line }}
-
+- Phone: {{ furniture_contact_phone }}
+{{ furniture_alt_contact_line }}
 *Delivery/Installation Info:*
-- Address: {{ furniture_address }}{{ furniture_location_pin_line }}
-- Preferred Date: {{ furniture_preferred_date }} ({{ furniture_availability }})
+- Address: {{ furniture_address }}
+{{ furniture_location_pin_line }}- Preferred Date: {{ furniture_preferred_date }} ({{ furniture_availability }})
 
 Please follow up to confirm the delivery/installation schedule."""
     },

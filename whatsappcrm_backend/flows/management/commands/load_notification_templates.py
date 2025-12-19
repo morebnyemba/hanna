@@ -88,9 +88,9 @@ A new installation request has been submitted by *{{ contact_name }}*.
 - Branch: {{ install_branch }}
 - Sales Person: {{ install_sales_person }}
 - Client Name: {{ install_full_name }}
-- Client Phone: {{ install_phone }}{{ install_alt_contact_line }}
-- Address: {{ install_address }}{{ install_location_pin_line }}
-- Preferred Date: {{ install_datetime }} ({{ install_availability }})
+- Client Phone: {{ install_phone }}
+{{ install_alt_contact_line }}- Address: {{ install_address }}
+{{ install_location_pin_line }}- Preferred Date: {{ install_datetime }} ({{ install_availability }})
 
 Please review and schedule the installation.""",
         "buttons": [
@@ -108,7 +108,8 @@ A new Starlink installation request has been submitted by *{{ contact_name }}*.
 *Client & Location:*
 - Name: {{ install_full_name }}
 - Phone: {{ install_phone }}
-- Address: {{ install_address }}{{ install_location_pin_line }}
+- Address: {{ install_address }}
+{{ install_location_pin_line }}
 
 *Scheduling:*
 - Preferred Date: {{ install_datetime }} ({{ install_availability }})
@@ -138,7 +139,8 @@ A new cleaning request has been submitted by *{{ contact_name }}*.
 - Roof Type: {{ cleaning_roof_type }}
 - Panels: {{ cleaning_panel_count }} x {{ cleaning_panel_type }}
 - Preferred Date: {{ cleaning_date }} ({{ cleaning_availability }})
-- Address: {{ cleaning_address }}{{ cleaning_location_pin_line }}
+- Address: {{ cleaning_address }}
+{{ cleaning_location_pin_line }}
 
 Please follow up to provide a quote and schedule the service.""",
         "buttons": [

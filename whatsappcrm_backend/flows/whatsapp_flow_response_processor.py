@@ -173,7 +173,8 @@ class WhatsAppFlowResponseProcessor:
                 alt_phone = data.get('alt_contact_phone', '')
                 furniture_alt_contact_line = ''
                 if alt_name and alt_name.lower() != 'n/a' and alt_phone and alt_phone.lower() != 'n/a':
-                    furniture_alt_contact_line = f"\n- Alt. Contact: {alt_name} ({alt_phone})"
+                    # Note: Removed leading \n to comply with Meta API requirements for template parameters
+                    furniture_alt_contact_line = f"- Alt. Contact: {alt_name} ({alt_phone})"
                 
                 # Location pin line (will be empty since WhatsApp flow doesn't collect it)
                 furniture_location_pin_line = ''
