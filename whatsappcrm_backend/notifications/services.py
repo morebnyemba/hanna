@@ -154,32 +154,35 @@ def queue_notifications_to_users(
                 render_context['recipient_name'] = 'User'
             
             # Handle install_alt_name conditional
+            # Note: Removed leading \n to comply with Meta API requirements for template parameters
             install_alt_name = render_context.get('install_alt_name', '')
             if install_alt_name and install_alt_name.lower() != 'n/a':
                 install_alt_phone = render_context.get('install_alt_phone', '')
-                render_context['install_alt_contact_line'] = f"\n- Alt. Contact: {install_alt_name} ({install_alt_phone})"
+                render_context['install_alt_contact_line'] = f"- Alt. Contact: {install_alt_name} ({install_alt_phone})"
             else:
                 render_context['install_alt_contact_line'] = ''
             
             # Handle location pin conditionals
+            # Note: Removed leading \n to comply with Meta API requirements for template parameters
             install_pin = render_context.get('install_location_pin')
             if install_pin and isinstance(install_pin, dict):
                 lat = install_pin.get('latitude')
                 lon = install_pin.get('longitude')
                 if lat and lon:
-                    render_context['install_location_pin_line'] = f"\n- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                    render_context['install_location_pin_line'] = f"- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                 else:
                     render_context['install_location_pin_line'] = ''
             else:
                 render_context['install_location_pin_line'] = ''
             
             # Handle cleaning location pin
+            # Note: Removed leading \n to comply with Meta API requirements for template parameters
             cleaning_pin = render_context.get('cleaning_location_pin')
             if cleaning_pin and isinstance(cleaning_pin, dict):
                 lat = cleaning_pin.get('latitude')
                 lon = cleaning_pin.get('longitude')
                 if lat and lon:
-                    render_context['cleaning_location_pin_line'] = f"\n- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                    render_context['cleaning_location_pin_line'] = f"- Location Pin: https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                 else:
                     render_context['cleaning_location_pin_line'] = ''
             else:
