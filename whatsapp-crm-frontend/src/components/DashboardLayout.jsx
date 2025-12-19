@@ -56,7 +56,7 @@ export default function DashboardLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   
-  const navigationLinks = [
+  const allNavigationLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: <FiHome className="h-5 w-5" /> },
     { to: '/conversation', label: 'Conversations', icon: <FiMessageSquare className="h-5 w-5" /> },
     { to: '/contacts', label: 'Contacts', icon: <FiUsers className="h-5 w-5" /> },
@@ -67,9 +67,17 @@ export default function DashboardLayout() {
     { to: '/analytics', label: 'Analytics', icon: <FiBarChart2 className="h-5 w-5" /> },
     { to: '/billing', label: 'Billing', icon: <FiCreditCard className="h-5 w-5" /> },
     { to: '/media-library', label: 'Media Library', icon: <FiImage className="h-5 w-5" /> },
-    { to: '/admin', label: 'Admin Panel', icon: <FiSettings className="h-5 w-5" /> },
+    { to: '/admin', label: 'Admin Panel', icon: <FiSettings className="h-5 w-5" />, requiresStaff: true },
     { to: '/api-settings', label: 'API Settings', icon: <FiSettings className="h-5 w-5" /> },
   ];
+
+  // Filter navigation links based on user permissions
+  const navigationLinks = allNavigationLinks.filter(link => {
+    if (link.requiresStaff) {
+      return user?.is_staff === true;
+    }
+    return true;
+  });
 
   // Auto-collapse on mobile and expand on desktop
   useEffect(() => {
