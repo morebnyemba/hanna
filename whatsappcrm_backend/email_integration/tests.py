@@ -1,9 +1,10 @@
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from unittest.mock import patch, MagicMock
+import json
 
 from .models import EmailAttachment
-from .tasks import _create_order_from_invoice_data
+from .tasks import _create_order_from_invoice_data, _parse_gemini_response, _repair_json
 from customer_data.models import CustomerProfile, Order, OrderItem, Contact
 from products_and_services.models import Product
 
@@ -298,3 +299,188 @@ class AdminActionsTests(TestCase):
         self.attachment2.refresh_from_db()
         self.assertTrue(self.attachment1.processed)
         self.assertTrue(self.attachment2.processed)
+
+
+class GeminiJSONParsingTests(TestCase):
+    """Test cases for robust Gemini JSON response parsing."""
+
+    def test_parse_valid_json_in_markdown(self):
+        """Test parsing valid JSON wrapped in markdown code block."""
+        response = '''```json
+{
+    "document_type": "invoice",
+    "data": {
+        "invoice_number": "INV-123",
+        "total_amount": 100.50
+    }
+}
+```'''
+        result = _parse_gemini_response(response, "[Test]")
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(result["data"]["invoice_number"], "INV-123")
+        self.assertEqual(result["data"]["total_amount"], 100.50)
+
+    def test_parse_valid_json_without_markdown(self):
+        """Test parsing valid JSON without markdown code block."""
+        response = '''
+{
+    "document_type": "job_card",
+    "data": {
+        "job_card_number": "JC-456"
+    }
+}
+'''
+        result = _parse_gemini_response(response, "[Test]")
+        self.assertEqual(result["document_type"], "job_card")
+        self.assertEqual(result["data"]["job_card_number"], "JC-456")
+
+    def test_parse_json_with_extra_text(self):
+        """Test parsing JSON with extra text before/after."""
+        response = '''Here is the extracted data:
+```json
+{
+    "document_type": "invoice",
+    "data": {"invoice_number": "INV-789"}
+}
+```
+Hope this helps!'''
+        result = _parse_gemini_response(response, "[Test]")
+        self.assertEqual(result["document_type"], "invoice")
+
+    def test_repair_json_missing_closing_brace(self):
+        """Test repairing JSON with missing closing brace (the actual issue from the log)."""
+        # This is similar to the error in the issue description
+        malformed_json = '''{
+    "document_type": "invoice",
+    "data": {
+        "line_items": [
+            {
+                "product_code": "SKU-001",
+                "quantity": 1,
+                "total_amount": 749.00
+            ,
+            {
+                "product_code": "SKU-002",
+                "quantity": 1,
+                "total_amount": 650.00
+            }
+        ]
+    }
+}'''
+        # First repair the trailing comma issue
+        repaired = _repair_json(malformed_json, "[Test]")
+        self.assertIsNotNone(repaired)
+        # Should be parseable now
+        result = json.loads(repaired)
+        self.assertEqual(result["document_type"], "invoice")
+
+    def test_repair_json_missing_multiple_braces(self):
+        """Test repairing JSON with multiple missing closing braces."""
+        malformed_json = '''{
+    "document_type": "invoice",
+    "data": {
+        "issuer": {
+            "name": "Test Company"
+        ,
+        "invoice_number": "INV-123"
+'''
+        repaired = _repair_json(malformed_json, "[Test]")
+        self.assertIsNotNone(repaired)
+        # Should add 2 closing braces
+        result = json.loads(repaired)
+        self.assertEqual(result["document_type"], "invoice")
+
+    def test_repair_json_trailing_comma(self):
+        """Test removing trailing commas before closing braces."""
+        malformed_json = '''{
+    "document_type": "invoice",
+    "data": {
+        "invoice_number": "INV-123",
+        "total_amount": 100,
+    }
+}'''
+        repaired = _repair_json(malformed_json, "[Test]")
+        self.assertIsNotNone(repaired)
+        result = json.loads(repaired)
+        self.assertEqual(result["data"]["invoice_number"], "INV-123")
+
+    def test_repair_json_missing_bracket(self):
+        """Test repairing JSON with missing closing bracket."""
+        malformed_json = '''{
+    "items": [
+        {"id": 1},
+        {"id": 2}
+}'''
+        repaired = _repair_json(malformed_json, "[Test]")
+        self.assertIsNotNone(repaired)
+        result = json.loads(repaired)
+        self.assertEqual(len(result["items"]), 2)
+
+    def test_parse_empty_response(self):
+        """Test that empty response raises ValueError."""
+        with self.assertRaises(ValueError) as context:
+            _parse_gemini_response("", "[Test]")
+        self.assertIn("Empty response", str(context.exception))
+
+    def test_parse_response_with_no_json(self):
+        """Test that response with no JSON raises ValueError."""
+        response = "This is just plain text with no JSON"
+        with self.assertRaises(ValueError):
+            _parse_gemini_response(response, "[Test]")
+
+    def test_parse_completely_malformed_json(self):
+        """Test that completely malformed JSON raises JSONDecodeError."""
+        response = '''{
+    "document_type": "invoice"
+    this is not valid JSON syntax at all
+    random text here
+'''
+        with self.assertRaises(json.JSONDecodeError):
+            _parse_gemini_response(response, "[Test]")
+
+    def test_parse_real_world_malformed_example(self):
+        """Test parsing the actual malformed JSON from the issue log."""
+        # This is the exact JSON from the error log (simplified)
+        malformed_response = '''```json
+{
+"document_type": "invoice",
+"data": {
+"issuer": {
+"tin": "2000018528",
+"name": "AV AVONDALE"
+},
+"recipient": {
+"name": "JULIET MURINGAYI",
+"phone": "0712913426"
+},
+"line_items": [
+{
+"product_code": "OB-MP-GB-920001211",
+"description": "SOLAR BATTERY DEYE SE-G5.1 100AH 51.2V 1P16S",
+"quantity": 1,
+"unit_price": 651.30,
+"vat_amount": 97.70,
+"total_amount": 749.00
+,
+{
+"product_code": "OB-MP-GB-920001212",
+"description": "SOLAR INVERTER DEYE 6KW",
+"quantity": 1,
+"unit_price": 565.22,
+"vat_amount": 84.78,
+"total_amount": 650.00
+}
+],
+"invoice_number": "0",
+"customer_reference_no": "AV01/0036838",
+"invoice_date": "2025-12-18",
+"total_amount": 2569.00
+}
+}
+```'''
+        # This should now parse successfully after repair
+        result = _parse_gemini_response(malformed_response, "[Test]")
+        self.assertEqual(result["document_type"], "invoice")
+        self.assertEqual(result["data"]["customer_reference_no"], "AV01/0036838")
+        self.assertEqual(len(result["data"]["line_items"]), 2)
+

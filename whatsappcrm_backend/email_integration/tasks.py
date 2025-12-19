@@ -249,6 +249,152 @@ def send_error_notification_email(task_name, attachment_id, error_message, raw_r
             exc_info=True
         )
 
+def _parse_gemini_response(raw_response: str, log_prefix: str) -> dict:
+    """
+    Robustly parse JSON from Gemini API response with multiple fallback strategies.
+    
+    Handles:
+    - JSON wrapped in markdown code blocks
+    - Malformed JSON with missing braces or trailing commas
+    - Extra text before/after JSON
+    
+    Args:
+        raw_response: Raw text response from Gemini API
+        log_prefix: Logging prefix for context
+        
+    Returns:
+        Parsed JSON as a dictionary
+        
+    Raises:
+        json.JSONDecodeError: If JSON cannot be parsed after all attempts
+        ValueError: If response is empty or invalid
+    """
+    if not raw_response or not raw_response.strip():
+        raise ValueError("Empty response from Gemini")
+    
+    raw_text = raw_response.strip()
+    cleaned_text = None
+    
+    # Strategy 1: Extract JSON from markdown code blocks (```json ... ```)
+    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text)
+    if json_match:
+        cleaned_text = json_match.group(1).strip()
+        logger.debug(f"{log_prefix} Extracted JSON from markdown code block.")
+    else:
+        # Strategy 2: Find a JSON object starting with { and ending with }
+        json_object_match = re.search(r'(\{[\s\S]*\})', raw_text)
+        if json_object_match:
+            cleaned_text = json_object_match.group(1).strip()
+            logger.debug(f"{log_prefix} Extracted JSON object from response.")
+        else:
+            # Strategy 3: Remove markdown markers and use the entire text
+            cleaned_text = raw_text.replace('```json', '').replace('```', '').strip()
+            logger.debug(f"{log_prefix} Using entire response text after removing markdown.")
+    
+    if not cleaned_text:
+        raise ValueError("No JSON content found in response")
+    
+    # Strategy 4: Try to parse the cleaned text directly
+    try:
+        return json.loads(cleaned_text)
+    except json.JSONDecodeError as e:
+        logger.warning(f"{log_prefix} Direct JSON parsing failed: {e}. Attempting to repair JSON.")
+        
+        # Strategy 5: Try to repair common JSON syntax errors
+        repaired_json = _repair_json(cleaned_text, log_prefix)
+        
+        if repaired_json:
+            try:
+                parsed = json.loads(repaired_json)
+                logger.info(f"{log_prefix} Successfully parsed repaired JSON.")
+                return parsed
+            except json.JSONDecodeError as repair_error:
+                logger.error(f"{log_prefix} Failed to parse even after repair: {repair_error}")
+                # Re-raise the original error with more context
+                raise json.JSONDecodeError(
+                    f"{e.msg}. Attempted repair also failed: {repair_error.msg}",
+                    e.doc, e.pos
+                )
+        else:
+            # If repair returned None, re-raise the original error
+            raise
+
+
+def _repair_json(json_text: str, log_prefix: str) -> str | None:
+    """
+    Attempt to repair common JSON syntax errors.
+    
+    Handles:
+    - Missing closing braces/brackets
+    - Trailing commas before closing braces/brackets
+    - Unterminated strings
+    - Missing closing braces in array elements (e.g., } replaced with ,)
+    
+    Args:
+        json_text: Potentially malformed JSON text
+        log_prefix: Logging prefix for context
+        
+    Returns:
+        Repaired JSON string or None if repair is not possible
+    """
+    try:
+        repaired = json_text
+        repairs_made = []
+        
+        # Fix 1: Missing closing brace in array elements
+        # Pattern: value\n,\n{ instead of value\n},\n{
+        # This is the specific issue from the error log
+        pattern = r'(\d+\.?\d*)\s*\n\s*,\s*\n\s*\{'
+        replacement = r'\1\n},\n{'
+        original = repaired
+        repaired = re.sub(pattern, replacement, repaired)
+        if repaired != original:
+            repairs_made.append("Fixed missing closing brace in array element")
+            logger.info(f"{log_prefix} Fixed missing closing brace before comma in array element.")
+        
+        # Fix 2: Remove trailing commas before closing braces/brackets
+        # Pattern: , followed by optional whitespace and then } or ]
+        original = repaired
+        repaired = re.sub(r',(\s*[}\]])', r'\1', repaired)
+        if repaired != original:
+            repairs_made.append("Removed trailing commas")
+            logger.info(f"{log_prefix} Removed trailing commas before closing braces/brackets.")
+        
+        # Fix 3: Count and add missing closing brackets first (before braces)
+        # This ensures array structures are closed before object structures
+        open_brackets = repaired.count('[')
+        close_brackets = repaired.count(']')
+        if open_brackets > close_brackets:
+            missing_brackets = open_brackets - close_brackets
+            repairs_made.append(f"Added {missing_brackets} missing closing bracket(s)")
+            logger.info(f"{log_prefix} Adding {missing_brackets} missing closing bracket(s).")
+            repaired += ']' * missing_brackets
+        
+        # Fix 4: Count and add missing closing braces
+        open_braces = repaired.count('{')
+        close_braces = repaired.count('}')
+        if open_braces > close_braces:
+            missing_braces = open_braces - close_braces
+            repairs_made.append(f"Added {missing_braces} missing closing brace(s)")
+            logger.info(f"{log_prefix} Adding {missing_braces} missing closing brace(s).")
+            repaired += '}' * missing_braces
+        
+        # Check if we made any changes
+        if repairs_made:
+            logger.info(
+                f"{log_prefix} JSON repair completed. Repairs: {', '.join(repairs_made)}. "
+                f"Original length: {len(json_text)}, Repaired length: {len(repaired)}"
+            )
+            return repaired
+        else:
+            logger.warning(f"{log_prefix} No repairs could be applied to the JSON.")
+            return None
+            
+    except Exception as e:
+        logger.error(f"{log_prefix} Error during JSON repair: {e}")
+        return None
+
+
 @shared_task(
     bind=True,
     name="email_integration.process_attachment_with_gemini",
@@ -370,29 +516,20 @@ def process_attachment_with_gemini(self, attachment_id):
             contents=[prompt, uploaded_file],
         )
 
-        # 5. Parse the extracted JSON data
+        # 5. Parse the extracted JSON data with robust error handling
         try:
-            raw_text = response.text.strip()
-            cleaned_text = None
-            
-            # First, try to find JSON within markdown code blocks (```json ... ```)
-            json_match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text)
-            if json_match:
-                cleaned_text = json_match.group(1).strip()
-            else:
-                # Fallback: Try to find a JSON object starting with { and ending with }
-                json_object_match = re.search(r'(\{[\s\S]*\})', raw_text)
-                if json_object_match:
-                    cleaned_text = json_object_match.group(1).strip()
-                else:
-                    # Last resort: Use the entire text (backward compatibility)
-                    cleaned_text = raw_text.replace('```json', '').replace('```', '').strip()
-            
-            if not cleaned_text:
-                raise json.JSONDecodeError("Empty response from Gemini", "", 0)
-            extracted_data = json.loads(cleaned_text)
+            extracted_data = _parse_gemini_response(response.text, log_prefix)
         except json.JSONDecodeError as e:
             error_message = f"Failed to decode JSON from Gemini response. Error: {e}."
+            logger.error(f"{log_prefix} {error_message} Raw response text: '{response.text}'")
+            attachment.processed = True
+            attachment.extracted_data = {"error": error_message, "status": "failed", "raw_response": response.text}
+            attachment.save(update_fields=['processed', 'extracted_data'])
+            # Trigger admin notification
+            send_error_notification_email.delay(self.name, attachment_id, error_message, raw_response=response.text)
+            return f"Failed: {error_message}"
+        except ValueError as e:
+            error_message = f"Failed to parse Gemini response: {e}"
             logger.error(f"{log_prefix} {error_message} Raw response text: '{response.text}'")
             attachment.processed = True
             attachment.extracted_data = {"error": error_message, "status": "failed", "raw_response": response.text}
