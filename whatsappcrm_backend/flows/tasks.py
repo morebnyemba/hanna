@@ -615,9 +615,15 @@ Would you like to:
                     # Remove control token from response
                     final_reply = re.sub(r'GENERATE_PDF:\s*\[[\d,\s]+\]', '', ai_response_text).strip()
                     
-                    if pdf_path := pdf_context.get('recommendation_pdf_path'):
+                    if pdf_url := pdf_context.get('recommendation_pdf_url'):
                         # Send PDF as document
                         final_reply += f"\n\n📄 **Recommendation Report Generated!**\n\nI've prepared a detailed analysis for you. The document will be sent shortly."
+                        
+                        # Build full URL for Meta API
+                        from django.conf import settings
+                        backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
+                        # pdf_url is already /media/recommendations/filename.pdf
+                        full_pdf_url = f"https://{backend_domain}{pdf_url}"
                         
                         # Create message to send PDF
                         # content_payload should directly contain document data (not nested under 'document' key)
@@ -627,7 +633,7 @@ Would you like to:
                             direction='out',
                             message_type='document',
                             content_payload={
-                                'link': pdf_path,
+                                'link': full_pdf_url,
                                 'caption': 'Your personalized solar system recommendation',
                                 'filename': 'Solar_Recommendation.pdf'
                             },
