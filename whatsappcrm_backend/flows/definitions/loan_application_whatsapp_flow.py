@@ -70,7 +70,7 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                                 "loan_applicant_name": "",
                                 "loan_national_id": "",
                                 "loan_employment_status": "",
-                                "loan_monthly_income": 0,
+                                "loan_monthly_income": "",
                                 "loan_request_amount": "",
                                 "loan_product_interest": ""
                             }
