@@ -305,7 +305,7 @@ STARLINK_INSTALLATION_FLOW = {
                         "app_label": "customer_data",
                         "model_name": "InstallationRequest",
                         "fields_template": {
-                            "customer_id": "{{ contact.id }}",
+                            "customer": "current",
                             "installation_type": "starlink",
                             "full_name": "{{ install_full_name }}",
                             "contact_phone": "{{ install_phone }}",
