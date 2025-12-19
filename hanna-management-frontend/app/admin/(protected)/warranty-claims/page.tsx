@@ -55,7 +55,7 @@ export default function WarrantyClaimsPage() {
   const fetchClaims = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/warranty/claims/`, {
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/warranty-claims/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ export default function WarrantyClaimsPage() {
     setIsDeleting(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/warranty/claims/${claimToDelete.id}/`, {
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/warranty-claims/${claimToDelete.id}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
