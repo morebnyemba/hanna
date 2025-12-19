@@ -557,6 +557,8 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
     # --- NEW: Automatically create an InstallationRequest ---
     if customer_profile:
         installation_date = timezone.now() + timedelta(hours=72)
+        # Truncate phone number to fit database field length (max 50 chars)
+        contact_phone = customer_profile.contact.whatsapp_id[:50] if customer_profile.contact.whatsapp_id else "N/A"
         InstallationRequest.objects.create(
             customer=customer_profile,
             associated_order=order,
@@ -564,7 +566,7 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             installation_type='residential', # Defaulting to residential
             full_name=customer_profile.get_full_name() or "N/A",
             address=customer_profile.address_line_1 or "N/A",
-            contact_phone=customer_profile.contact.whatsapp_id,
+            contact_phone=contact_phone,
             preferred_datetime=installation_date.strftime('%Y-%m-%d %H:%M:%S'),
             notes=f"Automatically generated from processed invoice '{attachment.filename}'."
         )
