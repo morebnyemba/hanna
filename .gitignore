@@ -31,3 +31,4 @@ env/
 runtime_errorlog
 errors_in_server_deployement
 *.log
+test_gemini_json_fix_e2e.py
