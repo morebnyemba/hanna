@@ -1,16 +1,31 @@
 # WhatsApp Flow Fix Summary
 
-## Issue Description
+## ⚠️ UPDATE: CORRECTION TO PREVIOUS FIX
+
+**IMPORTANT:** The previous fix incorrectly stated that `input-type: "number"` is correct for TextInput components. This is **FALSE**. Meta's WhatsApp Flows API v7.3 does **NOT** support `input-type: "number"`.
+
+**Valid input-type values are ONLY:**
+- `text` (default)
+- `email`
+- `phone`
+- `password`
+
+See `WHATSAPP_FLOW_VALIDATION_FIX.md` for the corrected solution.
+
+---
+
+## Original Issue Description (Partially Correct)
 The WhatsApp loan application flow was crashing after users entered employment details (EMPLOYMENT_INFO screen), preventing them from completing the application.
 
-## Root Cause
+## Root Cause (Partially Correct)
 The flow definitions incorrectly used `"type": "number"` for numeric data fields, which is **not supported by Meta's WhatsApp Flow API v7.3**.
 
 ### Technical Details
 According to Meta's WhatsApp Flow API v7.3 specification:
 - All data field types in the `data` section of screens must be `"string"` (or other non-numeric types like `"boolean"`, `"array"`, `"object"`)
 - The `"number"` type is **not valid** and causes flow validation failures
-- For numeric user input, use `input-type: "number"` on `TextInput` components
+- ~~For numeric user input, use `input-type: "number"` on `TextInput` components~~ **❌ INCORRECT - See update above**
+- **CORRECT:** For numeric user input, use `input-type: "text"` on `TextInput` components with helper text
 - Data is always transmitted as strings and should be parsed/validated on the backend
 
 ## Files Fixed
@@ -82,12 +97,14 @@ This fix resolves the flow completion failures for:
 
 ## Meta API Compliance Checklist
 When creating or modifying WhatsApp Flows:
-- [ ] Use `"type": "string"` for all data fields (including numbers)
-- [ ] Use `input-type: "number"` on `TextInput` for numeric inputs
-- [ ] Provide string examples in `__example__` (e.g., `"1000"` not `1000`)
-- [ ] Initialize numeric fields with empty strings `""` in payloads
-- [ ] Parse and validate numeric strings on the backend
-- [ ] Ensure at least one terminal screen has `"terminal": true` and `"success": true`
+- [x] Use `"type": "string"` for all data fields (including numbers)
+- [x] ~~Use `input-type: "number"` on `TextInput` for numeric inputs~~ **❌ INCORRECT**
+- [x] **CORRECT: Use `input-type: "text"` for ALL TextInput fields** (supported: text, email, phone, password)
+- [x] Provide string examples in `__example__` (e.g., `"1000"` not `1000`)
+- [x] Initialize numeric fields with empty strings `""` in payloads
+- [x] Parse and validate numeric strings on the backend
+- [x] Ensure at least one terminal screen has `"terminal": true` and `"success": true`
+- [x] Add helper text like "(numbers only)" for numeric text inputs
 
 ## References
 - Meta WhatsApp Flow API v7.3 Documentation

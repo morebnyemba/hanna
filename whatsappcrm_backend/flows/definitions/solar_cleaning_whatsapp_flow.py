@@ -303,8 +303,8 @@ SOLAR_CLEANING_WHATSAPP_FLOW = {
                         "name": "panel_count",
                         "label": "Number of Solar Panels",
                         "required": True,
-                        "input-type": "number",
-                        "helper-text": "Enter the total number of panels"
+                        "input-type": "text",
+                        "helper-text": "Enter the total number of panels (numbers only)"
                     },
                     {
                         "type": "Footer",

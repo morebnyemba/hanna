@@ -70,7 +70,7 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                                 "loan_applicant_name": "",
                                 "loan_national_id": "",
                                 "loan_employment_status": "",
-                                "loan_monthly_income": 0,
+                                "loan_monthly_income": "",
                                 "loan_request_amount": "",
                                 "loan_product_interest": ""
                             }
@@ -287,8 +287,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                         "name": "loan_monthly_income",
                         "label": "Monthly Income (USD)",
                         "required": True,
-                        "input-type": "number",
-                        "helper-text": "Enter your estimated monthly income"
+                        "input-type": "text",
+                        "helper-text": "Enter your estimated monthly income (numbers only)"
                     },
                     {
                         "type": "Footer",
