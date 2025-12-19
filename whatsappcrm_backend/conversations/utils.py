@@ -5,8 +5,8 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Regex pattern for splitting multiple phone numbers
-PHONE_DELIMITER_PATTERN = re.compile(r'[/\\|,]|\s+or\s+|\s+OR\s+')
+# Regex pattern for splitting multiple phone numbers (case-insensitive for 'or')
+PHONE_DELIMITER_PATTERN = re.compile(r'[/\\|,]|\s+or\s+', re.IGNORECASE)
 
 
 def normalize_phone_number(phone_number: str, default_country_code: str = '263') -> str:
@@ -39,7 +39,7 @@ def normalize_phone_number(phone_number: str, default_country_code: str = '263')
         parts = PHONE_DELIMITER_PATTERN.split(phone_number)
         phone_number = parts[0].strip()
         if len(parts) > 1:
-            logger.info(f"Multiple phone numbers detected ({len(parts)} total). Using first: '{phone_number}'")
+            logger.info(f"Multiple phone numbers detected ({len(parts)} total). Using first number.")
     
     # Remove all non-digit characters except '+'
     cleaned = re.sub(r'[^\d+]', '', phone_number)
