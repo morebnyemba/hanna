@@ -33,8 +33,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": "employed"
                 },
                 "loan_monthly_income": {
-                    "type": "number",
-                    "__example__": 1000
+                    "type": "string",
+                    "__example__": "1000"
                 },
                 "loan_request_amount": {
                     "type": "string",
@@ -100,8 +100,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": "employed"
                 },
                 "loan_monthly_income": {
-                    "type": "number",
-                    "__example__": 1000
+                    "type": "string",
+                    "__example__": "1000"
                 },
                 "loan_request_amount": {
                     "type": "string",
@@ -173,8 +173,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": "employed"
                 },
                 "loan_monthly_income": {
-                    "type": "number",
-                    "__example__": 1000
+                    "type": "string",
+                    "__example__": "1000"
                 },
                 "loan_request_amount": {
                     "type": "string",
@@ -252,8 +252,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": "employed"
                 },
                 "loan_monthly_income": {
-                    "type": "number",
-                    "__example__": 1000
+                    "type": "string",
+                    "__example__": "1000"
                 },
                 "loan_request_amount": {
                     "type": "string",
@@ -334,8 +334,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     "__example__": "employed"
                 },
                 "loan_monthly_income": {
-                    "type": "number",
-                    "__example__": 1000
+                    "type": "string",
+                    "__example__": "1000"
                 },
                 "loan_request_amount": {
                     "type": "string",
