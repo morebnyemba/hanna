@@ -2,8 +2,8 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Skeleton } from '@/components/ui/skeleton';
-import { FiLoader, FiAlertCircle } from 'react-icons/fi';
+import { Skeleton } from './ui/skeleton';
+import { FiLoader } from 'react-icons/fi';
 
 export default function AdminRoute({ children }) {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -30,16 +30,7 @@ export default function AdminRoute({ children }) {
   // Check if user has staff permissions
   if (!user?.is_staff) {
     console.log("AdminRoute: User is not a staff member, redirecting to dashboard. User:", user?.username);
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background dark:bg-slate-900 p-4">
-        <FiAlertCircle className="h-16 w-16 text-red-500 dark:text-red-400 mb-6" />
-        <h1 className="text-2xl font-bold text-foreground dark:text-slate-200 mb-2">Access Denied</h1>
-        <p className="text-lg text-muted-foreground dark:text-slate-400 mb-6 text-center max-w-md">
-          You do not have permission to access the admin panel. Only staff members can access this area.
-        </p>
-        <Navigate to="/dashboard" replace />
-      </div>
-    );
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
