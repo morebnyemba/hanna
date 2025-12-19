@@ -1545,8 +1545,15 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
         # --- Start of Main Flow Processing Loop ---
         # This loop will continue as long as the contact is in an active flow state.
         # It allows for "fall-through" steps (like 'action' steps) to be processed immediately.
+        # 
+        # IMPORTANT: The loop breaks when:
+        # 1. A question step is reached (waits for user input)
+        # 2. Flow state is cleared (end_flow, human_handover)
+        # 3. A wait step is reached without a response
+        # 4. No valid transition is found (fallback handling)
         while True:
-            # Re-fetch state in each loop iteration for robustness
+            # Re-fetch state in each loop iteration for robustness and to detect changes
+            # made by internal commands like end_flow or switch_flow
             is_internal_message = message_data.get('type', '').startswith('internal_') # type: ignore
             contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').filter(contact=contact).first()
 
@@ -1557,17 +1564,35 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
             current_step = contact_flow_state.current_step
             flow_context = contact_flow_state.flow_context_data if contact_flow_state.flow_context_data is not None else {}
             
-            logger.debug(f"Handling active flow. Contact: {contact.whatsapp_id}, Current Step: '{current_step.name}' (Type: {current_step.step_type}). Context: {flow_context}")
+            # Validate that we have a valid current step
+            if not current_step:
+                logger.error(
+                    f"CRITICAL: Flow state exists for contact {contact.id} but current_step is None. "
+                    f"This indicates data corruption. Clearing flow state."
+                )
+                _clear_contact_flow_state(contact, error=True)
+                break
+            
+            logger.debug(
+                f"Loop iteration: Contact {contact.whatsapp_id}, Step '{current_step.name}' (Type: {current_step.step_type}), "
+                f"Message Type: {message_data.get('type')}, Is Internal: {is_internal_message}"
+            )
 
-            # --- Special handling for WhatsApp Flow responses that have already been processed ---
+            # --- CRITICAL: Early conversion of already-processed WhatsApp Flow responses ---
             # If we receive an nfm_reply message but the context already has whatsapp_flow_response_received flag,
-            # it means the response was already processed by process_whatsapp_flow_response and we should treat
-            # this as an internal continuation to trigger transition evaluation, not as a question answer.
+            # it means the response was already processed by WhatsAppFlowResponseProcessor via the webhook.
+            # We MUST convert it to an internal message type IMMEDIATELY to prevent it from being
+            # re-processed as a raw nfm_reply in the question handling logic below.
+            # This ensures the flow continuation uses the pre-saved context data instead of trying to
+            # parse the raw message again, which could fail or cause duplicate processing.
             if (message_data.get('type') == 'interactive' and 
                 message_data.get('interactive', {}).get('type') == 'nfm_reply' and
                 flow_context.get('whatsapp_flow_response_received')):
-                logger.info(f"Detected already-processed WhatsApp flow response for contact {contact.id}. "
-                           f"Converting to internal message to trigger transition evaluation.")
+                logger.info(
+                    f"Detected already-processed WhatsApp flow response for contact {contact.id}. "
+                    f"Converting to internal_whatsapp_flow_response to trigger transition evaluation. "
+                    f"Current step: {current_step.name}"
+                )
                 message_data = {'type': 'internal_whatsapp_flow_response'}
                 is_internal_message = True
 
@@ -1576,11 +1601,15 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 # If we've arrived at a question step via an internal transition (fallthrough/switch),
                 # we must stop and wait for the user's actual reply. We should not process the
                 # internal message as if it were a user's answer.
-                # EXCEPTION: If this is a WhatsApp flow response (internal_whatsapp_flow_response),
-                # we should process it as the answer to the question.
+                # CRITICAL EXCEPTION: If this is a WhatsApp flow response (internal_whatsapp_flow_response),
+                # we SHOULD process it as the answer to the question because it was pre-saved to context.
                 if is_internal_message and message_data.get('type') != 'internal_whatsapp_flow_response':
-                    logger.debug(f"Reached question step '{current_step.name}' via internal transition. Breaking loop to await user reply.")
+                    logger.debug(
+                        f"Reached question step '{current_step.name}' via internal transition. "
+                        f"Breaking loop to await user reply. Message type was: {message_data.get('type')}"
+                    )
                     break
+                
                 # A question is NOT a pass-through step; it must wait for a reply.
                 question_expectation = flow_context['_question_awaiting_reply_for']
                 variable_to_save_name = question_expectation.get('variable_name')
@@ -1590,6 +1619,8 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 user_text = message_data.get('text', {}).get('body', '').strip() if message_data.get('type') == 'text' else None
                 interactive_reply_id = None
                 nfm_response_data = None
+                
+                # Handle different types of interactive messages
                 if message_data.get('type') == 'interactive':
                     interactive_payload = message_data.get('interactive', {})
                     interactive_type = interactive_payload.get('type')
@@ -1597,25 +1628,28 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                         interactive_reply_id = interactive_payload.get('button_reply', {}).get('id')
                     elif interactive_type == 'list_reply':
                         interactive_reply_id = interactive_payload.get('list_reply', {}).get('id')
-                    elif interactive_type == 'nfm_reply': # Handle Native Flow Message reply
+                    elif interactive_type == 'nfm_reply':
+                        # Handle Native Flow Message reply (raw, not yet processed)
                         response_json_str = interactive_payload.get('nfm_reply', {}).get('response_json')
                         if response_json_str:
                             try: 
                                 nfm_response_data = json.loads(response_json_str)
+                                logger.info(f"Parsed raw nfm_reply response_json for question step '{current_step.name}'.")
                             except json.JSONDecodeError: 
-                                logger.warning(f"Could not parse nfm_reply response_json for question step {current_step.name}")
+                                logger.warning(f"Could not parse nfm_reply response_json for question step '{current_step.name}'")
                 
-                # NOTE: The following elif handles the internally converted 'internal_whatsapp_flow_response' message type
-                # (converted from nfm_reply by the code above when the flag is already set in context)
-                # Retrieve the pre-saved WhatsApp Flow data from context instead of parsing from the message
+                # Handle internally converted 'internal_whatsapp_flow_response' message type
+                # This occurs when the WhatsApp flow response was already processed by the webhook
+                # and we're now resuming the conversational flow with the pre-saved data
                 elif message_data.get('type') == 'internal_whatsapp_flow_response':
-                    # The WhatsApp Flow response was already processed and saved to the flow context
-                    # by the WhatsAppFlowResponseProcessor. Retrieve it from there.
                     has_response_flag = flow_context.get('whatsapp_flow_response_received', False)
                     saved_flow_data = flow_context.get('whatsapp_flow_data')
                     if has_response_flag and saved_flow_data:
                         nfm_response_data = saved_flow_data
-                        logger.info(f"Resuming flow with pre-saved WhatsApp flow data for question step '{current_step.name}'.")
+                        logger.info(
+                            f"Resuming flow with pre-saved WhatsApp flow data for question step '{current_step.name}'. "
+                            f"Data fields: {list(saved_flow_data.keys()) if isinstance(saved_flow_data, dict) else 'non-dict'}"
+                        )
                     else:
                         logger.warning(
                             f"Received internal_whatsapp_flow_response but context is incomplete for step '{current_step.name}'. "
@@ -1680,14 +1714,24 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                     logger.info(f"Reply for question step '{current_step.name}' was not valid. Expected: {expected_reply_type}. User text: {user_text}. Interactive ID: {interactive_reply_id}")
             
             # --- Step 1b: Pause at wait_for_whatsapp_response action step ---
+            # This is a special action step that acts as a checkpoint in the flow.
+            # When the flow reaches this step via an internal transition (but NOT via a WhatsApp flow response),
+            # we pause and wait for the webhook to receive the actual WhatsApp flow response.
+            # If this IS a WhatsApp flow response message, we continue to evaluate transitions
+            # to move the flow forward to the next appropriate step.
             if current_step.step_type == 'action' and current_step.name == 'wait_for_whatsapp_response':
-                # If we've arrived at this step via an internal transition (but NOT a WhatsApp flow response),
-                # break to wait for the WhatsApp flow response webhook.
-                # If this IS a WhatsApp flow response, we should continue to evaluate transitions.
                 if is_internal_message and message_data.get('type') != 'internal_whatsapp_flow_response':
-                    logger.debug(f"Reached wait step '{current_step.name}' via internal transition. Breaking loop to await WhatsApp flow response.")
+                    logger.debug(
+                        f"Reached wait step '{current_step.name}' via internal transition. "
+                        f"Breaking loop to await WhatsApp flow response from webhook. "
+                        f"Message type was: {message_data.get('type')}"
+                    )
                     break
                 # If this is a user message or a WhatsApp flow response, continue to evaluate transitions
+                logger.debug(
+                    f"At wait step '{current_step.name}' with message type '{message_data.get('type')}'. "
+                    f"Proceeding to evaluate transitions."
+                )
 
             # If this was a user message that was just processed (valid or not),
             # we should not continue falling through steps in the same cycle.
@@ -1696,17 +1740,43 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 just_triggered_flow = False # Unset flag if it was set
 
             # --- Step 2: Evaluate transitions from the current step ---
-            # --- OPTIMIZATION: Use the prefetched transitions instead of a new query. ---
-            # The original query was: FlowTransition.objects.filter(current_step=current_step)...
-            # Now, we access the prefetched data from the step object.
+            # We evaluate all outgoing transitions in priority order until one matches.
+            # If no transition matches, we engage fallback logic (see _handle_fallback).
+            # 
+            # IMPORTANT: The transitions are prefetched to avoid N+1 queries.
+            # The condition evaluation is done by _evaluate_transition_condition which
+            # checks various condition types like 'whatsapp_flow_response_received',
+            # 'user_reply_matches_keyword', 'variable_equals', etc.
             transitions = current_step.outgoing_transitions.all()
+            
+            if not transitions.exists():
+                logger.warning(
+                    f"Step '{current_step.name}' (ID: {current_step.id}, Type: {current_step.step_type}) "
+                    f"has no outgoing transitions defined. This may indicate a flow design issue. "
+                    f"Engaging fallback logic."
+                )
 
             next_step_to_transition_to = None
             for transition in transitions:
-                if _evaluate_transition_condition(transition, contact, message_data, flow_context, incoming_message_obj):
-                    next_step_to_transition_to = transition.next_step
-                    logger.info(f"Transition condition met: From '{current_step.name}' to '{next_step_to_transition_to.name}'.")
-                    break
+                try:
+                    condition_met = _evaluate_transition_condition(
+                        transition, contact, message_data, flow_context, incoming_message_obj
+                    )
+                    if condition_met:
+                        next_step_to_transition_to = transition.next_step
+                        logger.info(
+                            f"Transition condition met (ID: {transition.id}, Priority: {transition.priority}): "
+                            f"From '{current_step.name}' to '{next_step_to_transition_to.name}'. "
+                            f"Condition type: {transition.condition_config.get('type') if isinstance(transition.condition_config, dict) else 'unknown'}"
+                        )
+                        break
+                except Exception as e:
+                    logger.error(
+                        f"Error evaluating transition {transition.id} from step '{current_step.name}': {e}",
+                        exc_info=True
+                    )
+                    # Continue to next transition instead of failing completely
+                    continue
             
             if next_step_to_transition_to:
                 actions, flow_context = _transition_to_step(contact_flow_state, next_step_to_transition_to, flow_context, contact, message_data)
@@ -1776,9 +1846,24 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                         break # Exit the while loop for end_flow or human_handover
 
             else:
-                logger.info(f"No transition met for step '{current_step.name}'. Engaging fallback logic for contact {contact.id}.")
-                fallback_actions = _handle_fallback(current_step, contact, flow_context, contact_flow_state)
-                actions_to_perform.extend(fallback_actions)
+                # No transition matched - engage fallback logic
+                logger.info(
+                    f"No transition met for step '{current_step.name}' (Type: {current_step.step_type}). "
+                    f"Message type: {message_data.get('type')}, Is internal: {is_internal_message}. "
+                    f"Engaging fallback logic for contact {contact.id}."
+                )
+                try:
+                    fallback_actions = _handle_fallback(current_step, contact, flow_context, contact_flow_state)
+                    actions_to_perform.extend(fallback_actions)
+                except Exception as e:
+                    logger.error(
+                        f"Error in fallback handling for step '{current_step.name}': {e}",
+                        exc_info=True
+                    )
+                    # As a last resort, trigger human handover
+                    handover_message = "I've encountered a technical issue and can't continue. I'm connecting you with a team member."
+                    fallback_actions = _create_human_handover_actions(contact, handover_message)
+                    actions_to_perform.extend(fallback_actions)
                 break # Fallback always breaks the loop
             
             # --- Step 3: Loop Control ---
