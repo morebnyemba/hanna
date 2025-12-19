@@ -333,14 +333,14 @@ def handle_ai_shopping_task(contact_id: int, message_id: int):
             from products_and_services.models import Product, Cart, CartItem
             
             # Get available products for context
-            products = Product.objects.filter(is_active=True).values('id', 'name', 'description', 'price', 'currency', 'category__name', 'product_type', 'stock_quantity')
+            products = Product.objects.filter(is_active=True).values('id', 'name', 'description', 'price', 'currency', 'category__name', 'product_type')
             products_list = list(products)
             
             # Create structured product catalog for AI
             product_catalog_text = "**Available Products:**\n"
             for p in products_list[:AI_SHOPPING_MAX_PRODUCTS]:  # Limit products to avoid token limits
                 price_str = f"{p['price']} {p['currency']}" if p['price'] else "Contact for price"
-                product_catalog_text += f"\n- ID: {p['id']}, Name: {p['name']}, Price: {price_str}, Category: {p.get('category__name', 'N/A')}, Type: {p['product_type']}, Stock: {p['stock_quantity']}"
+                product_catalog_text += f"\n- ID: {p['id']}, Name: {p['name']}, Price: {price_str}, Category: {p.get('category__name', 'N/A')}, Type: {p['product_type']}"
                 if p.get('description'):
                     product_catalog_text += f", Description: {p['description'][:100]}"
             
@@ -381,7 +381,7 @@ Execute the following steps in sequence:
 *   **Action**: Analyze requirements and search our product catalog for matching items.
 *   **Response**: Present matching products with:
     - Product names and specifications
-    - Prices and availability
+    - Prices and the quantity needed per item (do NOT show stock availability)
     - Why each product is recommended
     - Total system cost
     - Include product IDs in format: PRODUCT_IDS: [id1, id2, id3]
@@ -393,15 +393,18 @@ Execute the following steps in sequence:
     2. 📄 **GET RECOMMENDATION** - Receive a detailed PDF analysis"
 
 **Step 4: Action Execution**
-*   **For BUY**: Confirm products are being added to cart. Use format: ADD_TO_CART: [id1, id2, id3]
+*   **For BUY**: Confirm products are being added to cart. Prefer format: ADD_TO_CART_QTY: [(id1, qty1), (id2, qty2)]. Fallback format ADD_TO_CART: [id1, id2, id3] is also accepted (assumes qty=1).
+*   **For CHECKOUT**: Use token CHECKOUT to place the order immediately.
 *   **For RECOMMENDATION**: Generate PDF. Use format: GENERATE_PDF: [id1, id2, id3]
 
 ---
 ### **Control Tokens**
 
 * `PRODUCT_IDS: [list]` - Include this when recommending products
-* `ADD_TO_CART: [list]` - Use this to add products to cart
+* `ADD_TO_CART: [list]` - Use this to add products to cart (quantity defaults to 1)
+* `ADD_TO_CART_QTY: [(id, qty)]` - Use this to add products with quantities needed
 * `GENERATE_PDF: [list]` - Use this to generate recommendation PDF
+* `CHECKOUT` - Use this to place the order immediately
 * `[HUMAN_HANDOVER]` - Escalate complex queries to human agent
 * `[END_CONVERSATION]` - End the shopping session
 
@@ -458,6 +461,39 @@ Would you like to:
                 history=gemini_history
             )
             
+            # Short-circuit common commands before invoking AI
+            if incoming_message.text_content and incoming_message.text_content.strip().lower() == 'checkout':
+                try:
+                    from flows.actions import checkout_cart_for_contact
+                    checkout_context = {}
+                    checkout_cart_for_contact(contact, checkout_context, {})
+                    order_info = checkout_context.get('order_info')
+                    if order_info:
+                        final_reply = (
+                            f"✅ Order placed successfully!\n\n"
+                            f"Order Number: {order_info['order_number']}\n"
+                            f"Total Amount: {order_info['amount']} {order_info['currency']}\n\n"
+                            f"We will contact you shortly to confirm payment and delivery details."
+                        )
+                    else:
+                        final_reply = "❌ Your cart appears empty. Please add items first."
+                except Exception as e:
+                    logger.error(f"{log_prefix} Error during checkout: {e}", exc_info=True)
+                    final_reply = "❌ Sorry, something went wrong while placing your order. Please try again or type 'VIEW CART'."
+
+                outgoing_msg = Message.objects.create(
+                    contact=contact,
+                    app_config=config_to_use,
+                    direction='out',
+                    message_type='text',
+                    content_payload={'body': final_reply},
+                    status='pending_dispatch',
+                    related_incoming_message=incoming_message
+                )
+                send_whatsapp_message_task.delay(outgoing_msg.id, config_to_use.id)
+                logger.info(f"{log_prefix} Checkout processed without AI.")
+                return
+
             # Handle multimodal input
             prompt_parts = []
             if incoming_message.text_content:
@@ -493,7 +529,38 @@ Would you like to:
             # Parse AI response for control tokens
             final_reply = ai_response_text
             
-            # Check for ADD_TO_CART command
+            # Check for ADD_TO_CART_QTY command (preferred with per-item quantities)
+            add_to_cart_qty_match = re.search(r'ADD_TO_CART_QTY:\s*\[([^\]]+)\]', ai_response_text)
+            if add_to_cart_qty_match:
+                pairs_str = add_to_cart_qty_match.group(1)
+                tuples = re.findall(r'\(\s*(\d+)\s*,\s*(\d+)\s*\)', pairs_str)
+                product_ids = []
+                quantities = []
+                for pid_str, qty_str in tuples:
+                    product_ids.append(int(pid_str))
+                    quantities.append(int(qty_str))
+
+                if product_ids:
+                    from flows.actions import add_products_to_cart_bulk
+                    cart_context = {}
+                    add_products_to_cart_bulk(contact, cart_context, {'product_ids': product_ids, 'quantities': quantities})
+
+                    cart = Cart.objects.filter(session_key=contact.whatsapp_id).first()
+                    if cart:
+                        cart_currency = getattr(settings, 'DEFAULT_CURRENCY', 'USD')
+                        first_item = cart.items.select_related('product').first()
+                        if first_item and first_item.product.currency:
+                            cart_currency = first_item.product.currency
+
+                        cart_summary = f"\n\n✅ **Products Added to Cart!**\n\n"
+                        cart_summary += f"**Total Items (needed):** {cart.total_items}\n"
+                        cart_summary += f"**Total Price:** {cart.total_price} {cart_currency}\n\n"
+                        cart_summary += "To complete your order, reply with **CHECKOUT** or type **VIEW CART** to review."
+
+                        final_reply = re.sub(r'ADD_TO_CART_QTY:\s*\[[^\]]+\]', '', ai_response_text).strip()
+                        final_reply += cart_summary
+
+            # Check for ADD_TO_CART command (fallback, assumes qty=1)
             add_to_cart_match = re.search(r'ADD_TO_CART:\s*\[([\d,\s]+)\]', ai_response_text)
             if add_to_cart_match:
                 product_ids_str = add_to_cart_match.group(1)
@@ -515,9 +582,26 @@ Would you like to:
                             cart_currency = first_item.product.currency
                         
                         cart_summary = f"\n\n✅ **Products Added to Cart!**\n\n"
-                        cart_summary += f"**Total Items:** {cart.total_items}\n"
+                        cart_summary += f"**Total Items (needed):** {cart.total_items}\n"
                         cart_summary += f"**Total Price:** {cart.total_price} {cart_currency}\n\n"
                         cart_summary += "To complete your order, reply with **CHECKOUT** or type **VIEW CART** to review."
+                                    # If AI suggests checkout directly, place the order immediately
+                                    if re.search(r'\bCHECKOUT\b', ai_response_text, flags=re.IGNORECASE):
+                                        try:
+                                            from flows.actions import checkout_cart_for_contact
+                                            checkout_context = {}
+                                            checkout_cart_for_contact(contact, checkout_context, {})
+                                            order_info = checkout_context.get('order_info')
+                                            if order_info:
+                                                final_reply = (
+                                                    f"✅ Order placed successfully!\n\n"
+                                                    f"Order Number: {order_info['order_number']}\n"
+                                                    f"Total Amount: {order_info['amount']} {order_info['currency']}\n\n"
+                                                    f"We will contact you shortly to confirm payment and delivery details."
+                                                )
+                                        except Exception as e:
+                                            logger.error(f"{log_prefix} Error during checkout: {e}", exc_info=True)
+                                            final_reply = "❌ Sorry, something went wrong while placing your order. Please try again or type 'VIEW CART'."
                         
                         # Remove control token from response
                         final_reply = re.sub(r'ADD_TO_CART:\s*\[[\d,\s]+\]', '', ai_response_text).strip()
@@ -551,14 +635,16 @@ Would you like to:
                         final_reply += f"\n\n📄 **Recommendation Report Generated!**\n\nI've prepared a detailed analysis for you. The document will be sent shortly."
                         
                         # Create message to send PDF
+                        # content_payload should directly contain document data (not nested under 'document' key)
                         pdf_message = Message.objects.create(
                             contact=contact,
                             app_config=config_to_use,
                             direction='out',
                             message_type='document',
                             content_payload={
-                                'document': {'link': pdf_path},
-                                'caption': 'Your personalized solar system recommendation'
+                                'link': pdf_path,
+                                'caption': 'Your personalized solar system recommendation',
+                                'filename': 'Solar_Recommendation.pdf'
                             },
                             status='pending_dispatch',
                             related_incoming_message=incoming_message

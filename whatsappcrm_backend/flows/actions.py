@@ -5,6 +5,7 @@ import random
 import uuid
 import re
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
+from django.conf import settings
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, List
@@ -460,6 +461,97 @@ def create_order_from_cart(contact: Contact, context: Dict[str, Any], params: Di
         logger.error(f"Error in 'create_order_from_cart' action for contact {contact.id}: {e}", exc_info=True)
 
     return []
+
+def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Creates an Order from the contact's current Cart (session-based) and clears the cart.
+    This enables real-time checkout for AI shopping flows.
+
+    Saves a summary dict to context['order_info'] with id, order_number, amount, currency.
+    """
+    actions_to_perform: List[Dict[str, Any]] = []
+    try:
+        from products_and_services.models import Cart, CartItem, Product
+        from django.db import transaction
+        from decimal import Decimal
+
+        # Find cart by WhatsApp session key
+        cart = Cart.objects.filter(session_key=contact.whatsapp_id).first()
+        if not cart:
+            logger.warning(f"No cart found for contact {contact.id} during checkout.")
+            return actions_to_perform
+
+        cart_items = list(cart.items.select_related('product'))
+        if not cart_items:
+            logger.warning(f"Empty cart for contact {contact.id} during checkout.")
+            return actions_to_perform
+
+        customer_profile, _ = CustomerProfile.objects.get_or_create(contact=contact)
+
+        # Derive currency from first item or default
+        currency = getattr(settings, 'DEFAULT_CURRENCY', 'USD')
+        if cart_items and cart_items[0].product.currency:
+            currency = cart_items[0].product.currency
+
+        # Generate unique order number
+        order_num = None
+        max_retries = 100
+        for _ in range(max_retries):
+            candidate = f"AI-{random.randint(10000, 99999)}"
+            if not Order.objects.filter(order_number=candidate).exists():
+                order_num = candidate
+                break
+        if not order_num:
+            order_num = f"AI-{str(uuid.uuid4().hex[:8]).upper()}"
+
+        # Calculate total
+        total_amount = Decimal('0.00')
+        for ci in cart_items:
+            unit_price = ci.product.price or Decimal('0.00')
+            total_amount += unit_price * ci.quantity
+
+        with transaction.atomic():
+            order = Order.objects.create(
+                customer=customer_profile,
+                name=f"AI Shopping Order for {contact.name or contact.whatsapp_id}",
+                order_number=order_num,
+                stage=Order.Stage.CLOSED_WON,
+                payment_status=Order.PaymentStatus.PENDING,
+                amount=total_amount,
+                currency=currency,
+                notes=f"Order placed via AI Shopping Assistant. Contact: {contact.whatsapp_id}",
+                assigned_agent=customer_profile.assigned_agent
+            )
+
+            order_items_to_create = []
+            for ci in cart_items:
+                unit_price = ci.product.price or Decimal('0.00')
+                order_items_to_create.append(OrderItem(
+                    order=order,
+                    product=ci.product,
+                    quantity=ci.quantity,
+                    unit_price=unit_price,
+                    total_amount=unit_price * ci.quantity
+                ))
+            if order_items_to_create:
+                OrderItem.objects.bulk_create(order_items_to_create)
+
+            # Clear cart after creating order
+            CartItem.objects.filter(cart=cart).delete()
+
+            context['order_info'] = {
+                'id': str(order.id),
+                'order_number': order.order_number,
+                'amount': str(order.amount),
+                'currency': order.currency,
+            }
+
+        logger.info(f"Created order {order_num} from cart for contact {contact.id} and cleared cart.")
+
+    except Exception as e:
+        logger.error(f"Error during checkout_cart_for_contact for contact {contact.id}: {e}", exc_info=True)
+
+    return actions_to_perform
 
 def generate_unique_assessment_id_action(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
@@ -1334,6 +1426,7 @@ flow_action_registry.register('calculate_order_total', calculate_order_total)
 flow_action_registry.register('update_order_fields', update_order_fields)
 flow_action_registry.register('update_model_instance', update_model_instance)
 flow_action_registry.register('create_order_from_cart', create_order_from_cart)
+flow_action_registry.register('checkout_cart_for_contact', checkout_cart_for_contact)
 flow_action_registry.register('generate_unique_assessment_id', generate_unique_assessment_id_action)
 flow_action_registry.register('create_placeholder_order', create_placeholder_order)
 flow_action_registry.register('normalize_order_number', normalize_order_number)

@@ -259,3 +259,41 @@ class WhatsAppFlowJSONDefinitionTest(TestCase):
                         field_spec, 
                         f"Screen {screen['id']} field '{field_name}' missing __example__"
                     )
+
+
+class CheckoutCartActionTests(TestCase):
+    """Minimal test to verify checkout from session cart creates an order and clears cart."""
+    def setUp(self):
+        from meta_integration.models import MetaAppConfig
+        self.meta_config = MetaAppConfig.objects.create(
+            name="Test Config",
+            verify_token="test_token",
+            access_token="test_access_token",
+            phone_number_id="123456789",
+            waba_id="987654321",
+            is_active=True
+        )
+        self.contact = Contact.objects.create(whatsapp_id="12345", name="Test User", app_config=self.meta_config)
+        from products_and_services.models import Product, Cart, CartItem
+        self.product = Product.objects.create(
+            name="Test Product",
+            sku="TP-001",
+            price=10.00,
+            currency="USD",
+            product_type="hardware",
+            is_active=True
+        )
+        self.cart = Cart.objects.create(session_key=self.contact.whatsapp_id)
+        CartItem.objects.create(cart=self.cart, product=self.product, quantity=3)
+
+    def test_checkout_creates_order_and_clears_cart(self):
+        from customer_data.models import Order
+        from .actions import checkout_cart_for_contact
+        context = {}
+        checkout_cart_for_contact(self.contact, context, {})
+        # Verify order created and cart cleared
+        self.assertIn('order_info', context)
+        order_info = context['order_info']
+        order = Order.objects.get(order_number=order_info['order_number'])
+        self.assertEqual(str(order.amount), '30.00')
+        self.assertEqual(self.cart.items.count(), 0)
