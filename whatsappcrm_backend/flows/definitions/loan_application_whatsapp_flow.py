@@ -287,8 +287,8 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                         "name": "loan_monthly_income",
                         "label": "Monthly Income (USD)",
                         "required": True,
-                        "input-type": "number",
-                        "helper-text": "Enter your estimated monthly income"
+                        "input-type": "text",
+                        "helper-text": "Enter your estimated monthly income (numbers only)"
                     },
                     {
                         "type": "Footer",
