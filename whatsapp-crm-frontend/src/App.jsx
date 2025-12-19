@@ -4,6 +4,7 @@ import React from 'react';
 import { RouterProvider, createBrowserRouter, Navigate, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext'; // Your AuthProvider
 import ProtectedRoute from './components/ProtectedRoute'; // Your ProtectedRoute
+import AdminRoute from './components/AdminRoute'; // Admin route protection
 
 import DashboardLayout from './components/DashboardLayout';
 import Dashboard from './pages/Dashboard';
@@ -103,19 +104,19 @@ const router = createBrowserRouter([
   { path: 'ministries/edit/:ministryId', element: <MinistryFormPage /> },
 
   // Admin Panel
-  { path: 'admin', element: <AdminOverviewPage /> },
-  { path: 'admin/users', element: <AdminUsersPage /> },
-  { path: 'admin/notifications', element: <AdminNotificationsPage /> },
-  { path: 'admin/notification-templates', element: <AdminNotificationTemplatesPage /> },
-  { path: 'admin/ai-providers', element: <AdminAIProvidersPage /> },
-  { path: 'admin/smtp-configs', element: <AdminSMTPConfigsPage /> },
-  { path: 'admin/retailers', element: <AdminRetailersPage /> },
-  { path: 'admin/manufacturers', element: <AdminManufacturersPage /> },
-  { path: 'admin/technicians', element: <AdminTechniciansPage /> },
-  { path: 'admin/warranties', element: <AdminWarrantiesPage /> },
-  { path: 'admin/warranty-claims', element: <AdminWarrantyClaimsPage /> },
-  { path: 'admin/daily-stats', element: <AdminDailyStatsPage /> },
-  { path: 'admin/carts', element: <AdminCartsPage /> },
+  { path: 'admin', element: <AdminRoute><AdminOverviewPage /></AdminRoute> },
+  { path: 'admin/users', element: <AdminRoute><AdminUsersPage /></AdminRoute> },
+  { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsPage /></AdminRoute> },
+  { path: 'admin/notification-templates', element: <AdminRoute><AdminNotificationTemplatesPage /></AdminRoute> },
+  { path: 'admin/ai-providers', element: <AdminRoute><AdminAIProvidersPage /></AdminRoute> },
+  { path: 'admin/smtp-configs', element: <AdminRoute><AdminSMTPConfigsPage /></AdminRoute> },
+  { path: 'admin/retailers', element: <AdminRoute><AdminRetailersPage /></AdminRoute> },
+  { path: 'admin/manufacturers', element: <AdminRoute><AdminManufacturersPage /></AdminRoute> },
+  { path: 'admin/technicians', element: <AdminRoute><AdminTechniciansPage /></AdminRoute> },
+  { path: 'admin/warranties', element: <AdminRoute><AdminWarrantiesPage /></AdminRoute> },
+  { path: 'admin/warranty-claims', element: <AdminRoute><AdminWarrantyClaimsPage /></AdminRoute> },
+  { path: 'admin/daily-stats', element: <AdminRoute><AdminDailyStatsPage /></AdminRoute> },
+  { path: 'admin/carts', element: <AdminRoute><AdminCartsPage /></AdminRoute> },
 
   { path: 'saved-data', element: <SavedData /> },
   { path: 'conversation', element: <Conversation /> },
