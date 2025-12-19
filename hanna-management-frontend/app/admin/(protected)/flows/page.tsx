@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { FiGitMerge, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import ActionButtons from '@/app/components/shared/ActionButtons';
+import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
 
 interface Flow {
   id: number;
@@ -37,6 +39,9 @@ const SkeletonRow = () => (
         <td className="px-6 py-4 whitespace-nowrap">
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
         </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
     </tr>
 );
 
@@ -44,36 +49,76 @@ export default function FlowsPage() {
   const [flows, setFlows] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [flowToDelete, setFlowToDelete] = useState<Flow | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { accessToken } = useAuthStore();
 
-  useEffect(() => {
-    const fetchFlows = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/flows/flows/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
+  const fetchFlows = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/flows/flows/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch data. Status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        setFlows(result.results);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data. Status: ${response.status}`);
       }
-    };
 
+      const result = await response.json();
+      setFlows(result.results);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (accessToken) {
       fetchFlows();
     }
   }, [accessToken]);
+
+  const handleDeleteClick = (flow: Flow) => {
+    setFlowToDelete(flow);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!flowToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/flows/flows/${flowToDelete.id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete flow. Status: ${response.status}`);
+      }
+
+      setFlows(flows.filter(f => f.id !== flowToDelete.id));
+      setDeleteModalOpen(false);
+      setFlowToDelete(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setFlowToDelete(null);
+  };
 
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
@@ -105,6 +150,7 @@ export default function FlowsPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Steps</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trigger Keywords</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -127,6 +173,14 @@ export default function FlowsPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.steps_count}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.trigger_keywords.join(', ')}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(flow.created_at).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <ActionButtons
+                            entityId={flow.id}
+                            onDelete={() => handleDeleteClick(flow)}
+                            showView={false}
+                            showEdit={false}
+                          />
+                        </td>
                         </tr>
                     ))
                 )}
@@ -134,6 +188,15 @@ export default function FlowsPage() {
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Flow"
+        message={`Are you sure you want to delete flow "${flowToDelete?.name}"? This action cannot be undone.`}
+        isDeleting={isDeleting}
+      />
     </>
   );
 }

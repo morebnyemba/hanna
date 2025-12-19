@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { FiPackage, FiPlus, FiEdit, FiEye } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import ActionButtons from '@/app/components/shared/ActionButtons';
+import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
 
 interface Product {
   id: number;
@@ -44,36 +46,76 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { accessToken } = useAuthStore();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/products/products/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
+  const fetchProducts = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/products/products/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch data. Status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        setProducts(result.results);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch products');
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data. Status: ${response.status}`);
       }
-    };
 
+      const result = await response.json();
+      setProducts(result.results);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (accessToken) {
       fetchProducts();
     }
   }, [accessToken]);
+
+  const handleDeleteClick = (product: Product) => {
+    setProductToDelete(product);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/products/products/${productToDelete.id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete product. Status: ${response.status}`);
+      }
+
+      setProducts(products.filter(p => p.id !== productToDelete.id));
+      setDeleteModalOpen(false);
+      setProductToDelete(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete product');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setProductToDelete(null);
+  };
 
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
@@ -133,13 +175,12 @@ export default function ProductsPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex gap-2">
-                            <Link href={`/admin/products/${product.id}`}>
-                              <span className="text-purple-600 hover:text-purple-900 flex items-center" title="Edit">
-                                <FiEdit className="w-4 h-4" />
-                              </span>
-                            </Link>
-                          </div>
+                          <ActionButtons
+                            entityId={product.id}
+                            editPath={`/admin/products/${product.id}`}
+                            onDelete={() => handleDeleteClick(product)}
+                            showView={false}
+                          />
                         </td>
                         </tr>
                     ))
@@ -148,6 +189,15 @@ export default function ProductsPage() {
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${productToDelete?.name}"? This action cannot be undone.`}
+        isDeleting={isDeleting}
+      />
     </>
   );
 }

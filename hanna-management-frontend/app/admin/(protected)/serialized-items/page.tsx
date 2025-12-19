@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { FiArchive, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import ActionButtons from '@/app/components/shared/ActionButtons';
+import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
 
 interface SerializedItem {
   id: number;
@@ -26,6 +28,9 @@ const SkeletonRow = () => (
         <td className="px-6 py-4 whitespace-nowrap">
             <div className="h-4 bg-gray-200 rounded w-1/4"></div>
         </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
     </tr>
 );
 
@@ -33,36 +38,76 @@ export default function SerializedItemsPage() {
   const [items, setItems] = useState<SerializedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<SerializedItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { accessToken } = useAuthStore();
 
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/products/serialized-items/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
+  const fetchItems = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/products/serialized-items/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch data. Status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        setItems(result.results);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data. Status: ${response.status}`);
       }
-    };
 
+      const result = await response.json();
+      setItems(result.results);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (accessToken) {
       fetchItems();
     }
   }, [accessToken]);
+
+  const handleDeleteClick = (item: SerializedItem) => {
+    setItemToDelete(item);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/products/serialized-items/${itemToDelete.id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete item. Status: ${response.status}`);
+      }
+
+      setItems(items.filter(i => i.id !== itemToDelete.id));
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setItemToDelete(null);
+  };
 
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
@@ -91,6 +136,7 @@ export default function SerializedItemsPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -112,6 +158,15 @@ export default function SerializedItemsPage() {
                                 {item.status.replace('_', ' ')}
                             </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <ActionButtons
+                            entityId={item.id}
+                            viewPath={`/admin/serialized-items/${item.id}`}
+                            editPath={`/admin/serialized-items/${item.id}`}
+                            onDelete={() => handleDeleteClick(item)}
+                            showEdit={false}
+                          />
+                        </td>
                         </tr>
                     ))
                 )}
@@ -119,6 +174,15 @@ export default function SerializedItemsPage() {
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Serialized Item"
+        message={`Are you sure you want to delete item "${itemToDelete?.serial_number}"? This action cannot be undone.`}
+        isDeleting={isDeleting}
+      />
     </>
   );
 }

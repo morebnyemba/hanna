@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { FiUsers, FiPlus } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import ActionButtons from '@/app/components/shared/ActionButtons';
+import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
 
 interface Customer {
   contact: {
@@ -36,6 +38,9 @@ const SkeletonRow = () => (
         <td className="px-6 py-4 whitespace-nowrap">
             <div className="h-4 bg-gray-200 rounded w-full"></div>
         </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </td>
     </tr>
 );
 
@@ -43,36 +48,76 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { accessToken } = useAuthStore();
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
+  const fetchCustomers = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch data. Status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        setCustomers(result.results); // Assuming the API returns data in a 'results' property
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data. Status: ${response.status}`);
       }
-    };
 
+      const result = await response.json();
+      setCustomers(result.results); // Assuming the API returns data in a 'results' property
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (accessToken) {
       fetchCustomers();
     }
   }, [accessToken]);
+
+  const handleDeleteClick = (customer: Customer) => {
+    setCustomerToDelete(customer);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!customerToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/${customerToDelete.contact.id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete customer. Status: ${response.status}`);
+      }
+
+      setCustomers(customers.filter(c => c.contact.id !== customerToDelete.contact.id));
+      setDeleteModalOpen(false);
+      setCustomerToDelete(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setCustomerToDelete(null);
+  };
 
   if (error) {
     return <div className="flex items-center justify-center h-full"><p className="text-red-500">Error: {error}</p></div>;
@@ -102,6 +147,7 @@ export default function CustomersPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -117,14 +163,20 @@ export default function CustomersPage() {
                 customers.map((customer) => (
                     <tr key={customer.contact.id} className="hover:bg-gray-50 transition-colors duration-150">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            <Link href={`/admin/customers/${customer.contact.id}`} className="text-purple-600 hover:text-purple-800">
-                                {customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : customer.contact.name}
-                            </Link>
+                            {customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : customer.contact.name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.contact.whatsapp_id}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {customer.address_line_1} {customer.address_line_2}, {customer.city}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <ActionButtons
+                            entityId={customer.contact.id}
+                            viewPath={`/admin/customers/${customer.contact.id}`}
+                            onDelete={() => handleDeleteClick(customer)}
+                            showEdit={false}
+                          />
                         </td>
                   </tr>
                 ))
@@ -133,6 +185,15 @@ export default function CustomersPage() {
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Customer"
+        message={`Are you sure you want to delete "${customerToDelete?.first_name} ${customerToDelete?.last_name}"? This action cannot be undone.`}
+        isDeleting={isDeleting}
+      />
     </>
   );
 }
