@@ -7,7 +7,7 @@ const ADMIN_API_URL = `${API_BASE_URL}/crm-api/admin-panel`;
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('accessToken');
   return {
     headers: {
       'Authorization': `Bearer ${token}`,
