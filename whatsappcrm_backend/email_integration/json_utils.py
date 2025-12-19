@@ -190,7 +190,7 @@ def validate_gemini_response_structure(data: dict) -> tuple[bool, str]:
     
     Expected structure:
     {
-        "document_type": "invoice" | "job_card",
+        "document_type": "invoice" | "job_card" | "unknown",
         "data": { ... }
     }
     
@@ -211,8 +211,8 @@ def validate_gemini_response_structure(data: dict) -> tuple[bool, str]:
         return False, "Missing required field 'data'"
     
     document_type = data.get("document_type")
-    if document_type not in ("invoice", "job_card"):
-        return False, f"Invalid document_type '{document_type}'. Expected 'invoice' or 'job_card'"
+    if document_type not in ("invoice", "job_card", "unknown"):
+        return False, f"Invalid document_type '{document_type}'. Expected 'invoice', 'job_card', or 'unknown'"
     
     data_content = data.get("data")
     if not isinstance(data_content, dict):

@@ -343,7 +343,7 @@ def process_attachment_with_gemini(self, attachment_id):
 
         # --- NEW: Update the Prompt to Classify First, then Extract ---
         prompt = f"""
-        Analyze the attached document and determine its type. The type can be 'invoice' or 'job_card'.
+        Analyze the attached document and determine its type. The type can be 'invoice', 'job_card', or 'unknown'.
 
         Based on the identified type, extract the key details into the corresponding JSON schema.
 
@@ -353,9 +353,18 @@ def process_attachment_with_gemini(self, attachment_id):
         If the document type is 'job_card', use this schema:
         {job_card_schema_definition}
 
-        Your final output must be a single JSON object with two keys: "document_type" and "data".
-        The "data" key should contain the extracted information. For dates, use YYYY-MM-DD format.
-        For boolean values, use true or false.
+        If the document doesn't match either an invoice or a job card (e.g., it's an advertisement, banner, or other document type), 
+        use document_type 'unknown' and provide a brief explanation in the data field like this:
+        {{
+            "document_type": "unknown",
+            "data": {{
+                "reason": "The document is an advertisement/promotional material and not an invoice or job card."
+            }}
+        }}
+
+        CRITICAL: Your output must ALWAYS be a valid JSON object with exactly two keys: "document_type" and "data".
+        Never return plain text explanations. Always use the JSON format shown above.
+        For dates, use YYYY-MM-DD format. For boolean values, use true or false.
 
         Example for a job card:
         {{
@@ -405,6 +414,9 @@ def process_attachment_with_gemini(self, attachment_id):
             _create_order_from_invoice_data(attachment, data, log_prefix)
         elif document_type == 'job_card':
             _create_job_card_from_data(attachment, data, log_prefix)
+        elif document_type == 'unknown':
+            reason = data.get('reason', 'Document type could not be determined')
+            logger.info(f"{log_prefix} Document classified as unknown. Reason: {reason}")
         else:
             logger.warning(f"{log_prefix} Unknown document type '{document_type}' received. Skipping database save.")
 
