@@ -5,7 +5,7 @@ WhatsApp Flow JSON definition for Hybrid Installation Request (Starlink + Solar)
 """
 
 HYBRID_INSTALLATION_WHATSAPP_FLOW = {
-    "version": "6.0",
+    "version": "7.3",
     "screens": [
         {
             "id": "WELCOME",

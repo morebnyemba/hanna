@@ -244,7 +244,7 @@ LOAN_APPLICATION_FLOW = {
                         "app_label": "customer_data",
                         "model_name": "LoanApplication",
                         "fields_template": {
-                            "customer_id": "{{ contact.customer_profile.contact_id }}",
+                            "customer": "current",
                             "full_name": "{{ loan_applicant_name }}",
                             "national_id": "{{ loan_national_id }}",
                             "loan_type": "{{ loan_type }}",

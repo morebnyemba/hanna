@@ -798,7 +798,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "app_label": "customer_data",
                         "model_name": "InstallationRequest",
                         "fields_template": {
-                            "customer_id": "{{ contact.id }}",
+                            "customer": "current",
                             "associated_order_id": "{{ found_order.0.id }}",
                             "installation_type": "{{ installation_type }}",
                             "order_number": "{{ order_number }}",
