@@ -71,7 +71,7 @@ export default function CreateWarrantyClaimPage() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/warranty/claims/create/`, {
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/warranty-claims/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

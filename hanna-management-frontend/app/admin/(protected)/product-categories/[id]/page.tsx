@@ -1,72 +1,190 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuthStore } from '@/app/store/authStore';
+import { FiArrowLeft, FiSave } from 'react-icons/fi';
 
-// Mock data for a single product category
-const category = {
-  id: '1',
-  name: 'Solar Panels',
-  description: 'High-efficiency solar panels for residential and commercial use.',
-};
+interface ProductCategory {
+  id: number;
+  name: string;
+  description: string;
+}
 
-export default function EditProductCategoryPage({ params }: { params: { id: string } }) {
+export default function EditProductCategoryPage({ params }: { params: Promise<{ id: string }> }) {
+  const [category, setCategory] = useState<ProductCategory | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+  });
+  const { accessToken } = useAuthStore();
+  const router = useRouter();
+  const [categoryId, setCategoryId] = useState<string>('');
+
+  useEffect(() => {
+    params.then((p) => setCategoryId(p.id));
+  }, [params]);
+
+  useEffect(() => {
+    const fetchCategory = async () => {
+      if (!categoryId || !accessToken) return;
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        const response = await fetch(`${apiUrl}/crm-api/products/categories/${categoryId}/`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch category. Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setCategory(data);
+        setFormData({
+          name: data.name || '',
+          description: data.description || '',
+        });
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (categoryId && accessToken) {
+      fetchCategory();
+    }
+  }, [categoryId, accessToken]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/products/categories/${categoryId}/`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Failed to update category. Status: ${response.status}`);
+      }
+
+      router.push('/admin/product-categories');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (error && !category) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-red-500">Error: {error}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 lg:p-8 rounded-lg shadow-md">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">Edit Product Category</h1>
-        <form className="space-y-8 divide-y divide-gray-200">
-          <div className="space-y-6 sm:space-y-5">
-            <div>
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Category Information</h3>
-            </div>
-            <div className="mt-6 sm:mt-5 space-y-6 sm:space-y-5">
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Category Name
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    name="name"
-                    id="name"
-                    defaultValue={category.name}
-                    className="max-w-lg block w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
+    <>
+      <div className="mb-6 flex justify-between items-center">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
+          Edit Product Category
+        </h1>
+        <Link href="/admin/product-categories">
+          <span className="flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">
+            <FiArrowLeft className="mr-2" />
+            Back to Categories
+          </span>
+        </Link>
+      </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Description
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <textarea
-                    id="description"
-                    name="description"
-                    rows={3}
-                    className="max-w-lg shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
-                    defaultValue={category.description}
-                  />
-                </div>
-              </div>
-            </div>
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
+
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+              Category Name *
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+            />
           </div>
 
-          <div className="pt-5">
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-              <Link href="/product-categories">
-                <a className="w-full sm:w-auto justify-center bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  Cancel
-                </a>
-              </Link>
-              <button
-                type="submit"
-                className="w-full sm:w-auto justify-center ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Save
-              </button>
-            </div>
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows={4}
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition-all duration-300"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Link href="/admin/product-categories">
+              <span className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">
+                Cancel
+              </span>
+            </Link>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FiSave className="mr-2" />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }
