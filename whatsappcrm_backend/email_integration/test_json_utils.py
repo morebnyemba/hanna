@@ -236,6 +236,18 @@ class ValidateGeminiResponseStructureTests(TestCase):
         self.assertTrue(is_valid)
         self.assertEqual(error, "")
     
+    def test_valid_unknown_response(self):
+        """Test validation of valid unknown document type response."""
+        data = {
+            "document_type": "unknown",
+            "data": {
+                "reason": "Document is an advertisement, not an invoice or job card"
+            }
+        }
+        is_valid, error = validate_gemini_response_structure(data)
+        self.assertTrue(is_valid)
+        self.assertEqual(error, "")
+    
     def test_missing_document_type(self):
         """Test validation fails when document_type is missing."""
         data = {
@@ -257,7 +269,7 @@ class ValidateGeminiResponseStructureTests(TestCase):
     def test_invalid_document_type(self):
         """Test validation fails with invalid document_type."""
         data = {
-            "document_type": "unknown_type",
+            "document_type": "some_invalid_type",
             "data": {}
         }
         is_valid, error = validate_gemini_response_structure(data)
