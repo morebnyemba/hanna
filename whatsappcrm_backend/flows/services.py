@@ -1542,41 +1542,41 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                 # No flow triggered, nothing more to do.
                 return []
 
-            # --- Start of Main Flow Processing Loop ---
-            # This loop will continue as long as the contact is in an active flow state.
-            # It allows for "fall-through" steps (like 'action' steps) to be processed immediately.
-            # 
-            # IMPORTANT: The loop breaks when:
-            # 1. A question step is reached (waits for user input)
-            # 2. Flow state is cleared (end_flow, human_handover)
-            # 3. A wait step is reached without a response
-            # 4. No valid transition is found (fallback handling)
-            while True:
-                # Re-fetch state in each loop iteration for robustness and to detect changes
-                # made by internal commands like end_flow or switch_flow
-                is_internal_message = message_data.get('type', '').startswith('internal_') # type: ignore
-                contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').filter(contact=contact).first()
+        # --- Start of Main Flow Processing Loop ---
+        # This loop will continue as long as the contact is in an active flow state.
+        # It allows for "fall-through" steps (like 'action' steps) to be processed immediately.
+        # 
+        # IMPORTANT: The loop breaks when:
+        # 1. A question step is reached (waits for user input)
+        # 2. Flow state is cleared (end_flow, human_handover)
+        # 3. A wait step is reached without a response
+        # 4. No valid transition is found (fallback handling)
+        while True:
+            # Re-fetch state in each loop iteration for robustness and to detect changes
+            # made by internal commands like end_flow or switch_flow
+            is_internal_message = message_data.get('type', '').startswith('internal_') # type: ignore
+            contact_flow_state = ContactFlowState.objects.select_related('current_flow', 'current_step').filter(contact=contact).first()
 
-                if not contact_flow_state:
-                    logger.info(f"Flow state was cleared, exiting processing loop for contact {contact.id}.")
-                    break # Flow was ended inside the loop.
-                
-                current_step = contact_flow_state.current_step
-                flow_context = contact_flow_state.flow_context_data if contact_flow_state.flow_context_data is not None else {}
-                
-                # Validate that we have a valid current step
-                if not current_step:
-                    logger.error(
-                        f"CRITICAL: Flow state exists for contact {contact.id} but current_step is None. "
-                        f"This indicates data corruption. Clearing flow state."
-                    )
-                    _clear_contact_flow_state(contact, error=True)
-                    break
-                
-                logger.debug(
-                    f"Loop iteration: Contact {contact.whatsapp_id}, Step '{current_step.name}' (Type: {current_step.step_type}), "
-                    f"Message Type: {message_data.get('type')}, Is Internal: {is_internal_message}"
+            if not contact_flow_state:
+                logger.info(f"Flow state was cleared, exiting processing loop for contact {contact.id}.")
+                break # Flow was ended inside the loop.
+            
+            current_step = contact_flow_state.current_step
+            flow_context = contact_flow_state.flow_context_data if contact_flow_state.flow_context_data is not None else {}
+            
+            # Validate that we have a valid current step
+            if not current_step:
+                logger.error(
+                    f"CRITICAL: Flow state exists for contact {contact.id} but current_step is None. "
+                    f"This indicates data corruption. Clearing flow state."
                 )
+                _clear_contact_flow_state(contact, error=True)
+                break
+            
+            logger.debug(
+                f"Loop iteration: Contact {contact.whatsapp_id}, Step '{current_step.name}' (Type: {current_step.step_type}), "
+                f"Message Type: {message_data.get('type')}, Is Internal: {is_internal_message}"
+            )
 
             # --- CRITICAL: Early conversion of already-processed WhatsApp Flow responses ---
             # If we receive an nfm_reply message but the context already has whatsapp_flow_response_received flag,
