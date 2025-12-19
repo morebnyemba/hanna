@@ -29,6 +29,7 @@ from django.db.models import Q
 from ai_integration.models import AIProvider
 from django.conf import settings
 from .smtp_utils import get_smtp_connection, get_from_email
+from .json_utils import parse_json_robustly, validate_gemini_response_structure
 
 logger = logging.getLogger(__name__)
 
@@ -370,29 +371,18 @@ def process_attachment_with_gemini(self, attachment_id):
             contents=[prompt, uploaded_file],
         )
 
-        # 5. Parse the extracted JSON data
+        # 5. Parse the extracted JSON data using robust parser
         try:
             raw_text = response.text.strip()
-            cleaned_text = None
+            extracted_data = parse_json_robustly(raw_text, log_prefix)
             
-            # First, try to find JSON within markdown code blocks (```json ... ```)
-            json_match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text)
-            if json_match:
-                cleaned_text = json_match.group(1).strip()
-            else:
-                # Fallback: Try to find a JSON object starting with { and ending with }
-                json_object_match = re.search(r'(\{[\s\S]*\})', raw_text)
-                if json_object_match:
-                    cleaned_text = json_object_match.group(1).strip()
-                else:
-                    # Last resort: Use the entire text (backward compatibility)
-                    cleaned_text = raw_text.replace('```json', '').replace('```', '').strip()
-            
-            if not cleaned_text:
-                raise json.JSONDecodeError("Empty response from Gemini", "", 0)
-            extracted_data = json.loads(cleaned_text)
-        except json.JSONDecodeError as e:
-            error_message = f"Failed to decode JSON from Gemini response. Error: {e}."
+            # Validate the response structure
+            is_valid, validation_error = validate_gemini_response_structure(extracted_data)
+            if not is_valid:
+                raise ValueError(f"Invalid response structure: {validation_error}")
+                
+        except (json.JSONDecodeError, ValueError) as e:
+            error_message = f"Failed to parse Gemini response. Error: {e}"
             logger.error(f"{log_prefix} {error_message} Raw response text: '{response.text}'")
             attachment.processed = True
             attachment.extracted_data = {"error": error_message, "status": "failed", "raw_response": response.text}
