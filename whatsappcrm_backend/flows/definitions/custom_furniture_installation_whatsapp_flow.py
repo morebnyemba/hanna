@@ -5,7 +5,7 @@ WhatsApp Flow JSON definition for Custom Furniture Installation Request.
 """
 
 CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW = {
-    "version": "6.0",
+    "version": "7.3",
     "screens": [
         {
             "id": "WELCOME",
