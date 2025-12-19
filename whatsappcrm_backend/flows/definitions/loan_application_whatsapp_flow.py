@@ -355,23 +355,23 @@ LOAN_APPLICATION_WHATSAPP_FLOW = {
                     },
                     {
                         "type": "TextBody",
-                        "text": "Please provide details about your loan request. If you selected Cash Loan, fill in the amount. If you selected Product Loan, specify the product name."
+                        "text": "Please provide details about your loan request.\n\n• Cash Loan: Enter the amount and type 'N/A' for product.\n• Product Loan: Enter '0' for amount and specify the product name."
                     },
                     {
                         "type": "TextInput",
                         "name": "loan_request_amount",
                         "label": "Cash Amount (USD)",
-                        "required": False,
+                        "required": True,
                         "input-type": "text",
-                        "helper-text": "For Cash Loan: Enter amount. For Product Loan: Enter 0 or leave blank"
+                        "helper-text": "For Cash Loan: Enter amount. For Product Loan: Enter 0"
                     },
                     {
                         "type": "TextInput",
                         "name": "loan_product_interest",
                         "label": "Product of Interest",
-                        "required": False,
+                        "required": True,
                         "input-type": "text",
-                        "helper-text": "For Product Loan: Enter product name. For Cash Loan: Enter N/A or leave blank"
+                        "helper-text": "For Product Loan: Enter product name. For Cash Loan: Enter N/A"
                     },
                     {
                         "type": "Footer",
