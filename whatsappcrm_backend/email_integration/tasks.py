@@ -6,6 +6,7 @@ import smtplib
 import json
 from datetime import datetime
 from celery import shared_task, chain
+from typing import Optional
 
 from celery import shared_task
 from google import genai
@@ -320,7 +321,7 @@ def _parse_gemini_response(raw_response: str, log_prefix: str) -> dict:
             raise
 
 
-def _repair_json(json_text: str, log_prefix: str) -> str | None:
+def _repair_json(json_text: str, log_prefix: str) -> Optional[str]:
     """
     Attempt to repair common JSON syntax errors.
     
@@ -591,7 +592,7 @@ def process_attachment_with_gemini(self, attachment_id):
 
 
 
-def _get_or_create_customer_profile(customer_data: dict, log_prefix: str) -> CustomerProfile | None:
+def _get_or_create_customer_profile(customer_data: dict, log_prefix: str) -> Optional[CustomerProfile]:
     """Finds or creates a customer profile based on data from a document."""
     customer_name = customer_data.get('name')
     customer_phone = customer_data.get('phone')
