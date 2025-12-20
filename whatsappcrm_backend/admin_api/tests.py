@@ -5,6 +5,8 @@ Tests for Admin API endpoints
 
 from django.test import TestCase
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 from rest_framework.test import APIClient
 from rest_framework import status
 from customer_data.models import InstallationRequest, CustomerProfile
@@ -60,7 +62,8 @@ class AdminInstallationRequestAPITestCase(TestCase):
             contact_phone='+1234567890'
         )
         
-        # Create installation request
+        # Create installation request with dynamic date
+        future_date = (timezone.now() + timedelta(days=5)).strftime('%Y-%m-%d %H:%M')
         self.installation = InstallationRequest.objects.create(
             customer=self.customer,
             status='pending',
@@ -68,7 +71,7 @@ class AdminInstallationRequestAPITestCase(TestCase):
             full_name='John Doe',
             address='123 Test Street',
             contact_phone='+1234567890',
-            preferred_datetime='2024-01-15 10:00',
+            preferred_datetime=future_date,
         )
         
         # Set up API client
@@ -106,6 +109,9 @@ class AdminInstallationRequestAPITestCase(TestCase):
         """Test creating a new installation request as admin"""
         self.client.force_authenticate(user=self.admin_user)
         
+        # Use dynamic date for test
+        future_date = (timezone.now() + timedelta(days=10)).strftime('%Y-%m-%d %H:%M')
+        
         data = {
             'customer': self.customer.pk,
             'status': 'pending',
@@ -113,7 +119,7 @@ class AdminInstallationRequestAPITestCase(TestCase):
             'full_name': 'Jane Smith',
             'address': '456 Another Street',
             'contact_phone': '+9876543210',
-            'preferred_datetime': '2024-02-20 14:00',
+            'preferred_datetime': future_date,
         }
         
         response = self.client.post(
@@ -130,6 +136,9 @@ class AdminInstallationRequestAPITestCase(TestCase):
         """Test updating an installation request as admin"""
         self.client.force_authenticate(user=self.admin_user)
         
+        # Use dynamic date for test
+        future_date = (timezone.now() + timedelta(days=8)).strftime('%Y-%m-%d %H:%M')
+        
         data = {
             'customer': self.customer.pk,
             'status': 'scheduled',
@@ -137,7 +146,7 @@ class AdminInstallationRequestAPITestCase(TestCase):
             'full_name': 'John Doe Updated',
             'address': '123 Test Street',
             'contact_phone': '+1234567890',
-            'preferred_datetime': '2024-01-15 10:00',
+            'preferred_datetime': future_date,
         }
         
         response = self.client.put(
@@ -207,7 +216,8 @@ class AdminInstallationRequestAPITestCase(TestCase):
         """Test filtering installations by status"""
         self.client.force_authenticate(user=self.admin_user)
         
-        # Create another installation with different status
+        # Create another installation with different status and dynamic date
+        future_date = (timezone.now() + timedelta(days=3)).strftime('%Y-%m-%d %H:%M')
         InstallationRequest.objects.create(
             customer=self.customer,
             status='completed',
@@ -215,7 +225,7 @@ class AdminInstallationRequestAPITestCase(TestCase):
             full_name='Jane Doe',
             address='789 Another Street',
             contact_phone='+1111111111',
-            preferred_datetime='2024-01-10 10:00',
+            preferred_datetime=future_date,
         )
         
         response = self.client.get(

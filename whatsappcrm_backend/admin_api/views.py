@@ -4,7 +4,9 @@ Centralized Admin API ViewSets for frontend admin dashboard.
 All Django admin functionality accessible via REST API.
 """
 
-from rest_framework import viewsets, permissions, filters
+from rest_framework import viewsets, permissions, filters, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.models import User
 
@@ -296,7 +298,6 @@ class AdminInstallationRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        from warranty.models import Technician
         technicians = Technician.objects.filter(id__in=technician_ids)
         installation.technicians.set(technicians)
         
