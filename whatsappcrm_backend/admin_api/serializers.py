@@ -13,7 +13,7 @@ from users.models import Retailer, RetailerBranch
 from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
-from customer_data.models import InstallationRequest
+from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
 
 
 # User Serializer
@@ -185,6 +185,42 @@ class InstallationRequestSerializer(serializers.ModelSerializer):
         model = InstallationRequest
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
+    
+    def get_customer_full_name(self, obj):
+        if obj.customer:
+            return f"{obj.customer.first_name or ''} {obj.customer.last_name or ''}".strip() or obj.customer.contact.name
+        return None
+
+
+# SiteAssessmentRequest
+class SiteAssessmentRequestSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(source='customer.first_name', read_only=True)
+    customer_full_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    assessment_type_display = serializers.CharField(source='get_assessment_type_display', read_only=True)
+    
+    class Meta:
+        model = SiteAssessmentRequest
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at', 'assessment_id']
+    
+    def get_customer_full_name(self, obj):
+        if obj.customer:
+            return f"{obj.customer.first_name or ''} {obj.customer.last_name or ''}".strip() or obj.customer.contact.name
+        return None
+
+
+# LoanApplication
+class LoanApplicationSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(source='customer.first_name', read_only=True)
+    customer_full_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    loan_type_display = serializers.CharField(source='get_loan_type_display', read_only=True)
+    
+    class Meta:
+        model = LoanApplication
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at', 'application_id']
     
     def get_customer_full_name(self, obj):
         if obj.customer:

@@ -49,6 +49,12 @@ router.register(r'cart-items', views.AdminCartItemViewSet, basename='cart-item')
 # Installation Requests
 router.register(r'installation-requests', views.AdminInstallationRequestViewSet, basename='installation-request')
 
+# Site Assessment Requests
+router.register(r'site-assessment-requests', views.AdminSiteAssessmentRequestViewSet, basename='site-assessment-request')
+
+# Loan Applications
+router.register(r'loan-applications', views.AdminLoanApplicationViewSet, basename='loan-application')
+
 urlpatterns = [
     path('', include(router.urls)),
 ]

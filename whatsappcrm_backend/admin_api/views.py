@@ -16,7 +16,7 @@ from users.models import Retailer, RetailerBranch
 from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
-from customer_data.models import InstallationRequest
+from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
 
 # Import serializers
 from .serializers import (
@@ -26,7 +26,7 @@ from .serializers import (
     RetailerSerializer, RetailerBranchSerializer,
     ManufacturerSerializer, TechnicianSerializer, WarrantySerializer, WarrantyClaimSerializer,
     DailyStatSerializer, CartSerializer, CartItemSerializer,
-    UserSerializer, InstallationRequestSerializer
+    UserSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer, LoanApplicationSerializer
 )
 
 
@@ -303,5 +303,73 @@ class AdminInstallationRequestViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(installation)
         return Response({
             'message': f'Successfully assigned {technicians.count()} technician(s).',
+            'data': serializer.data
+        })
+
+
+# Site Assessment Requests
+class AdminSiteAssessmentRequestViewSet(viewsets.ModelViewSet):
+    """Admin API for Site Assessment Requests"""
+    queryset = SiteAssessmentRequest.objects.select_related('customer').all()
+    serializer_class = SiteAssessmentRequestSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'assessment_type', 'customer']
+    search_fields = ['assessment_id', 'full_name', 'address', 'contact_info']
+    ordering_fields = ['created_at', 'updated_at', 'status']
+    ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'])
+    def mark_completed(self, request, pk=None):
+        """
+        Custom action to mark a site assessment as assessed.
+        """
+        assessment = self.get_object()
+        assessment.status = 'assessed'
+        assessment.save()
+        serializer = self.get_serializer(assessment)
+        return Response({
+            'message': 'Site assessment marked as assessed successfully.',
+            'data': serializer.data
+        })
+
+
+# Loan Applications
+class AdminLoanApplicationViewSet(viewsets.ModelViewSet):
+    """Admin API for Loan Applications"""
+    queryset = LoanApplication.objects.select_related('customer').all()
+    serializer_class = LoanApplicationSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'loan_type', 'customer']
+    search_fields = ['application_id', 'full_name', 'national_id', 'notes']
+    ordering_fields = ['created_at', 'updated_at', 'status']
+    ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """
+        Custom action to approve a loan application.
+        """
+        loan = self.get_object()
+        loan.status = 'approved'
+        loan.save()
+        serializer = self.get_serializer(loan)
+        return Response({
+            'message': 'Loan application approved successfully.',
+            'data': serializer.data
+        })
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """
+        Custom action to reject a loan application.
+        """
+        loan = self.get_object()
+        loan.status = 'rejected'
+        loan.save()
+        serializer = self.get_serializer(loan)
+        return Response({
+            'message': 'Loan application rejected.',
             'data': serializer.data
         })
