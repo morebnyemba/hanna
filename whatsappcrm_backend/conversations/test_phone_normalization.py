@@ -90,3 +90,9 @@ class PhoneNumberNormalizationTestCase(TestCase):
         """Test multiple numbers separated by 'or' - should use first."""
         result = normalize_phone_number("0772354523 or 0773456789", default_country_code='263')
         self.assertEqual(result, "263772354523")
+    
+    def test_normalize_multiple_numbers_separated_by_hyphen(self):
+        """Test multiple numbers separated by hyphen - should use first."""
+        result = normalize_phone_number("0773854789-0772368614", default_country_code='263')
+        self.assertEqual(result, "263773854789")
+

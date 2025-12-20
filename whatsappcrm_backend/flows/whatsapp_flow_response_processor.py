@@ -151,15 +151,19 @@ class WhatsAppFlowResponseProcessor:
             )
 
             # Create InstallationRequest
+            # Truncate phone numbers to fit database field length (max 50 chars)
+            contact_phone = data['contact_phone'][:50] if data.get('contact_phone') else ''
+            alt_contact_number = data.get('alt_contact_phone', '')[:50] if data.get('alt_contact_phone') else ''
+            
             inst = InstallationRequest.objects.create(
                 customer=customer,
                 installation_type='custom_furniture',
                 order_number=data['order_number'],
                 full_name=data['full_name'],
                 address=data['address'],
-                contact_phone=data['contact_phone'],
+                contact_phone=contact_phone,
                 alternative_contact_name=data.get('alt_contact_name') or '',
-                alternative_contact_number=data.get('alt_contact_phone') or '',
+                alternative_contact_number=alt_contact_number,
                 preferred_datetime=data.get('preferred_date') or '',
                 availability=data.get('availability') or '',
                 notes=data.get('specifications') or '',
