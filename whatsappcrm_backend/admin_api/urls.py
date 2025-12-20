@@ -46,6 +46,9 @@ router.register(r'daily-stats', views.AdminDailyStatViewSet, basename='daily-sta
 router.register(r'carts', views.AdminCartViewSet, basename='cart')
 router.register(r'cart-items', views.AdminCartItemViewSet, basename='cart-item')
 
+# Installation Requests
+router.register(r'installation-requests', views.AdminInstallationRequestViewSet, basename='installation-request')
+
 urlpatterns = [
     path('', include(router.urls)),
 ]
