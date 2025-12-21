@@ -4,7 +4,9 @@ Centralized Admin API ViewSets for frontend admin dashboard.
 All Django admin functionality accessible via REST API.
 """
 
-from rest_framework import viewsets, permissions, filters
+from rest_framework import viewsets, permissions, filters, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.models import User
 
@@ -16,6 +18,7 @@ from users.models import Retailer, RetailerBranch
 from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
+from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
 
 # Import serializers
 from .serializers import (
@@ -25,7 +28,7 @@ from .serializers import (
     RetailerSerializer, RetailerBranchSerializer,
     ManufacturerSerializer, TechnicianSerializer, WarrantySerializer, WarrantyClaimSerializer,
     DailyStatSerializer, CartSerializer, CartItemSerializer,
-    UserSerializer
+    UserSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer, LoanApplicationSerializer
 )
 
 
@@ -252,3 +255,122 @@ class AdminCartItemViewSet(viewsets.ModelViewSet):
     filterset_fields = ['cart']
     ordering_fields = ['added_at']
     ordering = ['-added_at']
+
+
+# Installation Requests
+class AdminInstallationRequestViewSet(viewsets.ModelViewSet):
+    """Admin API for Installation Requests"""
+    queryset = InstallationRequest.objects.select_related('customer', 'associated_order').prefetch_related('technicians').all()
+    serializer_class = InstallationRequestSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'installation_type', 'customer']
+    search_fields = ['order_number', 'full_name', 'address', 'contact_phone']
+    ordering_fields = ['created_at', 'updated_at', 'status']
+    ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'])
+    def mark_completed(self, request, pk=None):
+        """
+        Custom action to mark an installation request as completed.
+        """
+        installation = self.get_object()
+        installation.status = 'completed'
+        installation.save()
+        serializer = self.get_serializer(installation)
+        return Response({
+            'message': 'Installation marked as completed successfully.',
+            'data': serializer.data
+        })
+
+    @action(detail=True, methods=['post'])
+    def assign_technicians(self, request, pk=None):
+        """
+        Custom action to assign technicians to an installation request.
+        Expects a list of technician IDs in the request body: {"technician_ids": [1, 2, 3]}
+        """
+        installation = self.get_object()
+        technician_ids = request.data.get('technician_ids', [])
+        
+        if not technician_ids:
+            return Response(
+                {'error': 'No technician IDs provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        technicians = Technician.objects.filter(id__in=technician_ids)
+        installation.technicians.set(technicians)
+        
+        serializer = self.get_serializer(installation)
+        return Response({
+            'message': f'Successfully assigned {technicians.count()} technician(s).',
+            'data': serializer.data
+        })
+
+
+# Site Assessment Requests
+class AdminSiteAssessmentRequestViewSet(viewsets.ModelViewSet):
+    """Admin API for Site Assessment Requests"""
+    queryset = SiteAssessmentRequest.objects.select_related('customer').all()
+    serializer_class = SiteAssessmentRequestSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'assessment_type', 'customer']
+    search_fields = ['assessment_id', 'full_name', 'address', 'contact_info']
+    ordering_fields = ['created_at', 'updated_at', 'status']
+    ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'])
+    def mark_completed(self, request, pk=None):
+        """
+        Custom action to mark a site assessment as assessed.
+        """
+        assessment = self.get_object()
+        assessment.status = 'assessed'
+        assessment.save()
+        serializer = self.get_serializer(assessment)
+        return Response({
+            'message': 'Site assessment marked as assessed successfully.',
+            'data': serializer.data
+        })
+
+
+# Loan Applications
+class AdminLoanApplicationViewSet(viewsets.ModelViewSet):
+    """Admin API for Loan Applications"""
+    queryset = LoanApplication.objects.select_related('customer').all()
+    serializer_class = LoanApplicationSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'loan_type', 'customer']
+    search_fields = ['application_id', 'full_name', 'national_id', 'notes']
+    ordering_fields = ['created_at', 'updated_at', 'status']
+    ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """
+        Custom action to approve a loan application.
+        """
+        loan = self.get_object()
+        loan.status = 'approved'
+        loan.save()
+        serializer = self.get_serializer(loan)
+        return Response({
+            'message': 'Loan application approved successfully.',
+            'data': serializer.data
+        })
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """
+        Custom action to reject a loan application.
+        """
+        loan = self.get_object()
+        loan.status = 'rejected'
+        loan.save()
+        serializer = self.get_serializer(loan)
+        return Response({
+            'message': 'Loan application rejected.',
+            'data': serializer.data
+        })
