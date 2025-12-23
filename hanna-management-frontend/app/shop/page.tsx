@@ -71,7 +71,7 @@ export default function PublicShopPage() {
       
       // Fetch all pages
       while (nextUrl) {
-        const response = await apiClient.get(nextUrl);
+        const response: any = await apiClient.get(nextUrl);
         const pageProducts = normalizePaginatedResponse<Product>(response.data);
         allProducts = [...allProducts, ...pageProducts];
         nextUrl = response.data.next ? response.data.next.replace(/^https?:\/\/[^\/]+/, '') : null;
