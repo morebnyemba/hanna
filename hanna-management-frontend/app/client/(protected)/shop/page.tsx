@@ -153,8 +153,10 @@ export default function ShopPage() {
   
   const filteredProducts = products.filter((p) => {
     // Filter by category
-    if (selectedCategory !== 'all' && p.category?.name !== selectedCategory) {
-      return false;
+    if (selectedCategory !== 'all') {
+      if (!p.category || p.category.name !== selectedCategory) {
+        return false;
+      }
     }
     // Filter by availability
     if (showAvailableOnly && p.stock_quantity === 0) {
