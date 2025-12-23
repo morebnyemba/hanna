@@ -68,17 +68,6 @@ export default function ShopPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
-  
-  // Checkout state
-  const [checkoutStep, setCheckoutStep] = useState<number>(1);
-  const [deliveryDetails, setDeliveryDetails] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    notes: ''
-  });
 
   // Fetch products
   const fetchProducts = async () => {
@@ -364,17 +353,17 @@ export default function ShopPage() {
                 key={product.id}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
               >
-                <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
-                {product.images && product.images.length > 0 ? (
-                  <img
-                    src={product.images[0].image}
-                    alt={product.images[0].alt_text || product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <FiPackage className="w-16 h-16 text-indigo-400" />
-                )}
-              </div>
+                <div className="h-48 bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
+                  {product.images && product.images.length > 0 ? (
+                    <img
+                      src={product.images[0].image}
+                      alt={product.images[0].alt_text || product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <FiPackage className="w-16 h-16 text-indigo-400" />
+                  )}
+                </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
                   {product.description && (

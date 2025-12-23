@@ -118,7 +118,7 @@ export default function PublicShopPage() {
     setCartLoading(true);
     try {
       console.log('Adding to cart:', { productId, quantity });
-      const headers: Record<string, string> = { withCredentials: 'true' };
+      const headers: Record<string, string> = {};
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
@@ -148,7 +148,7 @@ export default function PublicShopPage() {
   const updateCartItem = async (cartItemId: number, quantity: number) => {
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = { withCredentials: 'true' };
+      const headers: Record<string, string> = {};
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
@@ -171,7 +171,7 @@ export default function PublicShopPage() {
   const removeFromCart = async (cartItemId: number) => {
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = { withCredentials: 'true' };
+      const headers: Record<string, string> = {};
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
@@ -194,7 +194,7 @@ export default function PublicShopPage() {
     if (!confirm('Are you sure you want to clear your cart?')) return;
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = { withCredentials: 'true' };
+      const headers: Record<string, string> = {};
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
@@ -274,7 +274,7 @@ export default function PublicShopPage() {
   });
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -413,17 +413,17 @@ export default function PublicShopPage() {
                 key={product.id}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
               >
-                <div className="h-48 bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
-                {product.images && product.images.length > 0 ? (
-                  <img
-                    src={product.images[0].image}
-                    alt={product.images[0].alt_text || product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <FiPackage className="w-16 h-16 text-indigo-400" />
-                )}
-              </div>
+                <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
+                  {product.images && product.images.length > 0 ? (
+                    <img
+                      src={product.images[0].image}
+                      alt={product.images[0].alt_text || product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <FiPackage className="w-16 h-16 text-indigo-400" />
+                  )}
+                </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
                   {product.description && (
@@ -517,7 +517,7 @@ export default function PublicShopPage() {
                       <div className="space-y-4">
                         {cart.items.map((item) => (
                           <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                            <div className="w-16 h-16 bg-linear-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center shrink-0">
+                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center shrink-0">
                               <FiPackage className="w-8 h-8 text-indigo-400" />
                             </div>
                             <div className="flex-1 min-w-0">
