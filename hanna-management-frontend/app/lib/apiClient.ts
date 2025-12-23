@@ -30,8 +30,13 @@ apiClient.interceptors.request.use(
   (config) => {
     // Add CSRF token for POST/PUT/PATCH/DELETE requests
     const csrfToken = getCsrfToken();
+    console.log('[apiClient] CSRF Token found:', csrfToken ? 'Yes' : 'No');
+    console.log('[apiClient] Method:', config.method?.toLowerCase());
+    console.log('[apiClient] All cookies:', document.cookie);
+    
     if (csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase() || '')) {
       config.headers['X-CSRFToken'] = csrfToken;
+      console.log('[apiClient] Added X-CSRFToken header');
     }
     
     // Zustand's `getState` allows us to access the store outside of a React component.

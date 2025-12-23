@@ -583,6 +583,9 @@ class BarcodeScanViewSet(viewsets.ViewSet):
 @permission_classes([permissions.AllowAny])
 @ensure_csrf_cookie
 def csrf_cookie(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"CSRF cookie endpoint called. Setting CSRF cookie.")
     return Response({'detail': 'CSRF cookie set'})
 
 class CartViewSet(viewsets.ViewSet):

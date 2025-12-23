@@ -93,9 +93,14 @@ export default function PublicShopPage() {
   useEffect(() => {
     const ensureCsrf = async () => {
       try {
-        await apiClient.get('/crm-api/products/csrf/');
+        console.log('[shop] Calling CSRF endpoint...');
+        const response = await apiClient.get('/crm-api/products/csrf/');
+        console.log('[shop] CSRF endpoint response:', response.data);
+        console.log('[shop] Cookies after CSRF call:', document.cookie);
+        // Small delay to ensure cookie is set
+        await new Promise(resolve => setTimeout(resolve, 100));
       } catch (e) {
-        console.warn('Failed to prefetch CSRF cookie', e);
+        console.warn('[shop] Failed to prefetch CSRF cookie', e);
       }
     };
 
