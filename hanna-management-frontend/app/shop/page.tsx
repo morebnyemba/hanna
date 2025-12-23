@@ -50,6 +50,8 @@ export default function PublicShopPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCart, setShowCart] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
 
   // Fetch products
   const fetchProducts = async () => {
@@ -148,9 +150,26 @@ export default function PublicShopPage() {
   };
 
   const categories: string[] = ['all', ...Array.from(new Set(products.map(p => p.category?.name).filter((name): name is string => Boolean(name))))];
-  const filteredProducts = selectedCategory === 'all' 
-    ? products 
-    : products.filter(p => p.category?.name === selectedCategory);
+  
+  const filteredProducts = products.filter((p) => {
+    // Filter by category
+    if (selectedCategory !== 'all' && p.category?.name !== selectedCategory) {
+      return false;
+    }
+    // Filter by availability
+    if (showAvailableOnly && p.stock_quantity === 0) {
+      return false;
+    }
+    // Filter by search query (name or description)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(query) ||
+        p.description?.toLowerCase().includes(query)
+      );
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -186,23 +205,85 @@ export default function PublicShopPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Category Filter */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
+        {/* Search and Filter Controls */}
+        <div className="mb-8 space-y-4">
+          {/* Search Bar */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Search products by name or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {searchQuery && (
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedCategory === category
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
+                onClick={() => setSearchQuery('')}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
-                {category === 'all' ? 'All Products' : category}
+                Clear
               </button>
-            ))}
+            )}
           </div>
+
+          {/* Availability and Category Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Availability Toggle */}
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showAvailableOnly}
+                onChange={(e) => setShowAvailableOnly(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">In Stock Only</span>
+            </label>
+
+            {/* Active Filter Indicators */}
+            {(searchQuery || showAvailableOnly) && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Filters active:</span>
+                {searchQuery && (
+                  <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
+                    Search: "{searchQuery}"
+                  </span>
+                )}
+                {showAvailableOnly && (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                    In Stock
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Category Filter */}
+          <div className="pt-2">
+            <p className="text-sm font-medium text-gray-700 mb-2">Filter by Category:</p>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    selectedCategory === category
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                >
+                  {category === 'all' ? '✓ All Products' : category}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Results Counter */}
+        <div className="mb-6 flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Showing <span className="font-semibold text-gray-900">{filteredProducts.length}</span> of{' '}
+            <span className="font-semibold text-gray-900">{products.length}</span> products
+          </p>
         </div>
 
         {/* Products Grid */}
