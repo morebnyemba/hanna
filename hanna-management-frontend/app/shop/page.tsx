@@ -52,6 +52,17 @@ export default function PublicShopPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
+  
+  // Checkout state
+  const [checkoutStep, setCheckoutStep] = useState<number>(1); // 1: Cart, 2: Details, 3: Confirmation
+  const [deliveryDetails, setDeliveryDetails] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    notes: ''
+  });
 
   // Fetch products
   const fetchProducts = async () => {
@@ -144,6 +155,44 @@ export default function PublicShopPage() {
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
       alert(error.response?.data?.error || 'Failed to clear cart');
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  // Handle delivery details input change
+  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setDeliveryDetails({
+      ...deliveryDetails,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  // Proceed to next checkout step
+  const proceedToNextStep = () => {
+    if (checkoutStep === 1) {
+      setCheckoutStep(2);
+    } else if (checkoutStep === 2) {
+      // Validate delivery details
+      if (!deliveryDetails.fullName || !deliveryDetails.email || !deliveryDetails.phone || !deliveryDetails.address) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      setCheckoutStep(3);
+    }
+  };
+
+  // Place order
+  const placeOrder = async () => {
+    setCartLoading(true);
+    try {
+      // Here you would call your order creation API
+      alert('Order placed successfully! (Order creation API to be implemented)');
+      setCheckoutStep(1);
+      setShowCart(false);
+      await clearCart();
+    } catch (err) {
+      alert('Failed to place order');
     } finally {
       setCartLoading(false);
     }
@@ -356,79 +405,233 @@ export default function PublicShopPage() {
         )}
       </main>
 
-      {/* Cart Sidebar */}
+      {/* Cart/Checkout Sidebar */}
       {showCart && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowCart(false)}></div>
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => { setShowCart(false); setCheckoutStep(1); }}></div>
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl">
             <div className="flex flex-col h-full">
-              {/* Cart Header */}
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-2xl font-bold text-gray-900">Shopping Cart</h2>
-                <button
-                  onClick={() => setShowCart(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
+              {/* Header with Steps */}
+              <div className="p-6 border-b">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {checkoutStep === 1 && 'Shopping Cart'}
+                    {checkoutStep === 2 && 'Delivery Details'}
+                    {checkoutStep === 3 && 'Order Confirmation'}
+                  </h2>
+                  <button
+                    onClick={() => { setShowCart(false); setCheckoutStep(1); }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+                
+                {/* Step Indicators */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                      1
+                    </div>
+                    <span className="ml-2 text-sm font-medium text-gray-700">Cart</span>
+                  </div>
+                  <div className={`flex-1 h-1 mx-2 ${checkoutStep >= 2 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                      2
+                    </div>
+                    <span className="ml-2 text-sm font-medium text-gray-700">Details</span>
+                  </div>
+                  <div className={`flex-1 h-1 mx-2 ${checkoutStep >= 3 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                      3
+                    </div>
+                    <span className="ml-2 text-sm font-medium text-gray-700">Confirm</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Cart Items */}
+              {/* Step Content */}
               <div className="flex-1 overflow-y-auto p-6">
-                {!cart || cart.items.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FiShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">Your cart is empty</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {cart.items.map((item) => (
-                      <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FiPackage className="w-8 h-8 text-indigo-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 mb-1">{item.product.name}</h3>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {item.product.currency} {parseFloat(item.product.price).toFixed(2)} each
-                          </p>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => updateCartItem(item.id, item.quantity - 1)}
-                              disabled={cartLoading || item.quantity <= 1}
-                              className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                            >
-                              <FiMinus className="w-4 h-4" />
-                            </button>
-                            <span className="font-medium text-gray-900 w-8 text-center">{item.quantity}</span>
-                            <button
-                              onClick={() => updateCartItem(item.id, item.quantity + 1)}
-                              disabled={cartLoading || item.quantity >= item.product.stock_quantity}
-                              className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                            >
-                              <FiPlus className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => removeFromCart(item.id)}
-                              disabled={cartLoading}
-                              className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <FiTrash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-gray-900">
-                            {item.product.currency} {parseFloat(item.subtotal).toFixed(2)}
-                          </p>
-                        </div>
+                {/* Step 1: Cart Items */}
+                {checkoutStep === 1 && (
+                  <>
+                    {!cart || cart.items.length === 0 ? (
+                      <div className="text-center py-12">
+                        <FiShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600">Your cart is empty</p>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="space-y-4">
+                        {cart.items.map((item) => (
+                          <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <FiPackage className="w-8 h-8 text-indigo-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-gray-900 mb-1">{item.product.name}</h3>
+                              <p className="text-sm text-gray-600 mb-2">
+                                {item.product.currency} {parseFloat(item.product.price).toFixed(2)} each
+                              </p>
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => updateCartItem(item.id, item.quantity - 1)}
+                                  disabled={cartLoading || item.quantity <= 1}
+                                  className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                  <FiMinus className="w-4 h-4" />
+                                </button>
+                                <span className="font-medium text-gray-900 w-8 text-center">{item.quantity}</span>
+                                <button
+                                  onClick={() => updateCartItem(item.id, item.quantity + 1)}
+                                  disabled={cartLoading || item.quantity >= item.product.stock_quantity}
+                                  className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                  <FiPlus className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => removeFromCart(item.id)}
+                                  disabled={cartLoading}
+                                  className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                  <FiTrash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-gray-900">
+                                {item.product.currency} {parseFloat(item.subtotal).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Step 2: Delivery Details */}
+                {checkoutStep === 2 && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="fullName"
+                        value={deliveryDetails.fullName}
+                        onChange={handleDeliveryChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={deliveryDetails.email}
+                        onChange={handleDeliveryChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="john@example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={deliveryDetails.phone}
+                        onChange={handleDeliveryChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="+1234567890"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Delivery Address <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={deliveryDetails.address}
+                        onChange={handleDeliveryChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="123 Main St, Apt 4B"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={deliveryDetails.city}
+                        onChange={handleDeliveryChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="New York"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Additional Notes
+                      </label>
+                      <textarea
+                        name="notes"
+                        value={deliveryDetails.notes}
+                        onChange={handleDeliveryChange}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Any special instructions..."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Order Confirmation */}
+                {checkoutStep === 3 && cart && (
+                  <div className="space-y-6">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <p className="text-green-800 font-medium">✓ Ready to place your order</p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Delivery Information</h3>
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                        <p><span className="font-medium">Name:</span> {deliveryDetails.fullName}</p>
+                        <p><span className="font-medium">Email:</span> {deliveryDetails.email}</p>
+                        <p><span className="font-medium">Phone:</span> {deliveryDetails.phone}</p>
+                        <p><span className="font-medium">Address:</span> {deliveryDetails.address}</p>
+                        {deliveryDetails.city && <p><span className="font-medium">City:</span> {deliveryDetails.city}</p>}
+                        {deliveryDetails.notes && <p><span className="font-medium">Notes:</span> {deliveryDetails.notes}</p>}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Order Summary</h3>
+                      <div className="space-y-2">
+                        {cart.items.map((item) => (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span className="text-gray-700">{item.quantity}x {item.product.name}</span>
+                            <span className="font-medium text-gray-900">
+                              {item.product.currency} {parseFloat(item.subtotal).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Cart Footer */}
+              {/* Footer Actions */}
               {cart && cart.items.length > 0 && (
                 <div className="border-t p-6 space-y-4">
                   <div className="flex items-center justify-between text-lg">
@@ -437,19 +640,48 @@ export default function PublicShopPage() {
                       USD {parseFloat(cart.total_price).toFixed(2)}
                     </span>
                   </div>
-                  <button
-                    disabled={cartLoading}
-                    className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors disabled:bg-gray-400"
-                  >
-                    Proceed to Checkout
-                  </button>
-                  <button
-                    onClick={clearCart}
-                    disabled={cartLoading}
-                    className="w-full px-6 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
-                  >
-                    Clear Cart
-                  </button>
+                  
+                  <div className="flex gap-2">
+                    {checkoutStep > 1 && (
+                      <button
+                        onClick={() => setCheckoutStep(checkoutStep - 1)}
+                        disabled={cartLoading}
+                        className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition-colors disabled:bg-gray-400"
+                      >
+                        Back
+                      </button>
+                    )}
+                    
+                    {checkoutStep < 3 && (
+                      <button
+                        onClick={proceedToNextStep}
+                        disabled={cartLoading}
+                        className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors disabled:bg-gray-400"
+                      >
+                        Continue
+                      </button>
+                    )}
+                    
+                    {checkoutStep === 3 && (
+                      <button
+                        onClick={placeOrder}
+                        disabled={cartLoading}
+                        className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors disabled:bg-gray-400"
+                      >
+                        Place Order
+                      </button>
+                    )}
+                  </div>
+
+                  {checkoutStep === 1 && (
+                    <button
+                      onClick={clearCart}
+                      disabled={cartLoading}
+                      className="w-full px-6 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
+                      Clear Cart
+                    </button>
+                  )}
                 </div>
               )}
             </div>

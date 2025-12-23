@@ -52,6 +52,17 @@ export default function ShopPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
+  
+  // Checkout state
+  const [checkoutStep, setCheckoutStep] = useState<number>(1);
+  const [deliveryDetails, setDeliveryDetails] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    notes: ''
+  });
 
   // Fetch products
   const fetchProducts = async () => {
