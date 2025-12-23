@@ -256,6 +256,8 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    # Temporary compatibility header to tolerate old frontend bundles
+    'withcredentials',
 ]
 
 # --- Celery Configuration ---

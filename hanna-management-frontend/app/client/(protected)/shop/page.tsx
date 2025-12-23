@@ -103,7 +103,7 @@ export default function ShopPage() {
   const addToCart = async (productId: number, quantity: number = 1) => {
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = { withCredentials: 'true' };
+      const headers: Record<string, string> = {};
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
@@ -127,7 +127,7 @@ export default function ShopPage() {
   const updateCartItem = async (cartItemId: number, quantity: number) => {
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = { withCredentials: 'true' };
+      const headers: Record<string, string> = {};
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
@@ -150,7 +150,7 @@ export default function ShopPage() {
   const removeFromCart = async (cartItemId: number) => {
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = { withCredentials: 'true' };
+      const headers: Record<string, string> = {};
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
@@ -173,7 +173,7 @@ export default function ShopPage() {
     if (!confirm('Are you sure you want to clear your cart?')) return;
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = { withCredentials: 'true' };
+      const headers: Record<string, string> = {};
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
