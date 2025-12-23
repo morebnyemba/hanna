@@ -52,12 +52,24 @@ export default function ShopPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);  const [csrfToken, setCsrfToken] = useState<string | null>(null);
   // Fetch products
+  // Fetch products (handles pagination)
   const fetchProducts = async () => {
     try {
-      const response = await apiClient.get('/crm-api/products/products/');
-      // Normalize paginated response and filter active products
-      const productsData = normalizePaginatedResponse<Product>(response.data);
-      setProducts(productsData.filter((p: Product) => p.is_active));
+      let allProducts: Product[] = [];
+      let nextUrl: string | null = '/crm-api/products/products/';
+      
+      // Fetch all pages
+      while (nextUrl) {
+        const response = await apiClient.get(nextUrl);
+        const pageProducts = normalizePaginatedResponse<Product>(response.data);
+        allProducts = [...allProducts, ...pageProducts];
+        nextUrl = response.data.next ? response.data.next.replace(/^https?:\/\/[^\/]+/, '') : null;
+      }
+      
+      console.log('Total products fetched:', allProducts.length);
+      const activeProducts = allProducts.filter((p: Product) => p.is_active);
+      console.log('Active products:', activeProducts.length);
+      setProducts(activeProducts);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -343,51 +355,70 @@ export default function ShopPage() {
             <p className="text-gray-600 text-lg">No products available</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
-              >
-                <div className="h-48 bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
-                  {product.images && product.images.length > 0 ? (
-                    <img
-                      src={product.images[0].image}
-                      alt={product.images[0].alt_text || product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <FiPackage className="w-16 h-16 text-indigo-400" />
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                  {product.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-                  )}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-indigo-600">
-                      {product.currency} {parseFloat(product.price).toFixed(2)}
-                    </span>
-                    {product.stock_quantity > 0 ? (
-                      <span className="text-xs text-green-600 font-medium">
-                        {product.stock_quantity} in stock
-                      </span>
-                    ) : (
-                      <span className="text-xs text-red-600 font-medium">Out of stock</span>
-                    )}
+          <div>
+            {/* Group products by category */}
+            {(() => {
+              const groupedByCategory = filteredProducts.reduce((acc: { [key: string]: Product[] }, product) => {
+                const categoryName = product.category?.name || 'Uncategorized';
+                if (!acc[categoryName]) {
+                  acc[categoryName] = [];
+                }
+                acc[categoryName].push(product);
+                return acc;
+              }, {});
+              
+              return Object.entries(groupedByCategory).map(([categoryName, categoryProducts]) => (
+                <div key={categoryName} className="mb-12">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">{categoryName}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {categoryProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+                      >
+                        <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
+                          {product.images && product.images.length > 0 ? (
+                            <img
+                              src={product.images[0].image}
+                              alt={product.images[0].alt_text || product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <FiPackage className="w-16 h-16 text-indigo-400" />
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+                          {product.description && (
+                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+                          )}
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-2xl font-bold text-indigo-600">
+                              {product.currency} {parseFloat(product.price).toFixed(2)}
+                            </span>
+                            {product.stock_quantity > 0 ? (
+                              <span className="text-xs text-green-600 font-medium">In Stock</span>
+                            ) : (
+                              <span className="text-xs text-red-600 font-medium">Out of Stock</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => addToCart(product.id)}
+                            disabled={product.stock_quantity === 0 || cartLoading}
+                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <FiShoppingCart className="w-4 h-4" />
+                            <span>{product.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <button
-                    onClick={() => addToCart(product.id)}
-                    disabled={product.stock_quantity === 0 || cartLoading}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <FiShoppingCart className="w-4 h-4" />
-                    <span>{product.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}</span>
-                  </button>
                 </div>
-              </div>
-            ))}
+              ));
+            })()}
+          </div>
+        )
           </div>
         )}
       </main>
