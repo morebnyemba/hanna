@@ -161,10 +161,11 @@ export default function PublicShopPage() {
   };
 
   // Handle delivery details input change
-  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
+    const target = e.target as HTMLInputElement & HTMLTextAreaElement;
     setDeliveryDetails({
       ...deliveryDetails,
-      [e.target.name]: e.target.value
+      [target.name]: target.value
     });
   };
 
@@ -198,9 +199,9 @@ export default function PublicShopPage() {
     }
   };
 
-  const categories: string[] = ['all', ...Array.from(new Set(products.map(p => p.category?.name).filter((name): name is string => Boolean(name))))];
+  const categories: string[] = ['all', ...Array.from(new Set(products.map((p: Product) => p.category?.name).filter((name): name is string => Boolean(name))))];
   
-  const filteredProducts = products.filter((p) => {
+  const filteredProducts: Product[] = products.filter((p: Product) => {
     // Filter by category
     if (selectedCategory !== 'all') {
       if (!p.category || p.category.name !== selectedCategory) {
@@ -223,7 +224,7 @@ export default function PublicShopPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -234,7 +235,7 @@ export default function PublicShopPage() {
                 <span className="font-medium">Home</span>
               </Link>
               <span className="text-gray-300">|</span>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Hanna Digital Shop
               </h1>
             </div>
@@ -264,7 +265,7 @@ export default function PublicShopPage() {
               type="text"
               placeholder="Search products by name or description..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             {searchQuery && (
@@ -284,7 +285,7 @@ export default function PublicShopPage() {
               <input
                 type="checkbox"
                 checked={showAvailableOnly}
-                onChange={(e) => setShowAvailableOnly(e.target.checked)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowAvailableOnly(e.target.checked)}
                 className="w-4 h-4 text-indigo-600 rounded"
               />
               <span className="text-sm font-medium text-gray-700">In Stock Only</span>
@@ -362,7 +363,7 @@ export default function PublicShopPage() {
                 key={product.id}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
               >
-                <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
+                <div className="h-48 bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
                 {product.images && product.images.length > 0 ? (
                   <img
                     src={product.images[0].image}
@@ -466,7 +467,7 @@ export default function PublicShopPage() {
                       <div className="space-y-4">
                         {cart.items.map((item) => (
                           <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <div className="w-16 h-16 bg-linear-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center shrink-0">
                               <FiPackage className="w-8 h-8 text-indigo-400" />
                             </div>
                             <div className="flex-1 min-w-0">
