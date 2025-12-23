@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX } from 'react-icons/fi';
 import axios from 'axios';
+import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
 interface Product {
   id: number;
@@ -50,9 +51,9 @@ export default function PublicShopPage() {
   const fetchProducts = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/crm-api/products/products/`);
-      // API returns paginated response with results array
-      const productsData = response.data.results || response.data;
-      setProducts(Array.isArray(productsData) ? productsData.filter((p: Product) => p.is_active) : []);
+      // Normalize paginated response and filter active products
+      const productsData = normalizePaginatedResponse<Product>(response.data);
+      setProducts(productsData.filter((p: Product) => p.is_active));
       setLoading(false);
     } catch (err) {
       console.error('Error fetching products:', err);

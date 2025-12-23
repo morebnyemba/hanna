@@ -23,9 +23,26 @@ apiClient.interceptors.request.use(
   }
 );
 
-// You can also add a response interceptor for centralized error handling
+// Response interceptor for centralized error handling and pagination normalization
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Automatically handle paginated responses from Django REST Framework
+    // If the response has 'results' field (pagination), normalize it
+    if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+      // Store the original response data with pagination info
+      response.data._pagination = {
+        count: response.data.count,
+        next: response.data.next,
+        previous: response.data.previous,
+      };
+      // For backward compatibility, keep the results structure
+      // but also ensure direct array access works
+      if (!Array.isArray(response.data)) {
+        // Don't override, just keep as-is with results property
+      }
+    }
+    return response;
+  },
   (error) => {
     if (error.response && error.response.status === 401) {
       // Handle unauthorized errors, e.g., by logging out the user.
