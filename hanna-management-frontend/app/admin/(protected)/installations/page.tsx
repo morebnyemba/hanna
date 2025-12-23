@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiTool, FiUser, FiMapPin, FiCalendar, FiSearch, FiPackage, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FiTool, FiUser, FiMapPin, FiCalendar, FiSearch, FiPackage, FiCheckCircle, FiClock, FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
 import { subDays, format } from 'date-fns';
 import { DateRangePicker } from '@/app/components/DateRangePicker';
+import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
 
 interface Technician {
   id: number;
@@ -64,6 +66,77 @@ export default function AdminInstallationsPage() {
     from: subDays(new Date(), 90),
     to: new Date(),
   });
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [installationToDelete, setInstallationToDelete] = useState<Installation | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchInstallations = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let url = '/crm-api/admin-panel/installation-requests/';
+      const params = new URLSearchParams();
+      
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const response = await apiClient.get(url);
+      setInstallations(response.data.results || response.data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch installations.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInstallations();
+  }, [statusFilter]);
+
+  const handleMarkCompleted = async (installation: Installation) => {
+    try {
+      await apiClient.post(`/crm-api/admin-panel/installation-requests/${installation.id}/mark_completed/`);
+      // Refresh the list
+      fetchInstallations();
+      // Update selected installation if it's the same
+      if (selectedInstallation?.id === installation.id) {
+        setSelectedInstallation({ ...installation, status: 'completed', status_display: 'Completed' });
+      }
+    } catch (err: any) {
+      alert('Failed to mark installation as completed: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDeleteClick = (installation: Installation) => {
+    setInstallationToDelete(installation);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!installationToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await apiClient.delete(`/crm-api/admin-panel/installation-requests/${installationToDelete.id}/`);
+      // Remove from list
+      setInstallations(prev => prev.filter(i => i.id !== installationToDelete.id));
+      // Clear selection if deleted
+      if (selectedInstallation?.id === installationToDelete.id) {
+        setSelectedInstallation(null);
+      }
+      setDeleteModalOpen(false);
+      setInstallationToDelete(null);
+    } catch (err: any) {
+      alert('Failed to delete installation: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchInstallations = async () => {
@@ -188,7 +261,7 @@ export default function AdminInstallationsPage() {
                       onClick={() => setSelectedInstallation(installation)}
                     >
                       <div className="flex justify-between items-start">
-                        <div className="space-y-1">
+                        <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2">
                             <FiUser className="w-4 h-4 text-gray-500" />
                             <span className="font-medium">{installation.full_name}</span>
@@ -225,6 +298,30 @@ export default function AdminInstallationsPage() {
                           <span className="text-xs text-gray-500">
                             {installation.installation_type_display || installation.installation_type}
                           </span>
+                          {/* Action Buttons */}
+                          <div className="flex gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
+                            {installation.status !== 'completed' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkCompleted(installation)}
+                                className="text-xs px-2 py-1 h-7"
+                                title="Mark as Completed"
+                              >
+                                <FiCheckCircle className="w-3 h-3 mr-1" />
+                                Complete
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteClick(installation)}
+                              className="text-xs px-2 py-1 h-7 text-red-600 hover:text-red-700"
+                              title="Delete Installation"
+                            >
+                              <FiTrash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -319,6 +416,19 @@ export default function AdminInstallationsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setInstallationToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Installation Request"
+        message={`Are you sure you want to delete the installation request for "${installationToDelete?.full_name}"? This action cannot be undone.`}
+        isDeleting={isDeleting}
+      />
     </main>
   );
 }
