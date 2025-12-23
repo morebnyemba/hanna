@@ -3,24 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX } from 'react-icons/fi';
-import axios from 'axios';
+import apiClient from '@/app/lib/apiClient';
 import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
-
-// Helper function to get CSRF token from cookies
-function getCsrfToken(): string | null {
-  let csrfToken = null;
-  if (typeof document !== 'undefined' && document.cookie) {
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-      cookie = cookie.trim();
-      if (cookie.startsWith('csrftoken=')) {
-        csrfToken = decodeURIComponent(cookie.substring('csrftoken='.length));
-        break;
-      }
-    }
-  }
-  return csrfToken;
-}
 
 interface Product {
   id: number;
@@ -109,8 +93,21 @@ export default function PublicShopPage() {
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchCart();
+    const ensureCsrf = async () => {
+      try {
+        const existing = getCsrfToken();
+        if (!existing) {
+          await axios.get(`${API_BASE_URL}/crm-api/products/csrf/`, { withCredentials: true });
+        }
+      } catch (e) {
+        console.warn('Failed to prefetch CSRF cookie', e);
+      }
+    };
+
+    ensureCsrf().finally(() => {
+      fetchProducts();
+      fetchCart();
+    });
   }, []);
 
   // Add to cart

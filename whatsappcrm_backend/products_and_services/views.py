@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
 from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory
@@ -576,6 +577,13 @@ class BarcodeScanViewSet(viewsets.ViewSet):
                 'message': f'No items found matching barcode: {barcode_value}'
             }, status=status.HTTP_404_NOT_FOUND)
 
+
+# Lightweight endpoint to set CSRF cookie for SPA frontends
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+@ensure_csrf_cookie
+def csrf_cookie(request):
+    return Response({'detail': 'CSRF cookie set'})
 
 class CartViewSet(viewsets.ViewSet):
     """

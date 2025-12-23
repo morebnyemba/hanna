@@ -19,4 +19,5 @@ app_name = 'products_and_services_api'
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('csrf/', views.csrf_cookie, name='csrf-cookie'),
 ]
