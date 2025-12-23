@@ -476,8 +476,6 @@ export default function PublicShopPage() {
               ));
             })()}
           </div>
-        )
-          </div>
         )}
       </main>
 

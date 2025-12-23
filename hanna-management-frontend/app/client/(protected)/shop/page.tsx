@@ -418,8 +418,6 @@ export default function ShopPage() {
               ));
             })()}
           </div>
-        )
-          </div>
         )}
       </main>
 
