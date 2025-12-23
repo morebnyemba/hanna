@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX } from 'react-icons/fi';
+import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX, FiMessageCircle, FiZap, FiCopy, FiExternalLink } from 'react-icons/fi';
 import apiClient from '@/app/lib/apiClient';
 import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
@@ -50,7 +50,69 @@ export default function ShopPage() {
   const [showCart, setShowCart] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const [showAssistant, setShowAssistant] = useState<boolean>(false);
+  const [assistantPrompt, setAssistantPrompt] = useState<string>('Hi, I need help choosing a solar system for my home (2 fridges, 4 TVs, 6 lights, 2 laptops). Please suggest a reliable bundle with pricing.');
+  const [assistantCopyStatus, setAssistantCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const assistantRef = useRef<HTMLDivElement | null>(null);
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
+  const assistantQuickPrompts = [
+    { label: 'Size my system', prompt: 'I need solar sizing help for a 3-bedroom home with 2 fridges, 3 TVs, lights, and phone charging. Share a safe starter bundle.' },
+    { label: 'Backup for business', prompt: 'Recommend a backup solar kit for a small shop with POS, lights, laptops, and a display fridge. Budget-conscious.' },
+    { label: 'Off-grid package', prompt: 'I want a fully off-grid package for a rural site. Include panels, batteries, inverter, and installation estimate.' },
+    { label: 'Best value bundle', prompt: 'Show me the best-value solar bundle with good warranty and components you recommend.' },
+  ];
+
+  const buildAssistantLink = (prompt: string) => {
+    if (!whatsappNumber) return null;
+    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(prompt)}`;
+  };
+
+  const copyAssistantPrompt = async (prompt: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(prompt);
+        setAssistantCopyStatus('copied');
+        setTimeout(() => setAssistantCopyStatus('idle'), 2000);
+      } else {
+        setAssistantCopyStatus('error');
+      }
+    } catch (e) {
+      console.error('Failed to copy prompt', e);
+      setAssistantCopyStatus('error');
+    }
+  };
+
+  const launchAssistant = (prompt: string) => {
+    setAssistantPrompt(prompt);
+    const link = buildAssistantLink(prompt);
+    if (link) {
+      window.open(link, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    copyAssistantPrompt(prompt);
+  };
+
+  // Close assistant on Esc key
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAssistant(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Outside click to close assistant
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      if (!showAssistant) return;
+      const node = assistantRef.current;
+      if (node && !node.contains(e.target as Node)) setShowAssistant(false);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [showAssistant]);
   // Fetch products
   // Fetch products (handles pagination)
   const fetchProducts = async () => {
@@ -237,24 +299,108 @@ export default function ShopPage() {
                 Hanna Digital Shop
               </h1>
             </div>
-            <button
-              onClick={() => setShowCart(!showCart)}
-              className="relative flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <FiShoppingCart className="w-5 h-5" />
-              <span className="font-medium">Cart</span>
-              {cart && cart.total_items > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-                  {cart.total_items}
-                </span>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAssistant((v) => !v)}
+                className="relative flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <FiZap className="w-5 h-5" />
+                <span className="font-medium">AI Shopping Assistant</span>
+              </button>
+              <button
+                onClick={() => setShowCart(!showCart)}
+                className="relative flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <FiShoppingCart className="w-5 h-5" />
+                <span className="font-medium">Cart</span>
+                {cart && cart.total_items > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                    {cart.total_items}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* AI Shopping Assistant */}
+        {showAssistant && (
+        <section className="mb-10 relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-white shadow-xl">
+          <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,#3b82f6,transparent_25%),radial-gradient(circle_at_80%_0%,#60a5fa,transparent_30%),radial-gradient(circle_at_50%_80%,#93c5fd,transparent_30%)]" aria-hidden="true"></div>
+          <button
+            aria-label="Close AI Assistant"
+            onClick={() => setShowAssistant(false)}
+            className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full bg-white/80 text-gray-700 hover:bg-white shadow px-3 py-2"
+          >
+            <FiX className="w-5 h-5" />
+          </button>
+          <div ref={assistantRef} className="relative p-6 sm:p-8 grid gap-6 md:grid-cols-[1.1fr,1fr] items-center">
+            <div className="space-y-4">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-700/20 border border-blue-700/30 text-sm font-semibold text-blue-900">
+                <FiZap className="mr-2" /> AI Shopping Assistant
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-gray-900">Get tailored solar recommendations in minutes</h2>
+              <p className="text-gray-700 max-w-xl">Use our AI assistant to size your system, compare bundles, and get cart-ready suggestions based on your exact appliances and budget.</p>
+              <div className="flex flex-wrap gap-2">
+                {assistantQuickPrompts.map((preset) => (
+                  <button
+                    key={preset.label}
+                    onClick={() => launchAssistant(preset.prompt)}
+                    className="px-4 py-2 rounded-full bg-blue-700/15 hover:bg-blue-700/25 border border-blue-700/30 text-sm font-semibold text-blue-900 backdrop-blur transition-colors"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              {!whatsappNumber && (
+                <div className="inline-flex items-center gap-2 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-full px-3 py-1">
+                  <FiCopy className="w-4 h-4" /> Add NEXT_PUBLIC_WHATSAPP_NUMBER to enable direct WhatsApp launch; we will copy the message instead.
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white text-gray-900 rounded-xl shadow-lg p-4 sm:p-5 border border-white/50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-700"><FiMessageCircle /></span>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Prompt</p>
+                    <p className="text-sm font-semibold text-gray-900">What do you need?</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <textarea
+                  value={assistantPrompt}
+                  onChange={(e) => setAssistantPrompt(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Describe your appliances, hours of use, and budget..."
+                />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => launchAssistant(assistantPrompt)}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors"
+                  >
+                    <FiExternalLink className="w-4 h-4" /> Start in WhatsApp
+                  </button>
+                  <button
+                    onClick={() => copyAssistantPrompt(assistantPrompt)}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    <FiCopy className="w-4 h-4" /> {assistantCopyStatus === 'copied' ? 'Copied' : 'Copy prompt'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">We send this to the AI assistant. Mention appliances, runtime, and budget for the best recommendation.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        )}
+
         {/* Search and Filter Controls */}
         <div className="mb-8 space-y-4">
           {/* Search Bar */}

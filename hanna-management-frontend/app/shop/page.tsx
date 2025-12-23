@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX, FiMessageCircle, FiZap, FiCopy, FiExternalLink } from 'react-icons/fi';
 import apiClient from '@/app/lib/apiClient';
@@ -54,6 +54,7 @@ export default function PublicShopPage() {
   const [showAssistant, setShowAssistant] = useState<boolean>(false);
   const [assistantPrompt, setAssistantPrompt] = useState<string>('Hi, I need help choosing a solar system for my home (2 fridges, 4 TVs, 6 lights, 2 laptops). Please suggest a reliable bundle with pricing.');
   const [assistantCopyStatus, setAssistantCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const assistantRef = useRef<HTMLDivElement | null>(null);
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
   const assistantQuickPrompts = [
     {
@@ -73,6 +74,17 @@ export default function PublicShopPage() {
       prompt: 'Show me the best-value solar bundle with good warranty and components you recommend.',
     },
   ];
+
+  // Close assistant on Esc key
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAssistant(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const buildAssistantLink = (prompt: string) => {
     if (!whatsappNumber) return null;
@@ -141,6 +153,19 @@ export default function PublicShopPage() {
       setLoading(false);
     }
   };
+
+  // Outside click to close assistant
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      if (!showAssistant) return;
+      const node = assistantRef.current;
+      if (node && !node.contains(e.target as Node)) {
+        setShowAssistant(false);
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [showAssistant]);
 
   // Fetch cart
   const fetchCart = async () => {
@@ -350,7 +375,7 @@ export default function PublicShopPage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowAssistant(true)}
+                onClick={() => setShowAssistant((v) => !v)}
                 className="relative flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <FiZap className="w-5 h-5" />
@@ -378,15 +403,15 @@ export default function PublicShopPage() {
         {/* AI Shopping Assistant */}
         {showAssistant && (
         <section className="mb-10 relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-white shadow-xl">
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_20%_20%,#3b82f6,transparent_25%),radial-gradient(circle_at_80%_0%,#60a5fa,transparent_30%),radial-gradient(circle_at_50%_80%,#93c5fd,transparent_30%)]" aria-hidden="true"></div>
+          <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,#3b82f6,transparent_25%),radial-gradient(circle_at_80%_0%,#60a5fa,transparent_30%),radial-gradient(circle_at_50%_80%,#93c5fd,transparent_30%)]" aria-hidden="true"></div>
           <button
             aria-label="Close AI Assistant"
             onClick={() => setShowAssistant(false)}
-            className="absolute top-4 right-4 inline-flex items-center justify-center rounded-full bg-white/80 text-gray-700 hover:bg-white shadow px-3 py-2"
+            className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full bg-white/80 text-gray-700 hover:bg-white shadow px-3 py-2"
           >
             <FiX className="w-5 h-5" />
           </button>
-          <div className="relative p-6 sm:p-8 grid gap-6 md:grid-cols-[1.1fr,1fr] items-center">
+          <div ref={assistantRef} className="relative p-6 sm:p-8 grid gap-6 md:grid-cols-[1.1fr,1fr] items-center">
             <div className="space-y-4">
               <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-700/20 border border-blue-700/30 text-sm font-semibold text-blue-900">
                 <FiZap className="mr-2" /> AI Shopping Assistant
