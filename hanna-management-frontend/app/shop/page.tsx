@@ -51,6 +51,7 @@ export default function PublicShopPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const [showAssistant, setShowAssistant] = useState<boolean>(false);
   const [assistantPrompt, setAssistantPrompt] = useState<string>('Hi, I need help choosing a solar system for my home (2 fridges, 4 TVs, 6 lights, 2 laptops). Please suggest a reliable bundle with pricing.');
   const [assistantCopyStatus, setAssistantCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
@@ -347,10 +348,18 @@ export default function PublicShopPage() {
                 Hanna Digital Shop
               </h1>
             </div>
-            <button
-              onClick={() => setShowCart(!showCart)}
-              className="relative flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAssistant(true)}
+                className="relative flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <FiZap className="w-5 h-5" />
+                <span className="font-medium">AI Shopping Assistant</span>
+              </button>
+              <button
+                onClick={() => setShowCart(!showCart)}
+                className="relative flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
               <FiShoppingCart className="w-5 h-5" />
               <span className="font-medium">Cart</span>
               {cart && cart.total_items > 0 && (
@@ -358,7 +367,8 @@ export default function PublicShopPage() {
                   {cart.total_items}
                 </span>
               )}
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -366,28 +376,36 @@ export default function PublicShopPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* AI Shopping Assistant */}
-        <section className="mb-10 relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-700 via-purple-700 to-blue-600 text-white shadow-xl">
-          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,white,transparent_25%),radial-gradient(circle_at_80%_0%,#a5b4fc,transparent_30%),radial-gradient(circle_at_50%_80%,#f472b6,transparent_30%)]" aria-hidden="true"></div>
+        {showAssistant && (
+        <section className="mb-10 relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-white shadow-xl">
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_20%_20%,#3b82f6,transparent_25%),radial-gradient(circle_at_80%_0%,#60a5fa,transparent_30%),radial-gradient(circle_at_50%_80%,#93c5fd,transparent_30%)]" aria-hidden="true"></div>
+          <button
+            aria-label="Close AI Assistant"
+            onClick={() => setShowAssistant(false)}
+            className="absolute top-4 right-4 inline-flex items-center justify-center rounded-full bg-white/80 text-gray-700 hover:bg-white shadow px-3 py-2"
+          >
+            <FiX className="w-5 h-5" />
+          </button>
           <div className="relative p-6 sm:p-8 grid gap-6 md:grid-cols-[1.1fr,1fr] items-center">
             <div className="space-y-4">
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/15 border border-white/20 text-sm font-semibold">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-700/20 border border-blue-700/30 text-sm font-semibold text-blue-900">
                 <FiZap className="mr-2" /> AI Shopping Assistant
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold leading-tight">Get tailored solar recommendations in minutes</h2>
-              <p className="text-white/90 max-w-xl">Use our AI assistant to size your system, compare bundles, and get cart-ready suggestions based on your exact appliances and budget.</p>
+              <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-gray-900">Get tailored solar recommendations in minutes</h2>
+              <p className="text-gray-700 max-w-xl">Use our AI assistant to size your system, compare bundles, and get cart-ready suggestions based on your exact appliances and budget.</p>
               <div className="flex flex-wrap gap-2">
                 {assistantQuickPrompts.map((preset) => (
                   <button
                     key={preset.label}
                     onClick={() => launchAssistant(preset.prompt)}
-                    className="px-4 py-2 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-sm font-semibold backdrop-blur transition-colors"
+                    className="px-4 py-2 rounded-full bg-blue-700/15 hover:bg-blue-700/25 border border-blue-700/30 text-sm font-semibold text-blue-900 backdrop-blur transition-colors"
                   >
                     {preset.label}
                   </button>
                 ))}
               </div>
               {!whatsappNumber && (
-                <div className="inline-flex items-center gap-2 text-xs font-medium text-amber-100 bg-amber-500/20 border border-amber-200/40 rounded-full px-3 py-1">
+                <div className="inline-flex items-center gap-2 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-full px-3 py-1">
                   <FiCopy className="w-4 h-4" /> Add NEXT_PUBLIC_WHATSAPP_NUMBER to enable direct WhatsApp launch; we will copy the message instead.
                 </div>
               )}
@@ -430,6 +448,7 @@ export default function PublicShopPage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* Search and Filter Controls */}
         <div className="mb-8 space-y-4">
