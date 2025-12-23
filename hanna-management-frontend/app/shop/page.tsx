@@ -127,6 +127,8 @@ export default function PublicShopPage() {
     city: '',
     notes: ''
   });
+  const [paymentInfo, setPaymentInfo] = useState<{instructions?: string; paynow_reference?: string; poll_url?: string} | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'onemoney' | 'innbucks' | 'telecash'>('ecocash');
 
   // Fetch products (handles pagination)
   const fetchProducts = async () => {
@@ -321,13 +323,53 @@ export default function PublicShopPage() {
   const placeOrder = async () => {
     setCartLoading(true);
     try {
-      // Here you would call your order creation API
-      alert('Order placed successfully! (Order creation API to be implemented)');
-      setCheckoutStep(1);
-      setShowCart(false);
-      await clearCart();
+      // 1) Checkout cart -> create order
+      const config: any = {};
+      if (csrfToken) {
+        config.headers = { 'X-CSRFToken': csrfToken };
+      }
+
+      const checkoutRes = await apiClient.post('/crm-api/products/cart/checkout/', {
+        full_name: deliveryDetails.fullName,
+        email: deliveryDetails.email,
+        phone: deliveryDetails.phone,
+        address: deliveryDetails.address,
+        city: deliveryDetails.city,
+        notes: deliveryDetails.notes,
+      }, config);
+
+      if (!checkoutRes.data?.success) {
+        throw new Error(checkoutRes.data?.error || 'Failed to create order from cart');
+      }
+
+      const { order_number, amount, currency } = checkoutRes.data;
+
+      // 2) Initiate Paynow payment
+      // Normalize phone: convert leading '0' to country code if needed
+      const normalizedPhone = (deliveryDetails.phone || '').replace(/\s+/g, '').replace(/^0/, '263');
+
+      const paynowRes = await apiClient.post('/crm-api/paynow/initiate-payment/', {
+        order_number,
+        phone_number: normalizedPhone,
+        email: deliveryDetails.email,
+        amount: String(amount),
+        payment_method: paymentMethod,
+        currency: currency || 'USD',
+      }, config);
+
+      const payData = paynowRes.data || {};
+      setPaymentInfo({
+        instructions: payData.instructions,
+        paynow_reference: payData.paynow_reference,
+        poll_url: payData.poll_url,
+      });
+
+      alert(`Payment initiated. ${payData.instructions || ''}`);
+      // Keep drawer open to show confirmation and instructions
+      setCheckoutStep(3);
     } catch (err) {
-      alert('Failed to place order');
+      console.error('Checkout/Paynow error', err);
+      alert((err as any)?.response?.data?.message || (err as any)?.message || 'Failed to place order');
     } finally {
       setCartLoading(false);
     }
@@ -372,6 +414,22 @@ export default function PublicShopPage() {
               <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Hanna Digital Shop
               </h1>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Method
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value as any)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="ecocash">Paynow - Ecocash</option>
+                        <option value="onemoney">Paynow - OneMoney</option>
+                        <option value="innbucks">Paynow - Innbucks</option>
+                        <option value="telecash">Paynow - Telecash</option>
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">We’ll send a secure Paynow request to your wallet.</p>
+                    </div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -786,8 +844,9 @@ export default function PublicShopPage() {
                         value={deliveryDetails.phone}
                         onChange={handleDeliveryChange}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="+1234567890"
+                        placeholder="e.g. 0771234567 or 263771234567"
                       />
+                      <p className="mt-1 text-xs text-gray-500">We automatically format to +263 if you start with 0.</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -835,7 +894,13 @@ export default function PublicShopPage() {
                 {checkoutStep === 3 && cart && (
                   <div className="space-y-6">
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <p className="text-green-800 font-medium">✓ Ready to place your order</p>
+                      <p className="text-green-800 font-medium">✓ Payment initiated via Paynow</p>
+                      {paymentInfo?.instructions && (
+                        <p className="text-sm text-green-900 mt-1">{paymentInfo.instructions}</p>
+                      )}
+                      {paymentInfo?.paynow_reference && (
+                        <p className="text-xs text-green-900 mt-1">Reference: {paymentInfo.paynow_reference}</p>
+                      )}
                     </div>
                     
                     <div>
@@ -904,7 +969,7 @@ export default function PublicShopPage() {
                         disabled={cartLoading}
                         className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors disabled:bg-gray-400"
                       >
-                        Place Order
+                        Pay with Paynow
                       </button>
                     )}
                   </div>

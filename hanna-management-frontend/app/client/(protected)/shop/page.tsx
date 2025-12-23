@@ -1,5 +1,8 @@
 'use client';
 
+// Ambient declaration to satisfy TS when @types/node are unavailable
+declare const process: any;
+
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX, FiMessageCircle, FiZap, FiCopy, FiExternalLink } from 'react-icons/fi';
@@ -56,7 +59,89 @@ export default function ShopPage() {
   const [assistantPrompt, setAssistantPrompt] = useState<string>('Hi, I need help choosing a solar system for my home (2 fridges, 4 TVs, 6 lights, 2 laptops). Please suggest a reliable bundle with pricing.');
   const [assistantCopyStatus, setAssistantCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const assistantRef = useRef<HTMLDivElement | null>(null);
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
+  const whatsappNumber = (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_WHATSAPP_NUMBER) || '';
+    // Checkout state
+    const [checkoutStep, setCheckoutStep] = useState<number>(1); // 1: Cart, 2: Details, 3: Confirmation
+    const [deliveryDetails, setDeliveryDetails] = useState({
+      fullName: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      notes: ''
+    });
+    const [paymentInfo, setPaymentInfo] = useState<{instructions?: string; paynow_reference?: string; poll_url?: string} | null>(null);
+    const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'onemoney' | 'innbucks' | 'telecash'>('ecocash');
+
+    const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
+      const target = e.target as HTMLInputElement & HTMLTextAreaElement;
+      setDeliveryDetails({
+        ...deliveryDetails,
+        [target.name]: target.value
+      });
+    };
+
+    const proceedToNextStep = () => {
+      if (checkoutStep === 1) {
+        setCheckoutStep(2);
+      } else if (checkoutStep === 2) {
+        if (!deliveryDetails.fullName || !deliveryDetails.email || !deliveryDetails.phone || !deliveryDetails.address) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        setCheckoutStep(3);
+      }
+    };
+
+    const placeOrder = async () => {
+      setCartLoading(true);
+      try {
+        const config: any = {};
+        if (csrfToken) {
+          config.headers = { 'X-CSRFToken': csrfToken };
+        }
+
+        const checkoutRes = await apiClient.post('/crm-api/products/cart/checkout/', {
+          full_name: deliveryDetails.fullName,
+          email: deliveryDetails.email,
+          phone: deliveryDetails.phone,
+          address: deliveryDetails.address,
+          city: deliveryDetails.city,
+          notes: deliveryDetails.notes,
+        }, config);
+
+        if (!checkoutRes.data?.success) {
+          throw new Error(checkoutRes.data?.error || 'Failed to create order from cart');
+        }
+
+        const { order_number, amount, currency } = checkoutRes.data;
+        const normalizedPhone = (deliveryDetails.phone || '').replace(/\s+/g, '').replace(/^0/, '263');
+
+        const paynowRes = await apiClient.post('/crm-api/paynow/initiate-payment/', {
+          order_number,
+          phone_number: normalizedPhone,
+          email: deliveryDetails.email,
+          amount: String(amount),
+          payment_method: paymentMethod,
+          currency: currency || 'USD',
+        }, config);
+
+        const payData = paynowRes.data || {};
+        setPaymentInfo({
+          instructions: payData.instructions,
+          paynow_reference: payData.paynow_reference,
+          poll_url: payData.poll_url,
+        });
+
+        alert(`Payment initiated. ${payData.instructions || ''}`);
+        setCheckoutStep(3);
+      } catch (err) {
+        console.error('Checkout/Paynow error', err);
+        alert((err as any)?.response?.data?.message || (err as any)?.message || 'Failed to place order');
+      } finally {
+        setCartLoading(false);
+      }
+    };
   const assistantQuickPrompts = [
     { label: 'Size my system', prompt: 'I need solar sizing help for a 3-bedroom home with 2 fridges, 3 TVs, lights, and phone charging. Share a safe starter bundle.' },
     { label: 'Backup for business', prompt: 'Recommend a backup solar kit for a small shop with POS, lights, laptops, and a display fridge. Budget-conscious.' },
@@ -259,9 +344,13 @@ export default function ShopPage() {
     }
   };
 
-  const categories: string[] = ['all', ...Array.from(new Set(products.map(p => p.category?.name).filter((name): name is string => Boolean(name))))];
+  const categoriesSet = new Set<string>();
+  products.forEach((p: Product) => {
+    if (p.category?.name) categoriesSet.add(p.category.name);
+  });
+  const categories: string[] = ['all', ...Array.from(categoriesSet)];
   
-  const filteredProducts = products.filter((p) => {
+  const filteredProducts = products.filter((p: Product) => {
     // Filter by category
     if (selectedCategory !== 'all') {
       if (!p.category || p.category.name !== selectedCategory) {
@@ -284,7 +373,7 @@ export default function ShopPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -295,13 +384,13 @@ export default function ShopPage() {
                 <span className="font-medium">Home</span>
               </Link>
               <span className="text-gray-300">|</span>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Hanna Digital Shop
               </h1>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowAssistant((v) => !v)}
+                onClick={() => setShowAssistant((prev: boolean) => !prev)}
                 className="relative flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <FiZap className="w-5 h-5" />
@@ -328,7 +417,7 @@ export default function ShopPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* AI Shopping Assistant */}
         {showAssistant && (
-        <section className="mb-10 relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-white shadow-xl">
+        <section className="mb-10 relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-600 to-white shadow-xl">
           <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,#3b82f6,transparent_25%),radial-gradient(circle_at_80%_0%,#60a5fa,transparent_30%),radial-gradient(circle_at_50%_80%,#93c5fd,transparent_30%)]" aria-hidden="true"></div>
           <button
             aria-label="Close AI Assistant"
@@ -522,7 +611,7 @@ export default function ShopPage() {
                         key={product.id}
                         className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
                       >
-                        <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
+                        <div className="h-48 bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
                           {product.images && product.images.length > 0 ? (
                             <img
                               src={product.images[0].image}
@@ -567,100 +656,177 @@ export default function ShopPage() {
         )}
       </main>
 
-      {/* Cart Sidebar */}
+      {/* Cart/Checkout Sidebar */}
       {showCart && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowCart(false)}></div>
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => { setShowCart(false); setCheckoutStep(1); }}></div>
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl">
             <div className="flex flex-col h-full">
-              {/* Cart Header */}
-              <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-2xl font-bold text-gray-900">Shopping Cart</h2>
-                <button
-                  onClick={() => setShowCart(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
+              {/* Header with Steps */}
+              <div className="p-6 border-b">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {checkoutStep === 1 && 'Shopping Cart'}
+                    {checkoutStep === 2 && 'Delivery Details'}
+                    {checkoutStep === 3 && 'Order Confirmation'}
+                  </h2>
+                  <button
+                    onClick={() => { setShowCart(false); setCheckoutStep(1); }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>1</div>
+                    <span className="ml-2 text-sm font-medium text-gray-700">Cart</span>
+                  </div>
+                  <div className={`flex-1 h-1 mx-2 ${checkoutStep >= 2 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>2</div>
+                    <span className="ml-2 text-sm font-medium text-gray-700">Details</span>
+                  </div>
+                  <div className={`flex-1 h-1 mx-2 ${checkoutStep >= 3 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>3</div>
+                    <span className="ml-2 text-sm font-medium text-gray-700">Confirm</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Cart Items */}
+              {/* Step Content */}
               <div className="flex-1 overflow-y-auto p-6">
-                {!cart || cart.items.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FiShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">Your cart is empty</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {cart.items.map((item) => (
-                      <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FiPackage className="w-8 h-8 text-indigo-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 mb-1">{item.product.name}</h3>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {item.product.currency} {parseFloat(item.product.price).toFixed(2)} each
-                          </p>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => updateCartItem(item.id, item.quantity - 1)}
-                              disabled={cartLoading || item.quantity <= 1}
-                              className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                            >
-                              <FiMinus className="w-4 h-4" />
-                            </button>
-                            <span className="font-medium text-gray-900 w-8 text-center">{item.quantity}</span>
-                            <button
-                              onClick={() => updateCartItem(item.id, item.quantity + 1)}
-                              disabled={cartLoading || item.quantity >= item.product.stock_quantity}
-                              className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                            >
-                              <FiPlus className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => removeFromCart(item.id)}
-                              disabled={cartLoading}
-                              className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <FiTrash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-gray-900">
-                            {item.product.currency} {parseFloat(item.subtotal).toFixed(2)}
-                          </p>
-                        </div>
+                {checkoutStep === 1 && (
+                  <>
+                    {!cart || cart.items.length === 0 ? (
+                      <div className="text-center py-12">
+                        <FiShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600">Your cart is empty</p>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="space-y-4">
+                        {cart.items.map((item) => (
+                          <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="w-16 h-16 bg-linear-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center shrink-0">
+                              <FiPackage className="w-8 h-8 text-indigo-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-gray-900 mb-1">{item.product.name}</h3>
+                              <p className="text-sm text-gray-600 mb-2">{item.product.currency} {parseFloat(item.product.price).toFixed(2)} each</p>
+                              <div className="flex items-center space-x-2">
+                                <button onClick={() => updateCartItem(item.id, item.quantity - 1)} disabled={cartLoading || item.quantity <= 1} className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"><FiMinus className="w-4 h-4" /></button>
+                                <span className="font-medium text-gray-900 w-8 text-center">{item.quantity}</span>
+                                <button onClick={() => updateCartItem(item.id, item.quantity + 1)} disabled={cartLoading || item.quantity >= item.product.stock_quantity} className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"><FiPlus className="w-4 h-4" /></button>
+                                <button onClick={() => removeFromCart(item.id)} disabled={cartLoading} className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"><FiTrash2 className="w-4 h-4" /></button>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-gray-900">{item.product.currency} {parseFloat(item.subtotal).toFixed(2)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {checkoutStep === 2 && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                      <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as any)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="ecocash">Paynow - Ecocash</option>
+                        <option value="onemoney">Paynow - OneMoney</option>
+                        <option value="innbucks">Paynow - Innbucks</option>
+                        <option value="telecash">Paynow - Telecash</option>
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">We’ll send a secure Paynow request to your wallet.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name <span className="text-red-500">*</span></label>
+                      <input type="text" name="fullName" value={deliveryDetails.fullName} onChange={handleDeliveryChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="John Doe" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
+                      <input type="email" name="email" value={deliveryDetails.email} onChange={handleDeliveryChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="john@example.com" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number <span className="text-red-500">*</span></label>
+                      <input type="tel" name="phone" value={deliveryDetails.phone} onChange={handleDeliveryChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 0771234567 or 263771234567" />
+                      <p className="mt-1 text-xs text-gray-500">We automatically format to +263 if you start with 0.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address <span className="text-red-500">*</span></label>
+                      <input type="text" name="address" value={deliveryDetails.address} onChange={handleDeliveryChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="123 Main St, Apt 4B" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                      <input type="text" name="city" value={deliveryDetails.city} onChange={handleDeliveryChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Harare" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                      <textarea name="notes" value={deliveryDetails.notes} onChange={handleDeliveryChange} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Any special instructions..." />
+                    </div>
+                  </div>
+                )}
+
+                {checkoutStep === 3 && cart && (
+                  <div className="space-y-6">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <p className="text-green-800 font-medium">✓ Payment initiated via Paynow</p>
+                      {paymentInfo?.instructions && (<p className="text-sm text-green-900 mt-1">{paymentInfo.instructions}</p>)}
+                      {paymentInfo?.paynow_reference && (<p className="text-xs text-green-900 mt-1">Reference: {paymentInfo.paynow_reference}</p>)}
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Delivery Information</h3>
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                        <p><span className="font-medium">Name:</span> {deliveryDetails.fullName}</p>
+                        <p><span className="font-medium">Email:</span> {deliveryDetails.email}</p>
+                        <p><span className="font-medium">Phone:</span> {deliveryDetails.phone}</p>
+                        <p><span className="font-medium">Address:</span> {deliveryDetails.address}</p>
+                        {deliveryDetails.city && <p><span className="font-medium">City:</span> {deliveryDetails.city}</p>}
+                        {deliveryDetails.notes && <p><span className="font-medium">Notes:</span> {deliveryDetails.notes}</p>}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Order Summary</h3>
+                      <div className="space-y-2">
+                        {cart.items.map((item) => (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span className="text-gray-700">{item.quantity}x {item.product.name}</span>
+                            <span className="font-medium text-gray-900">{item.product.currency} {parseFloat(item.subtotal).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Cart Footer */}
+              {/* Footer Actions */}
               {cart && cart.items.length > 0 && (
                 <div className="border-t p-6 space-y-4">
                   <div className="flex items-center justify-between text-lg">
                     <span className="font-medium text-gray-700">Total:</span>
-                    <span className="text-2xl font-bold text-indigo-600">
-                      USD {parseFloat(cart.total_price).toFixed(2)}
-                    </span>
+                    <span className="text-2xl font-bold text-indigo-600">USD {parseFloat(cart.total_price).toFixed(2)}</span>
                   </div>
-                  <button
-                    disabled={cartLoading}
-                    className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors disabled:bg-gray-400"
-                  >
-                    Proceed to Checkout
-                  </button>
-                  <button
-                    onClick={clearCart}
-                    disabled={cartLoading}
-                    className="w-full px-6 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
-                  >
-                    Clear Cart
-                  </button>
+                  <div className="flex gap-2">
+                    {checkoutStep > 1 && (
+                      <button onClick={() => setCheckoutStep(checkoutStep - 1)} disabled={cartLoading} className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition-colors disabled:bg-gray-400">Back</button>
+                    )}
+                    {checkoutStep < 3 && (
+                      <button onClick={proceedToNextStep} disabled={cartLoading} className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors disabled:bg-gray-400">Continue</button>
+                    )}
+                    {checkoutStep === 3 && (
+                      <button onClick={placeOrder} disabled={cartLoading} className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors disabled:bg-gray-400">Pay with Paynow</button>
+                    )}
+                  </div>
+                  {checkoutStep === 1 && (
+                    <button onClick={clearCart} disabled={cartLoading} className="w-full px-6 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50">Clear Cart</button>
+                  )}
                 </div>
               )}
             </div>

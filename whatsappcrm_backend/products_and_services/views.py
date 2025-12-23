@@ -790,6 +790,143 @@ class CartViewSet(viewsets.ViewSet):
             'cart': cart_serializer.data
         }, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['post'], url_path='checkout')
+    def checkout_cart(self, request):
+        """
+        Create an Order from the current session/user cart and clear the cart.
+
+        POST /crm-api/products/cart/checkout/
+        Body:
+        {
+          "full_name": "John Doe",
+          "email": "john@example.com",
+          "phone": "+263771234567",
+          "address": "123 Main St",
+          "city": "Harare",
+          "notes": "Leave at gate"
+        }
+
+        Returns: { order_number, amount, currency }
+        """
+        from django.db import transaction
+        from decimal import Decimal
+        from customer_data.models import Order, OrderItem, CustomerProfile
+        from conversations.models import Contact
+        import uuid
+
+        cart = self._get_or_create_cart(request)
+        cart_items = list(cart.items.select_related('product'))
+        if not cart_items:
+            return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
+
+        full_name = request.data.get('full_name', '').strip()
+        email = request.data.get('email', '').strip()
+        phone = request.data.get('phone', '').strip()
+        address = request.data.get('address', '').strip()
+        city = request.data.get('city', '').strip()
+        notes = request.data.get('notes', '').strip()
+
+        # Basic validation
+        if not full_name or not email or not phone or not address:
+            return Response({'error': 'full_name, email, phone, and address are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Normalize phone (remove spaces)
+        phone_norm = phone.replace(' ', '')
+
+        # Derive currency from first item or default
+        currency = cart_items[0].product.currency if cart_items and cart_items[0].product.currency else 'USD'
+
+        # Calculate total
+        total_amount = Decimal('0.00')
+        for ci in cart_items:
+            unit_price = ci.product.price or Decimal('0.00')
+            total_amount += unit_price * ci.quantity
+
+        # Build order notes with delivery details
+        delivery_summary = f"Delivery to: {full_name}, {phone_norm}, {address}{', ' + city if city else ''}."
+        if notes:
+            delivery_summary += f" Notes: {notes}"
+
+        # Create a customer contact/profile (or get existing)
+        contact, _ = Contact.objects.get_or_create(
+            whatsapp_id=phone_norm,
+            defaults={'name': full_name}
+        )
+        customer_profile, _ = CustomerProfile.objects.get_or_create(contact=contact)
+        # Update email and address on profile when provided
+        updated_fields = []
+        if email and customer_profile.email != email:
+            customer_profile.email = email
+            updated_fields.append('email')
+        if address and customer_profile.address_line_1 != address:
+            customer_profile.address_line_1 = address
+            updated_fields.append('address_line_1')
+        if city and customer_profile.city != city:
+            customer_profile.city = city
+            updated_fields.append('city')
+        if full_name and not customer_profile.get_full_name():
+            # Try split name
+            parts = full_name.split(' ', 1)
+            if parts:
+                if customer_profile.first_name != parts[0]:
+                    customer_profile.first_name = parts[0]
+                    updated_fields.append('first_name')
+                if len(parts) > 1 and customer_profile.last_name != parts[1]:
+                    customer_profile.last_name = parts[1]
+                    updated_fields.append('last_name')
+        if updated_fields:
+            customer_profile.save(update_fields=updated_fields)
+
+        # Generate unique order number
+        order_num = None
+        for _ in range(100):
+            candidate = f"WA-{uuid.uuid4().hex[:6].upper()}"
+            if not Order.objects.filter(order_number=candidate).exists():
+                order_num = candidate
+                break
+        if not order_num:
+            order_num = f"WA-{uuid.uuid4().hex[:8].upper()}"
+
+        try:
+            with transaction.atomic():
+                order = Order.objects.create(
+                    customer=customer_profile,
+                    name=f"Online Order for {full_name}",
+                    order_number=order_num,
+                    stage=Order.Stage.CLOSED_WON,
+                    payment_status=Order.PaymentStatus.PENDING,
+                    amount=total_amount,
+                    currency=currency,
+                    notes=delivery_summary,
+                    assigned_agent=customer_profile.assigned_agent
+                )
+
+                order_items_to_create = []
+                for ci in cart_items:
+                    unit_price = ci.product.price or Decimal('0.00')
+                    order_items_to_create.append(OrderItem(
+                        order=order,
+                        product=ci.product,
+                        quantity=ci.quantity,
+                        unit_price=unit_price,
+                        total_amount=unit_price * ci.quantity
+                    ))
+                if order_items_to_create:
+                    OrderItem.objects.bulk_create(order_items_to_create)
+
+                # Clear the cart
+                cart.items.all().delete()
+
+        except Exception as e:
+            return Response({'error': f'Failed to create order: {str(e)[:180]}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            'success': True,
+            'order_number': order.order_number,
+            'amount': str(order.amount),
+            'currency': order.currency
+        }, status=status.HTTP_200_OK)
+
 
 # ============================================================================
 # Item Location Tracking ViewSets

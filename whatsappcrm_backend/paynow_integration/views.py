@@ -16,6 +16,8 @@ from .models import PaynowConfig
 from .serializers import PaynowConfigSerializer
 from .services import PaynowService
 from customer_data.models import Order, Payment, PaymentStatus
+from django.conf import settings
+from customer_data.receipts import generate_order_receipt_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -263,6 +265,7 @@ def paynow_ipn_handler(request):
                 
                 if payment.customer and payment.customer.contact:
                     contact = payment.customer.contact
+                    # 1) Send text confirmation
                     confirmation_msg = (
                         f"✅ *Payment Received!*\n\n"
                         f"Thank you! Your payment of ${payment.amount} {payment.currency} for "
@@ -275,6 +278,26 @@ def paynow_ipn_handler(request):
                         message_type='text',
                         data={'body': confirmation_msg}
                     )
+
+                    # 2) Generate provisional receipt PDF and send document link
+                    try:
+                        abs_path, rel_url = generate_order_receipt_pdf(payment.order, payment)
+                        backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', None)
+                        if backend_domain:
+                            absolute_url = f"https://{backend_domain}{rel_url}"
+                            caption = f"Provisional Receipt for Order #{payment.order.order_number}"
+                            send_whatsapp_message(
+                                to_phone_number=contact.whatsapp_id,
+                                message_type='document',
+                                data={
+                                    'link': absolute_url,
+                                    'caption': caption
+                                }
+                            )
+                        else:
+                            logger.error("BACKEND_DOMAIN_FOR_CSP not set; cannot form absolute receipt URL for WhatsApp document.")
+                    except Exception as rec_e:
+                        logger.error(f"Failed to generate/send receipt PDF: {rec_e}")
             except Exception as e:
                 logger.error(f"Failed to send payment confirmation: {e}")
         
