@@ -6,6 +6,22 @@ import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX } fro
 import axios from 'axios';
 import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
+// Helper function to get CSRF token from cookies
+function getCsrfToken(): string | null {
+  let csrfToken = null;
+  if (typeof document !== 'undefined' && document.cookie) {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith('csrftoken=')) {
+        csrfToken = decodeURIComponent(cookie.substring('csrftoken='.length));
+        break;
+      }
+    }
+  }
+  return csrfToken;
+}
+
 interface Product {
   id: number;
   name: string;
@@ -98,10 +114,16 @@ export default function ShopPage() {
   const addToCart = async (productId: number, quantity: number = 1) => {
     setCartLoading(true);
     try {
+      const headers: Record<string, string> = { withCredentials: 'true' };
+      const csrfToken = getCsrfToken();
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
       const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/add/`, {
         product_id: productId,
         quantity: quantity
-      });
+      }, { withCredentials: true, headers });
       setCart(response.data.cart);
       setShowCart(true);
     } catch (err: unknown) {
@@ -116,10 +138,16 @@ export default function ShopPage() {
   const updateCartItem = async (cartItemId: number, quantity: number) => {
     setCartLoading(true);
     try {
+      const headers: Record<string, string> = { withCredentials: 'true' };
+      const csrfToken = getCsrfToken();
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
       const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/update/`, {
         cart_item_id: cartItemId,
         quantity: quantity
-      });
+      }, { withCredentials: true, headers });
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -133,9 +161,15 @@ export default function ShopPage() {
   const removeFromCart = async (cartItemId: number) => {
     setCartLoading(true);
     try {
+      const headers: Record<string, string> = { withCredentials: 'true' };
+      const csrfToken = getCsrfToken();
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
       const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/remove/`, {
         cart_item_id: cartItemId
-      });
+      }, { withCredentials: true, headers });
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -150,7 +184,13 @@ export default function ShopPage() {
     if (!confirm('Are you sure you want to clear your cart?')) return;
     setCartLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/clear/`);
+      const headers: Record<string, string> = { withCredentials: 'true' };
+      const csrfToken = getCsrfToken();
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
+      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/clear/`, {}, { withCredentials: true, headers });
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };

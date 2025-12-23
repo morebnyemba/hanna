@@ -1,6 +1,22 @@
 import axios from 'axios';
 import { useAuthStore } from '@/app/store/authStore';
 
+// Helper function to get CSRF token from cookies
+function getCsrfToken(): string | null {
+  let csrfToken = null;
+  if (typeof document !== 'undefined' && document.cookie) {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith('csrftoken=')) {
+        csrfToken = decodeURIComponent(cookie.substring('csrftoken='.length));
+        break;
+      }
+    }
+  }
+  return csrfToken;
+}
+
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw',
   headers: {
@@ -9,9 +25,15 @@ const apiClient = axios.create({
   withCredentials: true, // Enable sending cookies for session-based auth
 });
 
-// Use an interceptor to add the auth token to every request
+// Use an interceptor to add the auth token and CSRF token to every request
 apiClient.interceptors.request.use(
   (config) => {
+    // Add CSRF token for POST/PUT/PATCH/DELETE requests
+    const csrfToken = getCsrfToken();
+    if (csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase() || '')) {
+      config.headers['X-CSRFToken'] = csrfToken;
+    }
+    
     // Zustand's `getState` allows us to access the store outside of a React component.
     const token = useAuthStore.getState().accessToken;
     if (token) {
