@@ -40,8 +40,6 @@ interface Cart {
   total_price: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-
 export default function PublicShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<Cart | null>(null);
@@ -67,7 +65,7 @@ export default function PublicShopPage() {
   // Fetch products
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/crm-api/products/products/`, { withCredentials: true });
+      const response = await apiClient.get('/crm-api/products/products/');
       console.log('API Response:', response.data);
       // Normalize paginated response and filter active products
       const productsData = normalizePaginatedResponse<Product>(response.data);
@@ -85,7 +83,7 @@ export default function PublicShopPage() {
   // Fetch cart
   const fetchCart = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/crm-api/products/cart/`, { withCredentials: true });
+      const response = await apiClient.get('/crm-api/products/cart/');
       setCart(response.data);
     } catch (err) {
       console.error('Error fetching cart:', err);
@@ -95,10 +93,7 @@ export default function PublicShopPage() {
   useEffect(() => {
     const ensureCsrf = async () => {
       try {
-        const existing = getCsrfToken();
-        if (!existing) {
-          await axios.get(`${API_BASE_URL}/crm-api/products/csrf/`, { withCredentials: true });
-        }
+        await apiClient.get('/crm-api/products/csrf/');
       } catch (e) {
         console.warn('Failed to prefetch CSRF cookie', e);
       }
@@ -115,18 +110,11 @@ export default function PublicShopPage() {
     setCartLoading(true);
     try {
       console.log('Adding to cart:', { productId, quantity });
-      const headers: Record<string, string> = {};
-      const csrfToken = getCsrfToken();
-      if (csrfToken) {
-        headers['X-CSRFToken'] = csrfToken;
-      }
-      console.log('Headers to send:', headers);
-      console.log('CSRF Token:', csrfToken);
       
-      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/add/`, {
+      const response = await apiClient.post('/crm-api/products/cart/add/', {
         product_id: productId,
         quantity: quantity
-      }, { withCredentials: true, headers });
+      });
       console.log('Add to cart response:', response.data);
       setCart(response.data.cart);
       setShowCart(true);
@@ -147,16 +135,10 @@ export default function PublicShopPage() {
   const updateCartItem = async (cartItemId: number, quantity: number) => {
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = {};
-      const csrfToken = getCsrfToken();
-      if (csrfToken) {
-        headers['X-CSRFToken'] = csrfToken;
-      }
-      
-      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/update/`, {
+      const response = await apiClient.post('/crm-api/products/cart/update/', {
         cart_item_id: cartItemId,
         quantity: quantity
-      }, { withCredentials: true, headers });
+      });
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -170,15 +152,9 @@ export default function PublicShopPage() {
   const removeFromCart = async (cartItemId: number) => {
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = {};
-      const csrfToken = getCsrfToken();
-      if (csrfToken) {
-        headers['X-CSRFToken'] = csrfToken;
-      }
-      
-      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/remove/`, {
+      const response = await apiClient.post('/crm-api/products/cart/remove/', {
         cart_item_id: cartItemId
-      }, { withCredentials: true, headers });
+      });
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -193,13 +169,7 @@ export default function PublicShopPage() {
     if (!confirm('Are you sure you want to clear your cart?')) return;
     setCartLoading(true);
     try {
-      const headers: Record<string, string> = {};
-      const csrfToken = getCsrfToken();
-      if (csrfToken) {
-        headers['X-CSRFToken'] = csrfToken;
-      }
-      
-      const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/clear/`, {}, { withCredentials: true, headers });
+      const response = await apiClient.post('/crm-api/products/cart/clear/', {});
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
