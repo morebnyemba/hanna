@@ -123,6 +123,8 @@ export default function PublicShopPage() {
       if (csrfToken) {
         headers['X-CSRFToken'] = csrfToken;
       }
+      console.log('Headers to send:', headers);
+      console.log('CSRF Token:', csrfToken);
       
       const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/add/`, {
         product_id: productId,
