@@ -19,7 +19,11 @@ interface Product {
     id: number;
     name: string;
   } | null;
-  images?: unknown[];
+  images?: Array<{
+    id: number;
+    image: string;
+    alt_text?: string;
+  }>;
 }
 
 interface CartItem {
@@ -226,9 +230,17 @@ export default function PublicShopPage() {
                 key={product.id}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
               >
-                <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
+                {product.images && product.images.length > 0 ? (
+                  <img
+                    src={product.images[0].image}
+                    alt={product.images[0].alt_text || product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
                   <FiPackage className="w-16 h-16 text-indigo-400" />
-                </div>
+                )}
+              </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
                   {product.description && (

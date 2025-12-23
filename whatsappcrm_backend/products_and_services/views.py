@@ -44,8 +44,31 @@ User = get_user_model()
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    
+    def get_queryset(self):
+        """
+        Get products with images. Optionally filter by:
+        - category_id: Filter by product category
+        - is_active: Filter by active status (default: True for public list)
+        """
+        queryset = Product.objects.prefetch_related('images').all()
+        
+        # For public list view, only show active products by default
+        if self.action == 'list' and not self.request.user.is_authenticated:
+            queryset = queryset.filter(is_active=True)
+        
+        # Allow filtering by category
+        category_id = self.request.query_params.get('category_id')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        
+        # Allow filtering by is_active
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        return queryset
     
     def get_permissions(self):
         """

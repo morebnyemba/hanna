@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory
+from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, ProductImage
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -9,8 +9,17 @@ class ProductCategorySerializer(serializers.ModelSerializer):
         model = ProductCategory
         fields = '__all__'
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for product images with full URL for easy display.
+    """
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image', 'alt_text', 'created_at']
+
 class ProductSerializer(serializers.ModelSerializer):
     category = ProductCategorySerializer(read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
