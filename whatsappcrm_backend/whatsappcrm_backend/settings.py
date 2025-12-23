@@ -161,6 +161,19 @@ STATIC_ROOT = BASE_DIR / 'staticfiles' # For production `collectstatic`
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'mediafiles' # Path where user-uploaded files will be stored.
 
+# --- Session Configuration ---
+# Configure session cookies for cross-origin requests
+SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-origin cookies
+SESSION_COOKIE_SECURE = not DEBUG  # Require HTTPS in production
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Database-backed sessions
+
+# CSRF Cookie Configuration
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read (needed for axios)
+
 # --- Email Settings ---
 # For sending emails (e.g., confirmations, notifications).
 # These should be configured in your .env file for production.

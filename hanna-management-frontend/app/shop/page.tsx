@@ -67,7 +67,7 @@ export default function PublicShopPage() {
   // Fetch products
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/crm-api/products/products/`);
+      const response = await axios.get(`${API_BASE_URL}/crm-api/products/products/`, { withCredentials: true });
       // Normalize paginated response and filter active products
       const productsData = normalizePaginatedResponse<Product>(response.data);
       setProducts(productsData.filter((p: Product) => p.is_active));
@@ -82,7 +82,7 @@ export default function PublicShopPage() {
   // Fetch cart
   const fetchCart = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/crm-api/products/cart/`);
+      const response = await axios.get(`${API_BASE_URL}/crm-api/products/cart/`, { withCredentials: true });
       setCart(response.data);
     } catch (err) {
       console.error('Error fetching cart:', err);
@@ -101,7 +101,7 @@ export default function PublicShopPage() {
       const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/add/`, {
         product_id: productId,
         quantity: quantity
-      });
+      }, { withCredentials: true });
       setCart(response.data.cart);
       setShowCart(true);
     } catch (err: unknown) {
@@ -119,7 +119,7 @@ export default function PublicShopPage() {
       const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/update/`, {
         cart_item_id: cartItemId,
         quantity: quantity
-      });
+      }, { withCredentials: true });
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -135,7 +135,7 @@ export default function PublicShopPage() {
     try {
       const response = await axios.post(`${API_BASE_URL}/crm-api/products/cart/remove/`, {
         cart_item_id: cartItemId
-      });
+      }, { withCredentials: true });
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };

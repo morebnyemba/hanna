@@ -6,6 +6,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Enable sending cookies for session-based auth
 });
 
 // Use an interceptor to add the auth token to every request
