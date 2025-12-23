@@ -50,6 +50,7 @@ export default function PublicShopPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
   
   // Checkout state
   const [checkoutStep, setCheckoutStep] = useState<number>(1); // 1: Cart, 2: Details, 3: Confirmation
@@ -96,11 +97,13 @@ export default function PublicShopPage() {
         console.log('[shop] Calling CSRF endpoint...');
         const response = await apiClient.get('/crm-api/products/csrf/');
         console.log('[shop] CSRF endpoint response:', response.data);
-        console.log('[shop] Cookies after CSRF call:', document.cookie);
-        // Small delay to ensure cookie is set
-        await new Promise(resolve => setTimeout(resolve, 100));
+        const token = response.data.token;
+        if (token) {
+          setCsrfToken(token);
+          console.log('[shop] CSRF token stored in state:', token.substring(0, 10) + '...');
+        }
       } catch (e) {
-        console.warn('[shop] Failed to prefetch CSRF cookie', e);
+        console.warn('[shop] Failed to prefetch CSRF token', e);
       }
     };
 
@@ -116,10 +119,16 @@ export default function PublicShopPage() {
     try {
       console.log('Adding to cart:', { productId, quantity });
       
+      const config: any = {};
+      if (csrfToken) {
+        config.headers = { 'X-CSRFToken': csrfToken };
+        console.log('[shop] Using CSRF token from state');
+      }
+      
       const response = await apiClient.post('/crm-api/products/cart/add/', {
         product_id: productId,
         quantity: quantity
-      });
+      }, config);
       console.log('Add to cart response:', response.data);
       setCart(response.data.cart);
       setShowCart(true);
@@ -140,10 +149,15 @@ export default function PublicShopPage() {
   const updateCartItem = async (cartItemId: number, quantity: number) => {
     setCartLoading(true);
     try {
+      const config: any = {};
+      if (csrfToken) {
+        config.headers = { 'X-CSRFToken': csrfToken };
+      }
+      
       const response = await apiClient.post('/crm-api/products/cart/update/', {
         cart_item_id: cartItemId,
         quantity: quantity
-      });
+      }, config);
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -157,9 +171,14 @@ export default function PublicShopPage() {
   const removeFromCart = async (cartItemId: number) => {
     setCartLoading(true);
     try {
+      const config: any = {};
+      if (csrfToken) {
+        config.headers = { 'X-CSRFToken': csrfToken };
+      }
+      
       const response = await apiClient.post('/crm-api/products/cart/remove/', {
         cart_item_id: cartItemId
-      });
+      }, config);
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -174,7 +193,12 @@ export default function PublicShopPage() {
     if (!confirm('Are you sure you want to clear your cart?')) return;
     setCartLoading(true);
     try {
-      const response = await apiClient.post('/crm-api/products/cart/clear/', {});
+      const config: any = {};
+      if (csrfToken) {
+        config.headers = { 'X-CSRFToken': csrfToken };
+      }
+      
+      const response = await apiClient.post('/crm-api/products/cart/clear/', {}, config);
       setCart(response.data.cart);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
