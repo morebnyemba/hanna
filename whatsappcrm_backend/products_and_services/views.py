@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
 from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory
@@ -585,8 +586,10 @@ class BarcodeScanViewSet(viewsets.ViewSet):
 def csrf_cookie(request):
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"CSRF cookie endpoint called. Setting CSRF cookie.")
-    return Response({'detail': 'CSRF cookie set'})
+    # Explicitly get the token to ensure the cookie is set in the response
+    token = get_token(request)
+    logger.info(f"CSRF cookie endpoint called. Token: {token[:10]}...")
+    return Response({'detail': 'CSRF cookie set', 'token': token})
 
 class CartViewSet(viewsets.ViewSet):
     """
