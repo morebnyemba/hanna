@@ -414,22 +414,7 @@ export default function PublicShopPage() {
               <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Hanna Digital Shop
               </h1>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Payment Method
-                      </label>
-                      <select
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value as any)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="ecocash">Paynow - Ecocash</option>
-                        <option value="onemoney">Paynow - OneMoney</option>
-                        <option value="innbucks">Paynow - Innbucks</option>
-                        <option value="telecash">Paynow - Telecash</option>
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">We’ll send a secure Paynow request to your wallet.</p>
-                    </div>
+                    
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -808,6 +793,20 @@ export default function PublicShopPage() {
                 {/* Step 2: Delivery Details */}
                 {checkoutStep === 2 && (
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value as any)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="ecocash">Paynow - Ecocash</option>
+                        <option value="onemoney">Paynow - OneMoney</option>
+                        <option value="innbucks">Paynow - Innbucks</option>
+                        <option value="telecash">Paynow - Telecash</option>
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">We’ll send a secure Paynow request to your wallet.</p>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Full Name <span className="text-red-500">*</span>
