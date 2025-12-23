@@ -50,7 +50,9 @@ export default function ShopPage() {
   const fetchProducts = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/crm-api/products/products/`);
-      setProducts(response.data.filter((p: Product) => p.is_active));
+      // API returns paginated response with results array
+      const productsData = response.data.results || response.data;
+      setProducts(Array.isArray(productsData) ? productsData.filter((p: Product) => p.is_active) : []);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching products:', err);
