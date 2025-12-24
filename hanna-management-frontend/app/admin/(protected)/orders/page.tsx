@@ -1,12 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiShoppingCart, FiPackage, FiMapPin, FiUser, FiCalendar, FiSearch, FiFilter, FiCheckCircle, FiClock, FiTruck } from 'react-icons/fi';
+import { FiShoppingCart, FiPackage, FiMapPin, FiUser, FiCalendar, FiSearch, FiFilter, FiCheckCircle, FiClock, FiTruck, FiDownload, FiEdit, FiTrash2, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 interface OrderItem {
   id: number;
@@ -56,11 +66,21 @@ const paymentStatusColors: Record<string, string> = {
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -69,6 +89,7 @@ export default function AdminOrdersPage() {
       try {
         const response = await apiClient.get('/crm-api/customer-data/orders/');
         setOrders(response.data.results || response.data);
+        setFilteredOrders(response.data.results || response.data);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch orders.');
       } finally {
@@ -79,16 +100,117 @@ export default function AdminOrdersPage() {
     fetchOrders();
   }, []);
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
+  useEffect(() => {
+    let filtered = orders.filter(order => {
+      const matchesSearch = 
+        order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customer?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStage = stageFilter === 'all' || order.stage === stageFilter;
+      
+      const orderDate = new Date(order.created_at);
+      const matchesStartDate = !startDate || orderDate >= new Date(startDate);
+      const matchesEndDate = !endDate || orderDate <= new Date(endDate);
+      
+      return matchesSearch && matchesStage && matchesStartDate && matchesEndDate;
+    });
     
-    const matchesStage = stageFilter === 'all' || order.stage === stageFilter;
+    setFilteredOrders(filtered);
+    setCurrentPage(1);
+  }, [searchTerm, stageFilter, startDate, endDate, orders]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentOrders = filteredOrders.slice(startIndex, endIndex);
+
+  // PDF Export
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
     
-    return matchesSearch && matchesStage;
-  });
+    doc.setFontSize(18);
+    doc.text('Orders Report', 14, 22);
+    
+    doc.setFontSize(11);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    
+    const tableData = filteredOrders.map(order => [
+      order.order_number,
+      order.customer?.full_name || 'Unknown',
+      order.stage_display,
+      order.amount ? `${order.currency} ${order.amount}` : '-',
+      new Date(order.created_at).toLocaleDateString(),
+    ]);
+    
+    autoTable(doc, {
+      head: [['Order #', 'Customer', 'Stage', 'Amount', 'Date']],
+      body: tableData,
+      startY: 35,
+      theme: 'grid',
+      headStyles: { fillColor: [124, 58, 237] },
+    });
+    
+    doc.save(`orders-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const handleDeleteClick = (order: Order) => {
+    setOrderToDelete(order);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!orderToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await apiClient.delete(`/crm-api/customer-data/orders/${orderToDelete.id}/`);
+      setOrders(orders.filter(o => o.id !== orderToDelete.id));
+      if (selectedOrder?.id === orderToDelete.id) {
+        setSelectedOrder(null);
+      }
+      setDeleteModalOpen(false);
+      setOrderToDelete(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setOrderToDelete(null);
+  };
+
+  const handleEditClick = (order: Order) => {
+    setEditingOrder(order);
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingOrder) return;
+
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      const response = await apiClient.patch(`/crm-api/customer-data/orders/${editingOrder.id}/`, {
+        stage: formData.get('stage'),
+        payment_status: formData.get('payment_status'),
+      });
+      
+      setOrders(orders.map(o => o.id === editingOrder.id ? response.data : o));
+      if (selectedOrder?.id === editingOrder.id) {
+        setSelectedOrder(response.data);
+      }
+      setEditModalOpen(false);
+      setEditingOrder(null);
+    } catch (err: any) {
+      alert('Failed to update order: ' + (err.response?.data?.detail || err.message));
+    }
+  };
 
   const getOrderProgress = (order: Order) => {
     if (!order.items || order.items.length === 0) return 0;
@@ -103,20 +225,44 @@ export default function AdminOrdersPage() {
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
           <FiShoppingCart className="w-6 h-6" /> Order Tracking
         </h1>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Search orders..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+        <Button 
+          onClick={handleExportPDF}
+          className="bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-2"
+        >
+          <FiDownload /> Export PDF
+        </Button>
+      </div>
+
+      <div className="mb-6 flex flex-col lg:flex-row gap-4">
+        <div className="relative flex-1">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Search orders..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full sm:w-auto"
+            placeholder="Start Date"
+          />
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full sm:w-auto"
+            placeholder="End Date"
+          />
           <select
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
+            className="border rounded px-3 py-2 text-sm w-full sm:w-auto"
           >
             <option value="all">All Stages</option>
             <option value="prospecting">Prospecting</option>
@@ -125,6 +271,9 @@ export default function AdminOrdersPage() {
             <option value="negotiation">Negotiation</option>
             <option value="closed_won">Closed Won</option>
             <option value="closed_lost">Closed Lost</option>
+          </select>
+        </div>
+      </div>
           </select>
         </div>
       </div>
@@ -150,35 +299,58 @@ export default function AdminOrdersPage() {
               ) : filteredOrders.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No orders found.</p>
               ) : (
-                <div className="space-y-4">
-                  {filteredOrders.map((order) => {
-                    const progress = getOrderProgress(order);
-                    return (
-                      <div
-                        key={order.id}
-                        className={`p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
-                          selectedOrder?.id === order.id ? 'border-purple-500 bg-purple-50' : ''
-                        }`}
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">#{order.order_number}</span>
-                              {order.name && <span className="text-sm text-gray-500">- {order.name}</span>}
+                <>
+                  <div className="space-y-4">
+                    {currentOrders.map((order) => {
+                      const progress = getOrderProgress(order);
+                      return (
+                        <div
+                          key={order.id}
+                          className={`p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                            selectedOrder?.id === order.id ? 'border-purple-500 bg-purple-50' : ''
+                          }`}
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">#{order.order_number}</span>
+                                {order.name && <span className="text-sm text-gray-500">- {order.name}</span>}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <FiUser className="w-4 h-4" />
+                                <span>{order.customer?.full_name || 'Unknown Customer'}</span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {order.amount && `${order.currency} ${order.amount}`}
+                                {' • '}
+                                {new Date(order.created_at).toLocaleDateString()}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <FiUser className="w-4 h-4" />
-                              <span>{order.customer?.full_name || 'Unknown Customer'}</span>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {order.amount && `${order.currency} ${order.amount}`}
-                              {' • '}
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <Badge className={stageColors[order.stage] || 'bg-gray-100'}>
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditClick(order);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800"
+                                  title="Edit"
+                                >
+                                  <FiEdit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(order);
+                                  }}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Delete"
+                                >
+                                  <FiTrash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <Badge className={stageColors[order.stage] || 'bg-gray-100'}>
                               {order.stage_display}
                             </Badge>
                             <Badge className={paymentStatusColors[order.payment_status] || 'bg-gray-100'} variant="outline">
@@ -210,6 +382,30 @@ export default function AdminOrdersPage() {
                     );
                   })}
                 </div>
+                
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-4 mt-6 pt-4 border-t">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-2 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 rounded"
+                    >
+                      <FiChevronLeft /> Previous
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-2 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 rounded"
+                    >
+                      Next <FiChevronRight />
+                    </button>
+                  </div>
+                )}
+              </>
               )}
             </CardContent>
           </Card>
@@ -308,6 +504,67 @@ export default function AdminOrdersPage() {
           </Card>
         </div>
       </div>
+
+      {/* Edit Order Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Order #{editingOrder?.order_number}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="stage">Stage</Label>
+              <select
+                id="stage"
+                name="stage"
+                defaultValue={editingOrder?.stage}
+                className="w-full mt-1 px-3 py-2 border rounded-md"
+                required
+              >
+                <option value="prospecting">Prospecting</option>
+                <option value="qualification">Qualification</option>
+                <option value="proposal">Proposal</option>
+                <option value="negotiation">Negotiation</option>
+                <option value="closed_won">Closed Won</option>
+                <option value="closed_lost">Closed Lost</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="payment_status">Payment Status</Label>
+              <select
+                id="payment_status"
+                name="payment_status"
+                defaultValue={editingOrder?.payment_status}
+                className="w-full mt-1 px-3 py-2 border rounded-md"
+                required
+              >
+                <option value="pending">Pending</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        itemName={`Order #${orderToDelete?.order_number}`}
+        isDeleting={isDeleting}
+      />
     </main>
   );
 }
