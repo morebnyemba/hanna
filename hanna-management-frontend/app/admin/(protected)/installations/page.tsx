@@ -129,27 +129,35 @@ export default function AdminInstallationsPage() {
     setDeleteModalOpen(true);
   };
 
-  const openAssignModal = async (installation: Installation) => {
+  const openAssignModal = (installation: Installation) => {
     console.log('[Installations] Open Assign Modal clicked for installation:', installation?.id);
     setSelectedInstallation(installation);
-    setAssignModalOpen(true);
-    setAssignLoading(true);
     setAssignError(null);
-    try {
-      const res = await apiClient.get('/crm-api/admin-panel/technicians/');
-      setAvailableTechnicians(res.data.results || res.data);
-      const current = (installation.technicians || []).map((t) => t.id);
-      setSelectedTechIds(current);
-    } catch (e: any) {
-      console.error('Failed to load technicians', e);
-      const msg = e.response?.data?.detail || e.message || 'Failed to load technicians.';
-      setAssignError(msg);
-      // Keep modal open and show inline error instead of only alert
-      try { alert('Failed to load technicians: ' + msg); } catch {}
-    } finally {
-      setAssignLoading(false);
-    }
+    setAssignModalOpen(true);
   };
+
+  useEffect(() => {
+    const loadTechnicians = async () => {
+      if (!assignModalOpen || !selectedInstallation) return;
+      setAssignLoading(true);
+      setAssignError(null);
+      try {
+        const res = await apiClient.get('/crm-api/admin-panel/technicians/');
+        setAvailableTechnicians(res.data.results || res.data);
+        const current = (selectedInstallation.technicians || []).map((t) => t.id);
+        setSelectedTechIds(current);
+      } catch (e: any) {
+        console.error('Failed to load technicians', e);
+        const msg = e.response?.data?.detail || e.message || 'Failed to load technicians.';
+        setAssignError(msg);
+        try { alert('Failed to load technicians: ' + msg); } catch {}
+      } finally {
+        setAssignLoading(false);
+      }
+    };
+
+    loadTechnicians();
+  }, [assignModalOpen, selectedInstallation]);
 
   const toggleTech = (id: number) => {
     setSelectedTechIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -559,6 +567,7 @@ export default function AdminInstallationsPage() {
           setAssignError(null);
           setAvailableTechnicians([]);
           setSelectedTechIds([]);
+          setAssignLoading(false);
         }
       }}>
         <DialogContent>
