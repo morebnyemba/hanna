@@ -19,14 +19,22 @@ const PieChart = React.forwardRef<
     className?: string
   }
 >(({ data, className, ...props }, ref) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className={cn("w-full h-full flex items-center justify-center text-gray-400 text-sm", className)}>
+        No data available
+      </div>
+    )
+  }
+
   return (
     <ChartContainer
       ref={ref}
       config={{}}
-      className={cn("w-full h-[300px]", className)}
+      className={cn("w-full", className)}
       {...props}
     >
-      <ResponsiveContainer>
+      <ResponsiveContainer width="100%" height="100%">
         <RechartsPieChart>
           <ChartTooltip content={<ChartTooltipContent />} />
           <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label />

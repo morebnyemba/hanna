@@ -165,10 +165,14 @@ export default function AdminAnalyticsPage() {
                     <p className="text-sm text-gray-600">Lead Conversion Rate</p>
                     <p className="text-2xl font-bold text-green-600">{data.customer_analytics?.lead_conversion_rate || '0%'}</p>
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 mb-2">Growth Trend</p>
-                    <BarChart data={data.customer_analytics?.growth_over_time} config={chartConfig} />
-                  </div>
+                  {data.customer_analytics?.growth_over_time && data.customer_analytics.growth_over_time.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Growth Trend</p>
+                      <div className="h-[200px]">
+                        <BarChart data={data.customer_analytics.growth_over_time} config={chartConfig} className="h-full" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -190,10 +194,14 @@ export default function AdminAnalyticsPage() {
                     </div>
                     <FiShoppingCart className="text-green-600 w-8 h-8" />
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 mb-2">Revenue Trend</p>
-                    <BarChart data={data.sales_analytics?.revenue_over_time} config={chartConfig} />
-                  </div>
+                  {data.sales_analytics?.revenue_over_time && data.sales_analytics.revenue_over_time.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Revenue Trend</p>
+                      <div className="h-[200px]">
+                        <BarChart data={data.sales_analytics.revenue_over_time} config={chartConfig} className="h-full" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -272,10 +280,14 @@ export default function AdminAnalyticsPage() {
                       {Number(data.job_card_analytics?.average_resolution_time_days || 0).toFixed(1)} days
                     </p>
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 mb-2">Status Distribution</p>
-                    <PieChart data={data.job_card_analytics?.job_cards_by_status_pie} />
-                  </div>
+                  {data.job_card_analytics?.job_cards_by_status_pie && data.job_card_analytics.job_cards_by_status_pie.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Status Distribution</p>
+                      <div className="h-[200px]">
+                        <PieChart data={data.job_card_analytics.job_cards_by_status_pie} className="h-full" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -336,10 +348,14 @@ export default function AdminAnalyticsPage() {
                     </div>
                     <FiPackage className="text-indigo-600 w-8 h-8" />
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 mb-2">Status Breakdown</p>
-                    <PieChart data={data.installation_request_analytics?.installation_requests_by_status_pie} />
-                  </div>
+                  {data.installation_request_analytics?.installation_requests_by_status_pie && data.installation_request_analytics.installation_requests_by_status_pie.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Status Breakdown</p>
+                      <div className="h-[200px]">
+                        <PieChart data={data.installation_request_analytics.installation_requests_by_status_pie} className="h-full" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -349,8 +365,14 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Installations per Technician</CardTitle>
               </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <BarChart data={installationsData} layout="vertical" config={chartConfig} />
+              <CardContent>
+                {installationsData && installationsData.length > 0 ? (
+                  <div className="h-[300px]">
+                    <BarChart data={installationsData} layout="vertical" config={chartConfig} className="h-full" />
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-8">No installation data available</p>
+                )}
               </CardContent>
             </Card>
 
@@ -359,8 +381,14 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Warranties per Manufacturer</CardTitle>
               </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <BarChart data={warrantiesData} layout="vertical" config={chartConfig} />
+              <CardContent>
+                {warrantiesData && warrantiesData.length > 0 ? (
+                  <div className="h-[300px]">
+                    <BarChart data={warrantiesData} layout="vertical" config={chartConfig} className="h-full" />
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-8">No warranty data available</p>
+                )}
               </CardContent>
             </Card>
 
@@ -369,8 +397,14 @@ export default function AdminAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Warranty Claims per Manufacturer</CardTitle>
               </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <BarChart data={claimsData} layout="vertical" config={chartConfig} />
+              <CardContent>
+                {claimsData && claimsData.length > 0 ? (
+                  <div className="h-[300px]">
+                    <BarChart data={claimsData} layout="vertical" config={chartConfig} className="h-full" />
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-8">No claims data available</p>
+                )}
               </CardContent>
             </Card>
 
@@ -391,10 +425,14 @@ export default function AdminAnalyticsPage() {
                     </div>
                     <FiCheckCircle className="text-teal-600 w-8 h-8" />
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 mb-2">Status Breakdown</p>
-                    <PieChart data={data.site_assessment_request_analytics?.site_assessment_requests_by_status_pie} />
-                  </div>
+                  {data.site_assessment_request_analytics?.site_assessment_requests_by_status_pie && data.site_assessment_request_analytics.site_assessment_requests_by_status_pie.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Status Breakdown</p>
+                      <div className="h-[200px]">
+                        <PieChart data={data.site_assessment_request_analytics.site_assessment_requests_by_status_pie} className="h-full" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -416,10 +454,14 @@ export default function AdminAnalyticsPage() {
                     </div>
                     <FiActivity className="text-cyan-600 w-8 h-8" />
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 mb-2">Status Breakdown</p>
-                    <PieChart data={data.solar_cleaning_request_analytics?.solar_cleaning_requests_by_status_pie} />
-                  </div>
+                  {data.solar_cleaning_request_analytics?.solar_cleaning_requests_by_status_pie && data.solar_cleaning_request_analytics.solar_cleaning_requests_by_status_pie.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Status Breakdown</p>
+                      <div className="h-[200px]">
+                        <PieChart data={data.solar_cleaning_request_analytics.solar_cleaning_requests_by_status_pie} className="h-full" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -447,10 +489,14 @@ export default function AdminAnalyticsPage() {
                       ${Number(data.payment_analytics?.total_revenue_from_payments || 0).toLocaleString()}
                     </p>
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 mb-2">Payment Status</p>
-                    <PieChart data={data.payment_analytics?.payments_by_status_pie} />
-                  </div>
+                  {data.payment_analytics?.payments_by_status_pie && data.payment_analytics.payments_by_status_pie.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Payment Status</p>
+                      <div className="h-[200px]">
+                        <PieChart data={data.payment_analytics.payments_by_status_pie} className="h-full" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -472,10 +518,14 @@ export default function AdminAnalyticsPage() {
                     </div>
                     <FiActivity className="text-purple-600 w-8 h-8" />
                   </div>
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-500 mb-2">Most Active Flows</p>
-                    <BarChart data={data.automation_analytics?.most_active_flows} config={chartConfig} />
-                  </div>
+                  {data.automation_analytics?.most_active_flows && data.automation_analytics.most_active_flows.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Most Active Flows</p>
+                      <div className="h-[200px]">
+                        <BarChart data={data.automation_analytics.most_active_flows} config={chartConfig} className="h-full" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

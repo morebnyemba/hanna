@@ -22,14 +22,22 @@ const BarChart = React.forwardRef<
     layout?: "horizontal" | "vertical"
   }
 >(({ data, config, className, layout = "horizontal", ...props }, ref) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className={cn("w-full h-full flex items-center justify-center text-gray-400 text-sm", className)}>
+        No data available
+      </div>
+    )
+  }
+
   return (
     <ChartContainer
       ref={ref}
       config={config}
-      className={cn("w-full h-[300px]", className)}
+      className={cn("w-full", className)}
       {...props}
     >
-      <ResponsiveContainer>
+      <ResponsiveContainer width="100%" height="100%">
         <RechartsBarChart data={data} layout={layout}>
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend content={<ChartLegendContent />} />
