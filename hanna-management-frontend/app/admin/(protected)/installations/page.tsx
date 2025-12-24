@@ -130,14 +130,18 @@ export default function AdminInstallationsPage() {
 
   const openAssignModal = async (installation: Installation) => {
     setSelectedInstallation(installation);
+    setAssignModalOpen(true);
+    setAssignLoading(true);
     try {
       const res = await apiClient.get('/crm-api/admin-panel/technicians/');
       setAvailableTechnicians(res.data.results || res.data);
       const current = (installation.technicians || []).map((t) => t.id);
       setSelectedTechIds(current);
-      setAssignModalOpen(true);
     } catch (e: any) {
+      console.error('Failed to load technicians', e);
       alert('Failed to load technicians: ' + (e.response?.data?.detail || e.message));
+    } finally {
+      setAssignLoading(false);
     }
   };
 
@@ -549,7 +553,9 @@ export default function AdminInstallationsPage() {
           </DialogHeader>
           <form onSubmit={handleAssignSubmit} className="space-y-4">
             <div className="max-h-64 overflow-auto border rounded p-2">
-              {availableTechnicians.length === 0 ? (
+              {assignLoading ? (
+                <p className="text-sm text-gray-500">Loading technicians...</p>
+              ) : availableTechnicians.length === 0 ? (
                 <p className="text-sm text-gray-500">No technicians available.</p>
               ) : (
                 availableTechnicians.map((tech) => (
@@ -559,7 +565,7 @@ export default function AdminInstallationsPage() {
                       checked={selectedTechIds.includes(tech.id)}
                       onChange={() => toggleTech(tech.id)}
                     />
-                    <span className="text-sm">{tech.user.full_name || tech.user.username}</span>
+                    <span className="text-sm">{tech.user?.full_name || tech.user?.username || `Technician #${tech.id}`}</span>
                   </label>
                 ))
               )}
