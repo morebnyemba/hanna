@@ -274,9 +274,6 @@ export default function AdminOrdersPage() {
           </select>
         </div>
       </div>
-          </select>
-        </div>
-      </div>
       
       {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
 
