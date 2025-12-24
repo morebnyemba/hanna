@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiUsers, FiPlus } from 'react-icons/fi';
+import { FiUsers, FiPlus, FiDownload, FiSearch, FiMessageSquare, FiEdit, FiTrash2, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
-import ActionButtons from '@/app/components/shared/ActionButtons';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
 
 interface Customer {
@@ -46,11 +47,15 @@ const SkeletonRow = () => (
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { accessToken } = useAuthStore();
 
   const fetchCustomers = async () => {
@@ -81,6 +86,71 @@ export default function CustomersPage() {
       fetchCustomers();
     }
   }, [accessToken]);
+
+  // Search filter
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredCustomers(customers);
+    } else {
+      const filtered = customers.filter(customer => {
+        const fullName = `${customer.first_name} ${customer.last_name}`.toLowerCase();
+        const phone = customer.contact.whatsapp_id?.toLowerCase() || '';
+        const email = customer.email?.toLowerCase() || '';
+        const search = searchTerm.toLowerCase();
+        return fullName.includes(search) || phone.includes(search) || email.includes(search);
+      });
+      setFilteredCustomers(filtered);
+      setCurrentPage(1);
+    }
+  }, [searchTerm, customers]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentCustomers = filteredCustomers.slice(startIndex, endIndex);
+
+  // WhatsApp integration - open WhatsApp with customer number
+  const handleWhatsAppClick = (customer: Customer) => {
+    // Format phone number (remove any non-numeric characters except +)
+    const phoneNumber = customer.contact.whatsapp_id.replace(/[^+\d]/g, '');
+    // Open WhatsApp with the customer's number
+    const whatsappUrl = `https://wa.me/${phoneNumber}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  // PDF Export
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text('Customers Report', 14, 22);
+    
+    // Add date
+    doc.setFontSize(11);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    
+    // Prepare table data
+    const tableData = filteredCustomers.map(customer => [
+      `${customer.first_name} ${customer.last_name}` || customer.contact.name,
+      customer.contact.whatsapp_id,
+      customer.email || '-',
+      `${customer.city || ''}, ${customer.country || ''}`.trim().replace(/^,\s*|,\s*$/g, '') || '-',
+    ]);
+    
+    // Add table
+    autoTable(doc, {
+      head: [['Name', 'Phone', 'Email', 'Location']],
+      body: tableData,
+      startY: 35,
+      theme: 'grid',
+      headStyles: { fillColor: [124, 58, 237] },
+    });
+    
+    // Save PDF
+    doc.save(`customers-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   const handleDeleteClick = (customer: Customer) => {
     setCustomerToDelete(customer);
@@ -125,17 +195,39 @@ export default function CustomersPage() {
 
   return (
     <>
-      <div className="mb-6 flex justify-between items-center">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
           <FiUsers className="mr-3" />
           Customers
         </h1>
-        <Link href="/admin/customers/create">
-          <span className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition">
-            <FiPlus className="mr-2" />
-            Create Customer
-          </span>
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+            disabled={filteredCustomers.length === 0}
+          >
+            <FiDownload className="mr-2" />
+            Export PDF
+          </button>
+          <Link href="/admin/customers/create">
+            <span className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition">
+              <FiPlus className="mr-2" />
+              Create
+            </span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4 relative">
+        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search by name, phone, or email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+        />
       </div>
 
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
@@ -159,8 +251,14 @@ export default function CustomersPage() {
                     <SkeletonRow />
                     <SkeletonRow />
                 </>
+              ) : currentCustomers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    {searchTerm ? 'No customers found matching your search' : 'No customers found'}
+                  </td>
+                </tr>
               ) : (
-                customers.map((customer) => (
+                currentCustomers.map((customer) => (
                     <tr key={customer.contact.id} className="hover:bg-gray-50 transition-colors duration-150">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : customer.contact.name}
@@ -171,12 +269,32 @@ export default function CustomersPage() {
                             {customer.address_line_1} {customer.address_line_2}, {customer.city}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <ActionButtons
-                            entityId={customer.contact.id}
-                            viewPath={`/admin/customers/${customer.contact.id}`}
-                            onDelete={() => handleDeleteClick(customer)}
-                            showEdit={false}
-                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleWhatsAppClick(customer)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-md transition"
+                              title="Send WhatsApp"
+                            >
+                              <FiMessageSquare className="w-4 h-4" />
+                            </button>
+                            <Link href={`/admin/customers/${customer.contact.id}/edit`}>
+                              <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition" title="Edit">
+                                <FiEdit className="w-4 h-4" />
+                              </button>
+                            </Link>
+                            <Link href={`/admin/customers/${customer.contact.id}`}>
+                              <button className="p-2 text-purple-600 hover:bg-purple-50 rounded-md transition" title="View Details">
+                                <FiUsers className="w-4 h-4" />
+                              </button>
+                            </Link>
+                            <button
+                              onClick={() => handleDeleteClick(customer)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-md transition"
+                              title="Delete"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                   </tr>
                 ))
@@ -184,6 +302,34 @@ export default function CustomersPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
+            <div className="text-sm text-gray-700">
+              Showing {startIndex + 1} to {Math.min(endIndex, filteredCustomers.length)} of {filteredCustomers.length} customers
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiChevronLeft />
+              </button>
+              <span className="px-4 py-1 text-sm">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiChevronRight />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <DeleteConfirmationModal
