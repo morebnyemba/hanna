@@ -60,12 +60,17 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                 poll_url = getattr(response, 'poll_url', None) # Important for status checks
                 instructions = getattr(response, 'instructions', None) # Instructions for the user
                 
-                logger.info(f"PaynowSDK: Express Checkout initiated successfully. Paynow Reference: {paynow_reference}, Poll URL: {poll_url}")
+                # Convert all values to JSON-serializable types
+                paynow_reference_str = str(paynow_reference) if paynow_reference is not None else None
+                poll_url_str = str(poll_url) if poll_url is not None else None
+                instructions_str = str(instructions) if instructions is not None else None
+                
+                logger.info(f"PaynowSDK: Express Checkout initiated successfully. Paynow Reference: {paynow_reference_str}, Poll URL: {poll_url_str}")
                 return {
                     "success": True,
-                    "paynow_reference": paynow_reference,
-                    "poll_url": poll_url, # Store this for later status checks
-                    "instructions": instructions, # Display to user
+                    "paynow_reference": paynow_reference_str,
+                    "poll_url": poll_url_str, # Store this for later status checks
+                    "instructions": instructions_str, # Display to user
                     "message": "Payment initiated successfully. Please check your phone for a prompt."
                 }
             else:
