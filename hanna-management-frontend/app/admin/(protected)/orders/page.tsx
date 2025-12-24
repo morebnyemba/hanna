@@ -96,12 +96,22 @@ export default function AdminOrdersPage() {
       try {
         let url: string | null = '/crm-api/customer-data/orders/?ordering=-created_at';
         const all: Order[] = [];
+        const toRelative = (u: string | null): string | null => {
+          if (!u) return null;
+          try {
+            const parsed = new URL(u);
+            return parsed.pathname + parsed.search;
+          } catch {
+            return u; // already relative
+          }
+        };
         while (url) {
           const resp = await apiClient.get<PaginatedResponse<Order> | Order[]>(url);
           const payload = resp.data as PaginatedResponse<Order> | Order[];
           const pageItems: Order[] = Array.isArray(payload) ? (payload as Order[]) : (payload as PaginatedResponse<Order>).results;
           all.push(...pageItems);
-          url = Array.isArray(payload) ? null : (payload as PaginatedResponse<Order>).next || null;
+          const nextUrl = Array.isArray(payload) ? null : (payload as PaginatedResponse<Order>).next || null;
+          url = toRelative(nextUrl);
         }
         setOrders(all);
         setFilteredOrders(all);
