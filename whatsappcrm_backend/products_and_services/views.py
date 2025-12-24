@@ -830,8 +830,10 @@ class CartViewSet(viewsets.ViewSet):
         if not full_name or not email or not phone or not address:
             return Response({'error': 'full_name, email, phone, and address are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Normalize phone (remove spaces)
-        phone_norm = phone.replace(' ', '')
+        # Normalize phone (remove spaces, ensure it's valid)
+        phone_norm = phone.replace(' ', '').strip() if phone else ''
+        if not phone_norm:
+            return Response({'error': 'Phone number is required and cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Derive currency from first item or default
         currency = cart_items[0].product.currency if cart_items and cart_items[0].product.currency else 'USD'
@@ -839,7 +841,7 @@ class CartViewSet(viewsets.ViewSet):
         # Calculate total
         total_amount = Decimal('0.00')
         for ci in cart_items:
-            unit_price = ci.product.price or Decimal('0.00')
+            unit_price = Decimal(str(ci.product.price)) if ci.product.price else Decimal('0.00')
             total_amount += unit_price * ci.quantity
 
         # Build order notes with delivery details
@@ -848,32 +850,34 @@ class CartViewSet(viewsets.ViewSet):
             delivery_summary += f" Notes: {notes}"
 
         # Create a customer contact/profile (or get existing)
-        contact, _ = Contact.objects.get_or_create(
-            whatsapp_id=phone_norm,
-            defaults={'name': full_name}
-        )
-        customer_profile, _ = CustomerProfile.objects.get_or_create(contact=contact)
+        try:
+            contact, _ = Contact.objects.get_or_create(
+                whatsapp_id=phone_norm,
+                defaults={'name': full_name}
+            )
+            customer_profile, _ = CustomerProfile.objects.get_or_create(contact=contact)
+        except Exception as e:
+            return Response({'error': f'Failed to create/update contact: {str(e)[:180]}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         # Update email and address on profile when provided
         updated_fields = []
-        if email and customer_profile.email != email:
+        if email and not customer_profile.email:
             customer_profile.email = email
             updated_fields.append('email')
-        if address and customer_profile.address_line_1 != address:
+        if address and not customer_profile.address_line_1:
             customer_profile.address_line_1 = address
             updated_fields.append('address_line_1')
-        if city and customer_profile.city != city:
+        if city and not customer_profile.city:
             customer_profile.city = city
             updated_fields.append('city')
         if full_name and not customer_profile.get_full_name():
             # Try split name
             parts = full_name.split(' ', 1)
-            if parts:
-                if customer_profile.first_name != parts[0]:
-                    customer_profile.first_name = parts[0]
-                    updated_fields.append('first_name')
-                if len(parts) > 1 and customer_profile.last_name != parts[1]:
-                    customer_profile.last_name = parts[1]
-                    updated_fields.append('last_name')
+            if parts and not customer_profile.first_name:
+                customer_profile.first_name = parts[0]
+                updated_fields.append('first_name')
+            if len(parts) > 1 and not customer_profile.last_name:
+                customer_profile.last_name = parts[1]
+                updated_fields.append('last_name')
         if updated_fields:
             customer_profile.save(update_fields=updated_fields)
 
@@ -889,22 +893,27 @@ class CartViewSet(viewsets.ViewSet):
 
         try:
             with transaction.atomic():
-                order = Order.objects.create(
-                    customer=customer_profile,
-                    name=f"Online Order for {full_name}",
-                    order_number=order_num,
-                    stage=Order.Stage.CLOSED_WON,
-                    payment_status=Order.PaymentStatus.PENDING,
-                    source=Order.Source.API,
-                    amount=total_amount,
-                    currency=currency,
-                    notes=delivery_summary,
-                    assigned_agent=customer_profile.assigned_agent
-                )
+                # Create order with defensive null-safe assigned_agent
+                order_data = {
+                    'customer': customer_profile,
+                    'name': f"Online Order for {full_name}",
+                    'order_number': order_num,
+                    'stage': Order.Stage.CLOSED_WON,
+                    'payment_status': Order.PaymentStatus.PENDING,
+                    'source': Order.Source.API,
+                    'amount': total_amount,
+                    'currency': currency,
+                    'notes': delivery_summary,
+                }
+                # Only add assigned_agent if the profile has one
+                if hasattr(customer_profile, 'assigned_agent') and customer_profile.assigned_agent:
+                    order_data['assigned_agent'] = customer_profile.assigned_agent
+                
+                order = Order.objects.create(**order_data)
 
                 order_items_to_create = []
                 for ci in cart_items:
-                    unit_price = ci.product.price or Decimal('0.00')
+                    unit_price = Decimal(str(ci.product.price)) if ci.product.price else Decimal('0.00')
                     order_items_to_create.append(OrderItem(
                         order=order,
                         product=ci.product,
@@ -919,6 +928,9 @@ class CartViewSet(viewsets.ViewSet):
                 cart.items.all().delete()
 
         except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            print(f"[checkout_cart] Exception: {str(e)}\n{tb}")
             return Response({'error': f'Failed to create order: {str(e)[:180]}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
