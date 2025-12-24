@@ -136,6 +136,7 @@ export default function PublicShopPage() {
     otp_message?: string;
     qr_code_url?: string;
     deeplink?: string;
+    redirect_url?: string;
   } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'omari' | 'innbucks' | 'telecash'>('ecocash');  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -376,6 +377,7 @@ export default function PublicShopPage() {
         otp_message: payData.otp_message,
         qr_code_url: payData.qr_code_url,
         deeplink: payData.deeplink,
+        redirect_url: payData.redirect_url,
       });
 
       // Move to step 4 to show payment instructions
@@ -1079,29 +1081,38 @@ export default function PublicShopPage() {
                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                         <p className="text-sm font-semibold text-purple-900 mb-3">Innbucks Payment</p>
                         
-                        {paymentInfo.qr_code_url && (
+                        {(paymentInfo.qr_code_url || paymentInfo.redirect_url) && (
                           <div className="mb-4 text-center">
-                            <p className="text-sm text-purple-700 mb-2">Scan QR Code with Innbucks app:</p>
-                            <img 
-                              src={paymentInfo.qr_code_url} 
-                              alt="Innbucks QR Code" 
-                              className="mx-auto w-48 h-48 border-2 border-purple-300 rounded"
-                            />
+                            <p className="text-sm text-purple-700 mb-2">
+                              {paymentInfo.qr_code_url ? 'Scan QR Code with Innbucks app:' : 'Click the link below to complete payment:'}
+                            </p>
+                            {paymentInfo.qr_code_url ? (
+                              <img 
+                                src={paymentInfo.qr_code_url} 
+                                alt="Innbucks QR Code" 
+                                className="mx-auto w-48 h-48 border-2 border-purple-300 rounded"
+                              />
+                            ) : null}
                           </div>
                         )}
                         
-                        {paymentInfo.deeplink && (
+                        {(paymentInfo.deeplink || paymentInfo.redirect_url) && (
                           <div className="text-center">
-                            <p className="text-sm text-purple-700 mb-2">Or use this deeplink:</p>
                             <a
-                              href={paymentInfo.deeplink}
+                              href={paymentInfo.deeplink || paymentInfo.redirect_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-block px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
+                              className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
                             >
-                              Open in Innbucks App
+                              Complete Payment on Innbucks
                             </a>
                           </div>
+                        )}
+                        
+                        {!paymentInfo.qr_code_url && !paymentInfo.deeplink && !paymentInfo.redirect_url && (
+                          <p className="text-sm text-purple-700">
+                            Please check your Innbucks wallet to complete the payment.
+                          </p>
                         )}
                       </div>
                     )}

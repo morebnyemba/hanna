@@ -51,26 +51,41 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
             # Send the mobile payment request
             response = self.paynow_instance.send_mobile(payment, phone_number, paynow_method_type)
             
-            logger.debug(f"PaynowSDK: API response: {response.__dict__}")
+            # Log full response details for debugging
+            logger.info(f"PaynowSDK: Response success={response.success}")
+            logger.info(f"PaynowSDK: Response __dict__: {response.__dict__}")
+            logger.info(f"PaynowSDK: Available attributes: {dir(response)}")
+            
+            # Log specific attributes
+            for attr in ['paynow_reference', 'poll_url', 'pollUrl', 'instructions', 
+                        'redirect_url', 'redirectUrl', 'qr_code_url', 'qrCodeUrl',
+                        'deeplink', 'payment_link', 'paymentLink', 'hash', 'error']:
+                val = getattr(response, attr, None)
+                if val is not None:
+                    logger.info(f"PaynowSDK: response.{attr} = {val} (type: {type(val).__name__})")
 
             if response.success:
                 # For Express Checkout, there's no redirect_url.
                 # The SDK returns instructions and a poll_url.
                 # Different payment methods return different data:
                 # - EcoCash/Telecash: USSD push to phone (instructions)
-                # - OneMoney: Requires OTP from customer's phone
+                # - Omari: Requires OTP from customer's phone
                 # - Innbucks: Returns QR code or deeplink
                 
-                paynow_reference = getattr(response, 'paynow_reference', None)
-                poll_url = getattr(response, 'poll_url', None)
+                # Try both snake_case and camelCase attribute names
+                paynow_reference = getattr(response, 'paynow_reference', None) or getattr(response, 'paynowReference', None)
+                poll_url = getattr(response, 'poll_url', None) or getattr(response, 'pollUrl', None)
                 instructions = getattr(response, 'instructions', None)
                 
-                # OneMoney specific: Check for OTP requirement
-                requires_otp = getattr(response, 'requires_otp', None)
+                # Omari specific: Check for OTP requirement
+                requires_otp = getattr(response, 'requires_otp', None) or getattr(response, 'requiresOtp', None)
                 
-                # Innbucks specific: Check for QR code or deeplink
-                qr_code_url = getattr(response, 'qr_code_url', None)
-                deeplink = getattr(response, 'deeplink', None)
+                # Innbucks specific: Check for QR code or deeplink  
+                qr_code_url = getattr(response, 'qr_code_url', None) or getattr(response, 'qrCodeUrl', None)
+                deeplink = getattr(response, 'deeplink', None) or getattr(response, 'payment_link', None) or getattr(response, 'paymentLink', None)
+                
+                # Also check for redirect_url which some methods might use
+                redirect_url = getattr(response, 'redirect_url', None) or getattr(response, 'redirectUrl', None)
                 
                 # Convert all values to JSON-serializable types
                 def safe_str(val):
@@ -88,6 +103,7 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                     "paynow_reference": safe_str(paynow_reference),
                     "poll_url": safe_str(poll_url),
                     "instructions": safe_str(instructions),
+                    "redirect_url": safe_str(redirect_url),
                 }
                 
                 # Add method-specific fields
@@ -95,13 +111,14 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                     result['requires_otp'] = bool(requires_otp)
                     result['message'] = "Omari payment initiated. Please enter the OTP from your phone."
                 elif paynow_method_type == 'innbucks':
-                    result['qr_code_url'] = safe_str(qr_code_url)
-                    result['deeplink'] = safe_str(deeplink)
-                    result['message'] = "Innbucks payment initiated. Scan the QR code or use the deeplink."
+                    # For Innbucks, the payment_link/redirect_url is the QR code link
+                    result['qr_code_url'] = safe_str(qr_code_url) or safe_str(redirect_url)
+                    result['deeplink'] = safe_str(deeplink) or safe_str(redirect_url)
+                    result['message'] = "Innbucks payment initiated. Use the payment link to complete payment."
                 else:  # ecocash, telecash
                     result['message'] = "Payment initiated successfully. Please check your phone for a prompt."
                 
-                logger.info(f"PaynowSDK: {paynow_method_type} Express Checkout initiated. Reference: {result['paynow_reference']}, Poll URL: {result['poll_url']}")
+                logger.info(f"PaynowSDK: {paynow_method_type} Express Checkout initiated. Reference: {result['paynow_reference']}, Poll URL: {result['poll_url']}, Redirect: {result.get('redirect_url')}")
                 return result
             else:
                 error_message = getattr(response, 'error', 'Unknown error from Paynow SDK.')
