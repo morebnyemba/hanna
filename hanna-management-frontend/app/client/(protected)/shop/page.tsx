@@ -71,7 +71,7 @@ export default function ShopPage() {
       notes: ''
     });
     const [paymentInfo, setPaymentInfo] = useState<{instructions?: string; paynow_reference?: string; poll_url?: string} | null>(null);
-    const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'onemoney' | 'innbucks' | 'telecash'>('ecocash');
+    const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'omari' | 'innbucks' | 'telecash'>('ecocash');
 
     const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
       const target = e.target as HTMLInputElement & HTMLTextAreaElement;
@@ -737,7 +737,7 @@ export default function ShopPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                       <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as any)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="ecocash">Paynow - Ecocash</option>
-                        <option value="onemoney">Paynow - OneMoney</option>
+                        <option value="omari">Paynow - Omari</option>
                         <option value="innbucks">Paynow - Innbucks</option>
                         <option value="telecash">Paynow - Telecash</option>
                       </select>

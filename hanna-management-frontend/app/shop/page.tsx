@@ -118,7 +118,7 @@ export default function PublicShopPage() {
 
   
   // Checkout state
-  const [checkoutStep, setCheckoutStep] = useState<number>(1); // 1: Cart, 2: Details, 3: Confirmation
+  const [checkoutStep, setCheckoutStep] = useState<number>(1); // 1: Cart, 2: Details, 3: Confirmation, 4: Payment
   const [deliveryDetails, setDeliveryDetails] = useState({
     fullName: '',
     email: '',
@@ -127,8 +127,18 @@ export default function PublicShopPage() {
     city: '',
     notes: ''
   });
-  const [paymentInfo, setPaymentInfo] = useState<{instructions?: string; paynow_reference?: string; poll_url?: string} | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'onemoney' | 'innbucks' | 'telecash'>('ecocash');  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<{
+    instructions?: string; 
+    paynow_reference?: string; 
+    poll_url?: string;
+    payment_method?: string;
+    requires_otp?: boolean;
+    otp_message?: string;
+    qr_code_url?: string;
+    deeplink?: string;
+  } | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'omari' | 'innbucks' | 'telecash'>('ecocash');  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
   // Fetch products (handles pagination)
   const fetchProducts = async () => {
     try {
@@ -361,15 +371,51 @@ export default function PublicShopPage() {
         instructions: payData.instructions,
         paynow_reference: payData.paynow_reference,
         poll_url: payData.poll_url,
+        payment_method: payData.payment_method || paymentMethod,
+        requires_otp: payData.requires_otp || false,
+        otp_message: payData.otp_message,
+        qr_code_url: payData.qr_code_url,
+        deeplink: payData.deeplink,
       });
 
-      // Show payment modal with instructions
-      setShowPaymentModal(true);
-      // Keep drawer open to show confirmation and instructions
-      setCheckoutStep(3);
+      // Move to step 4 to show payment instructions
+      setCheckoutStep(4);
     } catch (err) {
       console.error('Checkout/Paynow error', err);
       alert((err as any)?.response?.data?.message || (err as any)?.message || 'Failed to place order');
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  // Submit Omari OTP
+  const submitOTP = async () => {
+    if (!otpCode || !paymentInfo?.paynow_reference) {
+      alert('Please enter the OTP code');
+      return;
+    }
+    
+    setCartLoading(true);
+    try {
+      const config: any = {};
+      if (csrfToken) {
+        config.headers = { 'X-CSRFToken': csrfToken };
+      }
+      
+      const response = await apiClient.post('/crm-api/paynow/submit-otp/', {
+        payment_reference: paymentInfo.paynow_reference,
+        otp_code: otpCode,
+      }, config);
+      
+      if (response.data?.success) {
+        alert('OTP submitted successfully! Please wait for payment confirmation.');
+        setOtpCode('');
+      } else {
+        alert(response.data?.message || 'Failed to submit OTP');
+      }
+    } catch (err: any) {
+      console.error('OTP submission error', err);
+      alert(err.response?.data?.message || 'Failed to submit OTP');
     } finally {
       setCartLoading(false);
     }
@@ -746,6 +792,7 @@ export default function PublicShopPage() {
                     {checkoutStep === 1 && 'Shopping Cart'}
                     {checkoutStep === 2 && 'Delivery Details'}
                     {checkoutStep === 3 && 'Order Confirmation'}
+                    {checkoutStep === 4 && 'Payment Instructions'}
                   </h2>
                   <button
                     onClick={() => { setShowCart(false); setCheckoutStep(1); }}
@@ -776,6 +823,13 @@ export default function PublicShopPage() {
                       3
                     </div>
                     <span className="ml-2 text-sm font-medium text-gray-700">Confirm</span>
+                  </div>
+                  <div className={`flex-1 h-1 mx-2 ${checkoutStep >= 4 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 4 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                      4
+                    </div>
+                    <span className="ml-2 text-sm font-medium text-gray-700">Payment</span>
                   </div>
                 </div>
               </div>
@@ -850,7 +904,7 @@ export default function PublicShopPage() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         <option value="ecocash">Paynow - Ecocash</option>
-                        <option value="onemoney">Paynow - OneMoney</option>
+                        <option value="omari">Paynow - Omari</option>
                         <option value="innbucks">Paynow - Innbucks</option>
                         <option value="telecash">Paynow - Telecash</option>
                       </select>
@@ -941,16 +995,6 @@ export default function PublicShopPage() {
                 {/* Step 3: Order Confirmation */}
                 {checkoutStep === 3 && cart && (
                   <div className="space-y-6">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <p className="text-green-800 font-medium">✓ Payment initiated via Paynow</p>
-                      {paymentInfo?.instructions && (
-                        <p className="text-sm text-green-900 mt-1">{paymentInfo.instructions}</p>
-                      )}
-                      {paymentInfo?.paynow_reference && (
-                        <p className="text-xs text-green-900 mt-1">Reference: {paymentInfo.paynow_reference}</p>
-                      )}
-                    </div>
-                    
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-2">Delivery Information</h3>
                       <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
@@ -975,6 +1019,106 @@ export default function PublicShopPage() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Payment Instructions */}
+                {checkoutStep === 4 && (
+                  <div className="space-y-6">
+                    <div className="text-center mb-6">
+                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FiCheck className="w-10 h-10 text-green-600" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Initiated!</h3>
+                      <p className="text-gray-600">Your order has been created successfully</p>
+                    </div>
+
+                    {paymentInfo?.paynow_reference && (
+                      <div className="bg-indigo-50 rounded-lg p-4">
+                        <p className="text-sm text-gray-600 mb-1 font-medium">Paynow Reference</p>
+                        <p className="font-mono font-bold text-indigo-900 text-lg">{paymentInfo.paynow_reference}</p>
+                      </div>
+                    )}
+
+                    {paymentInfo?.instructions && (
+                      <div className="bg-blue-50 rounded-lg p-4">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">Payment Instructions</p>
+                        <p className="text-gray-700 whitespace-pre-line leading-relaxed">{paymentInfo.instructions}</p>
+                      </div>
+                    )}
+
+                    {/* Omari OTP Input */}
+                    {paymentInfo?.requires_otp && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <p className="text-sm font-semibold text-amber-900 mb-3">
+                          {paymentInfo.otp_message || 'Enter Omari OTP'}
+                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value)}
+                            placeholder="Enter OTP"
+                            className="flex-1 px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            maxLength={6}
+                          />
+                          <button
+                            onClick={submitOTP}
+                            disabled={cartLoading || !otpCode}
+                            className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold transition-colors disabled:bg-gray-400"
+                          >
+                            Submit OTP
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Innbucks QR Code / Deeplink */}
+                    {paymentInfo?.payment_method === 'innbucks' && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <p className="text-sm font-semibold text-purple-900 mb-3">Innbucks Payment</p>
+                        
+                        {paymentInfo.qr_code_url && (
+                          <div className="mb-4 text-center">
+                            <p className="text-sm text-purple-700 mb-2">Scan QR Code with Innbucks app:</p>
+                            <img 
+                              src={paymentInfo.qr_code_url} 
+                              alt="Innbucks QR Code" 
+                              className="mx-auto w-48 h-48 border-2 border-purple-300 rounded"
+                            />
+                          </div>
+                        )}
+                        
+                        {paymentInfo.deeplink && (
+                          <div className="text-center">
+                            <p className="text-sm text-purple-700 mb-2">Or use this deeplink:</p>
+                            <a
+                              href={paymentInfo.deeplink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
+                            >
+                              Open in Innbucks App
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {paymentInfo?.poll_url && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <p className="text-sm text-amber-800">💡 You will receive a WhatsApp confirmation message once payment is complete.</p>
+                      </div>
+                    )}
+
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-2">What's next?</h4>
+                      <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
+                        <li>Check your phone for the Paynow prompt</li>
+                        <li>Follow the instructions to complete payment</li>
+                        <li>You'll receive confirmation via WhatsApp</li>
+                      </ol>
                     </div>
                   </div>
                 )}
@@ -1018,6 +1162,15 @@ export default function PublicShopPage() {
                         className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors disabled:bg-gray-400"
                       >
                         Pay with Paynow
+                      </button>
+                    )}
+                    
+                    {checkoutStep === 4 && (
+                      <button
+                        onClick={() => { setShowCart(false); setCheckoutStep(1); }}
+                        className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors"
+                      >
+                        Done
                       </button>
                     )}
                   </div>

@@ -56,35 +56,53 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
             if response.success:
                 # For Express Checkout, there's no redirect_url.
                 # The SDK returns instructions and a poll_url.
-                paynow_reference = getattr(response, 'paynow_reference', None) # SDK might provide this
-                poll_url = getattr(response, 'poll_url', None) # Important for status checks
-                instructions = getattr(response, 'instructions', None) # Instructions for the user
+                # Different payment methods return different data:
+                # - EcoCash/Telecash: USSD push to phone (instructions)
+                # - OneMoney: Requires OTP from customer's phone
+                # - Innbucks: Returns QR code or deeplink
                 
-                # Convert all values to JSON-serializable types, but avoid converting type objects
+                paynow_reference = getattr(response, 'paynow_reference', None)
+                poll_url = getattr(response, 'poll_url', None)
+                instructions = getattr(response, 'instructions', None)
+                
+                # OneMoney specific: Check for OTP requirement
+                requires_otp = getattr(response, 'requires_otp', None)
+                
+                # Innbucks specific: Check for QR code or deeplink
+                qr_code_url = getattr(response, 'qr_code_url', None)
+                deeplink = getattr(response, 'deeplink', None)
+                
+                # Convert all values to JSON-serializable types
                 def safe_str(val):
                     if val is None:
                         return None
-                    # If it's already a string, int, float, or bool, just return it
                     if isinstance(val, (str, int, float, bool)):
                         return val
-                    # If it's a type object (class), return None instead of <class 'X'>
                     if isinstance(val, type):
                         return None
-                    # Otherwise convert to string
                     return str(val)
                 
-                paynow_reference_str = safe_str(paynow_reference)
-                poll_url_str = safe_str(poll_url)
-                instructions_str = safe_str(instructions)
-                
-                logger.info(f"PaynowSDK: Express Checkout initiated successfully. Paynow Reference: {paynow_reference_str}, Poll URL: {poll_url_str}")
-                return {
+                result = {
                     "success": True,
-                    "paynow_reference": paynow_reference_str,
-                    "poll_url": poll_url_str, # Store this for later status checks
-                    "instructions": instructions_str, # Display to user
-                    "message": "Payment initiated successfully. Please check your phone for a prompt."
+                    "payment_method": paynow_method_type,
+                    "paynow_reference": safe_str(paynow_reference),
+                    "poll_url": safe_str(poll_url),
+                    "instructions": safe_str(instructions),
                 }
+                
+                # Add method-specific fields
+                if paynow_method_type == 'omari':
+                    result['requires_otp'] = bool(requires_otp)
+                    result['message'] = "Omari payment initiated. Please enter the OTP from your phone."
+                elif paynow_method_type == 'innbucks':
+                    result['qr_code_url'] = safe_str(qr_code_url)
+                    result['deeplink'] = safe_str(deeplink)
+                    result['message'] = "Innbucks payment initiated. Scan the QR code or use the deeplink."
+                else:  # ecocash, telecash
+                    result['message'] = "Payment initiated successfully. Please check your phone for a prompt."
+                
+                logger.info(f"PaynowSDK: {paynow_method_type} Express Checkout initiated. Reference: {result['paynow_reference']}, Poll URL: {result['poll_url']}")
+                return result
             else:
                 error_message = getattr(response, 'error', 'Unknown error from Paynow SDK.')
                 logger.error(f"PaynowSDK: API returned an error: {error_message}. Full response: {response.__dict__}")

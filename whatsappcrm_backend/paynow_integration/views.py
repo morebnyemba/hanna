@@ -102,7 +102,7 @@ def initiate_whatsapp_payment(request):
         # Map payment method to Paynow method type
         paynow_method_map = {
             'ecocash': 'ecocash',
-            'onemoney': 'onemoney',
+            'omari': 'omari',
             'innbucks': 'innbucks',
             'telecash': 'telecash'
         }
@@ -155,17 +155,30 @@ def initiate_whatsapp_payment(request):
                 order.payment_status = Order.PaymentStatus.PENDING
                 order.save(update_fields=['payment_status'])
             
-            logger.info(f"Payment initiated successfully: {payment_reference}")
+            logger.info(f"Payment initiated successfully: {payment_reference} via {paynow_method}")
             
-            return Response({
+            response_data = {
                 'success': True,
-                'message': 'Payment initiated successfully',
+                'message': result.get('message', 'Payment initiated successfully'),
                 'payment_id': str(payment.id),
                 'payment_reference': payment_reference,
+                'payment_method': paynow_method,
                 'poll_url': result.get('poll_url'),
                 'paynow_reference': result.get('paynow_reference'),
                 'instructions': result.get('instructions', f'Please check your {paynow_method} to complete the payment.')
-            })
+            }
+            
+            # Add method-specific fields
+            if paynow_method == 'omari' and result.get('requires_otp'):
+                response_data['requires_otp'] = True
+                response_data['otp_message'] = 'Please check your Omari phone for an OTP and enter it below.'
+            elif paynow_method == 'innbucks':
+                if result.get('qr_code_url'):
+                    response_data['qr_code_url'] = result.get('qr_code_url')
+                if result.get('deeplink'):
+                    response_data['deeplink'] = result.get('deeplink')
+            
+            return Response(response_data)
         else:
             # Payment initiation failed
             payment.status = PaymentStatus.FAILED
@@ -182,6 +195,77 @@ def initiate_whatsapp_payment(request):
             
     except Exception as e:
         logger.error(f"Error initiating WhatsApp payment: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'message': f'Server error: {str(e)[:200]}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def submit_omari_otp(request):
+    """
+    Submit Omari OTP to complete payment.
+    Omari requires the customer to receive an OTP on their phone
+    and submit it back to Paynow to authorize the transaction.
+    """
+    try:
+        payment_reference = request.data.get('payment_reference')
+        otp_code = request.data.get('otp_code')
+        
+        if not payment_reference or not otp_code:
+            return Response({
+                'success': False,
+                'message': 'Payment reference and OTP code are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        logger.info(f"Submitting Omari OTP for payment: {payment_reference}")
+        
+        # Get payment record
+        try:
+            payment = Payment.objects.get(provider_transaction_id=payment_reference)
+        except Payment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Payment not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Initialize Paynow service
+        paynow_service = PaynowService(ipn_callback_url=PAYNOW_IPN_URL_PATH)
+        
+        # Submit OTP to Paynow (assuming the SDK has this method)
+        # Note: The actual Paynow SDK might not have this method yet
+        # In that case, we'd need to make a direct API call
+        if hasattr(paynow_service.paynow_sdk, 'submit_otp'):
+            result = paynow_service.paynow_sdk.submit_otp(
+                poll_url=payment.poll_url,
+                otp_code=otp_code
+            )
+            
+            if result.get('success'):
+                logger.info(f"Omari OTP submitted successfully for {payment_reference}")
+                return Response({
+                    'success': True,
+                    'message': 'OTP submitted successfully. Please wait for payment confirmation.',
+                    'poll_url': payment.poll_url
+                })
+            else:
+                logger.error(f"Omari OTP submission failed: {result.get('message')}")
+                return Response({
+                    'success': False,
+                    'message': result.get('message', 'OTP submission failed')
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # SDK doesn't support OTP submission yet
+            logger.warning(f"Paynow SDK doesn't support OTP submission. Payment: {payment_reference}")
+            return Response({
+                'success': False,
+                'message': 'Omari OTP submission not yet implemented in SDK. Please complete payment via Omari app directly.'
+            }, status=status.HTTP_501_NOT_IMPLEMENTED)
+            
+    except Exception as e:
+        logger.error(f"Error submitting Omari OTP: {e}", exc_info=True)
         return Response({
             'success': False,
             'message': f'Server error: {str(e)[:200]}'
