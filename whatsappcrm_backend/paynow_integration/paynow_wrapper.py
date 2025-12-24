@@ -75,20 +75,23 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                 
                 # Different payment methods return different data:
                 # - EcoCash/Telecash: USSD push to phone (authorization sent via USSD)
-                # - Omari: Requires OTP from customer's phone  
-                # - Innbucks: Returns authorizationcode that customer uses to authorize payment
+                # - Omari: Returns authorization code, customer receives OTP via SMS to authorize
+                # - Innbucks: Returns authorization code that customer enters in Innbucks wallet
                 
-                # Innbucks specific fields
+                # Common fields across methods that use authorization codes
                 authorization_code = data.get('authorizationcode') or data.get('authorizationCode')
                 authorization_expires = data.get('authorizationexpires') or data.get('authorizationExpires')
                 
                 # Build instructions based on payment method
-                if paynow_method_type == 'innbucks' and authorization_code:
+                if paynow_method_type == 'omari' and authorization_code:
+                    instructions = f"Authorization code: {authorization_code}. Check your phone for an OTP to complete payment. Code expires: {authorization_expires}"
+                elif paynow_method_type == 'innbucks' and authorization_code:
                     instructions = f"Use authorization code: {authorization_code} to complete payment in your Innbucks wallet. Code expires: {authorization_expires}"
                     # Generate Innbucks deeplink (if applicable)
                     deeplink = f"innbucks://pay?code={authorization_code}&reference={paynow_reference}"
                 else:
                     instructions = None
+                    deeplink = None
                 
                 # Convert all values to JSON-serializable types
                 def safe_str(val):
@@ -110,10 +113,11 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                 
                 # Add method-specific fields
                 if paynow_method_type == 'omari':
-                    # For Omari, check if OTP is required (would be in response.data)
-                    requires_otp = data.get('requires_otp') or data.get('requiresOtp')
-                    result['requires_otp'] = bool(requires_otp) if requires_otp else True  # Default to True for Omari
-                    result['message'] = "Omari payment initiated. Please enter the OTP from your phone."
+                    # Omari always requires OTP - customer receives SMS with OTP after initiating payment
+                    result['requires_otp'] = True
+                    result['authorization_code'] = safe_str(authorization_code)
+                    result['authorization_expires'] = safe_str(authorization_expires)
+                    result['message'] = f"Omari payment initiated. Authorization: {authorization_code}. Please enter the OTP sent to your phone."
                 elif paynow_method_type == 'innbucks':
                     result['authorization_code'] = safe_str(authorization_code)
                     result['authorization_expires'] = safe_str(authorization_expires)

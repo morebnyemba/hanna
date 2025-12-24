@@ -1055,9 +1055,22 @@ export default function PublicShopPage() {
                     {/* Omari OTP Input */}
                     {paymentInfo?.requires_otp && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-amber-900 mb-3">
-                          {paymentInfo.otp_message || 'Enter Omari OTP'}
+                        <p className="text-sm font-semibold text-amber-900 mb-3">📱 Omari Payment</p>
+                        
+                        {paymentInfo.authorization_code && (
+                          <div className="mb-3 bg-white border border-amber-300 rounded-lg p-3 text-center">
+                            <p className="text-xs text-amber-600 mb-1 uppercase tracking-wide">Authorization Code</p>
+                            <p className="text-2xl font-bold text-amber-900 font-mono">{paymentInfo.authorization_code}</p>
+                            {paymentInfo.authorization_expires && (
+                              <p className="text-xs text-amber-600 mt-1">Expires: {paymentInfo.authorization_expires}</p>
+                            )}
+                          </div>
+                        )}
+                        
+                        <p className="text-sm text-amber-800 mb-3">
+                          {paymentInfo.otp_message || 'An OTP has been sent to your Omari phone. Please enter it below to complete payment.'}
                         </p>
+                        
                         <div className="flex gap-2">
                           <input
                             type="text"

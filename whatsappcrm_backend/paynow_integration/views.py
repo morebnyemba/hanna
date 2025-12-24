@@ -172,6 +172,9 @@ def initiate_whatsapp_payment(request):
             if paynow_method == 'omari' and result.get('requires_otp'):
                 response_data['requires_otp'] = True
                 response_data['otp_message'] = 'Please check your Omari phone for an OTP and enter it below.'
+                if result.get('authorization_code'):
+                    response_data['authorization_code'] = result.get('authorization_code')
+                    response_data['authorization_expires'] = result.get('authorization_expires')
             elif paynow_method == 'innbucks':
                 if result.get('authorization_code'):
                     response_data['authorization_code'] = result.get('authorization_code')
