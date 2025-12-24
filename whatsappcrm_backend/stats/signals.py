@@ -123,9 +123,10 @@ def on_order_change(sender, instance, created, **kwargs):
                 'contact_name': getattr(instance.customer.contact, 'name', 'N/A'),
             }
             # --- FIX: Flatten the context to match the template's expectations ---
+            # Use serialized dictionaries, not model instances, for JSONField compatibility
             template_context = {
-                'order': instance,
-                'customer': instance.customer,
+                'order': order_data,
+                'customer': customer_data,
             }
             from notifications.services import queue_notifications_to_users
             queue_notifications_to_users(
