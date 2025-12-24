@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiTool, FiUser, FiMapPin, FiCalendar, FiSearch, FiPackage, FiCheckCircle, FiClock, FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { FiTool, FiUser, FiMapPin, FiCalendar, FiSearch, FiPackage, FiCheckCircle, FiClock, FiPlus, FiEdit, FiTrash2, FiDownload, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import apiClient from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +71,9 @@ export default function AdminInstallationsPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [installationToDelete, setInstallationToDelete] = useState<Installation | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [filteredInstallations, setFilteredInstallations] = useState<Installation[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const fetchInstallations = async () => {
     setLoading(true);
@@ -138,46 +143,63 @@ export default function AdminInstallationsPage() {
     }
   };
 
+  // Client-side filtering + pagination
   useEffect(() => {
-    const fetchInstallations = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        let url = '/crm-api/installation-requests/';
-        const params = new URLSearchParams();
-        
-        if (statusFilter !== 'all') {
-          params.append('status', statusFilter);
-        }
-        
-        if (params.toString()) {
-          url += `?${params.toString()}`;
-        }
-        
-        const response = await apiClient.get(url);
-        setInstallations(response.data.results || response.data);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch installations.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    let filtered = installations.filter((installation) => {
+      const matchesSearch =
+        installation.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        installation.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (installation.order_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        installation.technicians?.some(
+          (t) =>
+            (t.user?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (t.user?.username || '').toLowerCase().includes(searchTerm.toLowerCase())
+        );
 
-    fetchInstallations();
-  }, [statusFilter]);
+      const matchesStatus = statusFilter === 'all' || installation.status === statusFilter;
 
-  const filteredInstallations = installations.filter(installation => {
-    const matchesSearch = 
-      installation.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      installation.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      installation.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      installation.technicians?.some(t => 
-        t.user?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.user?.username?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    
-    return matchesSearch;
-  });
+      const created = new Date(installation.created_at);
+      const inRange = !date?.from || !date?.to || (created >= (date.from as Date) && created <= (date.to as Date));
+
+      return matchesSearch && matchesStatus && inRange;
+    });
+
+    setFilteredInstallations(filtered);
+    setCurrentPage(1);
+  }, [installations, searchTerm, statusFilter, date]);
+
+  const totalPages = Math.ceil(filteredInstallations.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = filteredInstallations.slice(startIndex, endIndex);
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Installations Report', 14, 22);
+    doc.setFontSize(11);
+    const dateRangeStr = date?.from && date?.to ? `${format(date.from, 'MMM dd, yyyy')} - ${format(date.to, 'MMM dd, yyyy')}` : 'All time';
+    doc.text(`Generated: ${new Date().toLocaleDateString()} | Range: ${dateRangeStr}`, 14, 30);
+
+    const rows = filteredInstallations.map((i) => [
+      i.full_name,
+      i.address,
+      i.installation_type_display || i.installation_type,
+      i.status_display || i.status,
+      i.order_number || '-',
+      format(new Date(i.created_at), 'MMM dd, yyyy'),
+    ]);
+
+    autoTable(doc, {
+      head: [['Customer', 'Address', 'Type', 'Status', 'Order #', 'Date']],
+      body: rows,
+      startY: 35,
+      theme: 'grid',
+      headStyles: { fillColor: [124, 58, 237] },
+    });
+
+    doc.save(`installations-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   return (
     <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
@@ -185,7 +207,7 @@ export default function AdminInstallationsPage() {
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
           <FiTool className="w-6 h-6" /> Installation Tracking
         </h1>
-        <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+        <div className="flex gap-2 w-full sm:w-auto flex-wrap items-center">
           <div className="relative flex-1 sm:w-64">
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <Input
@@ -195,18 +217,26 @@ export default function AdminInstallationsPage() {
               className="pl-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="all">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+
+          <div className="flex items-center gap-2">
+            <DateRangePicker date={date} setDate={setDate} />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border rounded px-3 py-2 text-sm"
+            >
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+
+            <Button onClick={handleExportPDF} className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2">
+              <FiDownload className="w-4 h-4" /> Export PDF
+            </Button>
+          </div>
         </div>
       </div>
       
@@ -252,7 +282,7 @@ export default function AdminInstallationsPage() {
                 <p className="text-gray-500 text-center py-8">No installations found.</p>
               ) : (
                 <div className="space-y-4">
-                  {filteredInstallations.map((installation) => (
+                  {currentItems.map((installation) => (
                     <div
                       key={installation.id}
                       className={`p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -327,6 +357,25 @@ export default function AdminInstallationsPage() {
                     </div>
                   ))}
                 </div>
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-4 mt-6 pt-4 border-t">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-2 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 rounded"
+                    >
+                      <FiChevronLeft /> Previous
+                    </button>
+                    <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-2 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 rounded"
+                    >
+                      Next <FiChevronRight />
+                    </button>
+                  </div>
+                )}
               )}
             </CardContent>
           </Card>
