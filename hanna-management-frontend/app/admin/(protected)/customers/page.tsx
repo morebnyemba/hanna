@@ -27,20 +27,14 @@ interface Customer {
 
 const SkeletonRow = () => (
     <tr className="animate-pulse">
-        <td className="px-6 py-4 whitespace-nowrap">
+        <td className="px-4 py-3 sm:px-6 sm:py-4">
             <div className="h-4 bg-gray-200 rounded w-3/4"></div>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
+        <td className="px-4 py-3 sm:px-6 sm:py-4">
             <div className="h-4 bg-gray-200 rounded w-full"></div>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        <td className="px-4 py-3 sm:px-6 sm:py-4">
+            <div className="h-4 bg-gray-200 rounded w-24"></div>
         </td>
     </tr>
 );
@@ -230,16 +224,14 @@ export default function CustomersPage() {
         />
       </div>
 
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
+      <div className="bg-white p-3 sm:p-6 rounded-lg shadow-md border border-gray-200">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th scope="col" className="px-4 py-3 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th scope="col" className="px-4 py-3 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                <th scope="col" className="px-4 py-3 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -253,43 +245,44 @@ export default function CustomersPage() {
                 </>
               ) : currentCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={3} className="px-4 py-8 sm:px-6 text-center text-gray-500">
                     {searchTerm ? 'No customers found matching your search' : 'No customers found'}
                   </td>
                 </tr>
               ) : (
                 currentCustomers.map((customer) => (
                     <tr key={customer.contact.id} className="hover:bg-gray-50 transition-colors duration-150">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm font-medium text-gray-900">
                             {customer.first_name && customer.last_name ? `${customer.first_name} ${customer.last_name}` : customer.contact.name}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.contact.whatsapp_id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {customer.address_line_1} {customer.address_line_2}, {customer.city}
+                        <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-500">
+                          <span className="inline-flex items-center">
+                            <FiPhone className="w-3 h-3 mr-1 sm:hidden" />
+                            {customer.contact.whatsapp_id}
+                          </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-3 sm:px-6 sm:py-4">
+                          <div className="flex items-center gap-1 sm:gap-2">
                             <button
                               onClick={() => handleWhatsAppClick(customer)}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-md transition"
-                              title="Send WhatsApp"
+                              className="p-1.5 sm:p-2 text-green-600 hover:bg-green-50 rounded-md transition"
+                              title="WhatsApp"
                             >
                               <FiMessageSquare className="w-4 h-4" />
                             </button>
                             <Link href={`/admin/customers/${customer.contact.id}/edit`}>
-                              <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition" title="Edit">
+                              <button className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-md transition" title="Edit">
                                 <FiEdit className="w-4 h-4" />
                               </button>
                             </Link>
                             <Link href={`/admin/customers/${customer.contact.id}`}>
-                              <button className="p-2 text-purple-600 hover:bg-purple-50 rounded-md transition" title="View Details">
+                              <button className="p-1.5 sm:p-2 text-purple-600 hover:bg-purple-50 rounded-md transition" title="View">
                                 <FiUsers className="w-4 h-4" />
                               </button>
                             </Link>
                             <button
                               onClick={() => handleDeleteClick(customer)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-md transition"
+                              className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-md transition"
                               title="Delete"
                             >
                               <FiTrash2 className="w-4 h-4" />
@@ -305,25 +298,25 @@ export default function CustomersPage() {
 
         {/* Pagination */}
         {!loading && totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
-            <div className="text-sm text-gray-700">
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 pt-4 gap-3">
+            <div className="text-xs sm:text-sm text-gray-700">
               Showing {startIndex + 1} to {Math.min(endIndex, filteredCustomers.length)} of {filteredCustomers.length} customers
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiChevronLeft />
               </button>
-              <span className="px-4 py-1 text-sm">
-                Page {currentPage} of {totalPages}
+              <span className="px-3 py-1 text-xs sm:text-sm">
+                {currentPage} / {totalPages}
               </span>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiChevronRight />
               </button>
