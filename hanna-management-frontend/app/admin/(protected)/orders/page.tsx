@@ -47,6 +47,13 @@ interface Order {
   updated_at: string;
 }
 
+interface PaginatedResponse<T> {
+  results: T[];
+  next: string | null;
+  previous?: string | null;
+  count?: number;
+}
+
 const stageColors: Record<string, string> = {
   prospecting: 'bg-gray-100 text-gray-800',
   qualification: 'bg-blue-100 text-blue-800',
@@ -88,13 +95,13 @@ export default function AdminOrdersPage() {
       setError(null);
       try {
         let url: string | null = '/crm-api/customer-data/orders/?ordering=-created_at';
-        const all: Order[] = [] as any;
+        const all: Order[] = [];
         while (url) {
-          const response = await apiClient.get(url);
-          const payload = response.data;
-          const pageItems: Order[] = payload.results || payload;
+          const resp = await apiClient.get<PaginatedResponse<Order> | Order[]>(url);
+          const payload = resp.data as PaginatedResponse<Order> | Order[];
+          const pageItems: Order[] = Array.isArray(payload) ? (payload as Order[]) : (payload as PaginatedResponse<Order>).results;
           all.push(...pageItems);
-          url = payload.next || null;
+          url = Array.isArray(payload) ? null : (payload as PaginatedResponse<Order>).next || null;
         }
         setOrders(all);
         setFilteredOrders(all);
