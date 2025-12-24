@@ -87,9 +87,17 @@ export default function AdminOrdersPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get('/crm-api/customer-data/orders/');
-        setOrders(response.data.results || response.data);
-        setFilteredOrders(response.data.results || response.data);
+        let url: string | null = '/crm-api/customer-data/orders/?ordering=-created_at';
+        const all: Order[] = [] as any;
+        while (url) {
+          const response = await apiClient.get(url);
+          const payload = response.data;
+          const pageItems: Order[] = payload.results || payload;
+          all.push(...pageItems);
+          url = payload.next || null;
+        }
+        setOrders(all);
+        setFilteredOrders(all);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch orders.');
       } finally {

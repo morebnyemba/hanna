@@ -13,6 +13,8 @@ import { DateRange } from 'react-day-picker';
 import { subDays, format } from 'date-fns';
 import { DateRangePicker } from '@/app/components/DateRangePicker';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 interface Technician {
   id: number;
@@ -74,6 +76,10 @@ export default function AdminInstallationsPage() {
   const [filteredInstallations, setFilteredInstallations] = useState<Installation[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [availableTechnicians, setAvailableTechnicians] = useState<Technician[]>([]);
+  const [selectedTechIds, setSelectedTechIds] = useState<number[]>([]);
+  const [assignLoading, setAssignLoading] = useState(false);
 
   const fetchInstallations = async () => {
     setLoading(true);
@@ -120,6 +126,51 @@ export default function AdminInstallationsPage() {
   const handleDeleteClick = (installation: Installation) => {
     setInstallationToDelete(installation);
     setDeleteModalOpen(true);
+  };
+
+  const openAssignModal = async (installation: Installation) => {
+    setSelectedInstallation(installation);
+    try {
+      const res = await apiClient.get('/crm-api/admin-panel/technicians/');
+      setAvailableTechnicians(res.data.results || res.data);
+      const current = (installation.technicians || []).map((t) => t.id);
+      setSelectedTechIds(current);
+      setAssignModalOpen(true);
+    } catch (e: any) {
+      alert('Failed to load technicians: ' + (e.response?.data?.detail || e.message));
+    }
+  };
+
+  const toggleTech = (id: number) => {
+    setSelectedTechIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleAssignSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInstallation) return;
+    setAssignLoading(true);
+    try {
+      const res = await apiClient.post(
+        `/crm-api/admin-panel/installation-requests/${selectedInstallation.id}/assign_technicians/`,
+        { technician_ids: selectedTechIds }
+      );
+      // Update list and selected installation
+      setInstallations((prev) =>
+        prev.map((inst) =>
+          inst.id === selectedInstallation.id
+            ? { ...inst, technicians: availableTechnicians.filter((t) => selectedTechIds.includes(t.id)) as any }
+            : inst
+        )
+      );
+      setSelectedInstallation((prev) =>
+        prev ? { ...prev, technicians: availableTechnicians.filter((t) => selectedTechIds.includes(t.id)) as any } : prev
+      );
+      setAssignModalOpen(false);
+    } catch (e: any) {
+      alert('Failed to assign technicians: ' + (e.response?.data?.detail || e.message));
+    } finally {
+      setAssignLoading(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -330,6 +381,15 @@ export default function AdminInstallationsPage() {
                           </span>
                           {/* Action Buttons */}
                           <div className="flex gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openAssignModal(installation)}
+                              className="text-xs px-2 py-1 h-7"
+                              title="Assign Technicians"
+                            >
+                              <FiTool className="w-3 h-3 mr-1" /> Assign
+                            </Button>
                             {installation.status !== 'completed' && (
                               <Button
                                 size="sm"
@@ -478,6 +538,41 @@ export default function AdminInstallationsPage() {
         message={`Are you sure you want to delete the installation request for "${installationToDelete?.full_name}"? This action cannot be undone.`}
         isDeleting={isDeleting}
       />
+
+      {/* Assign Technicians Modal */}
+      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Technicians</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAssignSubmit} className="space-y-4">
+            <div className="max-h-64 overflow-auto border rounded p-2">
+              {availableTechnicians.length === 0 ? (
+                <p className="text-sm text-gray-500">No technicians available.</p>
+              ) : (
+                availableTechnicians.map((tech) => (
+                  <label key={tech.id} className="flex items-center gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedTechIds.includes(tech.id)}
+                      onChange={() => toggleTech(tech.id)}
+                    />
+                    <span className="text-sm">{tech.user.full_name || tech.user.username}</span>
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setAssignModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={assignLoading} className="bg-purple-600 hover:bg-purple-700">
+                {assignLoading ? 'Assigning...' : 'Assign'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
