@@ -38,7 +38,11 @@ const BarChart = React.forwardRef<
       {...props}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <RechartsBarChart data={data} layout={layout}>
+        <RechartsBarChart 
+          data={data} 
+          layout={layout}
+          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+        >
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend content={<ChartLegendContent />} />
           {Object.entries(config).map(([key, itemConfig]) => {

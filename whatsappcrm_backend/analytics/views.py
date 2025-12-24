@@ -52,7 +52,18 @@ class AdminAnalyticsView(APIView):
             started_at_date_filter = Q()
 
         # --- Customer Analytics ---
-        customer_growth = CustomerProfile.objects.filter(date_filter).annotate(date=TruncDate('created_at')).values('date').annotate(count=Count('contact_id')).order_by('date')
+        customer_growth_raw = CustomerProfile.objects.filter(date_filter).annotate(date=TruncDate('created_at')).values('date').annotate(count=Count('contact_id')).order_by('date')
+        
+        # Format and limit data points for better chart display
+        customer_growth = []
+        for item in customer_growth_raw:
+            if item['date']:
+                customer_growth.append({
+                    'date': item['date'].strftime('%b %d'),
+                    'count': item['count']
+                })
+        # Limit to last 30 data points for better chart display
+        customer_growth = customer_growth[-30:] if len(customer_growth) > 30 else customer_growth
         
         total_leads = CustomerProfile.objects.filter(date_filter).count()
         won_leads = CustomerProfile.objects.filter(date_filter, lead_status=LeadStatus.WON).count()
@@ -60,7 +71,19 @@ class AdminAnalyticsView(APIView):
 
         # --- Sales Analytics ---
         orders = Order.objects.filter(date_filter, stage=Order.Stage.CLOSED_WON)
-        revenue_over_time = orders.annotate(date=TruncDate('created_at')).values('date').annotate(total=Sum('amount')).order_by('date')
+        revenue_over_time_raw = orders.annotate(date=TruncDate('created_at')).values('date').annotate(total=Sum('amount')).order_by('date')
+        
+        # Format and limit data points for better chart display
+        revenue_over_time = []
+        for item in revenue_over_time_raw:
+            if item['date']:
+                revenue_over_time.append({
+                    'date': item['date'].strftime('%b %d'),
+                    'total': float(item['total']) if item['total'] else 0
+                })
+        # Limit to last 30 data points for better chart display
+        revenue_over_time = revenue_over_time[-30:] if len(revenue_over_time) > 30 else revenue_over_time
+        
         total_orders = orders.count()
         total_revenue = orders.aggregate(total=Sum('amount'))['total'] or 0
         average_order_value = total_revenue / total_orders if total_orders > 0 else 0
@@ -130,12 +153,12 @@ class AdminAnalyticsView(APIView):
 
         data = {
             'customer_analytics': {
-                'growth_over_time': list(customer_growth),
+                'growth_over_time': customer_growth,
                 'lead_conversion_rate': f"{lead_conversion_rate:.2f}%",
                 'total_customers_in_period': total_leads,
             },
             'sales_analytics': {
-                'revenue_over_time': list(revenue_over_time),
+                'revenue_over_time': revenue_over_time,
                 'total_orders': total_orders,
                 'average_order_value': f"{average_order_value:.2f}",
                 'top_selling_products': list(top_selling_products),

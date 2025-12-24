@@ -152,7 +152,7 @@ export default function AdminAnalyticsPage() {
                   Customer Growth
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-hidden">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                     <div>
@@ -168,8 +168,8 @@ export default function AdminAnalyticsPage() {
                   {data.customer_analytics?.growth_over_time && data.customer_analytics.growth_over_time.length > 0 && (
                     <div className="mt-4">
                       <p className="text-xs text-gray-500 mb-2">Growth Trend</p>
-                      <div className="h-[200px]">
-                        <BarChart data={data.customer_analytics.growth_over_time} config={chartConfig} className="h-full" />
+                      <div className="h-[180px] w-full">
+                        <BarChart data={data.customer_analytics.growth_over_time} config={chartConfig} className="h-full w-full" />
                       </div>
                     </div>
                   )}
@@ -185,7 +185,7 @@ export default function AdminAnalyticsPage() {
                   Sales Revenue
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-hidden">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                     <div>
@@ -197,8 +197,8 @@ export default function AdminAnalyticsPage() {
                   {data.sales_analytics?.revenue_over_time && data.sales_analytics.revenue_over_time.length > 0 && (
                     <div className="mt-4">
                       <p className="text-xs text-gray-500 mb-2">Revenue Trend</p>
-                      <div className="h-[200px]">
-                        <BarChart data={data.sales_analytics.revenue_over_time} config={chartConfig} className="h-full" />
+                      <div className="h-[180px] w-full">
+                        <BarChart data={data.sales_analytics.revenue_over_time} config={chartConfig} className="h-full w-full" />
                       </div>
                     </div>
                   )}
