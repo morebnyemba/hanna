@@ -67,7 +67,7 @@ export default function AdminOrdersPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get('/crm-api/orders/');
+        const response = await apiClient.get('/crm-api/customer-data/orders/');
         setOrders(response.data.results || response.data);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch orders.');
