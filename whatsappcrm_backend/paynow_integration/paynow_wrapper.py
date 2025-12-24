@@ -129,9 +129,19 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                 logger.info(f"PaynowSDK: {paynow_method_type} Express Checkout initiated. Reference: {result['paynow_reference']}, Poll URL: {result['poll_url']}, Auth Code: {result.get('authorization_code')}")
                 return result
             else:
-                error_message = getattr(response, 'error', 'Unknown error from Paynow SDK.')
+                # Normalize error message to avoid rendering Python types like <class 'str'> to the UI
+                raw_error = getattr(response, 'error', None)
+                if isinstance(raw_error, type):
+                    raw_error = None
+
+                data_error = None
+                data_payload = getattr(response, 'data', None)
+                if isinstance(data_payload, dict):
+                    data_error = data_payload.get('error') or data_payload.get('message')
+
+                error_message = raw_error or data_error or 'Unknown error from Paynow SDK.'
                 logger.error(f"PaynowSDK: API returned an error: {error_message}. Full response: {response.__dict__}")
-                return {"success": False, "message": f"Paynow error: {str(error_message)}"} # Ensure it's a string
+                return {"success": False, "message": f"Paynow error: {error_message}"}
 
         except Exception as e:
             logger.error(f"PaynowSDK: Unexpected error during Express Checkout initiation: {str(e)}", exc_info=True)
