@@ -559,7 +559,8 @@ export default function AdminOrdersPage() {
         isOpen={deleteModalOpen}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
-        itemName={`Order #${orderToDelete?.order_number}`}
+        title="Delete Order"
+        message={`Are you sure you want to delete Order #${orderToDelete?.order_number}? This action cannot be undone.`}
         isDeleting={isDeleting}
       />
     </main>
