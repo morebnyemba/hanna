@@ -128,8 +128,7 @@ export default function PublicShopPage() {
     notes: ''
   });
   const [paymentInfo, setPaymentInfo] = useState<{instructions?: string; paynow_reference?: string; poll_url?: string} | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'onemoney' | 'innbucks' | 'telecash'>('ecocash');
-
+  const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'onemoney' | 'innbucks' | 'telecash'>('ecocash');  const [showPaymentModal, setShowPaymentModal] = useState(false);
   // Fetch products (handles pagination)
   const fetchProducts = async () => {
     try {
@@ -364,7 +363,8 @@ export default function PublicShopPage() {
         poll_url: payData.poll_url,
       });
 
-      alert(`Payment initiated. ${payData.instructions || ''}`);
+      // Show payment modal with instructions
+      setShowPaymentModal(true);
       // Keep drawer open to show confirmation and instructions
       setCheckoutStep(3);
     } catch (err) {
@@ -440,6 +440,55 @@ export default function PublicShopPage() {
           </div>
         </div>
       </header>
+
+      {/* Payment Instructions Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => setShowPaymentModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiCheck className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Initiated!</h3>
+              <p className="text-gray-600">Your order has been created successfully</p>
+            </div>
+
+            {paymentInfo?.paynow_reference && (
+              <div className="bg-indigo-50 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-600 mb-1">Paynow Reference</p>
+                <p className="font-mono font-bold text-indigo-900">{paymentInfo.paynow_reference}</p>
+              </div>
+            )}
+
+            {paymentInfo?.instructions && (
+              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <p className="text-sm font-semibold text-gray-700 mb-2">Payment Instructions</p>
+                <p className="text-gray-700 whitespace-pre-line">{paymentInfo.instructions}</p>
+              </div>
+            )}
+
+            {paymentInfo?.poll_url && (
+              <div className="text-sm text-gray-500 mb-4">
+                <p>You will receive a confirmation message once payment is complete.</p>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowPaymentModal(false)}
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              Got it, thanks!
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

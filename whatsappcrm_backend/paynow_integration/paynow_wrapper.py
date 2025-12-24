@@ -60,10 +60,22 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                 poll_url = getattr(response, 'poll_url', None) # Important for status checks
                 instructions = getattr(response, 'instructions', None) # Instructions for the user
                 
-                # Convert all values to JSON-serializable types
-                paynow_reference_str = str(paynow_reference) if paynow_reference is not None else None
-                poll_url_str = str(poll_url) if poll_url is not None else None
-                instructions_str = str(instructions) if instructions is not None else None
+                # Convert all values to JSON-serializable types, but avoid converting type objects
+                def safe_str(val):
+                    if val is None:
+                        return None
+                    # If it's already a string, int, float, or bool, just return it
+                    if isinstance(val, (str, int, float, bool)):
+                        return val
+                    # If it's a type object (class), return None instead of <class 'X'>
+                    if isinstance(val, type):
+                        return None
+                    # Otherwise convert to string
+                    return str(val)
+                
+                paynow_reference_str = safe_str(paynow_reference)
+                poll_url_str = safe_str(poll_url)
+                instructions_str = safe_str(instructions)
                 
                 logger.info(f"PaynowSDK: Express Checkout initiated successfully. Paynow Reference: {paynow_reference_str}, Poll URL: {poll_url_str}")
                 return {
