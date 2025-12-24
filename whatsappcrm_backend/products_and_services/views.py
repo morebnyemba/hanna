@@ -895,6 +895,7 @@ class CartViewSet(viewsets.ViewSet):
                     order_number=order_num,
                     stage=Order.Stage.CLOSED_WON,
                     payment_status=Order.PaymentStatus.PENDING,
+                    source=Order.Source.API,
                     amount=total_amount,
                     currency=currency,
                     notes=delivery_summary,
