@@ -332,7 +332,8 @@ export default function AdminInstallationsPage() {
               ) : filteredInstallations.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No installations found.</p>
               ) : (
-                <div className="space-y-4">
+                <>
+                  <div className="space-y-4">
                   {currentItems.map((installation) => (
                     <div
                       key={installation.id}
@@ -416,8 +417,8 @@ export default function AdminInstallationsPage() {
                       </div>
                     </div>
                   ))}
-                </div>
-                {totalPages > 1 && (
+                  </div>
+                  {totalPages > 1 && (
                   <div className="flex justify-center items-center gap-4 mt-6 pt-4 border-t">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -435,7 +436,8 @@ export default function AdminInstallationsPage() {
                       Next <FiChevronRight />
                     </button>
                   </div>
-                )}
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
