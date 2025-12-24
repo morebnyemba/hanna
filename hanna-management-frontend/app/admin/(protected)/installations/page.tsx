@@ -80,6 +80,7 @@ export default function AdminInstallationsPage() {
   const [availableTechnicians, setAvailableTechnicians] = useState<Technician[]>([]);
   const [selectedTechIds, setSelectedTechIds] = useState<number[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   const fetchInstallations = async () => {
     setLoading(true);
@@ -129,9 +130,11 @@ export default function AdminInstallationsPage() {
   };
 
   const openAssignModal = async (installation: Installation) => {
+    console.log('[Installations] Open Assign Modal clicked for installation:', installation?.id);
     setSelectedInstallation(installation);
     setAssignModalOpen(true);
     setAssignLoading(true);
+    setAssignError(null);
     try {
       const res = await apiClient.get('/crm-api/admin-panel/technicians/');
       setAvailableTechnicians(res.data.results || res.data);
@@ -139,7 +142,10 @@ export default function AdminInstallationsPage() {
       setSelectedTechIds(current);
     } catch (e: any) {
       console.error('Failed to load technicians', e);
-      alert('Failed to load technicians: ' + (e.response?.data?.detail || e.message));
+      const msg = e.response?.data?.detail || e.message || 'Failed to load technicians.';
+      setAssignError(msg);
+      // Keep modal open and show inline error instead of only alert
+      try { alert('Failed to load technicians: ' + msg); } catch {}
     } finally {
       setAssignLoading(false);
     }
@@ -387,6 +393,7 @@ export default function AdminInstallationsPage() {
                           {/* Action Buttons */}
                           <div className="flex gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
                             <Button
+                              type="button"
                               size="sm"
                               variant="outline"
                               onClick={() => openAssignModal(installation)}
@@ -546,12 +553,24 @@ export default function AdminInstallationsPage() {
       />
 
       {/* Assign Technicians Modal */}
-      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+      <Dialog open={assignModalOpen} onOpenChange={(open) => {
+        setAssignModalOpen(open);
+        if (!open) {
+          setAssignError(null);
+          setAvailableTechnicians([]);
+          setSelectedTechIds([]);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Assign Technicians</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAssignSubmit} className="space-y-4">
+            {assignError && (
+              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+                {assignError}
+              </div>
+            )}
             <div className="max-h-64 overflow-auto border rounded p-2">
               {assignLoading ? (
                 <p className="text-sm text-gray-500">Loading technicians...</p>
