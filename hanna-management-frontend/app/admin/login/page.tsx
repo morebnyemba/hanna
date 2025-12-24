@@ -1,9 +1,16 @@
 'use client';
 
+import type { Metadata } from 'next';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction } from '@/app/store/authStore';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
+
+// Metadata for this page
+export const metadata: Metadata = {
+  title: 'Admin Login',
+  description: 'Admin login portal for Hanna management system',
+};
 
 export default function AdminLoginPage() {
   const [username, setUsername] = useState('');
