@@ -173,8 +173,9 @@ def initiate_whatsapp_payment(request):
                 response_data['requires_otp'] = True
                 response_data['otp_message'] = 'Please check your Omari phone for an OTP and enter it below.'
             elif paynow_method == 'innbucks':
-                if result.get('qr_code_url'):
-                    response_data['qr_code_url'] = result.get('qr_code_url')
+                if result.get('authorization_code'):
+                    response_data['authorization_code'] = result.get('authorization_code')
+                    response_data['authorization_expires'] = result.get('authorization_expires')
                 if result.get('deeplink'):
                     response_data['deeplink'] = result.get('deeplink')
             

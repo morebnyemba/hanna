@@ -65,27 +65,30 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                     logger.info(f"PaynowSDK: response.{attr} = {val} (type: {type(val).__name__})")
 
             if response.success:
-                # For Express Checkout, there's no redirect_url.
-                # The SDK returns instructions and a poll_url.
+                # The actual data is in response.data dictionary, not as direct attributes
+                # response.instructions, response.redirect_url etc are class attributes (type objects)
+                data = getattr(response, 'data', {})
+                
+                # Extract common fields from response.data
+                paynow_reference = data.get('paynowreference') or data.get('paynowReference')
+                poll_url = response.poll_url or data.get('pollurl') or data.get('pollUrl')
+                
                 # Different payment methods return different data:
-                # - EcoCash/Telecash: USSD push to phone (instructions)
-                # - Omari: Requires OTP from customer's phone
-                # - Innbucks: Returns QR code or deeplink
+                # - EcoCash/Telecash: USSD push to phone (authorization sent via USSD)
+                # - Omari: Requires OTP from customer's phone  
+                # - Innbucks: Returns authorizationcode that customer uses to authorize payment
                 
-                # Try both snake_case and camelCase attribute names
-                paynow_reference = getattr(response, 'paynow_reference', None) or getattr(response, 'paynowReference', None)
-                poll_url = getattr(response, 'poll_url', None) or getattr(response, 'pollUrl', None)
-                instructions = getattr(response, 'instructions', None)
+                # Innbucks specific fields
+                authorization_code = data.get('authorizationcode') or data.get('authorizationCode')
+                authorization_expires = data.get('authorizationexpires') or data.get('authorizationExpires')
                 
-                # Omari specific: Check for OTP requirement
-                requires_otp = getattr(response, 'requires_otp', None) or getattr(response, 'requiresOtp', None)
-                
-                # Innbucks specific: Check for QR code or deeplink  
-                qr_code_url = getattr(response, 'qr_code_url', None) or getattr(response, 'qrCodeUrl', None)
-                deeplink = getattr(response, 'deeplink', None) or getattr(response, 'payment_link', None) or getattr(response, 'paymentLink', None)
-                
-                # Also check for redirect_url which some methods might use
-                redirect_url = getattr(response, 'redirect_url', None) or getattr(response, 'redirectUrl', None)
+                # Build instructions based on payment method
+                if paynow_method_type == 'innbucks' and authorization_code:
+                    instructions = f"Use authorization code: {authorization_code} to complete payment in your Innbucks wallet. Code expires: {authorization_expires}"
+                    # Generate Innbucks deeplink (if applicable)
+                    deeplink = f"innbucks://pay?code={authorization_code}&reference={paynow_reference}"
+                else:
+                    instructions = None
                 
                 # Convert all values to JSON-serializable types
                 def safe_str(val):
@@ -103,22 +106,23 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
                     "paynow_reference": safe_str(paynow_reference),
                     "poll_url": safe_str(poll_url),
                     "instructions": safe_str(instructions),
-                    "redirect_url": safe_str(redirect_url),
                 }
                 
                 # Add method-specific fields
                 if paynow_method_type == 'omari':
-                    result['requires_otp'] = bool(requires_otp)
+                    # For Omari, check if OTP is required (would be in response.data)
+                    requires_otp = data.get('requires_otp') or data.get('requiresOtp')
+                    result['requires_otp'] = bool(requires_otp) if requires_otp else True  # Default to True for Omari
                     result['message'] = "Omari payment initiated. Please enter the OTP from your phone."
                 elif paynow_method_type == 'innbucks':
-                    # For Innbucks, the payment_link/redirect_url is the QR code link
-                    result['qr_code_url'] = safe_str(qr_code_url) or safe_str(redirect_url)
-                    result['deeplink'] = safe_str(deeplink) or safe_str(redirect_url)
-                    result['message'] = "Innbucks payment initiated. Use the payment link to complete payment."
+                    result['authorization_code'] = safe_str(authorization_code)
+                    result['authorization_expires'] = safe_str(authorization_expires)
+                    result['deeplink'] = safe_str(deeplink) if deeplink else None
+                    result['message'] = f"Innbucks payment initiated. Authorization code: {authorization_code}"
                 else:  # ecocash, telecash
                     result['message'] = "Payment initiated successfully. Please check your phone for a prompt."
                 
-                logger.info(f"PaynowSDK: {paynow_method_type} Express Checkout initiated. Reference: {result['paynow_reference']}, Poll URL: {result['poll_url']}, Redirect: {result.get('redirect_url')}")
+                logger.info(f"PaynowSDK: {paynow_method_type} Express Checkout initiated. Reference: {result['paynow_reference']}, Poll URL: {result['poll_url']}, Auth Code: {result.get('authorization_code')}")
                 return result
             else:
                 error_message = getattr(response, 'error', 'Unknown error from Paynow SDK.')

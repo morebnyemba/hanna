@@ -134,7 +134,8 @@ export default function PublicShopPage() {
     payment_method?: string;
     requires_otp?: boolean;
     otp_message?: string;
-    qr_code_url?: string;
+    authorization_code?: string;
+    authorization_expires?: string;
     deeplink?: string;
     redirect_url?: string;
   } | null>(null);
@@ -375,7 +376,8 @@ export default function PublicShopPage() {
         payment_method: payData.payment_method || paymentMethod,
         requires_otp: payData.requires_otp || false,
         otp_message: payData.otp_message,
-        qr_code_url: payData.qr_code_url,
+        authorization_code: payData.authorization_code,
+        authorization_expires: payData.authorization_expires,
         deeplink: payData.deeplink,
         redirect_url: payData.redirect_url,
       });
@@ -1076,43 +1078,46 @@ export default function PublicShopPage() {
                       </div>
                     )}
 
-                    {/* Innbucks QR Code / Deeplink */}
+                    {/* Innbucks Authorization Code */}
                     {paymentInfo?.payment_method === 'innbucks' && (
                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-purple-900 mb-3">Innbucks Payment</p>
+                        <p className="text-sm font-semibold text-purple-900 mb-3">💳 Innbucks Payment</p>
                         
-                        {(paymentInfo.qr_code_url || paymentInfo.redirect_url) && (
-                          <div className="mb-4 text-center">
-                            <p className="text-sm text-purple-700 mb-2">
-                              {paymentInfo.qr_code_url ? 'Scan QR Code with Innbucks app:' : 'Click the link below to complete payment:'}
-                            </p>
-                            {paymentInfo.qr_code_url ? (
-                              <img 
-                                src={paymentInfo.qr_code_url} 
-                                alt="Innbucks QR Code" 
-                                className="mx-auto w-48 h-48 border-2 border-purple-300 rounded"
-                              />
-                            ) : null}
+                        {paymentInfo.authorization_code && (
+                          <div className="mb-4">
+                            <div className="bg-white border-2 border-purple-400 rounded-lg p-4 text-center">
+                              <p className="text-xs text-purple-600 mb-1 uppercase tracking-wide">Authorization Code</p>
+                              <p className="text-3xl font-bold text-purple-900 font-mono tracking-wider">{paymentInfo.authorization_code}</p>
+                              {paymentInfo.authorization_expires && (
+                                <p className="text-xs text-purple-600 mt-2">Expires: {paymentInfo.authorization_expires}</p>
+                              )}
+                            </div>
+                            <div className="mt-3 bg-purple-100 rounded p-3">
+                              <p className="text-sm text-purple-800">
+                                <strong>How to complete payment:</strong>
+                              </p>
+                              <ol className="text-sm text-purple-700 mt-2 space-y-1 ml-4 list-decimal">
+                                <li>Open your Innbucks wallet app</li>
+                                <li>Go to "Authorize Payment" or "Enter Code"</li>
+                                <li>Enter the authorization code above</li>
+                                <li>Confirm the payment</li>
+                              </ol>
+                            </div>
                           </div>
                         )}
                         
-                        {(paymentInfo.deeplink || paymentInfo.redirect_url) && (
+                        {paymentInfo.deeplink && (
                           <div className="text-center">
+                            <p className="text-xs text-purple-600 mb-2">Or click here to open Innbucks app:</p>
                             <a
-                              href={paymentInfo.deeplink || paymentInfo.redirect_url}
+                              href={paymentInfo.deeplink}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
                             >
-                              Complete Payment on Innbucks
+                              Open Innbucks App
                             </a>
                           </div>
-                        )}
-                        
-                        {!paymentInfo.qr_code_url && !paymentInfo.deeplink && !paymentInfo.redirect_url && (
-                          <p className="text-sm text-purple-700">
-                            Please check your Innbucks wallet to complete the payment.
-                          </p>
                         )}
                       </div>
                     )}
