@@ -2059,3 +2059,56 @@ class RetailerPortalViewSet(viewsets.ViewSet):
             "error": "Retailers cannot view transaction history directly.",
             "message": "Individual branches should access /crm-api/products/retailer-branch/history/"
         }, status=status.HTTP_403_FORBIDDEN)
+
+class ItemLocationHistoryViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for viewing and managing item location history records.
+    Provides paginated list of all check-in/check-out transactions.
+    """
+    queryset = ItemLocationHistory.objects.select_related(
+        'serialized_item',
+        'serialized_item__product',
+        'from_holder',
+        'to_holder'
+    ).order_by('-timestamp')
+    serializer_class = ItemLocationHistorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # Use DRF default pagination from settings
+    
+    def get_queryset(self):
+        """Filter queryset based on optional query parameters."""
+        queryset = super().get_queryset()
+        
+        # Filter by date range if provided
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        
+        if date_from:
+            queryset = queryset.filter(timestamp__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(timestamp__lte=date_to)
+        
+        # Filter by location if provided
+        location = self.request.query_params.get('location')
+        if location:
+            queryset = queryset.filter(to_location=location)
+        
+        # Filter by transfer reason if provided
+        reason = self.request.query_params.get('reason')
+        if reason:
+            queryset = queryset.filter(transfer_reason=reason)
+        
+        # Search by serial number or barcode
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(serialized_item__serial_number__icontains=search) |
+                Q(serialized_item__barcode__icontains=search) |
+                Q(serialized_item__product__name__icontains=search)
+            )
+        
+        return queryset
+    
+    def perform_destroy(self, instance):
+        """Delete an item location history record."""
+        instance.delete()
