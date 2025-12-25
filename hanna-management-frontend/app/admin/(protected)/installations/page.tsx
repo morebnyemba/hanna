@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FiTool, FiUser, FiMapPin, FiCalendar, FiSearch, FiPackage, FiCheckCircle, FiClock, FiPlus, FiEdit, FiTrash2, FiDownload, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -51,6 +51,13 @@ interface Installation {
   } | null;
 }
 
+interface PaginatedResponse<T> {
+  results: T[];
+  next: string | null;
+  previous?: string | null;
+  count?: number;
+}
+
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   scheduled: 'bg-blue-100 text-blue-800',
@@ -65,6 +72,29 @@ const safeFormatDate = (value?: string, withTime = false) => {
   if (Number.isNaN(d.getTime())) return '—';
   return withTime ? format(d, 'MMM dd, yyyy HH:mm') : format(d, 'MMM dd, yyyy');
 };
+
+class LocalErrorBoundary extends React.Component<React.PropsWithChildren<{}>, { hasError: boolean; message?: string }>{
+  constructor(props: React.PropsWithChildren<{}>) {
+    super(props);
+    this.state = { hasError: false, message: undefined };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, message: error?.message || 'Unexpected error' };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error('[Installations] UI error boundary catch:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-3 border border-red-200 bg-red-50 text-red-700 text-sm rounded">
+          Something went wrong rendering this section: {this.state.message}
+        </div>
+      );
+    }
+    return this.props.children as React.ReactNode;
+  }
+}
 
 export default function AdminInstallationsPage() {
   const [installations, setInstallations] = useState<Installation[]>([]);
@@ -93,19 +123,30 @@ export default function AdminInstallationsPage() {
     setLoading(true);
     setError(null);
     try {
-      let url = '/crm-api/admin-panel/installation-requests/';
       const params = new URLSearchParams();
-      
       if (statusFilter !== 'all') {
         params.append('status', statusFilter);
       }
-      
-      if (params.toString()) {
-        url += `?${params.toString()}`;
+      let url: string | null = `/crm-api/admin-panel/installation-requests/?ordering=-created_at${params.toString() ? `&${params.toString()}` : ''}`;
+      const all: Installation[] = [];
+      const toRelative = (u: string | null): string | null => {
+        if (!u) return null;
+        try {
+          const parsed = new URL(u);
+          return parsed.pathname + parsed.search;
+        } catch {
+          return u; // already relative
+        }
+      };
+      while (url) {
+        const resp = await apiClient.get<PaginatedResponse<Installation> | Installation[]>(url);
+        const payload = resp.data as PaginatedResponse<Installation> | Installation[];
+        const pageItems: Installation[] = Array.isArray(payload) ? (payload as Installation[]) : (payload as PaginatedResponse<Installation>).results;
+        all.push(...pageItems);
+        const nextUrl = Array.isArray(payload) ? null : (payload as PaginatedResponse<Installation>).next || null;
+        url = toRelative(nextUrl);
       }
-      
-      const response = await apiClient.get(url);
-      setInstallations(response.data.results || response.data);
+      setInstallations(all);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch installations.');
     } finally {
@@ -349,6 +390,7 @@ export default function AdminInstallationsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <LocalErrorBoundary>
               {loading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map(i => (
@@ -470,6 +512,7 @@ export default function AdminInstallationsPage() {
                   )}
                 </>
               )}
+              </LocalErrorBoundary>
             </CardContent>
           </Card>
         </div>
@@ -483,6 +526,7 @@ export default function AdminInstallationsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <LocalErrorBoundary>
               {!selectedInstallation ? (
                 <p className="text-gray-500 text-center py-8">Select an installation to view details</p>
               ) : (
@@ -554,6 +598,7 @@ export default function AdminInstallationsPage() {
                   </div>
                 </div>
               )}
+              </LocalErrorBoundary>
             </CardContent>
           </Card>
         </div>
