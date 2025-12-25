@@ -1,26 +1,32 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/app/store/authStore';
 import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
 
 interface ProductOption { id: number; name: string }
 
-export default function EditSerializedItemPage({ params }: { params: { id: string } }) {
+export default function EditSerializedItemPage() {
   const { accessToken } = useAuthStore();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [formData, setFormData] = useState({
     serial_number: '',
     barcode: '',
     product: '',
     status: 'in_stock',
+    current_location: 'warehouse',
+    location_notes: '',
   });
 
-  const id = params.id;
+  const routeParams = useParams();
+  const id = (routeParams?.id as string) || '';
 
   useEffect(() => {
     const load = async () => {
@@ -52,6 +58,8 @@ export default function EditSerializedItemPage({ params }: { params: { id: strin
           barcode: item.barcode || '',
           product: item.product?.id ? String(item.product.id) : '',
           status: item.status || 'in_stock',
+          current_location: item.current_location || 'warehouse',
+          location_notes: item.location_notes || '',
         });
       } catch (e: any) {
         setError(e.message || 'Failed to load data');
@@ -87,9 +95,15 @@ export default function EditSerializedItemPage({ params }: { params: { id: strin
           barcode: formData.barcode || null,
           product_id: formData.product ? parseInt(formData.product) : null,
           status: formData.status,
+          current_location: formData.current_location,
+          location_notes: formData.location_notes || '',
         }),
       });
       if (!resp.ok) throw new Error(`Failed to save (${resp.status})`);
+      setSuccess('Item updated successfully');
+      setTimeout(() => {
+        router.push('/admin/serialized-items');
+      }, 800);
     } catch (e: any) {
       setError(e.message || 'Failed to save');
     } finally {
@@ -109,6 +123,9 @@ export default function EditSerializedItemPage({ params }: { params: { id: strin
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>
+        )}
+        {success && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">{success}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -146,6 +163,21 @@ export default function EditSerializedItemPage({ params }: { params: { id: strin
                 <option value="returned">Returned</option>
                 <option value="decommissioned">Decommissioned</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Current Location</label>
+              <select name="current_location" value={formData.current_location} onChange={handleChange} className="mt-1 w-full px-3 py-2 border rounded">
+                <option value="warehouse">Warehouse</option>
+                <option value="store">Store</option>
+                <option value="customer">Customer</option>
+                <option value="technician">Technician</option>
+                <option value="in_transit">In Transit</option>
+                <option value="returned">Returned</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Location Notes</label>
+              <textarea name="location_notes" value={formData.location_notes} onChange={handleChange} className="mt-1 w-full px-3 py-2 border rounded h-24" />
             </div>
           </div>
 
