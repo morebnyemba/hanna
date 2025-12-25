@@ -48,6 +48,7 @@ const SelectField = ({ id, label, value, onChange, children, error }: { id: stri
 export default function CreateSerializedItemPage() {
   const [formData, setFormData] = useState({
     serial_number: '',
+    barcode: '',
     product: '',
     status: 'in_stock',
   });
@@ -103,6 +104,13 @@ export default function CreateSerializedItemPage() {
     }));
   };
 
+  const handleBarcodeScannedForBarcode = (barcode: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      barcode,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -125,7 +133,10 @@ export default function CreateSerializedItemPage() {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          barcode: formData.barcode || null,
+        }),
       });
 
       if (!response.ok) {
@@ -161,6 +172,10 @@ export default function CreateSerializedItemPage() {
             <div className="flex items-end">
               <InputField id="serial_number" label="Serial Number" value={formData.serial_number} onChange={handleChange} placeholder="e.g., 12345-ABCDE" required error={errors.serial_number} />
               <BarcodeScannerButton onScanSuccess={handleBarcodeScanned} />
+            </div>
+            <div className="flex items-end">
+              <InputField id="barcode" label="Barcode" value={formData.barcode} onChange={handleChange} placeholder="Scan or enter barcode" error={errors.barcode} />
+              <BarcodeScannerButton onScanSuccess={handleBarcodeScannedForBarcode} />
             </div>
             <SelectField id="product" label="Product" value={formData.product} onChange={handleChange} error={errors.product}>
                 <option value="">Select a product</option>

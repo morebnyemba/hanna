@@ -1,94 +1,154 @@
-import Link from 'next/link';
+"use client";
 
-// Mock data for a single serialized item
-const item = {
-  id: '1',
-  serial_number: 'SN123456789',
-  product: 'Standard Solar Panel',
-  status: 'In Stock',
-};
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useAuthStore } from '@/app/store/authStore';
+import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
+
+interface ProductOption { id: number; name: string }
 
 export default function EditSerializedItemPage({ params }: { params: { id: string } }) {
+  const { accessToken } = useAuthStore();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [formData, setFormData] = useState({
+    serial_number: '',
+    barcode: '',
+    product: '',
+    status: 'in_stock',
+  });
+
+  const id = params.id;
+
+  useEffect(() => {
+    const load = async () => {
+      if (!accessToken) return;
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        // Load products
+        const prodResp = await fetch(`${apiUrl}/crm-api/products/products/`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+        });
+        if (prodResp.ok) {
+          const data = await prodResp.json();
+          setProducts(data.results || []);
+        }
+
+        // Load item
+        const itemResp = await fetch(`${apiUrl}/crm-api/products/serialized-items/${id}/`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+        });
+        if (!itemResp.ok) throw new Error(`Failed to load item (${itemResp.status})`);
+        const item = await itemResp.json();
+        setFormData({
+          serial_number: item.serial_number || '',
+          barcode: item.barcode || '',
+          product: item.product?.id ? String(item.product.id) : '',
+          status: item.status || 'in_stock',
+        });
+      } catch (e: any) {
+        setError(e.message || 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [accessToken, id]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleScanSerial = (code: string) => setFormData(prev => ({ ...prev, serial_number: code }));
+  const handleScanBarcode = (code: string) => setFormData(prev => ({ ...prev, barcode: code }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const resp = await fetch(`${apiUrl}/crm-api/products/serialized-items/${id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          serial_number: formData.serial_number,
+          barcode: formData.barcode || null,
+          product_id: formData.product ? parseInt(formData.product) : null,
+          status: formData.status,
+        }),
+      });
+      if (!resp.ok) throw new Error(`Failed to save (${resp.status})`);
+    } catch (e: any) {
+      setError(e.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="p-4">Loading...</div>;
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 lg:p-8 rounded-lg shadow-md">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">Edit Serialized Item</h1>
-        <form className="space-y-8 divide-y divide-gray-200">
-          <div className="space-y-6 sm:space-y-5">
-            <div>
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Item Information</h3>
+        <div className="mb-6 flex justify-between items-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Edit Serialized Item</h1>
+          <Link href="/admin/serialized-items" className="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">Back</Link>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700">Serial Number</label>
+                <input name="serial_number" value={formData.serial_number} onChange={handleChange} className="mt-1 w-full px-3 py-2 border rounded" />
+              </div>
+              <BarcodeScannerButton onScanSuccess={handleScanSerial} />
             </div>
-            <div className="mt-6 sm:mt-5 space-y-6 sm:space-y-5">
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="serial_number" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Serial Number
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    name="serial_number"
-                    id="serial_number"
-                    defaultValue={item.serial_number}
-                    className="max-w-lg block w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
+            <div className="flex items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700">Barcode</label>
+                <input name="barcode" value={formData.barcode} onChange={handleChange} className="mt-1 w-full px-3 py-2 border rounded" />
               </div>
-
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="product" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Product
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <select
-                    id="product"
-                    name="product"
-                    defaultValue={item.product}
-                    className="max-w-lg block focus:ring-indigo-500 focus:border-indigo-500 w-full shadow-sm sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  >
-                    <option>Standard Solar Panel</option>
-                    <option>Premium Solar Panel</option>
-                    <option>Inverter</option>
-                    <option>Battery Storage</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="status" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Status
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <select
-                    id="status"
-                    name="status"
-                    defaultValue={item.status}
-                    className="max-w-lg block focus:ring-indigo-500 focus:border-indigo-500 w-full shadow-sm sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  >
-                    <option>In Stock</option>
-                    <option>Sold</option>
-                    <option>In Repair</option>
-                    <option>Returned</option>
-                    <option>Decommissioned</option>
-                  </select>
-                </div>
-              </div>
+              <BarcodeScannerButton onScanSuccess={handleScanBarcode} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Product</label>
+              <select name="product" value={formData.product} onChange={handleChange} className="mt-1 w-full px-3 py-2 border rounded">
+                <option value="">Select product</option>
+                {(products || []).map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <select name="status" value={formData.status} onChange={handleChange} className="mt-1 w-full px-3 py-2 border rounded">
+                <option value="in_stock">In Stock</option>
+                <option value="sold">Sold</option>
+                <option value="in_repair">In Repair</option>
+                <option value="in_transit">In Transit</option>
+                <option value="returned">Returned</option>
+                <option value="decommissioned">Decommissioned</option>
+              </select>
             </div>
           </div>
 
-          <div className="pt-5">
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-              <Link href="/serialized-items">
-                <a className="w-full sm:w-auto justify-center bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  Cancel
-                </a>
-              </Link>
-              <button
-                type="submit"
-                className="w-full sm:w-auto justify-center ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Save
-              </button>
-            </div>
+          <div className="flex justify-end gap-2">
+            <Link href="/admin/serialized-items" className="px-4 py-2 bg-gray-200 text-gray-800 rounded">Cancel</Link>
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-purple-600 text-white rounded disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
         </form>
       </div>
