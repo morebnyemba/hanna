@@ -372,13 +372,20 @@ export default function SerializedItemsPage() {
                           </td>
                           <td className="py-3 px-3">
                             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                              <Link
-                                href={`/admin/serialized-items/${item?.id}`}
-                                className="inline-flex items-center gap-2 px-2 py-1 border rounded-md text-sm hover:bg-gray-50"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                                Edit
-                              </Link>
+                              {item?.id ? (
+                                <Link
+                                  href={`/admin/serialized-items/${item.id}`}
+                                  className="inline-flex items-center gap-2 px-2 py-1 border rounded-md text-sm hover:bg-gray-50"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                  Edit
+                                </Link>
+                              ) : (
+                                <span className="inline-flex items-center gap-2 px-2 py-1 border rounded-md text-sm text-gray-400 cursor-not-allowed">
+                                  <Edit2 className="w-4 h-4" />
+                                  Edit
+                                </span>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -497,13 +504,20 @@ export default function SerializedItemsPage() {
               <Button variant="outline" onClick={() => setSelectedItem(null)}>
                 Close
               </Button>
-              <Link
-                href={`/admin/serialized-items/${selectedItem?.id}`}
-                className="inline-flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-              >
-                <Edit2 className="w-4 h-4" />
-                Edit
-              </Link>
+              {selectedItem?.id ? (
+                <Link
+                  href={`/admin/serialized-items/${selectedItem.id}`}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 px-3 py-2 bg-gray-200 text-gray-500 rounded-md cursor-not-allowed">
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </span>
+              )}
             </DialogFooter>
           </LocalErrorBoundary>
         </DialogContent>
