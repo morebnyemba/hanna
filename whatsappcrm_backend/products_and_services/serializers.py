@@ -27,6 +27,12 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class SerializedItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+        source='product',
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = SerializedItem

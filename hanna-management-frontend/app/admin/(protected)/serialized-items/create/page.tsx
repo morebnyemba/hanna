@@ -115,7 +115,7 @@ export default function CreateSerializedItemPage() {
       // Transform formData to match API expectations
       const payload = {
         serial_number: formData.serial_number,
-        product: parseInt(formData.product), // Send product ID as integer
+        product_id: parseInt(formData.product), // Send as product_id
         status: formData.status,
       };
 
