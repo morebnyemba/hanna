@@ -25,6 +25,11 @@ export default function EditSerializedItemPage({ params }: { params: { id: strin
   useEffect(() => {
     const load = async () => {
       if (!accessToken) return;
+      if (!id || id === 'undefined' || Number.isNaN(Number(id))) {
+        setError('Invalid item id. Please navigate from the list.');
+        setLoading(false);
+        return;
+      }
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
         // Load products
