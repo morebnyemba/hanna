@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -17,7 +18,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginAction(username, password);
-      router.push('/dashboard'); // Redirect on success
+      setSuccess('Signed in successfully');
+      setTimeout(() => router.push('/dashboard'), 800); // brief toast then redirect
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
     } finally {
@@ -26,7 +28,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-800 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-purple-600 via-blue-600 to-indigo-800 relative overflow-hidden">
       {/* Background decoration elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-32 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
@@ -98,13 +100,28 @@ export default function LoginPage() {
               {error && (
                 <div className="rounded-xl bg-red-500/20 p-4 border border-red-500/30">
                   <div className="flex">
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div className="ml-3">
                       <p className="text-sm text-red-200">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {success && (
+                <div className="rounded-xl bg-green-500/20 p-4 border border-green-500/30">
+                  <div className="flex">
+                    <div className="shrink-0">
+                      <svg className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-green-200">{success}</p>
                     </div>
                   </div>
                 </div>

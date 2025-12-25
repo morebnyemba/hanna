@@ -27,7 +27,7 @@ const SidebarLink = ({ href, icon: Icon, children, isCollapsed }: { href: string
 export default function UnifiedLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // New state for desktop collapse
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasHydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -37,19 +37,28 @@ export default function UnifiedLayout({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (!hasHydrated) return; // wait for persisted auth to hydrate
     if (!user) {
       router.push('/admin/login'); // Default to admin login if no user
     }
-  }, [user, router]);
+  }, [user, router, hasHydrated]);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
 
-  if (!user) {
+  if (!hasHydrated) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-100">
         <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <p className="text-gray-500">Redirecting to login...</p>
       </div>
     );
   }

@@ -18,6 +18,7 @@ interface AuthState {
   refreshToken: string | null;
   user: User | null;
   selectedRetailer: SelectedRetailer | null;
+  hasHydrated?: boolean;
   login: (tokens: { access: string; refresh: string }, userData: { username: string; email: string; role: any }, retailer?: SelectedRetailer | null) => void;
   logout: () => void;
   setTokens: (tokens: { access: string; refresh: string }) => void;
@@ -31,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       user: null,
       selectedRetailer: null,
+      hasHydrated: false,
       login: (tokens, userData, retailer = null) => {
         set({
           accessToken: tokens.access,
@@ -64,6 +66,10 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage', // name of the item in storage (must be unique)
       storage: createJSONStorage(() => localStorage), // use localStorage
+      onRehydrateStorage: () => (state, error) => {
+        // Mark store as hydrated so UI can wait before redirecting
+        useAuthStore.setState({ hasHydrated: true });
+      },
     }
   )
 );
