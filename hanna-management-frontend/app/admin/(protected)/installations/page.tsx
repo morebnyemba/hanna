@@ -59,6 +59,13 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800',
 };
 
+const safeFormatDate = (value?: string, withTime = false) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return withTime ? format(d, 'MMM dd, yyyy HH:mm') : format(d, 'MMM dd, yyyy');
+};
+
 export default function AdminInstallationsPage() {
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [selectedInstallation, setSelectedInstallation] = useState<Installation | null>(null);
@@ -228,7 +235,8 @@ export default function AdminInstallationsPage() {
       const matchesStatus = statusFilter === 'all' || installation.status === statusFilter;
 
       const created = new Date(installation.created_at);
-      const inRange = !date?.from || !date?.to || (created >= (date.from as Date) && created <= (date.to as Date));
+      const createdValid = !Number.isNaN(created.getTime());
+      const inRange = !date?.from || !date?.to || (createdValid && created >= (date.from as Date) && created <= (date.to as Date));
 
       return matchesSearch && matchesStatus && inRange;
     });
@@ -256,7 +264,7 @@ export default function AdminInstallationsPage() {
       i.installation_type_display || i.installation_type,
       i.status_display || i.status,
       i.order_number || '-',
-      format(new Date(i.created_at), 'MMM dd, yyyy'),
+      safeFormatDate(i.created_at),
     ]);
 
     autoTable(doc, {
@@ -374,7 +382,7 @@ export default function AdminInstallationsPage() {
                             {installation.order_number && (
                               <span className="mr-2">Order: {installation.order_number}</span>
                             )}
-                            <span>{format(new Date(installation.created_at), 'MMM dd, yyyy')}</span>
+                            <span>{safeFormatDate(installation.created_at)}</span>
                           </div>
                           {/* Technicians */}
                           {installation.technicians && installation.technicians.length > 0 && (
@@ -404,7 +412,11 @@ export default function AdminInstallationsPage() {
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => openAssignModal(installation)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openAssignModal(installation);
+                              }}
                               className="text-xs px-2 py-1 h-7"
                               title="Assign Technicians"
                             >
@@ -537,8 +549,8 @@ export default function AdminInstallationsPage() {
                   )}
 
                   <div className="text-xs text-gray-400 pt-2 border-t">
-                    <p>Created: {format(new Date(selectedInstallation.created_at), 'MMM dd, yyyy HH:mm')}</p>
-                    <p>Updated: {format(new Date(selectedInstallation.updated_at), 'MMM dd, yyyy HH:mm')}</p>
+                    <p>Created: {safeFormatDate(selectedInstallation.created_at, true)}</p>
+                    <p>Updated: {safeFormatDate(selectedInstallation.updated_at, true)}</p>
                   </div>
                 </div>
               )}
