@@ -372,10 +372,12 @@ export default function SerializedItemsPage() {
                           </td>
                           <td className="py-3 px-3">
                             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                              <Link href={`/admin/serialized-items/${item?.id}`}>
-                                <Button variant="outline" size="sm">
-                                  <Edit2 className="w-4 h-4" />
-                                </Button>
+                              <Link
+                                href={`/admin/serialized-items/${item?.id}`}
+                                className="inline-flex items-center gap-2 px-2 py-1 border rounded-md text-sm hover:bg-gray-50"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                                Edit
                               </Link>
                               <Button
                                 variant="outline"
@@ -495,11 +497,12 @@ export default function SerializedItemsPage() {
               <Button variant="outline" onClick={() => setSelectedItem(null)}>
                 Close
               </Button>
-              <Link href={`/admin/serialized-items/${selectedItem?.id}`}>
-                <Button>
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
+              <Link
+                href={`/admin/serialized-items/${selectedItem?.id}`}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit
               </Link>
             </DialogFooter>
           </LocalErrorBoundary>
