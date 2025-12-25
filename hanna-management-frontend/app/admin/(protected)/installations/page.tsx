@@ -73,22 +73,32 @@ const safeFormatDate = (value?: string, withTime = false) => {
   return withTime ? format(d, 'MMM dd, yyyy HH:mm') : format(d, 'MMM dd, yyyy');
 };
 
-class LocalErrorBoundary extends React.Component<React.PropsWithChildren<{}>, { hasError: boolean; message?: string }>{
+class LocalErrorBoundary extends React.Component<React.PropsWithChildren<{}>, { hasError: boolean; error?: Error }>{
   constructor(props: React.PropsWithChildren<{}>) {
     super(props);
-    this.state = { hasError: false, message: undefined };
+    this.state = { hasError: false };
   }
   static getDerivedStateFromError(error: any) {
-    return { hasError: true, message: error?.message || 'Unexpected error' };
+    console.error('[LocalErrorBoundary] Caught error:', error?.toString(), error?.stack);
+    return { hasError: true, error };
   }
-  componentDidCatch(error: any, info: any) {
-    console.error('[Installations] UI error boundary catch:', error, info);
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[Installations] Error boundary info:', {
+      message: error?.message,
+      stack: error?.stack,
+      componentStack: info?.componentStack,
+    });
   }
   render() {
     if (this.state.hasError) {
+      const errorMsg = this.state.error?.toString() || 'Unknown error';
       return (
-        <div className="p-3 border border-red-200 bg-red-50 text-red-700 text-sm rounded">
-          Something went wrong rendering this section: {this.state.message}
+        <div className="p-4 border border-red-300 bg-red-50 text-red-700 rounded text-sm space-y-2">
+          <p className="font-bold">Render Error:</p>
+          <p className="font-mono text-xs bg-white p-2 border border-red-200 rounded max-h-40 overflow-auto whitespace-pre-wrap">
+            {errorMsg}
+          </p>
+          <p className="text-xs text-red-600">Check browser console for full stack trace.</p>
         </div>
       );
     }
