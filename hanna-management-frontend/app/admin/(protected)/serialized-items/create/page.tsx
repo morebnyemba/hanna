@@ -111,18 +111,27 @@ export default function CreateSerializedItemPage() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      
+      // Transform formData to match API expectations
+      const payload = {
+        serial_number: formData.serial_number,
+        product: parseInt(formData.product), // Send product ID as integer
+        status: formData.status,
+      };
+
       const response = await fetch(`${apiUrl}/crm-api/products/serialized-items/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to create item. Status: ${response.status}`);
+        const errorMessage = errorData.detail || errorData.error || JSON.stringify(errorData) || `Failed to create item. Status: ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       router.push('/admin/serialized-items');
@@ -171,7 +180,7 @@ export default function CreateSerializedItemPage() {
           {errors.api && (
             <div className="mt-4 rounded-xl bg-red-500/20 p-4 border border-red-500/30">
                 <div className="flex">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                     <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
