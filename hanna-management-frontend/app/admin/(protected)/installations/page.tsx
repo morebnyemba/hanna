@@ -437,11 +437,11 @@ export default function AdminInstallationsPage() {
                             <span>{safeFormatDate(installation.created_at)}</span>
                           </div>
                           {/* Technicians */}
-                          {installation.technicians && installation.technicians.length > 0 && (
+                          {installation?.technicians && installation.technicians.length > 0 && (
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <FiTool className="w-3 h-3" />
                               <span>
-                                {installation.technicians.map(t => t.user?.full_name || t.user?.username).join(', ')}
+                                {(installation.technicians || []).map(t => t?.user?.full_name || t?.user?.username || `Tech #${t?.id}`).join(', ')}
                               </span>
                             </div>
                           )}
@@ -564,12 +564,12 @@ export default function AdminInstallationsPage() {
                   {/* Assigned Technicians */}
                   <div>
                     <p className="text-sm text-gray-500 mb-2">Assigned Technicians</p>
-                    {selectedInstallation.technicians && selectedInstallation.technicians.length > 0 ? (
+                    {selectedInstallation?.technicians && selectedInstallation.technicians.length > 0 ? (
                       <div className="space-y-1">
-                        {selectedInstallation.technicians.map((tech) => (
-                          <div key={tech.id} className="flex items-center gap-2 text-sm">
+                        {(selectedInstallation.technicians || []).map((tech) => (
+                          <div key={tech?.id} className="flex items-center gap-2 text-sm">
                             <FiUser className="w-4 h-4 text-gray-400" />
-                            <span>{tech.user?.full_name || tech.user?.username}</span>
+                            <span>{tech?.user?.full_name || tech?.user?.username || `Technician #${tech?.id}`}</span>
                           </div>
                         ))}
                       </div>
@@ -585,17 +585,17 @@ export default function AdminInstallationsPage() {
                     </div>
                   )}
 
-                  {selectedInstallation.associated_order && (
+                  {selectedInstallation?.associated_order && (
                     <div className="pt-4 border-t">
                       <p className="text-sm font-medium mb-2">Order Items</p>
                       <div className="space-y-2">
-                        {selectedInstallation.associated_order.items.map((item) => (
-                          <div key={item.id} className="bg-gray-50 p-2 rounded text-sm">
+                        {(selectedInstallation.associated_order?.items || []).map((item) => (
+                          <div key={item?.id} className="bg-gray-50 p-2 rounded text-sm">
                             <div className="flex justify-between">
-                              <span className="font-medium">{item.product_name}</span>
-                              <span className="text-gray-500">x{item.quantity}</span>
+                              <span className="font-medium">{item?.product_name}</span>
+                              <span className="text-gray-500">x{item?.quantity}</span>
                             </div>
-                            <p className="text-xs text-gray-500">SKU: {item.product_sku}</p>
+                            <p className="text-xs text-gray-500">SKU: {item?.product_sku}</p>
                           </div>
                         ))}
                       </div>
@@ -650,17 +650,17 @@ export default function AdminInstallationsPage() {
             <div className="max-h-64 overflow-auto border rounded p-2">
               {assignLoading ? (
                 <p className="text-sm text-gray-500">Loading technicians...</p>
-              ) : availableTechnicians.length === 0 ? (
+              ) : (availableTechnicians || []).length === 0 ? (
                 <p className="text-sm text-gray-500">No technicians available.</p>
               ) : (
-                availableTechnicians.map((tech) => (
-                  <label key={tech.id} className="flex items-center gap-2 py-1">
+                (availableTechnicians || []).map((tech) => (
+                  <label key={tech?.id} className="flex items-center gap-2 py-1">
                     <input
                       type="checkbox"
-                      checked={selectedTechIds.includes(tech.id)}
-                      onChange={() => toggleTech(tech.id)}
+                      checked={selectedTechIds.includes(tech?.id || 0)}
+                      onChange={() => toggleTech(tech?.id || 0)}
                     />
-                    <span className="text-sm">{tech.user?.full_name || tech.user?.username || `Technician #${tech.id}`}</span>
+                    <span className="text-sm">{tech?.user?.full_name || tech?.user?.username || `Technician #${tech?.id}`}</span>
                   </label>
                 ))
               )}
