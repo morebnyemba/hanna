@@ -17,7 +17,41 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
-import LocalErrorBoundary from '@/app/components/LocalErrorBoundary';
+import { Component, ReactNode } from 'react';
+
+// Error Boundary
+interface LocalErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class LocalErrorBoundary extends Component<{ children: ReactNode }, LocalErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): LocalErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('LocalErrorBoundary caught:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 border border-red-300 bg-red-50 rounded-lg">
+          <h2 className="text-red-800 font-semibold">Something went wrong</h2>
+          <p className="text-red-700 text-sm mt-1">{this.state.error?.message}</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Helper function to format dates safely
 const safeFormatDate = (dateString: string | null | undefined): string => {
