@@ -527,41 +527,4 @@ export default function SerializedItemsPage() {
       </Dialog>
     </div>
   );
-}                ) : (
-                    items.map((item) => (
-                        <tr key={item.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.serial_number}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.product?.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.status === 'in_stock' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                {item.status.replace('_', ' ')}
-                            </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <ActionButtons
-                            entityId={item.id}
-                            viewPath={`/admin/serialized-items/${item.id}`}
-                            editPath={`/admin/serialized-items/${item.id}`}
-                            onDelete={() => handleDeleteClick(item)}
-                            showEdit={false}
-                          />
-                        </td>
-                        </tr>
-                    ))
-                )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <DeleteConfirmationModal
-        isOpen={deleteModalOpen}
-        onClose={handleDeleteCancel}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Serialized Item"
-        message={`Are you sure you want to delete item "${itemToDelete?.serial_number}"? This action cannot be undone.`}
-        isDeleting={isDeleting}
-      />
-    </>
-  );
 }
