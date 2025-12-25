@@ -95,7 +95,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         });
 
         // Fetch categories
-        const categoriesResponse = await fetch(`${apiUrl}/crm-api/products/product-categories/`, {
+        const categoriesResponse = await fetch(`${apiUrl}/crm-api/products/categories/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
