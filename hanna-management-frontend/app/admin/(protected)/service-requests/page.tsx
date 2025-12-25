@@ -69,7 +69,7 @@ const safeFormatDate = (dateString: string | null | undefined): string => {
 
 // Status badge component
 const StatusBadge = ({ status, type }: { status: string; type: 'installation' | 'assessment' | 'loan' }) => {
-  const statusMap: { [key: string]: { bg: string; text: string } } = {
+  const statusMap: Record<string, Record<string, string>> = {
     installation: {
       pending: 'bg-yellow-100 text-yellow-800',
       completed: 'bg-green-100 text-green-800',
