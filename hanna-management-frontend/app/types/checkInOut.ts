@@ -3,7 +3,7 @@
  */
 
 export interface ItemData {
-  id: string;
+  id: number;
   serial_number: string;
   barcode: string;
   status: string;
@@ -11,7 +11,7 @@ export interface ItemData {
   product: { 
     name: string;
     sku?: string;
-    id?: string;
+    id?: number;
   };
 }
 

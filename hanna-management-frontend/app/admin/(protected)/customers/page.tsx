@@ -25,6 +25,12 @@ interface Customer {
   country: string;
 }
 
+// Safe API URL resolver without relying on Node types
+const getApiUrl = () => {
+  const envUrl = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NEXT_PUBLIC_API_URL) as string | undefined;
+  return envUrl || 'https://backend.hanna.co.zw';
+};
+
 const SkeletonRow = () => (
     <tr className="animate-pulse">
         <td className="px-4 py-3 sm:px-6 sm:py-4">
@@ -54,7 +60,7 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const apiUrl = getApiUrl();
       const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -86,7 +92,7 @@ export default function CustomersPage() {
     if (searchTerm.trim() === '') {
       setFilteredCustomers(customers);
     } else {
-      const filtered = customers.filter(customer => {
+      const filtered = customers.filter((customer: Customer) => {
         const fullName = `${customer.first_name} ${customer.last_name}`.toLowerCase();
         const phone = customer.contact.whatsapp_id?.toLowerCase() || '';
         const email = customer.email?.toLowerCase() || '';
@@ -126,7 +132,7 @@ export default function CustomersPage() {
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
     
     // Prepare table data
-    const tableData = filteredCustomers.map(customer => [
+    const tableData = filteredCustomers.map((customer: Customer) => [
       `${customer.first_name} ${customer.last_name}` || customer.contact.name,
       customer.contact.whatsapp_id,
       customer.email || '-',
@@ -156,7 +162,7 @@ export default function CustomersPage() {
 
     setIsDeleting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const apiUrl = getApiUrl();
       const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/${customerToDelete.contact.id}/`, {
         method: 'DELETE',
         headers: {
@@ -168,7 +174,7 @@ export default function CustomersPage() {
         throw new Error(`Failed to delete customer. Status: ${response.status}`);
       }
 
-      setCustomers(customers.filter(c => c.contact.id !== customerToDelete.contact.id));
+      setCustomers(customers.filter((c: Customer) => c.contact.id !== customerToDelete.contact.id));
       setDeleteModalOpen(false);
       setCustomerToDelete(null);
     } catch (err: any) {
@@ -219,7 +225,7 @@ export default function CustomersPage() {
           type="text"
           placeholder="Search by name, phone, or email..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
         />
       </div>

@@ -73,7 +73,7 @@ export default function CheckInOutManager({
     }
   };
 
-  const loadItemHistory = async (itemId: string) => {
+  const loadItemHistory = async (itemId: number) => {
     setHistoryLoading(true);
     try {
       const res = await apiClient.get(`/crm-api/items/${itemId}/location-history/`);
@@ -499,9 +499,9 @@ export default function CheckInOutManager({
                 : 'bg-green-50 text-green-700 border border-green-200'
             }`}>
               {error ? (
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 shrink-0" />
               ) : (
-                <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                <CheckCircle className="w-5 h-5 shrink-0" />
               )}
               <span>{error || message}</span>
             </div>
@@ -509,7 +509,7 @@ export default function CheckInOutManager({
           
           {fulfillmentMessage && (
             <div className="p-4 rounded-lg text-sm flex items-center gap-3 bg-blue-50 text-blue-700 border border-blue-200">
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <CheckCircle className="w-5 h-5 shrink-0" />
               <span>{fulfillmentMessage}</span>
             </div>
           )}
