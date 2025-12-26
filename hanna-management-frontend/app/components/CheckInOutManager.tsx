@@ -64,7 +64,7 @@ export default function CheckInOutManager({
     setOrdersLoading(true); 
     setFulfillmentError(null);
     try {
-      const res = await apiClient.get('/crm-api/orders/pending-fulfillment/');
+      const res = await apiClient.get('/crm-api/customer-data/orders/pending-fulfillment/');
       setPendingOrders(res.data);
     } catch (e: unknown) {
       setFulfillmentError(extractErrorMessage(e, 'Failed to load pending orders'));
