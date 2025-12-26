@@ -8,7 +8,7 @@ This flow collects payment method and details, then initiates Paynow payment.
 PAYMENT_WHATSAPP_FLOW = {
     "version": "7.3",
     "data_api_version": "3.0",
-    "data_channel_uri": "https://your-domain.com/api/crm-api/paynow/initiate-payment/",
+    "data_channel_uri": "https://backend.hanna.co.zw/crm-api/paynow/initiate-payment/",
     "routing_model": {
         "PAYMENT": ["PAYMENT_PROCESSING", "PAYMENT_ERROR"]
     },
