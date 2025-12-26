@@ -101,7 +101,7 @@ def initiate_whatsapp_payment(request):
             )
         
         # Get or use default email (required by Paynow for mobile transactions)
-        email = data.get('email', '')
+        email = (data.get('email') or '').strip()
         if not email:
             # Use customer email if available, otherwise use company default
             if customer and customer.email:

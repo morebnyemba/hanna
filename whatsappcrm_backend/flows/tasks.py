@@ -397,6 +397,7 @@ Execute the following steps in sequence:
 *   **For CHECKOUT**: Use token CHECKOUT to place the order immediately. This will:
     - Create an Order with all cart items
     - Send an interactive WhatsApp payment flow to initiate Paynow payment
+    - ALWAYS ask the customer for their email for the receipt/Paynow authorization if not already provided; include it in the payment step
     - Customer will receive a payment button to select payment method and complete payment
 *   **For RECOMMENDATION**: Generate PDF. Use format: GENERATE_PDF: [id1, id2, id3]
 
@@ -486,6 +487,24 @@ Would you like to:
                     checkout_cart_for_contact(contact, checkout_context, {})
                     order_info = checkout_context.get('order_info')
                     if order_info:
+                        # Ensure we have an email for Paynow receipts/authorization
+                        if not contact.email:
+                            logger.info(f"{log_prefix} No email on file; prompting contact to provide email before payment.")
+                            prompt_email_msg = (
+                                "📧 Please provide your email so we can send your receipt and authorize the payment.\n"
+                                "Reply with your email to continue."
+                            )
+                            email_prompt = Message.objects.create(
+                                contact=contact,
+                                app_config=config_to_use,
+                                direction='out',
+                                message_type='text',
+                                content_payload={'body': prompt_email_msg},
+                                status='pending_dispatch',
+                                related_incoming_message=incoming_message
+                            )
+                            send_whatsapp_message_task.delay(email_prompt.id, config_to_use.id)
+                            return
                         # Initiate Paynow payment flow
                         payment_actions = initiate_payment_flow(
                             contact, 

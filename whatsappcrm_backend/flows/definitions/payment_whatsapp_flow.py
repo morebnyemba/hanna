@@ -79,10 +79,10 @@ PAYMENT_WHATSAPP_FLOW = {
                     {
                         "type": "TextInput",
                         "name": "email",
-                        "label": "Email (Optional)",
-                        "required": False,
+                        "label": "Email",
+                        "required": True,
                         "input-type": "email",
-                        "helper-text": "We'll send payment confirmation to this email"
+                        "helper-text": "Required for your payment receipt and Paynow authorization"
                     },
                     {
                         "type": "Footer",

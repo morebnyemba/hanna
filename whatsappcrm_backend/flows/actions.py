@@ -1006,7 +1006,7 @@ def prompt_paynow_method_selection(contact: Contact, context: Dict[str, Any], pa
     order_var = params.get('order_context_var', 'created_order')
     header_text = params.get('header_text', '📱 Select Paynow Method')
     body_text_template = params.get('body_text_template', 
-        'Please select your preferred mobile money provider:')
+        'Please select your preferred mobile money provider. We will also need your email for the receipt and Paynow authorization.')
     
     order_data = context.get(order_var)
     if not order_data:
