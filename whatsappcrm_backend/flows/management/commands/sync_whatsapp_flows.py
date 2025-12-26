@@ -38,6 +38,10 @@ from flows.definitions.custom_furniture_installation_whatsapp_flow import (
     CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW,
     CUSTOM_FURNITURE_INSTALLATION_FLOW_METADATA
 )
+from flows.definitions.payment_whatsapp_flow import (
+    PAYMENT_WHATSAPP_FLOW,
+    PAYMENT_FLOW_METADATA
+)
 
 
 class Command(BaseCommand):
@@ -47,7 +51,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--flow',
             type=str,
-            choices=['starlink', 'solar_cleaning', 'solar_installation', 'site_inspection', 'loan_application', 'hybrid', 'custom_furniture', 'all'],
+            choices=['starlink', 'solar_cleaning', 'solar_installation', 'site_inspection', 'loan_application', 'hybrid', 'custom_furniture', 'payment', 'all'],
             default='all',
             help='Which flow to sync (default: all)'
         )
@@ -123,6 +127,12 @@ class Command(BaseCommand):
             flows_to_sync.append({
                 'json': CUSTOM_FURNITURE_INSTALLATION_WHATSAPP_FLOW,
                 'metadata': CUSTOM_FURNITURE_INSTALLATION_FLOW_METADATA
+            })
+
+        if flow_choice in ['payment', 'all']:
+            flows_to_sync.append({
+                'json': PAYMENT_WHATSAPP_FLOW,
+                'metadata': PAYMENT_FLOW_METADATA
             })
 
         # Sync each flow
