@@ -190,15 +190,8 @@ def initiate_whatsapp_payment(request):
             payment.status = PaymentStatus.FAILED
             payment.provider_response = result
             payment.save(update_fields=['status', 'provider_response'])
-            
-            logger.error(f"Payment initiation failed: {result.get('message')}")
-            
-            return Response({
-                'success': False,
-                'message': result.get('message', 'Payment initiation failed'),
-                'payment_id': str(payment.id)
-            }, status=status.HTTP_400_BAD_REQUEST)
-            
+                # Determine email (required by Paynow). Prefer request email, then customer email, else default.
+                email = data.get('email', '') or getattr(customer, 'email', '') or 'mnyemba@hanna.co.zw'
     except Exception as e:
         logger.error(f"Error initiating WhatsApp payment: {e}", exc_info=True)
         return Response({
@@ -217,7 +210,7 @@ def submit_omari_otp(request):
     and submit it back to Paynow to authorize the transaction.
     """
     try:
-        payment_reference = request.data.get('payment_reference')
+                    email=email,
         otp_code = request.data.get('otp_code')
         
         if not payment_reference or not otp_code:

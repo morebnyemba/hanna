@@ -698,7 +698,6 @@ Would you like to:
                         final_reply += f"\n\n📄 **Recommendation Report Generated!**\n\nI've prepared a detailed analysis for you. The document will be sent shortly."
                         
                         # Build full URL for Meta API
-                        from django.conf import settings
                         backend_domain = getattr(settings, 'BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
                         # pdf_url is already /media/recommendations/filename.pdf
                         full_pdf_url = f"https://{backend_domain}{pdf_url}"
