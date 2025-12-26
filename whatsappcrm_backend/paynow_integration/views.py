@@ -190,8 +190,12 @@ def initiate_whatsapp_payment(request):
             payment.status = PaymentStatus.FAILED
             payment.provider_response = result
             payment.save(update_fields=['status', 'provider_response'])
-                # Determine email (required by Paynow). Prefer request email, then customer email, else default.
-                email = data.get('email', '') or getattr(customer, 'email', '') or 'mnyemba@hanna.co.zw'
+            
+            return Response({
+                'success': False,
+                'message': result.get('message', 'Payment initiation failed')
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
     except Exception as e:
         logger.error(f"Error initiating WhatsApp payment: {e}", exc_info=True)
         return Response({
