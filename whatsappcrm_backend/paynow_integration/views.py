@@ -108,7 +108,6 @@ def initiate_whatsapp_payment(request):
                 email = customer.email
             else:
                 email = 'mnyemba@hanna.co.zw'  # Default company email for transactions
-            logger.info(f"Using email for payment {payment_reference}: {email}")
         
         # Map payment method to Paynow method type
         paynow_method_map = {
@@ -121,6 +120,7 @@ def initiate_whatsapp_payment(request):
         
         # Create payment reference
         payment_reference = f"PAY-{order_number}-{uuid.uuid4().hex[:8].upper()}"
+        logger.info(f"Using email for payment {payment_reference}: {email}")
         
         # Initialize Paynow service using the constant
         paynow_service = PaynowService(ipn_callback_url=PAYNOW_IPN_URL_PATH)
