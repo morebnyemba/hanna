@@ -483,3 +483,63 @@ class WhatsAppFlowService:
         
         logger.info(f"Created flow response {flow_response.id} for contact {contact.id}")
         return flow_response
+    def upload_flows_public_key(self, public_key_path: str) -> bool:
+        """
+        Upload the flows signing public key to Meta via Graph API.
+        
+        Args:
+            public_key_path: Path to the public key file (flow_signing_public.pem)
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Read the public key file
+            with open(public_key_path, 'r') as f:
+                public_key_content = f.read()
+            
+            # Get the phone number ID from meta_config
+            phone_number_id = self.meta_config.phone_number_id
+            if not phone_number_id:
+                logger.error("Phone number ID not configured in MetaAppConfig")
+                return False
+            
+            # Meta Graph API endpoint for uploading flows config (public key)
+            url = f"{self.base_url}/{phone_number_id}/whatsapp_business_account/flow_config"
+            
+            # Prepare the payload with the public key
+            payload = {
+                "name": "flows_signing_public_key",
+                "public_key": public_key_content
+            }
+            
+            logger.info(f"Uploading flows public key for phone number {phone_number_id}...")
+            
+            response = requests.post(url, headers=self.headers, json=payload, timeout=20)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get('success'):
+                logger.info("✓ Successfully uploaded flows public key to Meta")
+                return True
+            else:
+                logger.error(f"Failed to upload public key: {result}")
+                return False
+                
+        except FileNotFoundError:
+            logger.error(f"Public key file not found: {public_key_path}")
+            return False
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Error uploading flows public key: {e}"
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_details = e.response.json()
+                    error_msg += f" - Details: {error_details}"
+                except:
+                    error_msg += f" - Response: {e.response.text}"
+            logger.error(error_msg)
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error uploading public key: {e}", exc_info=True)
+            return False
