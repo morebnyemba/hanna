@@ -505,47 +505,20 @@ Would you like to:
                             )
                             send_whatsapp_message_task.delay(email_prompt.id, config_to_use.id)
                             return
-                        # Initiate Paynow payment flow
-                        payment_actions = initiate_payment_flow(
-                            contact, 
+                        # Skip interactive flow (not yet published) and go straight to conversational payment method selection
+                        logger.info(f"{log_prefix} Starting conversational payment flow for order {order_info['order_number']}")
+                        payment_actions = prompt_payment_method_selection(
+                            contact,
                             {'created_order': order_info},
                             {
                                 'order_context_var': 'created_order',
-                                'header_text': '💳 Complete Your Payment',
+                                'header_text': '💳 Select Payment Method',
                                 'body_text_template': (
-                                    f"✅ Order {order_info['order_number']} placed successfully!\n\n"
-                                    f"Total Amount: {order_info['amount']} {order_info['currency']}\n\n"
-                                    "Tap the button below to securely complete your payment via Paynow."
-                                ),
-                                'cta_text': 'Pay Now with Paynow'
+                                    f"Order: #{order_info['order_number']}\n"
+                                    f"Amount: {order_info['amount']} {order_info['currency']}"
+                                )
                             }
                         )
-                        
-                        # Check if interactive flow was sent
-                        if payment_actions:
-                            # Check if it's a fallback text message (interactive flow not available)
-                            is_fallback = any(
-                                action.get('message_type') == 'text' and 
-                                'contact our team' in action.get('data', {}).get('body', '').lower()
-                                for action in payment_actions
-                            )
-                            
-                            if is_fallback:
-                                logger.info(f"{log_prefix} Interactive payment flow not available. Using conversational payment flow.")
-                                # Use conversational payment method selection (button prompts)
-                                conversational_actions = prompt_payment_method_selection(
-                                    contact,
-                                    {'created_order': order_info},
-                                    {
-                                        'order_context_var': 'created_order',
-                                        'header_text': '💳 Select Payment Method',
-                                        'body_text_template': (
-                                            f"Order: #{order_info['order_number']}\n"
-                                            f"Amount: {order_info['amount']} {order_info['currency']}"
-                                        )
-                                    }
-                                )
-                                payment_actions = conversational_actions
                             
                             # Send all payment actions
                             for action in payment_actions:

@@ -192,7 +192,8 @@ LEAD_GENERATION_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [
-                    {"action_type": "create_order_from_cart", "params_template": {"cart_context_var": "cart_items", "order_name_template": "Online Order for {{ delivery_name }}", "order_number_context_var": "generated_order_number", "notes_template": "Delivery to: {{ delivery_name }}, {{ delivery_phone }}, {{ delivery_address }}. Placed via WhatsApp.", "stage": "closed_won", "payment_status": "pending", "save_order_to": "created_order_details"}},
+                    {"action_type": "update_model_instance", "params_template": {"app_label": "conversations", "model_name": "Contact", "instance_id_template": "{{ contact_id }}", "fields_to_update_template": {"email": "{{ contact_email }}"}}},
+                    {"action_type": "create_order_from_cart", "params_template": {"cart_context_var": "cart_items", "order_name_template": "Online Order for {{ delivery_name }}", "order_number_context_var": "generated_order_number", "notes_template": "Delivery to: {{ delivery_name }}, {{ delivery_phone }}, {{ delivery_address }}, {{ contact_email }}. Placed via WhatsApp.", "stage": "closed_won", "payment_status": "pending", "save_order_to": "created_order_details"}},
                     {"action_type": "send_group_notification", "params_template": {"group_names": ["Sales Team", "System Admins"], "template_name": "hanna_new_online_order_placed"}}
                 ]
             },
