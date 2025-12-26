@@ -76,7 +76,7 @@ export default function CheckInOutManager({
   const loadItemHistory = async (itemId: number) => {
     setHistoryLoading(true);
     try {
-      const res = await apiClient.get(`/crm-api/items/${itemId}/location-history/`);
+      const res = await apiClient.get(`/crm-api/products/items/${itemId}/location-history/`);
       setItemHistory(res.data);
       setShowHistory(true);
     } catch (e: unknown) {
@@ -135,7 +135,7 @@ export default function CheckInOutManager({
         body.order_item_id = selectedOrderItemId;
       }
       
-      const res = await apiClient.post(`/crm-api/items/${item.id}/checkout/`, body);
+      const res = await apiClient.post(`/crm-api/products/items/${item.id}/checkout/`, body);
       
       if (res.data.fulfillment) {
         setFulfillmentMessage(
@@ -172,7 +172,7 @@ export default function CheckInOutManager({
     setError(null);
     
     try {
-      const res = await apiClient.post(`/crm-api/items/${item.id}/checkin/`, { 
+      const res = await apiClient.post(`/crm-api/products/items/${item.id}/checkin/`, { 
         new_location: arrivalLocation, 
         notes 
       });
