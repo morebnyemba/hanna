@@ -214,7 +214,7 @@ def submit_omari_otp(request):
     and submit it back to Paynow to authorize the transaction.
     """
     try:
-                    email=email,
+        payment_reference = request.data.get('payment_reference')
         otp_code = request.data.get('otp_code')
         
         if not payment_reference or not otp_code:
