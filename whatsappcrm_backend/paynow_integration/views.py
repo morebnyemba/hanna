@@ -79,24 +79,26 @@ def initiate_whatsapp_payment(request):
         order_number = data.get('order_number')
         phone_number = data.get('phone_number')
         email = data.get('email', '')
-        amount_str = data.get('amount')
         payment_method = data.get('payment_method', 'ecocash')
-        currency = data.get('currency', 'USD')
         
         # Validate required fields
-        if not all([order_number, phone_number, amount_str]):
+        if not all([order_number, phone_number]):
             return Response(
-                {'success': False, 'message': 'Missing required fields: order_number, phone_number, amount'},
+                {'success': False, 'message': 'Missing required fields: order_number, phone_number'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Parse amount
+        # Get order from database (REQUIRED - source of truth for amount)
         try:
-            amount = Decimal(amount_str)
-        except (InvalidOperation, TypeError):
+            order = Order.objects.select_related('customer').get(order_number=order_number)
+            customer = order.customer
+            # Use amount and currency from ORDER, not from client request
+            amount = order.amount
+            currency = order.currency
+        except Order.DoesNotExist:
             return Response(
-                {'success': False, 'message': f'Invalid amount: {amount_str}'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'success': False, 'message': f'Order {order_number} not found'},
+                status=status.HTTP_404_NOT_FOUND
             )
         
         # Map payment method to Paynow method type
@@ -107,15 +109,6 @@ def initiate_whatsapp_payment(request):
             'telecash': 'telecash'
         }
         paynow_method = paynow_method_map.get(payment_method.lower(), 'ecocash')
-        
-        # Get order if it exists
-        order = None
-        customer = None
-        try:
-            order = Order.objects.select_related('customer').get(order_number=order_number)
-            customer = order.customer
-        except Order.DoesNotExist:
-            logger.warning(f"Order {order_number} not found, proceeding with payment anyway.")
         
         # Create payment reference
         payment_reference = f"PAY-{order_number}-{uuid.uuid4().hex[:8].upper()}"

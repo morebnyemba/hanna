@@ -464,17 +464,51 @@ Would you like to:
             # Short-circuit common commands before invoking AI
             if incoming_message.text_content and incoming_message.text_content.strip().lower() == 'checkout':
                 try:
-                    from flows.actions import checkout_cart_for_contact
+                    from flows.actions import checkout_cart_for_contact, initiate_payment_flow
                     checkout_context = {}
                     checkout_cart_for_contact(contact, checkout_context, {})
                     order_info = checkout_context.get('order_info')
                     if order_info:
-                        final_reply = (
-                            f"✅ Order placed successfully!\n\n"
-                            f"Order Number: {order_info['order_number']}\n"
-                            f"Total Amount: {order_info['amount']} {order_info['currency']}\n\n"
-                            f"We will contact you shortly to confirm payment and delivery details."
+                        # Initiate Paynow payment flow
+                        payment_actions = initiate_payment_flow(
+                            contact, 
+                            {'created_order': order_info},
+                            {
+                                'order_context_var': 'created_order',
+                                'header_text': '💳 Complete Your Payment',
+                                'body_text_template': (
+                                    f"✅ Order {order_info['order_number']} placed successfully!\n\n"
+                                    f"Total Amount: {order_info['amount']} {order_info['currency']}\n\n"
+                                    "Tap the button below to securely complete your payment via Paynow."
+                                ),
+                                'cta_text': 'Pay Now with Paynow'
+                            }
                         )
+                        
+                        # If payment flow initiated successfully, return (messages will be sent by action)
+                        if payment_actions:
+                            for action in payment_actions:
+                                if action.get('type') == 'send_whatsapp_message':
+                                    outgoing_msg = Message.objects.create(
+                                        contact=contact,
+                                        app_config=config_to_use,
+                                        direction='out',
+                                        message_type=action.get('message_type'),
+                                        content_payload=action.get('data'),
+                                        status='pending_dispatch',
+                                        related_incoming_message=incoming_message
+                                    )
+                                    send_whatsapp_message_task.delay(outgoing_msg.id, config_to_use.id)
+                            logger.info(f"{log_prefix} Checkout with Paynow payment flow initiated.")
+                            return
+                        else:
+                            # Fallback if payment flow not available
+                            final_reply = (
+                                f"✅ Order placed successfully!\n\n"
+                                f"Order Number: {order_info['order_number']}\n"
+                                f"Total Amount: {order_info['amount']} {order_info['currency']}\n\n"
+                                f"We will contact you shortly to confirm payment and delivery details."
+                            )
                     else:
                         final_reply = "❌ Your cart appears empty. Please add items first."
                 except Exception as e:
@@ -491,7 +525,7 @@ Would you like to:
                     related_incoming_message=incoming_message
                 )
                 send_whatsapp_message_task.delay(outgoing_msg.id, config_to_use.id)
-                logger.info(f"{log_prefix} Checkout processed without AI.")
+                logger.info(f"{log_prefix} Checkout processed.")
                 return
 
             # Handle multimodal input
