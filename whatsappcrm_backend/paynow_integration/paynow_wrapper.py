@@ -40,15 +40,16 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
             # set in the Paynow constructor unless explicitly overridden here.
             payment = self.paynow_instance.create_payment(
                 reference,
-                email
+                email  # Email is required for mobile transactions
             )
             
             # Add the item (description and amount)
             payment.add(description, float(amount)) # SDK expects float for amount
             
-            logger.info(f"PaynowSDK: Initiating Express Checkout for ref {reference}, amount {amount}, phone {phone_number}.")
+            logger.info(f"PaynowSDK: Initiating Express Checkout for ref {reference}, amount {amount}, phone {phone_number}, email {email}.")
             
             # Send the mobile payment request
+            # Paynow SDK requires email to be set on the payment object for mobile transactions
             response = self.paynow_instance.send_mobile(payment, phone_number, paynow_method_type)
             
             # Log full response details for debugging

@@ -1416,6 +1416,57 @@ def generate_shopping_recommendation_pdf(contact: Contact, context: Dict[str, An
     return actions_to_perform
 
 
+def confirm_phone_number_for_payment(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Confirms the customer's phone number for payment.
+    Asks if they want to use their contact number or provide a different one.
+    
+    Expected params:
+    - order_context_var (str): Context variable containing order details.
+    - payment_method_context_var (str): Context variable containing selected payment method.
+    """
+    from .services import _resolve_value
+    
+    order_var = params.get('order_context_var', 'created_order')
+    payment_method_var = params.get('payment_method_context_var', 'selected_payment_method')
+    
+    order_data = context.get(order_var)
+    payment_method = context.get(payment_method_var)
+    
+    if not order_data or not payment_method:
+        logger.warning(f"Missing order data or payment method for contact {contact.id}.")
+        return []
+    
+    # Store payment info in context for next step
+    context['payment_phone_number'] = contact.whatsapp_id
+    context['order_for_payment'] = order_data
+    context['payment_method_for_payment'] = payment_method
+    
+    actions_to_perform = []
+    
+    # Ask user to confirm phone number
+    confirmation_message = (
+        f"📱 *Confirm Payment Phone Number*\n\n"
+        f"Order: #{order_data.get('order_number')}\n"
+        f"Amount: ${order_data.get('amount')} {order_data.get('currency')}\n\n"
+        f"We'll send the payment prompt to: *{contact.whatsapp_id}*\n\n"
+        f"Would you like to:\n"
+        f"1️⃣ Use this number\n"
+        f"2️⃣ Provide a different number"
+    )
+    
+    # For now, use text message. In future, could be interactive buttons
+    actions_to_perform.append({
+        'type': 'send_whatsapp_message',
+        'recipient_wa_id': contact.whatsapp_id,
+        'message_type': 'text',
+        'data': {'body': confirmation_message}
+    })
+    
+    logger.info(f"Asked contact {contact.id} to confirm phone number for payment of order {order_data.get('order_number')}")
+    return actions_to_perform
+
+
 # --- Register all custom actions here ---
 flow_action_registry.register('update_lead_score', update_lead_score)
 flow_action_registry.register('create_order_from_context', create_order_from_context)
@@ -1434,6 +1485,7 @@ flow_action_registry.register('send_catalog_message', send_catalog_message)
 flow_action_registry.register('process_cart_order', process_cart_order)
 flow_action_registry.register('initiate_payment_flow', initiate_payment_flow)
 flow_action_registry.register('prompt_payment_method_selection', prompt_payment_method_selection)
+flow_action_registry.register('confirm_phone_number_for_payment', confirm_phone_number_for_payment)
 flow_action_registry.register('prompt_paynow_method_selection', prompt_paynow_method_selection)
 flow_action_registry.register('confirm_payment_method_and_initiate', confirm_payment_method_and_initiate)
 flow_action_registry.register('add_products_to_cart_bulk', add_products_to_cart_bulk)
