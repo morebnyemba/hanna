@@ -128,9 +128,9 @@ const SettingsPage = () => {
 
   if (loading) {
     return (
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-600">Loading settings...</p>
+          <p className="text-sm md:text-base text-gray-600">Loading settings...</p>
         </div>
       </main>
     );
@@ -138,32 +138,32 @@ const SettingsPage = () => {
 
   return (
     <LocalErrorBoundary>
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="mb-4 md:mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 flex items-center">
             <FiSettings className="mr-3" />
             System Settings
           </h1>
-          <p className="text-gray-600">Configure WhatsApp and payment integration settings</p>
+          <p className="text-sm md:text-base text-gray-600">Configure WhatsApp and payment integration settings</p>
         </div>
 
         {/* Success Message */}
         {successMessage && (
-          <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center">
-            <FiCheckCircle className="w-5 h-5 mr-2" />
-            {successMessage}
+          <div className="mb-4 md:mb-6 p-3 md:p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-start md:items-center">
+            <FiCheckCircle className="w-5 h-5 mr-2 shrink-0" />
+            <span className="text-sm md:text-base">{successMessage}</span>
           </div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center">
-            <FiAlertCircle className="w-5 h-5 mr-2" />
-            {error}
+          <div className="mb-4 md:mb-6 p-3 md:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-start md:items-center">
+            <FiAlertCircle className="w-5 h-5 mr-2 shrink-0" />
+            <span className="text-sm md:text-base">{error}</span>
           </div>
         )}
 
-        <div className="space-y-8">
+        <div className="space-y-6 md:space-y-8">
           {/* WhatsApp Configuration */}
           <Card>
             <CardHeader>
@@ -227,7 +227,7 @@ const SettingsPage = () => {
                   <Button 
                     type="submit" 
                     disabled={savingMeta}
-                    className="flex items-center gap-2"
+                    className="flex items-center justify-center gap-2 w-full sm:w-auto"
                   >
                     <FiSave className="w-4 h-4" />
                     {savingMeta ? 'Saving...' : 'Save WhatsApp Settings'}
@@ -283,7 +283,7 @@ const SettingsPage = () => {
                   <Button 
                     type="submit" 
                     disabled={savingPaynow}
-                    className="flex items-center gap-2"
+                    className="flex items-center justify-center gap-2 w-full sm:w-auto"
                   >
                     <FiSave className="w-4 h-4" />
                     {savingPaynow ? 'Saving...' : 'Save Paynow Settings'}
@@ -299,12 +299,12 @@ const SettingsPage = () => {
           </Card>
 
           {/* Security Notice */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
             <div className="flex items-start">
-              <FiAlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+              <FiAlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5 shrink-0" />
               <div>
-                <h3 className="font-semibold text-blue-900">Security Notice</h3>
-                <p className="text-sm text-blue-800 mt-1">
+                <h3 className="font-semibold text-blue-900 text-sm md:text-base">Security Notice</h3>
+                <p className="text-xs md:text-sm text-blue-800 mt-1">
                   Sensitive information like access tokens and integration keys are securely stored and encrypted. 
                   They are never displayed in the interface for security purposes. Only update these values when necessary.
                 </p>

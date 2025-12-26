@@ -370,24 +370,24 @@ const ServiceRequestsPage = () => {
 
   return (
     <LocalErrorBoundary>
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="mb-4 md:mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 flex items-center">
             <FiTool className="mr-3" />
             Service Requests
           </h1>
           {error && (
-            <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <div className="mt-4 p-3 md:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm md:text-base">
               {error}
             </div>
           )}
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end">
+        <div className="mb-6 bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-col gap-3 md:gap-4">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">
                 <FiSearch className="inline mr-2" />
                 Search (Name, Phone, ID)
               </label>
@@ -401,7 +401,7 @@ const ServiceRequestsPage = () => {
                   setAssessmentPage(1);
                   setLoanPage(1);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -423,7 +423,7 @@ const ServiceRequestsPage = () => {
 
           {/* Installation Requests Tab */}
           <TabsContent value="installations" className="space-y-4">
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
               <select
                 value={installationStatusFilter}
                 onChange={(e) => {
@@ -441,14 +441,15 @@ const ServiceRequestsPage = () => {
                 onClick={handleExportInstallations}
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 justify-center"
               >
                 <FiFileText className="w-4 h-4" />
-                Export PDF
+                <span className="hidden sm:inline">Export PDF</span>
+                <span className="sm:hidden">Export</span>
               </Button>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -470,12 +471,12 @@ const ServiceRequestsPage = () => {
                         </TableCell>
                         <TableCell>{safeFormatDate(req.created_at)}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleShowDetail(req, 'installation')}
-                              className="text-xs"
+                              className="text-xs w-full sm:w-auto"
                             >
                               <FiEye className="w-3 h-3" />
                             </Button>
@@ -484,7 +485,7 @@ const ServiceRequestsPage = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleMarkCompleted(req.id)}
-                                className="text-xs text-green-600 hover:text-green-700"
+                                className="text-xs text-green-600 hover:text-green-700 w-full sm:w-auto"
                               >
                                 <FiCheckCircle className="w-3 h-3" />
                               </Button>
@@ -493,7 +494,7 @@ const ServiceRequestsPage = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleDeleteClick(req.id, 'installation', req.full_name)}
-                              className="text-xs text-red-600 hover:text-red-700"
+                              className="text-xs text-red-600 hover:text-red-700 w-full sm:w-auto"
                             >
                               <FiTrash2 className="w-3 h-3" />
                             </Button>
@@ -514,8 +515,8 @@ const ServiceRequestsPage = () => {
 
             {/* Pagination */}
             {installationPages > 1 && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-xs sm:text-sm text-gray-600">
                   Page {installationPage} of {installationPages}
                 </p>
                 <div className="flex gap-2">
@@ -589,12 +590,12 @@ const ServiceRequestsPage = () => {
                         </TableCell>
                         <TableCell>{safeFormatDate(req.created_at)}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleShowDetail(req, 'assessment')}
-                              className="text-xs"
+                              className="text-xs w-full sm:w-auto"
                             >
                               <FiEye className="w-3 h-3" />
                             </Button>
@@ -603,7 +604,7 @@ const ServiceRequestsPage = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleMarkAssessed(req.id)}
-                                className="text-xs text-green-600 hover:text-green-700"
+                                className="text-xs text-green-600 hover:text-green-700 w-full sm:w-auto"
                               >
                                 <FiCheckCircle className="w-3 h-3" />
                               </Button>
@@ -612,7 +613,7 @@ const ServiceRequestsPage = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleDeleteClick(req.id, 'assessment', req.full_name)}
-                              className="text-xs text-red-600 hover:text-red-700"
+                              className="text-xs text-red-600 hover:text-red-700 w-full sm:w-auto"
                             >
                               <FiTrash2 className="w-3 h-3" />
                             </Button>
@@ -633,8 +634,8 @@ const ServiceRequestsPage = () => {
 
             {/* Pagination */}
             {assessmentPages > 1 && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-xs sm:text-sm text-gray-600">
                   Page {assessmentPage} of {assessmentPages}
                 </p>
                 <div className="flex gap-2">
@@ -708,12 +709,12 @@ const ServiceRequestsPage = () => {
                           <StatusBadge status={req.status} type="loan" />
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleShowDetail(req, 'loan')}
-                              className="text-xs"
+                              className="text-xs w-full sm:w-auto"
                             >
                               <FiEye className="w-3 h-3" />
                             </Button>
@@ -723,7 +724,7 @@ const ServiceRequestsPage = () => {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleApproveLoan(req.id)}
-                                  className="text-xs text-green-600 hover:text-green-700"
+                                  className="text-xs text-green-600 hover:text-green-700 w-full sm:w-auto"
                                 >
                                   <FiCheckCircle className="w-3 h-3" />
                                 </Button>
@@ -731,7 +732,7 @@ const ServiceRequestsPage = () => {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleRejectLoan(req.id)}
-                                  className="text-xs text-red-600 hover:text-red-700"
+                                  className="text-xs text-red-600 hover:text-red-700 w-full sm:w-auto"
                                 >
                                   <FiXCircle className="w-3 h-3" />
                                 </Button>
@@ -741,7 +742,7 @@ const ServiceRequestsPage = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleDeleteClick(req.id, 'loan', req.full_name)}
-                              className="text-xs text-red-600 hover:text-red-700"
+                              className="text-xs text-red-600 hover:text-red-700 w-full sm:w-auto"
                             >
                               <FiTrash2 className="w-3 h-3" />
                             </Button>
@@ -762,8 +763,8 @@ const ServiceRequestsPage = () => {
 
             {/* Pagination */}
             {loanPages > 1 && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-xs sm:text-sm text-gray-600">
                   Page {loanPage} of {loanPages}
                 </p>
                 <div className="flex gap-2">
@@ -791,30 +792,30 @@ const ServiceRequestsPage = () => {
 
         {/* Detail Modal */}
         <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-lg md:text-xl">
                 {selectedDetailType === 'installation' && 'Installation Request Details'}
                 {selectedDetailType === 'assessment' && 'Site Assessment Details'}
                 {selectedDetailType === 'loan' && 'Loan Application Details'}
               </DialogTitle>
             </DialogHeader>
             {selectedDetail && (
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Customer Name</p>
-                  <p className="text-gray-900">{selectedDetail.full_name || 'N/A'}</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-700">Customer Name</p>
+                  <p className="text-sm md:text-base text-gray-900">{selectedDetail.full_name || 'N/A'}</p>
                 </div>
                 {selectedDetail.phone && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Phone</p>
-                    <p className="text-gray-900">{selectedDetail.phone}</p>
+                    <p className="text-xs md:text-sm font-medium text-gray-700">Phone</p>
+                    <p className="text-sm md:text-base text-gray-900">{selectedDetail.phone}</p>
                   </div>
                 )}
                 {selectedDetail.national_id && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">National ID</p>
-                    <p className="text-gray-900">{selectedDetail.national_id}</p>
+                    <p className="text-xs md:text-sm font-medium text-gray-700">National ID</p>
+                    <p className="text-sm md:text-base text-gray-900">{selectedDetail.national_id}</p>
                   </div>
                 )}
                 {selectedDetailType === 'installation' && (
@@ -860,11 +861,11 @@ const ServiceRequestsPage = () => {
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 pt-4">
+                <div className="flex flex-col sm:flex-row gap-2 pt-4">
                   {selectedDetailType === 'installation' && selectedDetail.status !== 'completed' && (
                     <Button
                       onClick={() => handleMarkCompleted(selectedDetail.id)}
-                      className="flex-1 text-xs"
+                      className="flex-1 text-xs w-full sm:w-auto"
                     >
                       <FiCheckCircle className="w-3 h-3 mr-1" />
                       Mark Completed
@@ -873,7 +874,7 @@ const ServiceRequestsPage = () => {
                   {selectedDetailType === 'assessment' && selectedDetail.status !== 'completed' && (
                     <Button
                       onClick={() => handleMarkAssessed(selectedDetail.id)}
-                      className="flex-1 text-xs"
+                      className="flex-1 text-xs w-full sm:w-auto"
                     >
                       <FiCheckCircle className="w-3 h-3 mr-1" />
                       Mark Assessed
@@ -883,13 +884,13 @@ const ServiceRequestsPage = () => {
                     <>
                       <Button
                         onClick={() => handleApproveLoan(selectedDetail.id)}
-                        className="flex-1 text-xs bg-green-600 hover:bg-green-700"
+                        className="flex-1 text-xs bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                       >
                         Approve
                       </Button>
                       <Button
                         onClick={() => handleRejectLoan(selectedDetail.id)}
-                        className="flex-1 text-xs bg-red-600 hover:bg-red-700"
+                        className="flex-1 text-xs bg-red-600 hover:bg-red-700 w-full sm:w-auto"
                       >
                         Reject
                       </Button>
@@ -898,7 +899,7 @@ const ServiceRequestsPage = () => {
                   <Button
                     onClick={() => setDetailModalOpen(false)}
                     variant="outline"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs w-full sm:w-auto"
                   >
                     Close
                   </Button>

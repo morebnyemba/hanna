@@ -226,18 +226,18 @@ export default function AdminCheckInOutPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <TrendingUp className="w-6 h-6" />
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 md:w-6 md:h-6" />
           Check-In / Check-Out Records
         </h1>
-        <div className="flex gap-2">
-          <Button onClick={() => setView('scanner')} size="lg">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button onClick={() => setView('scanner')} size="lg" className="w-full sm:w-auto">
             <Package className="w-4 h-4 mr-2" />
             Scanner
           </Button>
-          <Button onClick={exportToPDF} variant="outline" size="lg" disabled={filteredItems.length === 0}>
+          <Button onClick={exportToPDF} variant="outline" size="lg" disabled={filteredItems.length === 0} className="w-full sm:w-auto">
             <Download className="w-4 h-4 mr-2" />
             Export PDF
           </Button>

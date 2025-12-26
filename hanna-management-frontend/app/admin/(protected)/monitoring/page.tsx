@@ -175,18 +175,18 @@ export default function AdminDeviceMonitoringPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Activity className="w-8 h-8 text-blue-600" />
-          Device Monitoring Dashboard
+        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 md:gap-3">
+          <Activity className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+          <span className="leading-tight">Device Monitoring Dashboard</span>
         </h1>
-        <p className="text-gray-600 mt-1">Real-time monitoring of all customer devices</p>
+        <p className="text-sm md:text-base text-gray-600 mt-1">Real-time monitoring of all customer devices</p>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
