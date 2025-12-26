@@ -296,6 +296,7 @@ export default function ClientSettingsPage() {
           </div>
         </CardContent>
       </Card>
+      </div> {/* Close max-w-4xl mx-auto */}
     </main>
   );
 }
