@@ -519,8 +519,9 @@ Would you like to:
                                 )
                             }
                         )
-                            
-                            # Send all payment actions
+                        
+                        # Send all payment actions
+                        if payment_actions:
                             for action in payment_actions:
                                 if action.get('type') == 'send_whatsapp_message':
                                     outgoing_msg = Message.objects.create(
@@ -534,8 +535,7 @@ Would you like to:
                                     )
                                     send_whatsapp_message_task.delay(outgoing_msg.id, config_to_use.id)
                             
-                            payment_method = "interactive flow" if not is_fallback else "conversational flow"
-                            logger.info(f"{log_prefix} Checkout with Paynow payment ({payment_method}) initiated.")
+                            logger.info(f"{log_prefix} Checkout with Paynow payment (conversational flow) initiated.")
                             return
                         else:
                             # Fallback if payment flow not available
