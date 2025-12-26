@@ -486,7 +486,9 @@ class ItemTrackingService:
             SerializedItem.Location.WAREHOUSE: SerializedItem.Status.IN_STOCK,
             SerializedItem.Location.TECHNICIAN: SerializedItem.Status.IN_REPAIR,
             SerializedItem.Location.MANUFACTURER: SerializedItem.Status.WARRANTY_CLAIM,
-            SerializedItem.Location.CUSTOMER: SerializedItem.Status.INSTALLED,
+            # Customer delivery/install outcome should use an existing status
+            # Use DELIVERED instead of the non-existent INSTALLED constant
+            SerializedItem.Location.CUSTOMER: SerializedItem.Status.DELIVERED,
         }
         new_status = status_map.get(new_location, item.status)
         history = ItemLocationHistory.objects.create(

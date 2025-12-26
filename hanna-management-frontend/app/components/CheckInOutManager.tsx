@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BarcodeScanner from '@/app/components/BarcodeScanner';
 import apiClient from '@/app/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +44,12 @@ export default function CheckInOutManager({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const lastScanRef = useRef<string>('');
+  const lastScanAtRef = useRef<number>(0);
+  const scanInProgressRef = useRef<boolean>(false);
+  const [promptManualEntry, setPromptManualEntry] = useState(false);
+  const [serialInput, setSerialInput] = useState('');
+  const [manualLoading, setManualLoading] = useState(false);
   
   // Order fulfillment state
   const [pendingOrders, setPendingOrders] = useState<OrderSummary[]>([]);
@@ -58,7 +64,7 @@ export default function CheckInOutManager({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const selectedOrder = pendingOrders.find(o => o.id === selectedOrderId);
+  const selectedOrder = pendingOrders.find((o: OrderSummary) => o.id === selectedOrderId);
 
   const loadPendingOrders = async () => {
     setOrdersLoading(true); 
@@ -94,26 +100,91 @@ export default function CheckInOutManager({
     }
   }, [destination]);
 
-  const handleScan = async (code: string) => {
-    setMessage(null); 
-    setError(null); 
+  // Normalize common scanner duplication like "CODECODE"
+  const normalizeBarcode = (raw: string): string => {
+    const trimmed = raw.trim();
+    if (trimmed.length % 2 === 0) {
+      const half = trimmed.length / 2;
+      const a = trimmed.slice(0, half);
+      const b = trimmed.slice(half);
+      if (a === b) return a;
+    }
+    return trimmed;
+  };
+
+  const handleScan = async (rawCode: string) => {
+    const code = normalizeBarcode(rawCode);
+
+    // Debounce duplicate scans of the same code within 1s
+    const now = Date.now();
+    if (lastScanRef.current === code && now - lastScanAtRef.current < 1000) {
+      return;
+    }
+    if (scanInProgressRef.current) return;
+    scanInProgressRef.current = true;
+    lastScanRef.current = code;
+    lastScanAtRef.current = now;
+
+    setMessage(null);
+    setError(null);
     setItem(null);
     setShowHistory(false);
     setItemHistory([]);
-    
+
     try {
-      const res = await apiClient.post('/crm-api/products/barcode/scan/', { 
-        barcode: code, 
-        scan_type: 'serialized_item' 
+      // First, try as serialized item (barcode or serial number)
+      const resItem = await apiClient.post('/crm-api/products/barcode/scan/', {
+        barcode: code,
+        scan_type: 'serialized_item',
       });
-      
-      if (res.data.found && res.data.item_type === 'serialized_item') {
-        setItem(res.data.data);
-      } else {
-        setError('Serialized item not found');
+
+      if (resItem.data.found && resItem.data.item_type === 'serialized_item') {
+        setItem(resItem.data.data);
+        return;
       }
+
+      // Fallback: try as product barcode/SKU to guide user
+      const resProduct = await apiClient.post('/crm-api/products/barcode/scan/', {
+        barcode: code,
+        scan_type: 'product',
+      });
+      if (resProduct.data.found && resProduct.data.item_type === 'product') {
+        setError(
+          'Scanned a product barcode. Please scan the serialized item barcode or enter the serial number.'
+        );
+        setPromptManualEntry(true);
+        return;
+      }
+
+      setError('No product or serialized item found for this barcode.');
     } catch (e: unknown) {
       setError(extractErrorMessage(e, 'Lookup failed'));
+    } finally {
+      scanInProgressRef.current = false;
+    }
+  };
+
+  const manualLookup = async () => {
+    const code = serialInput.trim();
+    if (!code) return;
+    setManualLoading(true);
+    setError(null);
+    try {
+      const resItem = await apiClient.post('/crm-api/products/barcode/scan/', {
+        barcode: code,
+        scan_type: 'serialized_item',
+      });
+      if (resItem.data.found && resItem.data.item_type === 'serialized_item') {
+        setItem(resItem.data.data);
+        setPromptManualEntry(false);
+        setSerialInput('');
+        return;
+      }
+      setError('No serialized item found for this serial number.');
+    } catch (e: unknown) {
+      setError(extractErrorMessage(e, 'Lookup failed'));
+    } finally {
+      setManualLoading(false);
     }
   };
 
@@ -235,7 +306,7 @@ export default function CheckInOutManager({
         <BarcodeScanner
           isOpen={scannerOpen}
           onClose={() => setScannerOpen(false)}
-          onScanSuccess={(code) => { 
+          onScanSuccess={(code: string) => {
             setScannerOpen(false); 
             handleScan(code); 
           }}
@@ -511,6 +582,26 @@ export default function CheckInOutManager({
             <div className="p-4 rounded-lg text-sm flex items-center gap-3 bg-blue-50 text-blue-700 border border-blue-200">
               <CheckCircle className="w-5 h-5 shrink-0" />
               <span>{fulfillmentMessage}</span>
+            </div>
+          )}
+
+          {promptManualEntry && (
+            <div className="mt-3 p-4 rounded-lg border bg-yellow-50 border-yellow-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="w-5 h-5 text-yellow-600" />
+                <span className="text-sm text-yellow-800">Enter the item's serial number to locate the serialized item.</span>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  value={serialInput}
+                  onChange={(e) => setSerialInput(e.target.value)}
+                  placeholder="e.g. SN123456789"
+                  className="text-sm"
+                />
+                <Button disabled={manualLoading || !serialInput.trim()} onClick={manualLookup} className="text-sm">
+                  {manualLoading ? 'Searching…' : 'Lookup Serial'}
+                </Button>
+              </div>
             </div>
           )}
         </div>
