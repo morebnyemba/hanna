@@ -498,33 +498,53 @@ class WhatsAppFlowService:
             with open(public_key_path, 'r') as f:
                 public_key_content = f.read()
             
-            # Get the phone number ID from meta_config
+            # Get identifiers from meta_config
             phone_number_id = self.meta_config.phone_number_id
-            if not phone_number_id:
-                logger.error("Phone number ID not configured in MetaAppConfig")
+            waba_id = self.meta_config.waba_id
+            if not phone_number_id or not waba_id:
+                logger.error("Phone number ID or WABA ID not configured in MetaAppConfig")
                 return False
             
-            # Meta Graph API endpoint for uploading flows config (public key)
-            url = f"{self.base_url}/{phone_number_id}/whatsapp_business_account/flow_config"
-            
-            # Prepare the payload with the public key
-            payload = {
-                "name": "flows_signing_public_key",
+            # Preferred endpoint: WABA-level flows config
+            url_primary = f"{self.base_url}/{waba_id}/flows_config"
+            payload_primary = {
+                "phone_number_id": phone_number_id,
                 "public_key": public_key_content
             }
             
-            logger.info(f"Uploading flows public key for phone number {phone_number_id}...")
+            logger.info(f"Uploading flows public key via WABA {waba_id} for phone number {phone_number_id}...")
+            try:
+                response = requests.post(url_primary, headers=self.headers, json=payload_primary, timeout=20)
+                response.raise_for_status()
+                result = response.json()
+                # Meta responses vary; accept either explicit success or presence of id/config
+                if result.get('success') or result.get('id') or result.get('config'):
+                    logger.info("✓ Successfully uploaded flows public key to Meta (WABA endpoint)")
+                    return True
+                else:
+                    logger.warning(f"WABA endpoint response ambiguous: {result}. Will try phone endpoint.")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"WABA endpoint failed: {e}. Will try phone endpoint.")
+                if hasattr(e, 'response') and e.response is not None:
+                    try:
+                        logger.warning(f"WABA error details: {e.response.json()}")
+                    except Exception:
+                        logger.warning(f"WABA error text: {e.response.text}")
             
-            response = requests.post(url, headers=self.headers, json=payload, timeout=20)
+            # Fallback endpoint: phone-number-level flows config
+            url_fallback = f"{self.base_url}/{phone_number_id}/flows_config"
+            payload_fallback = {
+                "public_key": public_key_content
+            }
+            logger.info(f"Uploading flows public key via phone endpoint {phone_number_id}...")
+            response = requests.post(url_fallback, headers=self.headers, json=payload_fallback, timeout=20)
             response.raise_for_status()
-            
             result = response.json()
-            
-            if result.get('success'):
-                logger.info("✓ Successfully uploaded flows public key to Meta")
+            if result.get('success') or result.get('id') or result.get('config'):
+                logger.info("✓ Successfully uploaded flows public key to Meta (phone endpoint)")
                 return True
             else:
-                logger.error(f"Failed to upload public key: {result}")
+                logger.error(f"Failed to upload public key (phone endpoint): {result}")
                 return False
                 
         except FileNotFoundError:
