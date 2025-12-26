@@ -703,7 +703,11 @@ class MetaWebhookAPIView(View):
                     # Get customer email if available, otherwise use default
                     customer_email = ''
                     if order.customer:
-                        customer_email = order.customer.email or ''
+                        customer_email = (order.customer.email or '').strip()
+                    
+                    # Fallback to company email if customer email is empty
+                    if not customer_email:
+                        customer_email = 'mnyemba@hanna.co.zw'
                     
                     # Create payment reference
                     payment_reference = f"PAY-{order.order_number}-{uuid.uuid4().hex[:8].upper()}"
