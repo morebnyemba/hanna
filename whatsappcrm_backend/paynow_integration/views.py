@@ -78,7 +78,6 @@ def initiate_whatsapp_payment(request):
         
         order_number = data.get('order_number')
         phone_number = data.get('phone_number')
-        email = data.get('email', '')
         payment_method = data.get('payment_method', 'ecocash')
         
         # Validate required fields
@@ -100,6 +99,16 @@ def initiate_whatsapp_payment(request):
                 {'success': False, 'message': f'Order {order_number} not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+        # Get or use default email (required by Paynow for mobile transactions)
+        email = data.get('email', '')
+        if not email:
+            # Use customer email if available, otherwise use company default
+            if customer and customer.email:
+                email = customer.email
+            else:
+                email = 'mnyemba@hanna.co.zw'  # Default company email for transactions
+            logger.info(f"Using email for payment {payment_reference}: {email}")
         
         # Map payment method to Paynow method type
         paynow_method_map = {

@@ -394,7 +394,10 @@ Execute the following steps in sequence:
 
 **Step 4: Action Execution**
 *   **For BUY**: Confirm products are being added to cart. Prefer format: ADD_TO_CART_QTY: [(id1, qty1), (id2, qty2)]. Fallback format ADD_TO_CART: [id1, id2, id3] is also accepted (assumes qty=1).
-*   **For CHECKOUT**: Use token CHECKOUT to place the order immediately.
+*   **For CHECKOUT**: Use token CHECKOUT to place the order immediately. This will:
+    - Create an Order with all cart items
+    - Send an interactive WhatsApp payment flow to initiate Paynow payment
+    - Customer will receive a payment button to select payment method and complete payment
 *   **For RECOMMENDATION**: Generate PDF. Use format: GENERATE_PDF: [id1, id2, id3]
 
 ---
@@ -404,9 +407,23 @@ Execute the following steps in sequence:
 * `ADD_TO_CART: [list]` - Use this to add products to cart (quantity defaults to 1)
 * `ADD_TO_CART_QTY: [(id, qty)]` - Use this to add products with quantities needed
 * `GENERATE_PDF: [list]` - Use this to generate recommendation PDF
-* `CHECKOUT` - Use this to place the order immediately
+* `CHECKOUT` - Use this to place the order and initiate secure Paynow payment flow
 * `[HUMAN_HANDOVER]` - Escalate complex queries to human agent
 * `[END_CONVERSATION]` - End the shopping session
+
+---
+### **Payment Flow**
+
+When user types CHECKOUT or says "checkout":
+1. ✅ Order is created with current cart items
+2. 💳 WhatsApp interactive payment flow is sent
+3. 👤 Customer selects payment method (Ecocash, OneMoney, Innbucks)
+4. 📱 Customer enters phone number linked to mobile money account
+5. ✔️ Payment is initiated via Paynow
+6. 🔔 Customer receives payment notification/prompt on their phone
+7. 📊 Once payment completes, order status updates automatically
+
+**Important**: Never mention payment methods in conversation unless customer asks. The payment flow handles all payment details securely. Just confirm the order is being placed and payment will follow.
 
 ---
 ### **Example Interaction**
@@ -464,7 +481,7 @@ Would you like to:
             # Short-circuit common commands before invoking AI
             if incoming_message.text_content and incoming_message.text_content.strip().lower() == 'checkout':
                 try:
-                    from flows.actions import checkout_cart_for_contact, initiate_payment_flow
+                    from flows.actions import checkout_cart_for_contact, initiate_payment_flow, prompt_payment_method_selection
                     checkout_context = {}
                     checkout_cart_for_contact(contact, checkout_context, {})
                     order_info = checkout_context.get('order_info')
@@ -485,8 +502,33 @@ Would you like to:
                             }
                         )
                         
-                        # If payment flow initiated successfully, return (messages will be sent by action)
+                        # Check if interactive flow was sent
                         if payment_actions:
+                            # Check if it's a fallback text message (interactive flow not available)
+                            is_fallback = any(
+                                action.get('message_type') == 'text' and 
+                                'contact our team' in action.get('data', {}).get('body', '').lower()
+                                for action in payment_actions
+                            )
+                            
+                            if is_fallback:
+                                logger.info(f"{log_prefix} Interactive payment flow not available. Using conversational payment flow.")
+                                # Use conversational payment method selection (button prompts)
+                                conversational_actions = prompt_payment_method_selection(
+                                    contact,
+                                    {'created_order': order_info},
+                                    {
+                                        'order_context_var': 'created_order',
+                                        'header_text': '💳 Select Payment Method',
+                                        'body_text_template': (
+                                            f"Order: #{order_info['order_number']}\n"
+                                            f"Amount: {order_info['amount']} {order_info['currency']}"
+                                        )
+                                    }
+                                )
+                                payment_actions = conversational_actions
+                            
+                            # Send all payment actions
                             for action in payment_actions:
                                 if action.get('type') == 'send_whatsapp_message':
                                     outgoing_msg = Message.objects.create(
@@ -499,7 +541,9 @@ Would you like to:
                                         related_incoming_message=incoming_message
                                     )
                                     send_whatsapp_message_task.delay(outgoing_msg.id, config_to_use.id)
-                            logger.info(f"{log_prefix} Checkout with Paynow payment flow initiated.")
+                            
+                            payment_method = "interactive flow" if not is_fallback else "conversational flow"
+                            logger.info(f"{log_prefix} Checkout with Paynow payment ({payment_method}) initiated.")
                             return
                         else:
                             # Fallback if payment flow not available
