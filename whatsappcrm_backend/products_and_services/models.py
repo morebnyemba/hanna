@@ -61,6 +61,9 @@ class Product(models.Model):
     supplier_sku = models.CharField(_("Supplier SKU"), max_length=120, blank=True, null=True, help_text=_("Original supplier or partner provided product code."))
     provisional = models.BooleanField(_("Provisional"), default=False, help_text=_("Marks products auto-created from imports pending review."))
     
+    # Zoho Integration
+    zoho_item_id = models.CharField(_("Zoho Item ID"), max_length=100, blank=True, null=True, unique=True, db_index=True, help_text=_("Zoho Inventory Item ID for sync tracking"))
+    
     # Meta sync tracking fields
     meta_sync_attempts = models.PositiveIntegerField(_("Meta Sync Attempts"), default=0, help_text=_("Number of times sync to Meta Catalog has been attempted"))
     meta_sync_last_error = models.TextField(_("Last Meta Sync Error"), blank=True, null=True, help_text=_("Last error message from Meta API sync attempt"))

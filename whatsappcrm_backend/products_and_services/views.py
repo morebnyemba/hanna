@@ -2112,3 +2112,45 @@ class ItemLocationHistoryViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         """Delete an item location history record."""
         instance.delete()
+
+# Zoho Inventory Sync Views
+
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.http import HttpRequest, HttpResponse
+
+
+@staff_member_required
+def trigger_sync_view(request: HttpRequest) -> HttpResponse:
+    """
+    Admin view to trigger Zoho Inventory product sync.
+    
+    This view triggers a Celery task to sync products from Zoho Inventory
+    and redirects back to the product list with a success message.
+    
+    Args:
+        request: HttpRequest object
+        
+    Returns:
+        HttpResponse redirecting to admin product list
+    """
+    from .tasks import task_sync_zoho_products
+    
+    try:
+        # Trigger the Celery task asynchronously
+        task = task_sync_zoho_products.delay()
+        
+        messages.success(
+            request,
+            f'Zoho product sync has been initiated. Task ID: {task.id}. '
+            'Products will be synced in the background. Check logs for progress.'
+        )
+    except Exception as e:
+        messages.error(
+            request,
+            f'Failed to initiate Zoho sync: {str(e)}'
+        )
+    
+    # Redirect back to the product list in admin
+    return redirect('admin:products_and_services_product_changelist')

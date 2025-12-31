@@ -22,4 +22,5 @@ app_name = 'products_and_services_api'
 urlpatterns = [
     path('', include(router.urls)),
     path('csrf/', views.csrf_cookie, name='csrf-cookie'),
+    path('admin/sync-zoho/', views.trigger_sync_view, name='sync-zoho'),
 ]

@@ -1251,3 +1251,203 @@ class MetaCatalogServiceMethodsTestCase(TestCase):
             service.set_product_visibility(product_no_catalog, 'published')
         
         self.assertIn('Catalog ID', str(context.exception))
+
+
+# Zoho Integration Tests
+
+from unittest.mock import patch, MagicMock
+from decimal import Decimal
+
+
+class ZohoProductSyncTest(TestCase):
+    """Tests for Zoho product synchronization."""
+    
+    def setUp(self):
+        """Set up test data."""
+        from integrations.models import ZohoCredential
+        
+        # Create Zoho credentials
+        self.zoho_cred = ZohoCredential.objects.create(
+            client_id='test_client',
+            client_secret='test_secret',
+            access_token='test_token',
+            refresh_token='test_refresh',
+            organization_id='test_org',
+            expires_in=timezone.now() + timedelta(hours=1)
+        )
+    
+    @patch('integrations.utils.requests.get')
+    def test_fetch_products_success(self, mock_get):
+        """Test successful product fetch from Zoho."""
+        from integrations.utils import ZohoClient
+        
+        # Mock API response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            'code': 0,
+            'items': [
+                {
+                    'item_id': '123',
+                    'name': 'Test Product',
+                    'sku': 'TEST-001',
+                    'rate': 99.99,
+                    'stock_on_hand': 10,
+                    'status': 'active'
+                }
+            ],
+            'page_context': {'has_more_page': False}
+        }
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+        
+        # Test fetch
+        client = ZohoClient()
+        result = client.fetch_products(page=1)
+        
+        self.assertEqual(len(result['items']), 1)
+        self.assertEqual(result['items'][0]['item_id'], '123')
+    
+    @patch('integrations.utils.ZohoClient.fetch_all_products')
+    def test_sync_zoho_products_to_db(self, mock_fetch):
+        """Test syncing products from Zoho to database."""
+        from products_and_services.services import sync_zoho_products_to_db
+        
+        # Mock Zoho API response
+        mock_fetch.return_value = [
+            {
+                'item_id': '123',
+                'name': 'Test Product',
+                'sku': 'TEST-001',
+                'description': 'Test Description',
+                'rate': 99.99,
+                'stock_on_hand': 10,
+                'status': 'active'
+            },
+            {
+                'item_id': '456',
+                'name': 'Another Product',
+                'sku': 'TEST-002',
+                'rate': 149.99,
+                'stock_on_hand': 5,
+                'status': 'active'
+            }
+        ]
+        
+        # Run sync
+        result = sync_zoho_products_to_db()
+        
+        # Check results
+        self.assertEqual(result['total'], 2)
+        self.assertEqual(result['created'], 2)
+        self.assertEqual(result['updated'], 0)
+        self.assertEqual(result['failed'], 0)
+        
+        # Verify products were created
+        self.assertEqual(Product.objects.count(), 2)
+        
+        product1 = Product.objects.get(zoho_item_id='123')
+        self.assertEqual(product1.name, 'Test Product')
+        self.assertEqual(product1.sku, 'TEST-001')
+        self.assertEqual(product1.price, Decimal('99.99'))
+        self.assertEqual(product1.stock_quantity, 10)
+        self.assertTrue(product1.is_active)
+    
+    @patch('integrations.utils.ZohoClient.fetch_all_products')
+    def test_sync_updates_existing_product(self, mock_fetch):
+        """Test that sync updates existing products."""
+        from products_and_services.services import sync_zoho_products_to_db
+        
+        # Create existing product
+        existing_product = Product.objects.create(
+            name='Old Name',
+            zoho_item_id='123',
+            sku='TEST-001',
+            price=Decimal('50.00'),
+            stock_quantity=5,
+            product_type='hardware'
+        )
+        
+        # Mock updated data from Zoho
+        mock_fetch.return_value = [
+            {
+                'item_id': '123',
+                'name': 'Updated Product Name',
+                'sku': 'TEST-001',
+                'rate': 99.99,
+                'stock_on_hand': 15,
+                'status': 'active'
+            }
+        ]
+        
+        # Run sync
+        result = sync_zoho_products_to_db()
+        
+        # Check results
+        self.assertEqual(result['created'], 0)
+        self.assertEqual(result['updated'], 1)
+        
+        # Verify product was updated
+        existing_product.refresh_from_db()
+        self.assertEqual(existing_product.name, 'Updated Product Name')
+        self.assertEqual(existing_product.price, Decimal('99.99'))
+        self.assertEqual(existing_product.stock_quantity, 15)
+    
+    @patch('integrations.utils.ZohoClient.fetch_all_products')
+    def test_sync_handles_missing_item_id(self, mock_fetch):
+        """Test that sync handles items without item_id gracefully."""
+        from products_and_services.services import sync_zoho_products_to_db
+        
+        # Mock data with missing item_id
+        mock_fetch.return_value = [
+            {
+                'name': 'Product Without ID',
+                'sku': 'NO-ID',
+                'rate': 50.00
+            }
+        ]
+        
+        # Run sync
+        result = sync_zoho_products_to_db()
+        
+        # Should fail gracefully
+        self.assertEqual(result['failed'], 1)
+        self.assertGreater(len(result['errors']), 0)
+        self.assertEqual(Product.objects.count(), 0)
+    
+    def test_celery_task_exists(self):
+        """Test that the Celery task is defined."""
+        from products_and_services.tasks import task_sync_zoho_products
+        
+        # Task should be defined and callable
+        self.assertTrue(callable(task_sync_zoho_products))
+
+
+class ZohoAdminViewTest(TestCase):
+    """Tests for Zoho admin views."""
+    
+    def setUp(self):
+        """Set up test user."""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        self.admin_user = User.objects.create_superuser(
+            username='admin',
+            email='admin@test.com',
+            password='testpass123'
+        )
+        self.client.force_login(self.admin_user)
+    
+    @patch('products_and_services.tasks.task_sync_zoho_products.delay')
+    def test_trigger_sync_view(self, mock_task):
+        """Test the trigger_sync_view endpoint."""
+        # Mock task
+        mock_task.return_value = MagicMock(id='test-task-id')
+        
+        # Call the view
+        response = self.client.get('/api/products-and-services/admin/sync-zoho/')
+        
+        # Should redirect to product list
+        self.assertEqual(response.status_code, 302)
+        
+        # Task should be triggered
+        mock_task.assert_called_once()

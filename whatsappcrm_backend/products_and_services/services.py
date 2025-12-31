@@ -3,12 +3,15 @@ Service layer for product and item tracking operations.
 """
 from django.db import transaction
 from django.utils import timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 from django.contrib.auth import get_user_model
+import logging
+from decimal import Decimal
 
 from .models import SerializedItem, ItemLocationHistory, Product
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class ItemTrackingService:
@@ -506,3 +509,109 @@ class ItemTrackingService:
         item.location_notes = notes or f"Arrived at {new_location}"
         item.save(update_fields=['current_location', 'status', 'location_notes', 'updated_at'])
         return history
+
+
+def sync_zoho_products_to_db() -> Dict[str, Any]:
+    """
+    Sync products from Zoho Inventory to the local database.
+    
+    This function:
+    1. Fetches all products from Zoho Inventory
+    2. Maps Zoho fields to local Product model fields
+    3. Creates or updates products based on zoho_item_id
+    4. Logs errors for individual products but continues processing
+    
+    Returns:
+        Dict containing sync statistics:
+            - total: Total items fetched from Zoho
+            - created: Number of new products created
+            - updated: Number of existing products updated
+            - failed: Number of products that failed to sync
+            - errors: List of error messages
+    """
+    from integrations.utils import ZohoClient
+    
+    logger.info("Starting Zoho product sync...")
+    
+    stats = {
+        'total': 0,
+        'created': 0,
+        'updated': 0,
+        'failed': 0,
+        'errors': []
+    }
+    
+    try:
+        # Initialize Zoho client
+        client = ZohoClient()
+        
+        # Fetch all products from Zoho
+        zoho_items = client.fetch_all_products()
+        stats['total'] = len(zoho_items)
+        
+        logger.info(f"Fetched {stats['total']} items from Zoho Inventory")
+        
+        # Process each item
+        for zoho_item in zoho_items:
+            try:
+                # Extract and map Zoho fields to our Product model
+                zoho_item_id = zoho_item.get('item_id')
+                
+                if not zoho_item_id:
+                    error_msg = f"Item missing item_id: {zoho_item.get('name', 'Unknown')}"
+                    logger.warning(error_msg)
+                    stats['failed'] += 1
+                    stats['errors'].append(error_msg)
+                    continue
+                
+                # Prepare product data
+                product_data = {
+                    'name': zoho_item.get('name', 'Untitled Product'),
+                    'sku': zoho_item.get('sku') or None,  # Use None if empty string
+                    'description': zoho_item.get('description', ''),
+                    'price': Decimal(str(zoho_item.get('rate', 0))) if zoho_item.get('rate') else None,
+                    'stock_quantity': int(zoho_item.get('stock_on_hand', 0)),
+                    'is_active': zoho_item.get('status') == 'active',
+                    'product_type': 'hardware',  # Default, can be customized based on Zoho data
+                }
+                
+                # Optional fields
+                if zoho_item.get('unit'):
+                    product_data['description'] += f"\n\nUnit: {zoho_item['unit']}"
+                
+                if zoho_item.get('item_type'):
+                    product_data['description'] += f"\nType: {zoho_item['item_type']}"
+                
+                # Create or update the product
+                product, created = Product.objects.update_or_create(
+                    zoho_item_id=str(zoho_item_id),
+                    defaults=product_data
+                )
+                
+                if created:
+                    stats['created'] += 1
+                    logger.info(f"Created product: {product.name} (Zoho ID: {zoho_item_id})")
+                else:
+                    stats['updated'] += 1
+                    logger.info(f"Updated product: {product.name} (Zoho ID: {zoho_item_id})")
+                    
+            except Exception as e:
+                error_msg = f"Failed to sync item {zoho_item.get('name', 'Unknown')}: {str(e)}"
+                logger.error(error_msg)
+                stats['failed'] += 1
+                stats['errors'].append(error_msg)
+                # Continue processing other items
+                continue
+        
+        logger.info(
+            f"Zoho sync completed. Created: {stats['created']}, "
+            f"Updated: {stats['updated']}, Failed: {stats['failed']}"
+        )
+        
+    except Exception as e:
+        error_msg = f"Fatal error during Zoho sync: {str(e)}"
+        logger.error(error_msg)
+        stats['errors'].append(error_msg)
+        raise
+    
+    return stats
