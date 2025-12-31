@@ -88,17 +88,26 @@ Field mapping:
 1. Go to [Zoho API Console](https://api-console.zoho.com/)
 2. Create a new "Server-based Application"
 3. Note down your Client ID and Client Secret
-4. Set up OAuth redirect URI (not needed for refresh token flow)
+4. **Set up OAuth Redirect URI**: 
+   - For initial token generation, you can use any valid URL (e.g., `http://localhost:8000/oauth/callback` or `https://yourdomain.com/oauth/callback`)
+   - This URI is only needed during the initial authorization step
+   - After obtaining the refresh token, the integration uses only the refresh token flow (no redirect needed)
+   - **Important**: The redirect URI in the Zoho console must exactly match the one used in the authorization URL
 
 ### 2. Generate Initial Tokens
 
 You need to manually generate initial OAuth tokens using Zoho's OAuth flow:
 
 ```bash
-# 1. Get authorization code (replace with your client ID and redirect URI)
+# 1. Get authorization code
+# Open this URL in a browser (replace YOUR_CLIENT_ID and YOUR_REDIRECT_URI)
+# YOUR_REDIRECT_URI must match what you configured in Zoho API Console
 https://accounts.zoho.com/oauth/v2/auth?scope=ZohoInventory.items.READ&client_id=YOUR_CLIENT_ID&response_type=code&access_type=offline&redirect_uri=YOUR_REDIRECT_URI
 
-# 2. Exchange code for tokens
+# After authorization, Zoho redirects to: YOUR_REDIRECT_URI?code=AUTHORIZATION_CODE
+# Copy the "code" parameter from the URL
+
+# 2. Exchange code for tokens (use the same redirect_uri)
 curl -X POST https://accounts.zoho.com/oauth/v2/token \
   -d "code=YOUR_AUTH_CODE" \
   -d "client_id=YOUR_CLIENT_ID" \
@@ -106,6 +115,13 @@ curl -X POST https://accounts.zoho.com/oauth/v2/token \
   -d "redirect_uri=YOUR_REDIRECT_URI" \
   -d "grant_type=authorization_code"
 ```
+
+**Example redirect URIs:**
+- Development: `http://localhost:8000/oauth/callback`
+- Production: `https://backend.hanna.co.zw/oauth/callback`
+- Simple catch-all: `https://www.getpostman.com/oauth2/callback` (useful for testing)
+
+**Note**: You don't need to implement the redirect endpoint. After the initial token exchange, all subsequent authentications use the refresh token automatically.
 
 This will return:
 ```json

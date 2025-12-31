@@ -85,10 +85,38 @@ python manage.py shell
 ### 4. Configure Zoho Credentials
 
 **Get OAuth Tokens from Zoho:**
-1. Go to https://api-console.zoho.com/
-2. Create Server-based Application
-3. Note Client ID and Client Secret
-4. Generate initial tokens using OAuth flow (see docs)
+
+1. **Go to Zoho API Console**: https://api-console.zoho.com/
+2. **Create Server-based Application**
+3. **Set Redirect URI** in the Zoho console:
+   - Development: `http://localhost:8000/oauth/callback`
+   - Production: `https://backend.hanna.co.zw/oauth/callback`
+   - Or use Postman: `https://www.getpostman.com/oauth2/callback`
+   - **Important**: This URI must match exactly in steps below
+4. **Note Client ID and Client Secret**
+
+**Generate Initial Tokens:**
+
+```bash
+# Step 1: Open in browser (replace YOUR_CLIENT_ID and YOUR_REDIRECT_URI)
+https://accounts.zoho.com/oauth/v2/auth?scope=ZohoInventory.items.READ&client_id=YOUR_CLIENT_ID&response_type=code&access_type=offline&redirect_uri=YOUR_REDIRECT_URI
+
+# Step 2: After authorization, you'll be redirected to:
+# YOUR_REDIRECT_URI?code=1000.xxxxx
+# Copy the code parameter
+
+# Step 3: Exchange code for tokens (use same redirect_uri)
+curl -X POST https://accounts.zoho.com/oauth/v2/token \
+  -d "code=YOUR_AUTH_CODE" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET" \
+  -d "redirect_uri=YOUR_REDIRECT_URI" \
+  -d "grant_type=authorization_code"
+
+# Response will include access_token and refresh_token
+```
+
+**Note**: The redirect URI is only needed for this initial setup. After obtaining the refresh token, the system handles authentication automatically without needing a redirect endpoint in your application.
 
 **Add to Django Admin:**
 ```
@@ -98,10 +126,10 @@ python manage.py shell
 4. Fill in all fields:
    - Client ID: [from Zoho API Console]
    - Client Secret: [from Zoho API Console]
-   - Access Token: [from OAuth flow]
-   - Refresh Token: [from OAuth flow]
-   - Organization ID: [from Zoho Inventory]
-   - API Domain: https://inventory.zoho.com (or .eu, .in)
+   - Access Token: [from OAuth flow response]
+   - Refresh Token: [from OAuth flow response]
+   - Organization ID: [from Zoho Inventory settings]
+   - API Domain: https://inventory.zoho.com (or .eu, .in based on region)
    - Scope: ZohoInventory.items.READ
    - Expires In: [current time + 1 hour]
 5. Save

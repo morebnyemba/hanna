@@ -5,6 +5,39 @@
 2. OAuth Client ID and Secret from Zoho API Console
 3. Initial access and refresh tokens
 
+## Getting OAuth Tokens (First-Time Setup)
+
+### Step 0: Generate Tokens from Zoho
+
+1. **Create OAuth App in Zoho API Console** (https://api-console.zoho.com/):
+   - Create "Server-based Application"
+   - Note your Client ID and Client Secret
+   - Set Redirect URI (examples):
+     - Development: `http://localhost:8000/oauth/callback`
+     - Production: `https://backend.hanna.co.zw/oauth/callback`
+     - Or use: `https://www.getpostman.com/oauth2/callback` (for testing)
+
+2. **Get Authorization Code**:
+   - Open in browser (replace YOUR_CLIENT_ID and YOUR_REDIRECT_URI):
+   ```
+   https://accounts.zoho.com/oauth/v2/auth?scope=ZohoInventory.items.READ&client_id=YOUR_CLIENT_ID&response_type=code&access_type=offline&redirect_uri=YOUR_REDIRECT_URI
+   ```
+   - Authorize the app
+   - Copy the `code` parameter from the redirect URL
+
+3. **Exchange Code for Tokens**:
+   ```bash
+   curl -X POST https://accounts.zoho.com/oauth/v2/token \
+     -d "code=YOUR_AUTH_CODE" \
+     -d "client_id=YOUR_CLIENT_ID" \
+     -d "client_secret=YOUR_CLIENT_SECRET" \
+     -d "redirect_uri=YOUR_REDIRECT_URI" \
+     -d "grant_type=authorization_code"
+   ```
+   - Save the `access_token` and `refresh_token` from the response
+
+**Note**: The redirect URI is only needed for initial setup. After that, the system uses the refresh token automatically (no redirect endpoint needed in your app).
+
 ## Quick Setup (5 Minutes)
 
 ### Step 1: Add Zoho Credentials
