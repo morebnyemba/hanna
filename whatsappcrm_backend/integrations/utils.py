@@ -26,6 +26,63 @@ class ZohoClient:
         
         self.token_url = "https://accounts.zoho.com/oauth/v2/token"
         self.api_base_url = self.credentials.api_domain
+    
+    @classmethod
+    def exchange_code_for_tokens(cls, code: str, redirect_uri: str) -> Dict[str, Any]:
+        """
+        Exchange an authorization code for access and refresh tokens.
+        
+        Args:
+            code: Authorization code from Zoho OAuth callback
+            redirect_uri: The redirect URI used in the authorization request
+            
+        Returns:
+            Dict containing token data from Zoho
+            
+        Raises:
+            ValueError: If credentials not configured
+            Exception: If token exchange fails
+        """
+        credentials = ZohoCredential.get_instance()
+        if not credentials:
+            raise ValueError("Zoho credentials not configured")
+        
+        token_url = "https://accounts.zoho.com/oauth/v2/token"
+        payload = {
+            'code': code,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'redirect_uri': redirect_uri,
+            'grant_type': 'authorization_code'
+        }
+        
+        try:
+            response = requests.post(token_url, data=payload, timeout=30)
+            response.raise_for_status()
+            token_data = response.json()
+            
+            if 'error' in token_data:
+                raise Exception(f"Zoho token error: {token_data.get('error')}")
+            
+            if 'access_token' not in token_data:
+                raise Exception("Access token not in response")
+            
+            # Update credentials
+            credentials.access_token = token_data['access_token']
+            if 'refresh_token' in token_data:
+                credentials.refresh_token = token_data['refresh_token']
+            
+            expires_in_seconds = token_data.get('expires_in', 3600)
+            credentials.expires_in = timezone.now() + timedelta(seconds=expires_in_seconds)
+            
+            credentials.save()
+            
+            logger.info("Successfully exchanged authorization code for tokens")
+            return token_data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to exchange code for tokens: {str(e)}")
+            raise Exception(f"Failed to exchange authorization code: {str(e)}")
 
     def get_valid_token(self) -> str:
         """
