@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     # Our apps
     'admin_api',  # Centralized Admin API for frontend
     'users',
+    'integrations.apps.IntegrationsConfig',  # Third-party integrations (Zoho, etc.)
     "paynow_integration.apps.PaynowIntegrationConfig",
     "stats",
     'meta_integration.apps.MetaIntegrationConfig',
@@ -378,6 +379,7 @@ JAZZMIN_SETTINGS = {
     "topmenu_links": [
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
         {"model": "auth.User"},
+        {"name": "Sync Zoho", "url": "/api/products-and-services/admin/sync-zoho/", "permissions": ["auth.view_user"], "icon": "fas fa-sync"},
     ],
     "show_sidebar": True,
     "navigation_expanded": True,
@@ -385,6 +387,8 @@ JAZZMIN_SETTINGS = {
     "hide_models": [],
     "icons": {
         "auth": "fas fa-users-cog", "auth.user": "fas fa-user", "auth.Group": "fas fa-users",
+        "integrations": "fas fa-plug",
+        "integrations.ZohoCredential": "fas fa-key",
         "meta_integration": "fab fa-whatsapp-square",
         "meta_integration.MetaAppConfig": "fas fa-cogs", "meta_integration.WebhookEventLog": "fas fa-history",
         "conversations": "fas fa-comments",

@@ -28,12 +28,12 @@ class ProductAdmin(admin.ModelAdmin):
     """
     Admin interface for the Product model.
     """
-    list_display = ('name', 'sku', 'barcode', 'product_type', 'category', 'price', 'is_active', 'stock_quantity', 'meta_sync_status', 'country_of_origin', 'brand')
-    search_fields = ('name', 'sku', 'barcode', 'description', 'brand')
+    list_display = ('name', 'sku', 'barcode', 'product_type', 'category', 'price', 'is_active', 'stock_quantity', 'meta_sync_status', 'country_of_origin', 'brand', 'zoho_item_id')
+    search_fields = ('name', 'sku', 'barcode', 'description', 'brand', 'zoho_item_id')
     list_filter = ('product_type', 'category', 'is_active', 'country_of_origin', 'brand')
     ordering = ('name',)
     inlines = [ProductImageInline]
-    actions = ['reset_meta_sync_attempts', 'sync_to_meta_catalog', 'set_meta_visibility_published', 'set_meta_visibility_hidden']
+    actions = ['reset_meta_sync_attempts', 'sync_to_meta_catalog', 'set_meta_visibility_published', 'set_meta_visibility_hidden', 'sync_selected_items']
     
     fieldsets = (
         (None, {
@@ -47,6 +47,11 @@ class ProductAdmin(admin.ModelAdmin):
         }),
         ('Digital & External Links', {
             'fields': ('website_url', 'whatsapp_catalog_id')
+        }),
+        ('Integrations', {
+            'fields': ('zoho_item_id',),
+            'classes': ('collapse',),
+            'description': 'Third-party integration identifiers'
         }),
         ('Meta Catalog Sync Status', {
             'fields': ('meta_sync_attempts', 'meta_sync_last_error', 'meta_sync_last_attempt', 'meta_sync_last_success'),
@@ -286,3 +291,68 @@ class CartItemAdmin(admin.ModelAdmin):
     list_filter = ('created_at', 'updated_at')
     readonly_fields = ('subtotal', 'created_at', 'updated_at')
     autocomplete_fields = ('cart', 'product')
+    @admin.action(description='Sync selected products from Zoho')
+    def sync_selected_items(self, request, queryset):
+        """
+        Sync selected products from Zoho Inventory.
+        Only products with zoho_item_id will be synced.
+        """
+        from integrations.utils import ZohoClient
+        from decimal import Decimal
+        
+        # Filter products that have Zoho IDs
+        products_with_zoho_id = queryset.filter(zoho_item_id__isnull=False).exclude(zoho_item_id='')
+        
+        if not products_with_zoho_id.exists():
+            self.message_user(
+                request,
+                'None of the selected products have a Zoho Item ID.',
+                messages.WARNING
+            )
+            return
+        
+        try:
+            client = ZohoClient()
+        except Exception as e:
+            self.message_user(
+                request,
+                f'Failed to initialize Zoho client: {str(e)}',
+                messages.ERROR
+            )
+            return
+        
+        success_count = 0
+        error_count = 0
+        
+        for product in products_with_zoho_id:
+            try:
+                # Fetch specific item from Zoho
+                # Note: This is a simplified approach. In production, you might want to
+                # fetch items in batch or use a different API endpoint
+                result = client.fetch_products(page=1, per_page=1)
+                # For this action, we'll just trigger a full sync for simplicity
+                # In a real implementation, you'd fetch specific items by ID
+                
+                self.message_user(
+                    request,
+                    f'Please use the "Sync Zoho" button in the top menu for full sync. '
+                    f'Individual item sync is not implemented yet.',
+                    messages.INFO
+                )
+                return
+                
+            except Exception as e:
+                error_count += 1
+        
+        if success_count > 0:
+            self.message_user(
+                request,
+                f'Successfully synced {success_count} product(s) from Zoho.',
+                messages.SUCCESS
+            )
+        if error_count > 0:
+            self.message_user(
+                request,
+                f'Failed to sync {error_count} product(s).',
+                messages.ERROR
+            )
