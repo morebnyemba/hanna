@@ -103,3 +103,71 @@ class ZohoCredential(models.Model):
         # Add a 5-minute buffer to refresh before actual expiration
         buffer_time = timezone.timedelta(minutes=5)
         return timezone.now() >= (self.expires_in - buffer_time)
+
+
+class OAuthState(models.Model):
+    """
+    Model to store OAuth state tokens for CSRF protection.
+    Tokens expire after 10 minutes and are one-time use.
+    """
+    state = models.CharField(
+        _("State Token"),
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text=_("OAuth state token for CSRF protection")
+    )
+    user_id = models.IntegerField(
+        _("User ID"),
+        blank=True,
+        null=True,
+        help_text=_("ID of the user who initiated the OAuth flow")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(
+        _("Used"),
+        default=False,
+        help_text=_("Whether this state token has been used")
+    )
+    
+    class Meta:
+        verbose_name = _("OAuth State")
+        verbose_name_plural = _("OAuth States")
+        indexes = [
+            models.Index(fields=['state', 'used']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self) -> str:
+        return f"OAuth State: {self.state[:10]}... (Used: {self.used})"
+    
+    def is_valid(self) -> bool:
+        """
+        Check if the state token is valid (not used and not expired).
+        
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        if self.used:
+            return False
+        
+        # Check if not too old (max 10 minutes)
+        cutoff_time = timezone.now() - timezone.timedelta(minutes=10)
+        return self.created_at >= cutoff_time
+    
+    def mark_as_used(self) -> None:
+        """Mark this state token as used."""
+        self.used = True
+        self.save(update_fields=['used'])
+    
+    @classmethod
+    def cleanup_expired(cls) -> int:
+        """
+        Remove expired state tokens (older than 10 minutes).
+        
+        Returns:
+            int: Number of tokens deleted
+        """
+        cutoff_time = timezone.now() - timezone.timedelta(minutes=10)
+        count, _ = cls.objects.filter(created_at__lt=cutoff_time).delete()
+        return count

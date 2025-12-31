@@ -166,7 +166,7 @@ In `settings.py`:
 ```python
 JAZZMIN_SETTINGS = {
     "topmenu_links": [
-        {"name": "Sync Zoho", "url": "/api/products-and-services/admin/sync-zoho/", 
+        {"name": "Sync Zoho", "url": "/crm-api/products/admin/sync-zoho/", 
          "permissions": ["auth.view_user"], "icon": "fas fa-sync"},
     ],
 }
@@ -174,7 +174,7 @@ JAZZMIN_SETTINGS = {
 
 ## API Endpoints
 
-- **Sync Trigger**: `/api/products-and-services/admin/sync-zoho/` (GET, staff only)
+- **Sync Trigger**: `/crm-api/products/admin/sync-zoho/` (GET, staff only)
 - **Admin Panel**: `/admin/integrations/zohocredential/`
 
 ## Next Steps

@@ -24,6 +24,10 @@ urlpatterns = [
     path('admin/', AdminRedirectView.as_view(), name='admin_redirect'),
     path('django-admin/', admin.site.urls),  # Alternative path for Django admin access if needed
     path('prometheus/', include('django_prometheus.urls')),
+    
+    # OAuth endpoints for third-party integrations (Zoho, etc.)
+    path('oauth/', include('integrations.urls', namespace='integrations')),
+    
     # API endpoints for 'meta_integration' application
     # This includes:
     #   - The webhook receiver for Meta (e.g., /crm-api/meta/webhook/)

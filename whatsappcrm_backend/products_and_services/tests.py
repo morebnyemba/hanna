@@ -1444,7 +1444,7 @@ class ZohoAdminViewTest(TestCase):
         mock_task.return_value = MagicMock(id='test-task-id')
         
         # Call the view
-        response = self.client.get('/api/products-and-services/admin/sync-zoho/')
+        response = self.client.get('/crm-api/products/admin/sync-zoho/')
         
         # Should redirect to product list
         self.assertEqual(response.status_code, 302)

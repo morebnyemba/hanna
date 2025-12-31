@@ -37,7 +37,7 @@
 │ 2. WEB LAYER                                                             │
 │ ─────────────────────────────────────────────────────────────────────── │
 │                                                                          │
-│  URL: /api/products-and-services/admin/sync-zoho/                      │
+│  URL: /crm-api/products/admin/sync-zoho/                      │
 │       │                                                                  │
 │       ▼                                                                  │
 │  ┌────────────────────────────────────────────────┐                    │

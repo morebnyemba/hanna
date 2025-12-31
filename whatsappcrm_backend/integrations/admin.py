@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import ZohoCredential
+from django.utils.html import format_html
+from .models import ZohoCredential, OAuthState
 
 
 @admin.register(ZohoCredential)
@@ -35,7 +36,6 @@ class ZohoCredentialAdmin(admin.ModelAdmin):
 
     def token_status(self, obj):
         """Display whether token is valid or expired"""
-        from django.utils.html import format_html
         if not obj.access_token:
             return format_html('<span style="color: red;">No Token</span>')
         elif obj.is_expired():
@@ -58,3 +58,45 @@ class ZohoCredentialAdmin(admin.ModelAdmin):
         Prevent deletion of the singleton instance.
         """
         return False
+
+
+@admin.register(OAuthState)
+class OAuthStateAdmin(admin.ModelAdmin):
+    """
+    Admin interface for OAuthState model.
+    """
+    list_display = ['state_preview', 'user_id', 'used', 'is_valid_status', 'created_at']
+    list_filter = ['used', 'created_at']
+    readonly_fields = ['state', 'user_id', 'created_at', 'is_valid_status']
+    search_fields = ['state', 'user_id']
+    date_hierarchy = 'created_at'
+    
+    def state_preview(self, obj):
+        """Display truncated state token."""
+        return f"{obj.state[:20]}..."
+    state_preview.short_description = "State Token"
+    
+    def is_valid_status(self, obj):
+        """Display whether the state is valid."""
+        if obj.is_valid():
+            return format_html('<span style="color: green;">✅ Valid</span>')
+        else:
+            return format_html('<span style="color: red;">❌ Invalid/Expired</span>')
+    is_valid_status.short_description = "Status"
+    
+    def has_add_permission(self, request):
+        """Prevent manual creation of OAuth states."""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Prevent editing of OAuth states."""
+        return False
+    
+    actions = ['cleanup_expired_states']
+    
+    def cleanup_expired_states(self, request, queryset):
+        """Admin action to cleanup expired state tokens."""
+        count = OAuthState.cleanup_expired()
+        self.message_user(request, f"Cleaned up {count} expired OAuth state token(s).")
+    cleanup_expired_states.short_description = "Cleanup expired states"
+

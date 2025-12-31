@@ -379,7 +379,7 @@ JAZZMIN_SETTINGS = {
     "topmenu_links": [
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
         {"model": "auth.User"},
-        {"name": "Sync Zoho", "url": "/api/products-and-services/admin/sync-zoho/", "permissions": ["auth.view_user"], "icon": "fas fa-sync"},
+        {"name": "Sync Zoho", "url": "/crm-api/products/admin/sync-zoho/", "permissions": ["auth.view_user"], "icon": "fas fa-sync"},
     ],
     "show_sidebar": True,
     "navigation_expanded": True,
