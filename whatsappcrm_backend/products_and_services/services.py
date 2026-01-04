@@ -520,6 +520,11 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
     2. Maps Zoho fields to local Product model fields
     3. Creates or updates products based on zoho_item_id
     4. Logs errors for individual products but continues processing
+    5. Skips products with duplicate SKUs (logs warning and continues)
+    
+    Note: Products with duplicate SKUs are skipped to avoid constraint violations.
+    Only the first product with a given SKU will be synced; subsequent products
+    with the same SKU will be logged as skipped.
     
     Returns:
         Dict containing sync statistics:
@@ -527,9 +532,11 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
             - created: Number of new products created
             - updated: Number of existing products updated
             - failed: Number of products that failed to sync
+            - skipped: Number of products skipped due to duplicate SKUs
             - errors: List of error messages
     """
     from integrations.utils import ZohoClient
+    from django.db import IntegrityError
     
     logger.info("Starting Zoho product sync...")
     
@@ -538,6 +545,7 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
         'created': 0,
         'updated': 0,
         'failed': 0,
+        'skipped': 0,
         'errors': []
     }
     
@@ -551,23 +559,39 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
         
         logger.info(f"Fetched {stats['total']} items from Zoho Inventory")
         
+        # Track SKUs we've seen to provide better logging
+        seen_skus = {}
+        
         # Process each item
         for zoho_item in zoho_items:
             try:
                 # Extract and map Zoho fields to our Product model
                 zoho_item_id = zoho_item.get('item_id')
+                item_name = zoho_item.get('name', 'Unknown')
+                item_sku = zoho_item.get('sku')
                 
                 if not zoho_item_id:
-                    error_msg = f"Item missing item_id: {zoho_item.get('name', 'Unknown')}"
+                    error_msg = f"Item missing item_id: {item_name}"
                     logger.warning(error_msg)
                     stats['failed'] += 1
                     stats['errors'].append(error_msg)
                     continue
                 
+                # Check if we've already seen this SKU in this sync run
+                if item_sku and item_sku in seen_skus:
+                    # Skip duplicate SKU
+                    skip_msg = (
+                        f"Skipping item '{item_name}' (Zoho ID: {zoho_item_id}) - "
+                        f"duplicate SKU '{item_sku}' already synced for '{seen_skus[item_sku]}'"
+                    )
+                    logger.warning(skip_msg)
+                    stats['skipped'] += 1
+                    continue
+                
                 # Prepare product data
                 product_data = {
-                    'name': zoho_item.get('name', 'Untitled Product'),
-                    'sku': zoho_item.get('sku') or None,  # Use None if empty string
+                    'name': item_name,
+                    'sku': item_sku or None,  # Use None if empty string
                     'description': zoho_item.get('description', ''),
                     'price': Decimal(str(zoho_item.get('rate', 0))) if zoho_item.get('rate') else None,
                     'stock_quantity': int(zoho_item.get('stock_on_hand', 0)),
@@ -583,18 +607,44 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                     product_data['description'] += f"\nType: {zoho_item['item_type']}"
                 
                 # Create or update the product
-                product, created = Product.objects.update_or_create(
-                    zoho_item_id=str(zoho_item_id),
-                    defaults=product_data
-                )
-                
-                if created:
-                    stats['created'] += 1
-                    logger.info(f"Created product: {product.name} (Zoho ID: {zoho_item_id})")
-                else:
-                    stats['updated'] += 1
-                    logger.info(f"Updated product: {product.name} (Zoho ID: {zoho_item_id})")
+                try:
+                    product, created = Product.objects.update_or_create(
+                        zoho_item_id=str(zoho_item_id),
+                        defaults=product_data
+                    )
                     
+                    # Track this SKU as successfully processed
+                    if item_sku:
+                        seen_skus[item_sku] = item_name
+                    
+                    if created:
+                        stats['created'] += 1
+                        logger.info(f"Created product: {product.name} (Zoho ID: {zoho_item_id})")
+                    else:
+                        stats['updated'] += 1
+                        logger.info(f"Updated product: {product.name} (Zoho ID: {zoho_item_id})")
+                        
+                except IntegrityError as ie:
+                    # Handle database constraint violations (e.g., duplicate SKU from previous sync)
+                    if 'sku' in str(ie).lower() or 'unique constraint' in str(ie).lower():
+                        skip_msg = (
+                            f"Skipping item '{item_name}' (Zoho ID: {zoho_item_id}) - "
+                            f"SKU '{item_sku}' conflicts with existing database record. "
+                            f"Error: {str(ie)}"
+                        )
+                        logger.warning(skip_msg)
+                        stats['skipped'] += 1
+                    else:
+                        # Re-raise if it's a different integrity error
+                        raise
+                    
+            except IntegrityError as ie:
+                # Catch any other IntegrityError not caught in the inner try-except
+                error_msg = f"Failed to sync item {zoho_item.get('name', 'Unknown')}: {str(ie)}"
+                logger.error(error_msg)
+                stats['failed'] += 1
+                stats['errors'].append(error_msg)
+                continue
             except Exception as e:
                 error_msg = f"Failed to sync item {zoho_item.get('name', 'Unknown')}: {str(e)}"
                 logger.error(error_msg)
@@ -605,7 +655,7 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
         
         logger.info(
             f"Zoho sync completed. Created: {stats['created']}, "
-            f"Updated: {stats['updated']}, Failed: {stats['failed']}"
+            f"Updated: {stats['updated']}, Skipped: {stats['skipped']}, Failed: {stats['failed']}"
         )
         
     except Exception as e:

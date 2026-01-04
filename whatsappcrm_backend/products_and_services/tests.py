@@ -1416,6 +1416,111 @@ class ZohoProductSyncTest(TestCase):
         self.assertGreater(len(result['errors']), 0)
         self.assertEqual(Product.objects.count(), 0)
     
+    @patch('integrations.utils.ZohoClient.fetch_all_products')
+    def test_sync_skips_duplicate_skus(self, mock_fetch):
+        """Test that sync skips products with duplicate SKUs within the same sync run."""
+        from products_and_services.services import sync_zoho_products_to_db
+        
+        # Mock data with duplicate SKUs
+        mock_fetch.return_value = [
+            {
+                'item_id': '123',
+                'name': 'First Product',
+                'sku': 'DUPLICATE-SKU',
+                'rate': 99.99,
+                'stock_on_hand': 10,
+                'status': 'active'
+            },
+            {
+                'item_id': '456',
+                'name': 'Second Product',
+                'sku': 'DUPLICATE-SKU',  # Same SKU as first product
+                'rate': 149.99,
+                'stock_on_hand': 5,
+                'status': 'active'
+            },
+            {
+                'item_id': '789',
+                'name': 'Third Product',
+                'sku': 'UNIQUE-SKU',
+                'rate': 199.99,
+                'stock_on_hand': 3,
+                'status': 'active'
+            }
+        ]
+        
+        # Run sync
+        result = sync_zoho_products_to_db()
+        
+        # Check results - first product should be created, second should be skipped
+        self.assertEqual(result['total'], 3)
+        self.assertEqual(result['created'], 2)  # First and Third products
+        self.assertEqual(result['skipped'], 1)  # Second product (duplicate SKU)
+        self.assertEqual(result['failed'], 0)
+        
+        # Verify only 2 products were created
+        self.assertEqual(Product.objects.count(), 2)
+        
+        # Verify the first product with duplicate SKU was created
+        product1 = Product.objects.get(zoho_item_id='123')
+        self.assertEqual(product1.name, 'First Product')
+        self.assertEqual(product1.sku, 'DUPLICATE-SKU')
+        
+        # Verify the second product with duplicate SKU was NOT created
+        self.assertFalse(Product.objects.filter(zoho_item_id='456').exists())
+        
+        # Verify the unique product was created
+        product3 = Product.objects.get(zoho_item_id='789')
+        self.assertEqual(product3.name, 'Third Product')
+        self.assertEqual(product3.sku, 'UNIQUE-SKU')
+    
+    @patch('integrations.utils.ZohoClient.fetch_all_products')
+    def test_sync_handles_existing_duplicate_sku(self, mock_fetch):
+        """Test that sync skips products when SKU already exists in database."""
+        from products_and_services.services import sync_zoho_products_to_db
+        
+        # Create existing product with a SKU
+        existing_product = Product.objects.create(
+            name='Existing Product',
+            zoho_item_id='999',
+            sku='EXISTING-SKU',
+            price=Decimal('50.00'),
+            stock_quantity=5,
+            product_type='hardware'
+        )
+        
+        # Mock data with a different Zoho item that has the same SKU
+        mock_fetch.return_value = [
+            {
+                'item_id': '888',
+                'name': 'New Product With Existing SKU',
+                'sku': 'EXISTING-SKU',  # Same as existing product
+                'rate': 99.99,
+                'stock_on_hand': 15,
+                'status': 'active'
+            }
+        ]
+        
+        # Run sync
+        result = sync_zoho_products_to_db()
+        
+        # Check results - should skip due to duplicate SKU
+        self.assertEqual(result['total'], 1)
+        self.assertEqual(result['created'], 0)
+        self.assertEqual(result['updated'], 0)
+        self.assertEqual(result['skipped'], 1)
+        
+        # Verify only the original product exists
+        self.assertEqual(Product.objects.count(), 1)
+        
+        # Verify the existing product was not modified
+        existing_product.refresh_from_db()
+        self.assertEqual(existing_product.name, 'Existing Product')
+        self.assertEqual(existing_product.price, Decimal('50.00'))
+        
+        # Verify the new product was NOT created
+        self.assertFalse(Product.objects.filter(zoho_item_id='888').exists())
+    
     @patch('integrations.utils.requests.get')
     def test_fetch_products_with_400_error_detailed_logging(self, mock_get):
         """Test that 400 errors from Zoho API are logged with detailed information."""
