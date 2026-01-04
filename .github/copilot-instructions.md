@@ -8,7 +8,23 @@
 - Uses `docker-compose.yml` for full-stack orchestration with PostgreSQL, Redis, Nginx, Celery workers, and Certbot
 
 ### Backend Apps Structure
-The Django backend has modular apps including: `admin_api`, `ai_integration`, `analytics`, `conversations`, `customer_data`, `email_integration`, `flows`, `integrations`, `media_manager`, `meta_integration`, `notifications`, `paynow_integration`, `products_and_services`, `stats`, `users`, `warranty`.
+The Django backend has modular apps including:
+- `admin_api` - Centralized Admin API for frontend
+- `ai_integration` - AI-powered features
+- `analytics` - Analytics and reporting
+- `conversations` - WhatsApp conversation management
+- `customer_data` - Customer information
+- `email_integration` - Email integration
+- `flows` - WhatsApp flows and actions
+- `integrations` - Third-party integrations (Zoho, etc.)
+- `media_manager` - Media file management
+- `meta_integration` - Meta/Facebook API integration
+- `notifications` - Notification system
+- `paynow_integration` - Payment processing
+- `products_and_services` - Product catalog
+- `stats` - Statistics tracking
+- `users` - User management
+- `warranty` - Warranty management
 
 ## Build, Test, and Lint Commands
 
@@ -132,7 +148,14 @@ The Django backend has modular apps including: `admin_api`, `ai_integration`, `a
    - Backend: `whatsappcrm_backend/.env.prod` (production)
    - Backend: `whatsappcrm_backend/.env` (development)
    - Root: `.env` (Docker Compose variables)
-3. **Required env vars:** `DJANGO_SECRET_KEY`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `CORS_ALLOWED_ORIGINS`
+3. **Required environment variables:**
+   - `DJANGO_SECRET_KEY` - Django secret key
+   - `DB_NAME` - Database name
+   - `DB_USER` - Database user
+   - `DB_PASSWORD` - Database password
+   - `ALLOWED_HOSTS` - Comma-separated list of allowed hosts
+   - `CSRF_TRUSTED_ORIGINS` - Comma-separated list of trusted origins for CSRF
+   - `CORS_ALLOWED_ORIGINS` - Comma-separated list of allowed origins for CORS
 4. **SSL/TLS:** Production uses Let's Encrypt certificates via Certbot
 5. **CORS:** Configure in Django settings via `CORS_ALLOWED_ORIGINS` (using django-cors-headers)
 6. **CSRF Protection:** Configure trusted origins via `CSRF_TRUSTED_ORIGINS` for state-changing requests from frontend
@@ -239,7 +262,7 @@ class MyModel(models.Model):
 # In <app>/tasks.py
 from celery import shared_task
 
-@shared_task(queue='celery')  # or 'cpu_heavy' for CPU-intensive tasks
+@shared_task(queue='celery')  # Use 'celery' for IO-bound tasks, 'cpu_heavy' for CPU-intensive tasks
 def my_background_task(param):
     # Task logic here
     return result
