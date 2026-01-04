@@ -144,7 +144,7 @@ This will return:
    - **Refresh Token**: The refresh_token from step 2
    - **Scope**: `ZohoInventory.items.READ` (default)
    - **Organization ID**: Your Zoho organization ID
-   - **API Domain**: `https://inventory.zoho.com` (or `.eu`, `.in` based on region)
+   - **API Domain**: `https://inventory.zohoapis.com` (or `.zohoapis.eu`, `.zohoapis.in` based on region)
    - **Expires In**: Set to ~1 hour from now (will auto-refresh)
 4. Save
 
