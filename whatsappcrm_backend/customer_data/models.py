@@ -340,7 +340,24 @@ class OrderItem(models.Model):
     product = models.ForeignKey(
         'products_and_services.Product', 
         on_delete=models.PROTECT, # Don't allow deleting a product that's in an order
-        related_name='order_items'
+        related_name='order_items',
+        null=True,
+        blank=True,
+        help_text=_("Product reference. Can be null if product doesn't exist yet.")
+    )
+    # Fields to store product info when product is not linked
+    product_sku = models.CharField(
+        _("Product SKU"),
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text=_("SKU from invoice when product is not found.")
+    )
+    product_description = models.TextField(
+        _("Product Description"),
+        blank=True,
+        null=True,
+        help_text=_("Description from invoice when product is not found.")
     )
     quantity = models.PositiveIntegerField(_("Quantity"), default=1)
     unit_price = models.DecimalField(
@@ -367,7 +384,15 @@ class OrderItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.quantity} x {self.product.name} for Order {self.order.id}"
+        if self.product:
+            product_name = self.product.name
+        elif self.product_description:
+            product_name = self.product_description[:50]
+        elif self.product_sku:
+            product_name = f"SKU: {self.product_sku}"
+        else:
+            product_name = "Unknown Product"
+        return f"{self.quantity} x {product_name} for Order {self.order.id}"
 
 class PaymentStatus(models.TextChoices):
     PENDING = 'pending', _('Pending')

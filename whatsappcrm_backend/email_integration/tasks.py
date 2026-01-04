@@ -590,22 +590,24 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             if not product and product_description:
                 product = Product.objects.filter(name=product_description).first()
 
-            if not product:
-                product = Product.objects.create(
-                    sku=product_code,
-                    name=product_description,
-                    price=item_data.get('unit_price', 0),
-                    product_type=Product.ProductType.HARDWARE,  # Default type
-                    is_active=False,  # Products from email import need manual review before activation
-                )
+            # Create OrderItem with or without product
             OrderItem.objects.create(
                 order=order, 
-                product=product, 
+                product=product,  # Can be None
+                product_sku=product_code if not product else None,
+                product_description=product_description if not product else None,
                 quantity=item_data.get('quantity', 1), 
                 unit_price=item_data.get('unit_price', 0),
                 total_amount=item_data.get('total_amount', 0) # Save the line item total
             )
+            
+            if not product:
+                logger.info(
+                    f"{log_prefix} Created OrderItem without product for SKU '{product_code}' / '{product_description}'. "
+                    f"Product can be linked later."
+                )
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
+
 
         # --- NEW: Send the specific, more descriptive notification for email imports ---
         if customer_profile:
@@ -672,7 +674,7 @@ def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_pref
 
     product_info = data.get('product', {})
 
-    # --- NEW: Find or create the SerializedItem ---
+    # --- Find the SerializedItem (don't create products automatically) ---
     serialized_item = None
     serial_number = product_info.get('serial_number')
     product_description = product_info.get('description')
@@ -681,25 +683,27 @@ def _create_job_card_from_data(attachment: EmailAttachment, data: dict, log_pref
         # Try to find an existing serialized item
         serialized_item = SerializedItem.objects.filter(serial_number=serial_number).first()
         if not serialized_item:
-            # If it doesn't exist, we need to create it. First, find or create the base product.
+            # If it doesn't exist, try to find the base product
             product = None
             if product_description:
                 product = Product.objects.filter(name__icontains=product_description).first()
             
-            if not product:
-                # If the base product doesn't exist, create it.
-                product = Product.objects.create(
-                    name=product_description or f"Product with SN {serial_number}",
-                    product_type=Product.ProductType.HARDWARE,  # Default type
-                    is_active=False,  # Products from email import need manual review before activation
+            if product:
+                # Create the new serialized item only if product exists
+                serialized_item = SerializedItem.objects.create(
+                    product=product,
+                    serial_number=serial_number,
+                    status=SerializedItem.Status.IN_REPAIR # Default status for a new item from a job card
+                )
+                logger.info(f"{log_prefix} Created SerializedItem with serial number '{serial_number}'.")
+            else:
+                # Don't create products automatically - SerializedItem will be null
+                logger.info(
+                    f"{log_prefix} Product not found for description '{product_description}'. "
+                    f"SerializedItem not created for serial number '{serial_number}'. "
+                    f"Link product manually to create SerializedItem."
                 )
 
-            # Now create the new serialized item
-            serialized_item = SerializedItem.objects.create(
-                product=product,
-                serial_number=serial_number,
-                status=SerializedItem.Status.IN_REPAIR # Default status for a new item from a job card
-            )
 
     job_card, created = JobCard.objects.update_or_create(
         job_card_number=job_card_number,
