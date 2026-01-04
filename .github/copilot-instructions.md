@@ -132,9 +132,10 @@ The Django backend has modular apps including: `admin_api`, `ai_integration`, `a
    - Backend: `whatsappcrm_backend/.env.prod` (production)
    - Backend: `whatsappcrm_backend/.env` (development)
    - Root: `.env` (Docker Compose variables)
-3. **Required env vars:** `DJANGO_SECRET_KEY`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`
+3. **Required env vars:** `DJANGO_SECRET_KEY`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `CORS_ALLOWED_ORIGINS`
 4. **SSL/TLS:** Production uses Let's Encrypt certificates via Certbot
-5. **CORS:** Configure in Django settings via `CSRF_TRUSTED_ORIGINS`
+5. **CORS:** Configure in Django settings via `CORS_ALLOWED_ORIGINS` (using django-cors-headers)
+6. **CSRF Protection:** Configure trusted origins via `CSRF_TRUSTED_ORIGINS` for state-changing requests from frontend
 
 ### Environment Variable Access
 - Django: `os.getenv('VARIABLE_NAME', 'default_value')`
