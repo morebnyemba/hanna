@@ -1426,7 +1426,7 @@ class ZohoProductSyncTest(TestCase):
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.reason = 'Bad Request'
-        mock_response.url = 'https://inventory.zoho.com/api/v1/items?organization_id=test_org&page=1&per_page=200'
+        mock_response.url = 'https://www.zohoapis.com/inventory/v1/items?organization_id=test_org&page=1&per_page=200'
         mock_response.json.return_value = {
             'code': 400,
             'message': 'Invalid organization ID'
@@ -1452,7 +1452,7 @@ class ZohoProductSyncTest(TestCase):
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.reason = 'Bad Request'
-        mock_response.url = 'https://inventory.zoho.com/api/v1/items?organization_id=test_org'
+        mock_response.url = 'https://www.zohoapis.com/inventory/v1/items?organization_id=test_org'
         mock_response.json.side_effect = JSONDecodeError('Not JSON', '', 0)
         mock_response.text = 'HTML error page or plain text error'
         mock_get.return_value = mock_response

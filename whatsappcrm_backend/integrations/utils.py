@@ -188,7 +188,7 @@ class ZohoClient:
             'per_page': min(per_page, 200)  # Zoho max is 200
         }
 
-        url = f"{self.api_base_url}/api/v1/items"
+        url = f"{self.api_base_url}/inventory/v1/items"
 
         try:
             logger.info(
