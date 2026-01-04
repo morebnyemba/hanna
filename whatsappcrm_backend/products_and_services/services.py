@@ -635,16 +635,12 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                         logger.warning(skip_msg)
                         stats['skipped'] += 1
                     else:
-                        # Re-raise if it's a different integrity error
-                        raise
+                        # Log and mark as failed if it's a different integrity error
+                        error_msg = f"Failed to sync item '{item_name}' (Zoho ID: {zoho_item_id}): {str(ie)}"
+                        logger.error(error_msg)
+                        stats['failed'] += 1
+                        stats['errors'].append(error_msg)
                     
-            except IntegrityError as ie:
-                # Catch any other IntegrityError not caught in the inner try-except
-                error_msg = f"Failed to sync item {zoho_item.get('name', 'Unknown')}: {str(ie)}"
-                logger.error(error_msg)
-                stats['failed'] += 1
-                stats['errors'].append(error_msg)
-                continue
             except Exception as e:
                 error_msg = f"Failed to sync item {zoho_item.get('name', 'Unknown')}: {str(e)}"
                 logger.error(error_msg)
