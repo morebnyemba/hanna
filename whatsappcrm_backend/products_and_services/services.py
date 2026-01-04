@@ -13,6 +13,10 @@ from .models import SerializedItem, ItemLocationHistory, Product
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+# Patterns to detect SKU-related integrity errors (for duplicate detection)
+# These patterns work across PostgreSQL constraint naming conventions
+SKU_CONSTRAINT_PATTERNS = ('sku', 'unique', 'product_sku_key')
+
 
 class ItemTrackingService:
     """
@@ -568,7 +572,8 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                 # Extract and map Zoho fields to our Product model
                 zoho_item_id = zoho_item.get('item_id')
                 item_name = zoho_item.get('name', 'Unknown')
-                # Normalize SKU: convert empty/falsy values to None for DB compatibility
+                # Normalize SKU: convert falsy values to None for proper NULL handling in database
+                # (NULL values don't violate unique constraints, but empty strings would)
                 item_sku = zoho_item.get('sku') or None
                 
                 if not zoho_item_id:
@@ -579,7 +584,8 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                     continue
                 
                 # Check if we've already seen this SKU in this sync run
-                # Note: None SKUs are not tracked (multiple products can have None SKU)
+                # Note: None SKUs are not tracked - multiple products can have None SKU
+                # without violating the unique constraint (NULL != NULL in SQL)
                 if item_sku and item_sku in seen_skus:
                     # Skip duplicate SKU
                     skip_msg = (
@@ -630,8 +636,7 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                     # Handle database constraint violations (e.g., duplicate SKU from previous sync)
                     # Check if this is a SKU uniqueness constraint violation
                     error_str = str(ie).lower()
-                    is_sku_conflict = ('sku' in error_str and 'unique' in error_str) or \
-                                     'product_sku_key' in error_str
+                    is_sku_conflict = any(pattern in error_str for pattern in SKU_CONSTRAINT_PATTERNS)
                     
                     if is_sku_conflict:
                         skip_msg = (
