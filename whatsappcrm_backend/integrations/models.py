@@ -58,8 +58,8 @@ class ZohoCredential(models.Model):
     api_domain = models.CharField(
         _("API Domain"),
         max_length=255,
-        default="https://inventory.zoho.com",
-        help_text=_("Zoho API domain (e.g., https://inventory.zoho.com, https://inventory.zoho.eu)")
+        default="https://inventory.zohoapis.com",
+        help_text=_("Zoho API domain (e.g., https://inventory.zohoapis.com, https://inventory.zohoapis.eu)")
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
