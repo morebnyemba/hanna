@@ -25,7 +25,7 @@ The Django backend has modular apps including: `admin_api`, `ai_integration`, `a
 - **Run specific app tests:** `python manage.py test <app_name>`
 - **Create superuser:** `python manage.py createsuperuser`
 - **Collect static files:** `python manage.py collectstatic --noinput`
-- **Lint:** No dedicated linter configured (consider adding `flake8` or `pylint` if needed)
+- **Lint:** No linter currently configured - code style is maintained through code review
 
 ### Dashboard Frontend (React + Vite)
 **Working directory:** `whatsapp-crm-frontend/`
@@ -43,7 +43,7 @@ The Django backend has modular apps including: `admin_api`, `ai_integration`, `a
 - **Run development server:** `npm run dev`
 - **Build for production:** `npm run build`
 - **Start production server:** `npm start`
-- **Lint:** `npm run lint` (if configured in package.json)
+- **Lint:** `npm run lint` (ESLint configured)
 
 ### Docker Compose
 **Working directory:** Root of repository
@@ -187,11 +187,11 @@ The Django backend has modular apps including: `admin_api`, `ai_integration`, `a
 - **Location:** Each app's `tests.py` or `test_*.py` files
 - **Run all:** `python manage.py test`
 - **Run app:** `python manage.py test <app_name>`
-- **Coverage:** No coverage tool configured (consider adding if needed)
+- **Framework:** Django's built-in test framework (unittest-based)
 
 ### Frontend Tests
-- **Dashboard:** No test framework configured (consider adding Jest/Vitest)
-- **Management:** No test framework configured
+- **Dashboard:** No test framework currently configured - testing done manually
+- **Management:** No test framework currently configured - testing done manually
 
 ## Additional Tools & Scripts
 
