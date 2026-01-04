@@ -159,7 +159,8 @@ class ZohoClient:
                 - page_context: Pagination information
                 
         Raises:
-            Exception: If API call fails
+            ValueError: If organization_id is not set in credentials
+            Exception: If API call fails, with detailed error message from Zoho
         """
         token = self.get_valid_token()
         
@@ -181,11 +182,33 @@ class ZohoClient:
         try:
             logger.info(f"Fetching Zoho items page {page} with {per_page} items per page")
             response = requests.get(url, headers=headers, params=params, timeout=30)
-            response.raise_for_status()
+            
+            # Check for HTTP errors and capture response body for better error messages
+            if response.status_code != 200:
+                error_details = {
+                    'status_code': response.status_code,
+                    'url': response.url,
+                    'reason': response.reason
+                }
+                
+                # Try to get JSON error from Zoho
+                try:
+                    error_json = response.json()
+                    error_details['error_response'] = error_json
+                    error_msg = error_json.get('message', error_json.get('error', 'Unknown error'))
+                except Exception:
+                    # If not JSON, use text response
+                    error_details['error_response'] = response.text[:500]
+                    error_msg = response.text[:200] if response.text else response.reason
+                
+                logger.error(f"Zoho API returned {response.status_code}: {error_msg}. Details: {error_details}")
+                raise Exception(f"Zoho API error ({response.status_code}): {error_msg}")
+            
             data = response.json()
 
             if data.get('code') != 0:
                 error_msg = data.get('message', 'Unknown error')
+                logger.error(f"Zoho API returned error code {data.get('code')}: {error_msg}")
                 raise Exception(f"Zoho API error: {error_msg}")
 
             items = data.get('items', [])
