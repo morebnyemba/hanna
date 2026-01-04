@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 MAX_ERROR_RESPONSE_LENGTH = 500
 MAX_ERROR_MESSAGE_LENGTH = 200
 
+# HTTP constants
+REDIRECT_STATUS_CODES = (301, 302, 303, 307, 308)
+REQUEST_TIMEOUT = 30  # seconds
+
 
 class ZohoClient:
     """
@@ -75,10 +79,10 @@ class ZohoClient:
         }
         
         try:
-            response = requests.post(token_url, data=payload, timeout=30, allow_redirects=False)
+            response = requests.post(token_url, data=payload, timeout=REQUEST_TIMEOUT, allow_redirects=False)
             
             # Check if we're being redirected
-            if response.status_code in (301, 302, 303, 307, 308):
+            if response.status_code in REDIRECT_STATUS_CODES:
                 redirect_location = response.headers.get('Location', 'unknown')
                 logger.error(
                     f"Token exchange endpoint returned redirect (status {response.status_code}) to: {redirect_location}"
@@ -161,10 +165,10 @@ class ZohoClient:
         }
 
         try:
-            response = requests.post(self.token_url, data=payload, timeout=30, allow_redirects=False)
+            response = requests.post(self.token_url, data=payload, timeout=REQUEST_TIMEOUT, allow_redirects=False)
             
             # Check if we're being redirected
-            if response.status_code in (301, 302, 303, 307, 308):
+            if response.status_code in REDIRECT_STATUS_CODES:
                 redirect_location = response.headers.get('Location', 'unknown')
                 logger.error(
                     f"Token refresh endpoint returned redirect (status {response.status_code}) to: {redirect_location}"
@@ -245,10 +249,10 @@ class ZohoClient:
                 f"URL: {url}, Organization ID: {self.credentials.organization_id}"
             )
             # Disable automatic redirects to prevent following login page redirects
-            response = requests.get(url, headers=headers, params=params, timeout=30, allow_redirects=False)
+            response = requests.get(url, headers=headers, params=params, timeout=REQUEST_TIMEOUT, allow_redirects=False)
             
             # Check if we're being redirected (usually means invalid/expired token)
-            if response.status_code in (301, 302, 303, 307, 308):
+            if response.status_code in REDIRECT_STATUS_CODES:
                 redirect_location = response.headers.get('Location', 'unknown')
                 logger.error(
                     f"Zoho API returned redirect (status {response.status_code}) to: {redirect_location}. "
