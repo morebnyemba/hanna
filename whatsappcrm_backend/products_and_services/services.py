@@ -568,7 +568,8 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                 # Extract and map Zoho fields to our Product model
                 zoho_item_id = zoho_item.get('item_id')
                 item_name = zoho_item.get('name', 'Unknown')
-                item_sku = zoho_item.get('sku') or None  # Normalize empty string to None
+                # Normalize SKU: convert empty/falsy values to None for DB compatibility
+                item_sku = zoho_item.get('sku') or None
                 
                 if not zoho_item_id:
                     error_msg = f"Item missing item_id: {item_name}"
@@ -578,7 +579,7 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                     continue
                 
                 # Check if we've already seen this SKU in this sync run
-                # Skip None/empty SKUs from duplicate check (they're allowed to be null in DB)
+                # Note: None SKUs are not tracked (multiple products can have None SKU)
                 if item_sku and item_sku in seen_skus:
                     # Skip duplicate SKU
                     skip_msg = (
@@ -592,7 +593,7 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                 # Prepare product data
                 product_data = {
                     'name': item_name,
-                    'sku': item_sku,  # Already normalized to None if empty
+                    'sku': item_sku,  # Normalized to None if empty/falsy
                     'description': zoho_item.get('description', ''),
                     'price': Decimal(str(zoho_item.get('rate', 0))) if zoho_item.get('rate') else None,
                     'stock_quantity': int(zoho_item.get('stock_on_hand', 0)),
@@ -627,11 +628,16 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                         
                 except IntegrityError as ie:
                     # Handle database constraint violations (e.g., duplicate SKU from previous sync)
-                    if 'sku' in str(ie).lower() or 'unique constraint' in str(ie).lower():
+                    # Check if this is a SKU uniqueness constraint violation
+                    error_str = str(ie).lower()
+                    is_sku_conflict = ('sku' in error_str and 'unique' in error_str) or \
+                                     'product_sku_key' in error_str
+                    
+                    if is_sku_conflict:
                         skip_msg = (
                             f"Skipping item '{item_name}' (Zoho ID: {zoho_item_id}) - "
                             f"SKU '{item_sku}' conflicts with existing database record. "
-                            f"Error: {str(ie)}"
+                            f"Details: {str(ie)}"
                         )
                         logger.warning(skip_msg)
                         stats['skipped'] += 1
