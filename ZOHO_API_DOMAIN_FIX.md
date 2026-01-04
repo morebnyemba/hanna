@@ -45,16 +45,28 @@ Zoho uses region-specific API domains. The correct domains are:
 
 ## Migration Steps for Existing Installations
 
-The migration will run automatically when you deploy this fix:
+### Automatic Update via Management Command (Recommended)
+
+Run the provided management command to automatically update existing ZohoCredential records:
 
 ```bash
-python manage.py migrate integrations
+# Preview what will be changed (dry run)
+python manage.py update_zoho_domain --dry-run
+
+# Apply the changes
+python manage.py update_zoho_domain
 ```
 
-This will:
-1. Update any existing ZohoCredential records to use the new domain format
-2. Convert old domains to the appropriate regional domain
-3. Print confirmation messages for each updated record
+Or via Docker:
+```bash
+docker-compose exec backend python manage.py update_zoho_domain
+```
+
+This command will:
+- Automatically detect and convert old domain formats to new formats
+- Handle all regional domains correctly
+- Show clear success/error messages
+- Can be run safely multiple times (idempotent)
 
 ### Manual Update (if needed)
 
