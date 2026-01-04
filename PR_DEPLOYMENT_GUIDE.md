@@ -1,19 +1,20 @@
-# Deployment Instructions for PR: Fix Zoho API Domain and Remove Auto Product Creation
+# Deployment Instructions for PR: Fix Zoho API Domain and Allow OrderItems Without Products
 
 ## Changes Summary
 This PR fixes two issues:
 1. **Zoho API Domain Error**: Updated to use the correct `zohoapis.com` domain
-2. **Removed Automatic Product Creation**: Gemini invoice processing no longer creates products automatically
+2. **OrderItems Without Products**: OrderItems can now be created even when products don't exist
 
 ## Pre-Deployment Steps
 
 ### 1. Review Documentation
 - Read `ZOHO_API_DOMAIN_FIX.md` for detailed information about the changes
 - Understand the impact on invoice and job card processing
+- Review database migration requirements
 
-### 2. Backup Database (Recommended)
+### 2. Backup Database (CRITICAL)
 ```bash
-# Create a backup of your database before deploying
+# Create a backup of your database before deploying - MIGRATIONS REQUIRED
 docker compose exec db pg_dump -U your_user your_database > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
@@ -24,7 +25,14 @@ docker compose exec db pg_dump -U your_user your_database > backup_$(date +%Y%m%
 git pull origin main
 ```
 
-### 2. Restart Backend Services
+### 2. Run Database Migrations (REQUIRED)
+```bash
+# Generate and apply migrations for new OrderItem fields
+docker compose exec backend python manage.py makemigrations
+docker compose exec backend python manage.py migrate
+```
+
+### 3. Restart Backend Services
 ```bash
 docker compose restart backend
 docker compose restart celery
@@ -55,7 +63,7 @@ print(f"Updated to: {cred.api_domain}")
 exit()
 ```
 
-### 4. Sync Products from Zoho
+### 4. Sync Products from Zoho (Recommended)
 
 After updating the API domain, sync your products:
 
@@ -64,9 +72,41 @@ After updating the API domain, sync your products:
 3. Wait for completion
 4. Verify products were synced successfully
 
+### 5. Link Existing OrderItems to Products (Optional)
+
+If you have OrderItems created before syncing products:
+
+```bash
+docker compose exec backend python manage.py shell
+
+from customer_data.models import OrderItem
+from products_and_services.models import Product
+
+# Find OrderItems without products
+unlinked = OrderItem.objects.filter(product__isnull=True)
+print(f"Found {unlinked.count()} unlinked OrderItems")
+
+# Example: Link by SKU
+for item in unlinked:
+    if item.product_sku:
+        product = Product.objects.filter(sku=item.product_sku).first()
+        if product:
+            item.product = product
+            item.save()
+            print(f"Linked OrderItem {item.id} to Product {product.name}")
+```
+
 ## Post-Deployment Verification
 
-### 1. Test Zoho Sync
+### 1. Test Database Migrations
+```bash
+# Verify migrations applied successfully
+docker compose exec backend python manage.py showmigrations customer_data
+```
+
+Expected output should show all migrations as [X] (applied).
+
+### 2. Test Zoho Sync
 ```bash
 # Check Celery logs for successful sync
 docker compose logs celery --tail=100 | grep "Zoho"
@@ -76,34 +116,38 @@ Expected output:
 - "Successfully fetched X items from Zoho Inventory"
 - No 400 errors about API domain
 
-### 2. Test Invoice Processing
+### 3. Test Invoice Processing
 
-### 2. Test Invoice Processing
-
-**Important:** Invoices will automatically create products if they don't exist in the database.
+**Important:** Invoices now create OrderItems WITHOUT automatically creating products.
 
 Test flow:
 1. Send a test invoice via email
 2. Check that:
    - Order is created successfully
    - OrderItems are created for all line items
-   - Products are automatically created with `is_active=False` if they didn't exist
-   - Review and activate products manually in Django Admin
+   - OrderItems with product=None have product_sku and product_description filled
+   - No products are automatically created
+3. Link products manually:
+   - Sync products from Zoho
+   - Use Django Admin to link OrderItems to products
+   - Or use the shell script above
 
-### 3. Monitor Logs
+
+### 4. Monitor Logs
 
 Watch for these log messages:
-- "Created product: [product_name]" - indicates a new product was created
-- Products created from invoices will have `is_active=False` and need manual review
-
+- "Created OrderItem without product for SKU 'XXX'" - indicates OrderItem created without product
+- "Product not found..." - informational, products can be linked later
 
 ## Rollback Plan
 
 If issues occur after deployment:
 
-### Quick Rollback
+### Quick Rollback (Not Recommended - Migrations)
 ```bash
+# Note: This won't undo database migrations automatically
 git revert HEAD
+docker compose exec backend python manage.py migrate customer_data <previous_migration>
 docker compose restart backend
 docker compose restart celery
 ```
@@ -124,15 +168,18 @@ Note: The old domain may not work as Zoho has deprecated it.
 
 ## Known Issues & Solutions
 
-### Issue: Too many automatically created products
-**Solution:** Products created from invoices have `is_active=False`. Review them regularly in Django Admin and activate only legitimate products. Delete duplicates or incorrect entries.
+### Issue: OrderItems without products
+**Solution:** This is expected behavior. Link products by:
+1. Syncing from Zoho
+2. Manually creating products in Django Admin
+3. Using the shell script to auto-link by SKU
+4. Query: `OrderItem.objects.filter(product__isnull=True)` to find unlinked items
 
-### Issue: Products created with incorrect information
+### Issue: Existing code expects product to always be set
 **Solution:** 
-1. Edit the product in Django Admin
-2. Update SKU, name, price, and other fields as needed
-3. Set `is_active=True` when the product is correct
-4. Consider syncing from Zoho to get accurate product data
+1. Update code to check if `order_item.product is not None` before accessing
+2. Use `order_item.product.name if order_item.product else order_item.product_description`
+3. Review serializers and views that return OrderItems
 
 ### Issue: Zoho sync still returns 400 error
 **Solution:** 
@@ -151,13 +198,24 @@ If you encounter issues:
 ## Maintenance Notes
 
 ### Regular Tasks
-1. **Product Sync**: Run "Sync Zoho" regularly to keep products updated from the authoritative source
-2. **Review Auto-Created Products**: Check Django Admin for products with `is_active=False` from invoice processing
-3. **Activate Valid Products**: Review and activate products that are legitimate
-4. **Clean Up Duplicates**: Remove duplicate or incorrect auto-created products
+1. **Product Sync**: Run "Sync Zoho" regularly to sync products and link OrderItems
+2. **Link Unlinked OrderItems**: Periodically check and link OrderItems without products
+3. **Monitor Unlinked Items**: Query `OrderItem.objects.filter(product__isnull=True).count()`
+4. **Create Missing Products**: For custom/one-off items, create products manually
+
+### SQL Queries for Monitoring
+```sql
+-- Find OrderItems without products
+SELECT COUNT(*) FROM customer_data_orderitem WHERE product_id IS NULL;
+
+-- Find OrderItems with SKU but no product
+SELECT id, product_sku, product_description, unit_price 
+FROM customer_data_orderitem 
+WHERE product_id IS NULL AND product_sku IS NOT NULL;
+```
 
 ### Future Considerations
-- Set up automated Zoho sync (e.g., via Celery Beat) to minimize auto-created products
-- Ensure Zoho is the primary source of truth for product data
-- Periodically review and clean up auto-created products
-- Consider deactivating auto-creation if Zoho sync is reliable and frequent
+- Set up automated Zoho sync (e.g., via Celery Beat) to ensure products exist before invoices arrive
+- Create a background task to auto-link OrderItems after products are synced
+- Add admin action to bulk-link OrderItems by SKU
+- Consider adding validation warnings in admin for OrderItems without products

@@ -69,35 +69,43 @@ After updating, verify the fix works:
 
 ## Related Changes
 
-### Gemini Invoice Processing - Automatic Product Creation ENABLED
-Products are automatically created from Gemini invoice processing when they are not found in the database.
+### Gemini Invoice Processing - OrderItems WITHOUT Products
+OrderItems are now created even when products don't exist in the database. Products are NOT automatically created.
 
 **Behavior:**
 - When processing invoices, if a product is not found in the database, the system will:
-  - Automatically create the product with `is_active=False` (requires manual review)
-  - Create the OrderItem with the new product
+  - Create the OrderItem with product=None
+  - Store the SKU in `product_sku` field
+  - Store the description in `product_description` field
   - Continue processing other items normally
   
-**Product Creation Details:**
-- Created products have `is_active=False` to require manual review before activation
-- Product type defaults to `HARDWARE`
-- Price is taken from the invoice line item
-- SKU and name come from the invoice data
+**OrderItem Model Changes:**
+- `product` field is now nullable (can be null)
+- New `product_sku` field stores SKU when product doesn't exist
+- New `product_description` field stores description when product doesn't exist
+- Products can be linked later via Zoho sync or manual creation
 
 **For Job Cards:**
-- Similarly, if a product is not found, it will be automatically created
-- SerializedItems are created with the new product
-- The job card is linked to the SerializedItem
+- If a product is not found, SerializedItem is NOT created
+- Job card is still created (with null serialized_item)
+- SerializedItem can be created later when product is available
+
+**Linking Products Later:**
+1. Sync products from Zoho using "Sync Zoho" button
+2. Or manually create products in Django Admin
+3. Update OrderItems to link to the newly created products
+4. Query OrderItems with product=None to find unlinked items
 
 ## Testing
 
 After applying these changes, test the following:
 
 1. ✓ Zoho product sync works without errors
-2. ✓ Invoice processing creates products automatically when not found
-3. ✓ Job card processing creates products automatically when not found
-4. ✓ Existing products continue to work normally
-5. ✓ Created products have `is_active=False` for manual review
+2. ✓ Invoice processing creates OrderItems without products
+3. ✓ OrderItems store product_sku and product_description
+4. ✓ Job cards are created without SerializedItems when product missing
+5. ✓ Existing products continue to work normally
+6. ✓ Database migrations run successfully
 
 ## Rollback
 
