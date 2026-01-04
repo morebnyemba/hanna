@@ -6,10 +6,15 @@ import requests
 from typing import Dict, List, Optional, Any
 from django.utils import timezone
 from datetime import timedelta
+from json import JSONDecodeError
 
 from .models import ZohoCredential
 
 logger = logging.getLogger(__name__)
+
+# Constants for error message truncation
+MAX_ERROR_RESPONSE_LENGTH = 500
+MAX_ERROR_MESSAGE_LENGTH = 200
 
 
 class ZohoClient:
@@ -205,10 +210,10 @@ class ZohoClient:
                     error_json = response.json()
                     error_details['error_response'] = error_json
                     error_msg = error_json.get('message', error_json.get('error', 'Unknown error'))
-                except Exception:
+                except (JSONDecodeError, ValueError):
                     # If not JSON, use text response
-                    error_details['error_response'] = response.text[:500]
-                    error_msg = response.text[:200] if response.text else response.reason
+                    error_details['error_response'] = response.text[:MAX_ERROR_RESPONSE_LENGTH]
+                    error_msg = response.text[:MAX_ERROR_MESSAGE_LENGTH] if response.text else response.reason
                 
                 logger.error(f"Zoho API returned {response.status_code}: {error_msg}. Details: {error_details}")
                 raise Exception(f"Zoho API error ({response.status_code}): {error_msg}")
