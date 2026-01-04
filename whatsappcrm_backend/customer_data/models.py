@@ -336,6 +336,8 @@ class OrderItem(models.Model):
     Represents a line item within an Order, linking a specific
     product with a quantity and price.
     """
+    MAX_PRODUCT_NAME_DISPLAY_LENGTH = 50
+    
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(
         'products_and_services.Product', 
@@ -387,7 +389,7 @@ class OrderItem(models.Model):
         if self.product:
             product_name = self.product.name
         elif self.product_description:
-            product_name = self.product_description[:50]
+            product_name = self.product_description[:self.MAX_PRODUCT_NAME_DISPLAY_LENGTH]
         elif self.product_sku:
             product_name = f"SKU: {self.product_sku}"
         else:

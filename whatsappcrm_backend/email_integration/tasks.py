@@ -593,7 +593,7 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
             # Create OrderItem with or without product
             OrderItem.objects.create(
                 order=order, 
-                product=product,  # Can be None
+                product=product,
                 product_sku=product_code if not product else None,
                 product_description=product_description if not product else None,
                 quantity=item_data.get('quantity', 1), 
@@ -607,7 +607,6 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                     f"Product can be linked later."
                 )
         logger.info(f"{log_prefix} Created {len(line_items)} OrderItem(s) for Order '{invoice_number}'.")
-
 
         # --- NEW: Send the specific, more descriptive notification for email imports ---
         if customer_profile:
