@@ -34,9 +34,8 @@ class ZohoClient:
         # Normalize the api_domain to ensure proper URL construction
         # Strip trailing slashes and remove any path components like /inventory
         api_domain = self.credentials.api_domain.rstrip('/')
-        # Remove common path suffixes that might have been incorrectly added
-        if api_domain.endswith('/inventory'):
-            api_domain = api_domain.removesuffix('/inventory')
+        # Remove /inventory suffix if present (using removesuffix which only acts if suffix exists)
+        api_domain = api_domain.removesuffix('/inventory')
         
         self.api_base_url = api_domain
         
