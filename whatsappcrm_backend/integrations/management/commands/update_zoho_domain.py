@@ -26,6 +26,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         
         # Mapping of old domains to new domains
+        # Includes common variations found in logs and manual configuration attempts
         domain_mapping = {
             'https://inventory.zoho.com': 'https://www.zohoapis.com',
             'https://inventory.zohoapis.com': 'https://www.zohoapis.com',
@@ -37,6 +38,7 @@ class Command(BaseCommand):
             'https://inventory.zohoapis.com.au': 'https://www.zohoapis.com.au',
             'https://inventory.zoho.com.cn': 'https://www.zohoapis.com.cn',
             'https://inventory.zohoapis.com.cn': 'https://www.zohoapis.com.cn',
+            # Include manual configuration attempts seen in error logs
             'https://zohoapis.com': 'https://www.zohoapis.com',
             'https://zohoapis.com/inventory': 'https://www.zohoapis.com',
         }
@@ -48,6 +50,8 @@ class Command(BaseCommand):
             return
         
         updated_count = 0
+        # Note: ZohoCredential is a singleton model (typically only 1 record)
+        # so bulk_update optimization is not necessary
         for credential in credentials:
             old_domain = credential.api_domain
             
