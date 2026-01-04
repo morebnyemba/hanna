@@ -69,33 +69,35 @@ After updating, verify the fix works:
 
 ## Related Changes
 
-### Gemini Invoice Processing - Removed Automatic Product Creation
-As part of this fix, automatic product creation from Gemini invoice processing has been removed to prevent data quality issues.
+### Gemini Invoice Processing - Automatic Product Creation ENABLED
+Products are automatically created from Gemini invoice processing when they are not found in the database.
 
-**Impact:**
-- When processing invoices, if a product is not found in the database, the system will now:
-  - Skip creating an OrderItem for that product
-  - Log a warning message
-  - Continue processing other items
+**Behavior:**
+- When processing invoices, if a product is not found in the database, the system will:
+  - Automatically create the product with `is_active=False` (requires manual review)
+  - Create the OrderItem with the new product
+  - Continue processing other items normally
   
-**Recommendation:**
-- Ensure all products are synced from Zoho before processing invoices
-- Use the "Sync Zoho" button in the admin panel to sync products
-- Alternatively, manually create products in the admin panel
+**Product Creation Details:**
+- Created products have `is_active=False` to require manual review before activation
+- Product type defaults to `HARDWARE`
+- Price is taken from the invoice line item
+- SKU and name come from the invoice data
 
 **For Job Cards:**
-- Similarly, if a product is not found, SerializedItems will not be created
-- The job card will still be created, but without a linked SerializedItem
-- Manual product creation or Zoho sync is required
+- Similarly, if a product is not found, it will be automatically created
+- SerializedItems are created with the new product
+- The job card is linked to the SerializedItem
 
 ## Testing
 
 After applying these changes, test the following:
 
 1. ✓ Zoho product sync works without errors
-2. ✓ Invoice processing handles missing products gracefully
-3. ✓ Job card processing handles missing products gracefully
+2. ✓ Invoice processing creates products automatically when not found
+3. ✓ Job card processing creates products automatically when not found
 4. ✓ Existing products continue to work normally
+5. ✓ Created products have `is_active=False` for manual review
 
 ## Rollback
 

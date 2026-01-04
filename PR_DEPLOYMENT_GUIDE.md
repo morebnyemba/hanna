@@ -78,25 +78,24 @@ Expected output:
 
 ### 2. Test Invoice Processing
 
-**Important:** Invoices will now only create OrderItems for products that exist in the database.
+### 2. Test Invoice Processing
+
+**Important:** Invoices will automatically create products if they don't exist in the database.
 
 Test flow:
-1. Ensure products are synced from Zoho first
-2. Send a test invoice via email
-3. Check that:
+1. Send a test invoice via email
+2. Check that:
    - Order is created successfully
-   - OrderItems are created for products that exist
-   - Warning logs appear for missing products (expected behavior)
+   - OrderItems are created for all line items
+   - Products are automatically created with `is_active=False` if they didn't exist
+   - Review and activate products manually in Django Admin
 
 ### 3. Monitor Logs
 
-Watch for these warning messages (they are expected and not errors):
-```
-Product not found for SKU 'XXX' or name 'YYY'. Skipping OrderItem creation. 
-Please create product manually or sync from Zoho.
-```
+Watch for these log messages:
+- "Created product: [product_name]" - indicates a new product was created
+- Products created from invoices will have `is_active=False` and need manual review
 
-These warnings indicate products that need to be synced or created manually.
 
 ## Rollback Plan
 
@@ -125,14 +124,15 @@ Note: The old domain may not work as Zoho has deprecated it.
 
 ## Known Issues & Solutions
 
-### Issue: "Product not found" warnings in logs
-**Solution:** This is expected behavior. Sync products from Zoho or create them manually.
+### Issue: Too many automatically created products
+**Solution:** Products created from invoices have `is_active=False`. Review them regularly in Django Admin and activate only legitimate products. Delete duplicates or incorrect entries.
 
-### Issue: OrderItems not created for some invoice line items
+### Issue: Products created with incorrect information
 **Solution:** 
-1. Check which products are missing
-2. Sync from Zoho or create products manually
-3. Products must exist before processing invoices
+1. Edit the product in Django Admin
+2. Update SKU, name, price, and other fields as needed
+3. Set `is_active=True` when the product is correct
+4. Consider syncing from Zoho to get accurate product data
 
 ### Issue: Zoho sync still returns 400 error
 **Solution:** 
@@ -151,11 +151,13 @@ If you encounter issues:
 ## Maintenance Notes
 
 ### Regular Tasks
-1. **Product Sync**: Run "Sync Zoho" regularly to keep products updated
-2. **Monitor Logs**: Watch for "Product not found" warnings
-3. **Create Missing Products**: Address warnings by syncing or manually creating products
+1. **Product Sync**: Run "Sync Zoho" regularly to keep products updated from the authoritative source
+2. **Review Auto-Created Products**: Check Django Admin for products with `is_active=False` from invoice processing
+3. **Activate Valid Products**: Review and activate products that are legitimate
+4. **Clean Up Duplicates**: Remove duplicate or incorrect auto-created products
 
 ### Future Considerations
-- Consider setting up automated Zoho sync (e.g., via Celery Beat)
-- Create products in Zoho before sending invoices
-- Monitor product sync success rate
+- Set up automated Zoho sync (e.g., via Celery Beat) to minimize auto-created products
+- Ensure Zoho is the primary source of truth for product data
+- Periodically review and clean up auto-created products
+- Consider deactivating auto-creation if Zoho sync is reliable and frequent
