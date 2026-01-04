@@ -26,6 +26,12 @@ class ZohoClient:
         
         self.token_url = "https://accounts.zoho.com/oauth/v2/token"
         self.api_base_url = self.credentials.api_domain
+        
+        # Log initialization details for debugging
+        logger.info(
+            f"ZohoClient initialized with organization_id: {self.credentials.organization_id}, "
+            f"api_domain: {self.api_base_url}"
+        )
     
     @classmethod
     def exchange_code_for_tokens(cls, code: str, redirect_uri: str) -> Dict[str, Any]:
@@ -180,7 +186,10 @@ class ZohoClient:
         url = f"{self.api_base_url}/api/v1/items"
 
         try:
-            logger.info(f"Fetching Zoho items page {page} with {per_page} items per page")
+            logger.info(
+                f"Fetching Zoho items page {page} with {per_page} items per page. "
+                f"URL: {url}, Organization ID: {self.credentials.organization_id}"
+            )
             response = requests.get(url, headers=headers, params=params, timeout=30)
             
             # Check for HTTP errors and capture response body for better error messages
