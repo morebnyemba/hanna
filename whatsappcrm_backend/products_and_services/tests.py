@@ -1257,6 +1257,8 @@ class MetaCatalogServiceMethodsTestCase(TestCase):
 
 from unittest.mock import patch, MagicMock
 from decimal import Decimal
+from django.utils import timezone
+from datetime import timedelta
 
 
 class ZohoProductSyncTest(TestCase):
@@ -1283,6 +1285,7 @@ class ZohoProductSyncTest(TestCase):
         
         # Mock API response
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             'code': 0,
             'items': [
@@ -1297,7 +1300,6 @@ class ZohoProductSyncTest(TestCase):
             ],
             'page_context': {'has_more_page': False}
         }
-        mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
         
         # Test fetch
@@ -1413,6 +1415,55 @@ class ZohoProductSyncTest(TestCase):
         self.assertEqual(result['failed'], 1)
         self.assertGreater(len(result['errors']), 0)
         self.assertEqual(Product.objects.count(), 0)
+    
+    @patch('integrations.utils.requests.get')
+    def test_fetch_products_with_400_error_detailed_logging(self, mock_get):
+        """Test that 400 errors from Zoho API are logged with detailed information."""
+        from integrations.utils import ZohoClient
+        import logging
+        
+        # Mock API response with 400 error
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.reason = 'Bad Request'
+        mock_response.url = 'https://inventory.zoho.com/api/v1/items?organization_id=test_org&page=1&per_page=200'
+        mock_response.json.return_value = {
+            'code': 400,
+            'message': 'Invalid organization ID'
+        }
+        mock_get.return_value = mock_response
+        
+        # Test fetch - should raise exception with detailed error
+        client = ZohoClient()
+        with self.assertRaises(Exception) as context:
+            client.fetch_products(page=1)
+        
+        # Verify the exception contains the Zoho error message
+        self.assertIn('Invalid organization ID', str(context.exception))
+        self.assertIn('400', str(context.exception))
+    
+    @patch('integrations.utils.requests.get')
+    def test_fetch_products_with_non_json_error_response(self, mock_get):
+        """Test handling of non-JSON error responses from Zoho API."""
+        from integrations.utils import ZohoClient
+        from json import JSONDecodeError
+        
+        # Mock API response with 400 error and non-JSON body
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.reason = 'Bad Request'
+        mock_response.url = 'https://inventory.zoho.com/api/v1/items?organization_id=test_org'
+        mock_response.json.side_effect = JSONDecodeError('Not JSON', '', 0)
+        mock_response.text = 'HTML error page or plain text error'
+        mock_get.return_value = mock_response
+        
+        # Test fetch - should handle non-JSON response gracefully
+        client = ZohoClient()
+        with self.assertRaises(Exception) as context:
+            client.fetch_products(page=1)
+        
+        # Verify the exception contains error info
+        self.assertIn('400', str(context.exception))
     
     def test_celery_task_exists(self):
         """Test that the Celery task is defined."""
