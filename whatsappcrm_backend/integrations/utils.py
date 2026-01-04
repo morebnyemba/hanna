@@ -30,7 +30,15 @@ class ZohoClient:
             raise ValueError("Zoho credentials not configured. Please add credentials in the admin panel.")
         
         self.token_url = "https://accounts.zoho.com/oauth/v2/token"
-        self.api_base_url = self.credentials.api_domain
+        
+        # Normalize the api_domain to ensure proper URL construction
+        # Strip trailing slashes and remove any path components like /inventory
+        api_domain = self.credentials.api_domain.rstrip('/')
+        # Remove common path suffixes that might have been incorrectly added
+        if api_domain.endswith('/inventory'):
+            api_domain = api_domain[:-10]  # Remove '/inventory'
+        
+        self.api_base_url = api_domain
         
         # Log initialization details for debugging
         logger.info(
@@ -218,7 +226,23 @@ class ZohoClient:
                 logger.error(f"Zoho API returned {response.status_code}: {error_msg}. Details: {error_details}")
                 raise Exception(f"Zoho API error ({response.status_code}): {error_msg}")
             
-            data = response.json()
+            # Parse JSON response with better error handling
+            try:
+                data = response.json()
+            except JSONDecodeError as json_err:
+                # Log the raw response for debugging
+                response_preview = response.text[:500] if response.text else "(empty response)"
+                logger.error(
+                    f"Failed to parse JSON response from Zoho API. "
+                    f"URL: {response.url}, Status: {response.status_code}, "
+                    f"Content-Type: {response.headers.get('Content-Type')}, "
+                    f"Response preview: {response_preview}"
+                )
+                raise Exception(
+                    f"Invalid JSON response from Zoho API at {response.url}. "
+                    f"This may indicate an incorrect API endpoint or domain configuration. "
+                    f"Response preview: {response_preview}"
+                )
 
             if data.get('code') != 0:
                 error_msg = data.get('message', 'Unknown error')

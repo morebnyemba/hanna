@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
 from .models import ZohoCredential
+from .utils import ZohoClient
 
 
 class ZohoCredentialModelTest(TestCase):
@@ -90,4 +91,86 @@ class ZohoCredentialModelTest(TestCase):
         
         # Should be considered expired due to buffer
         self.assertTrue(cred.is_expired())
+
+
+class ZohoClientURLNormalizationTest(TestCase):
+    """Tests for ZohoClient URL construction and normalization."""
+    
+    def test_api_domain_with_trailing_slash(self):
+        """Test that trailing slashes are properly removed from api_domain."""
+        cred = ZohoCredential.objects.create(
+            client_id='test_client',
+            client_secret='test_secret',
+            api_domain='https://www.zohoapis.com/',
+            organization_id='123456'
+        )
+        
+        client = ZohoClient()
+        # Should remove trailing slash
+        self.assertEqual(client.api_base_url, 'https://www.zohoapis.com')
+    
+    def test_api_domain_with_inventory_suffix(self):
+        """Test that /inventory suffix is properly removed from api_domain."""
+        cred = ZohoCredential.objects.create(
+            client_id='test_client',
+            client_secret='test_secret',
+            api_domain='https://www.zohoapis.com/inventory',
+            organization_id='123456'
+        )
+        
+        client = ZohoClient()
+        # Should remove /inventory suffix
+        self.assertEqual(client.api_base_url, 'https://www.zohoapis.com')
+    
+    def test_api_domain_with_trailing_slash_and_inventory(self):
+        """Test that both trailing slash and /inventory are removed."""
+        cred = ZohoCredential.objects.create(
+            client_id='test_client',
+            client_secret='test_secret',
+            api_domain='https://www.zohoapis.com/inventory/',
+            organization_id='123456'
+        )
+        
+        client = ZohoClient()
+        # Should remove both
+        self.assertEqual(client.api_base_url, 'https://www.zohoapis.com')
+    
+    def test_api_domain_without_issues(self):
+        """Test that clean api_domain remains unchanged."""
+        cred = ZohoCredential.objects.create(
+            client_id='test_client',
+            client_secret='test_secret',
+            api_domain='https://www.zohoapis.com',
+            organization_id='123456'
+        )
+        
+        client = ZohoClient()
+        # Should remain unchanged
+        self.assertEqual(client.api_base_url, 'https://www.zohoapis.com')
+    
+    def test_api_domain_alternate_regions(self):
+        """Test URL normalization for different regional domains."""
+        test_cases = [
+            ('https://www.zohoapis.eu/', 'https://www.zohoapis.eu'),
+            ('https://www.zohoapis.in/inventory', 'https://www.zohoapis.in'),
+            ('https://www.zohoapis.com.au/inventory/', 'https://www.zohoapis.com.au'),
+        ]
+        
+        for input_domain, expected_domain in test_cases:
+            with self.subTest(input_domain=input_domain):
+                # Update the existing credential
+                cred = ZohoCredential.get_instance()
+                if cred:
+                    cred.api_domain = input_domain
+                    cred.save()
+                else:
+                    cred = ZohoCredential.objects.create(
+                        client_id='test_client',
+                        client_secret='test_secret',
+                        api_domain=input_domain,
+                        organization_id='123456'
+                    )
+                
+                client = ZohoClient()
+                self.assertEqual(client.api_base_url, expected_domain)
 
