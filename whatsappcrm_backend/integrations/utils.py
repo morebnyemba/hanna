@@ -36,7 +36,7 @@ class ZohoClient:
         api_domain = self.credentials.api_domain.rstrip('/')
         # Remove common path suffixes that might have been incorrectly added
         if api_domain.endswith('/inventory'):
-            api_domain = api_domain[:-10]  # Remove '/inventory'
+            api_domain = api_domain.removesuffix('/inventory')
         
         self.api_base_url = api_domain
         
