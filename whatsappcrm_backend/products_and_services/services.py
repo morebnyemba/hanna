@@ -568,7 +568,7 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                 # Extract and map Zoho fields to our Product model
                 zoho_item_id = zoho_item.get('item_id')
                 item_name = zoho_item.get('name', 'Unknown')
-                item_sku = zoho_item.get('sku')
+                item_sku = zoho_item.get('sku') or None  # Normalize empty string to None
                 
                 if not zoho_item_id:
                     error_msg = f"Item missing item_id: {item_name}"
@@ -578,6 +578,7 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                     continue
                 
                 # Check if we've already seen this SKU in this sync run
+                # Skip None/empty SKUs from duplicate check (they're allowed to be null in DB)
                 if item_sku and item_sku in seen_skus:
                     # Skip duplicate SKU
                     skip_msg = (
@@ -591,7 +592,7 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
                 # Prepare product data
                 product_data = {
                     'name': item_name,
-                    'sku': item_sku or None,  # Use None if empty string
+                    'sku': item_sku,  # Already normalized to None if empty
                     'description': zoho_item.get('description', ''),
                     'price': Decimal(str(zoho_item.get('rate', 0))) if zoho_item.get('rate') else None,
                     'stock_quantity': int(zoho_item.get('stock_on_hand', 0)),
