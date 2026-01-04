@@ -75,8 +75,29 @@ class ZohoClient:
         }
         
         try:
-            response = requests.post(token_url, data=payload, timeout=30)
+            response = requests.post(token_url, data=payload, timeout=30, allow_redirects=False)
+            
+            # Check if we're being redirected
+            if response.status_code in (301, 302, 303, 307, 308):
+                redirect_location = response.headers.get('Location', 'unknown')
+                logger.error(
+                    f"Token exchange endpoint returned redirect (status {response.status_code}) to: {redirect_location}"
+                )
+                raise Exception(
+                    f"Token exchange failed: Received redirect instead of token response. "
+                    f"Please verify authorization code and redirect_uri are correct."
+                )
+            
             response.raise_for_status()
+            
+            # Check for HTML response
+            content_type = response.headers.get('Content-Type', '')
+            if 'text/html' in content_type:
+                raise Exception(
+                    f"Token exchange failed: Received HTML page instead of JSON response. "
+                    f"Please verify Zoho credentials and authorization code are correct."
+                )
+            
             token_data = response.json()
             
             if 'error' in token_data:
@@ -140,8 +161,29 @@ class ZohoClient:
         }
 
         try:
-            response = requests.post(self.token_url, data=payload, timeout=30)
+            response = requests.post(self.token_url, data=payload, timeout=30, allow_redirects=False)
+            
+            # Check if we're being redirected
+            if response.status_code in (301, 302, 303, 307, 308):
+                redirect_location = response.headers.get('Location', 'unknown')
+                logger.error(
+                    f"Token refresh endpoint returned redirect (status {response.status_code}) to: {redirect_location}"
+                )
+                raise Exception(
+                    f"Token refresh failed: Received redirect instead of token response. "
+                    f"Please verify Zoho credentials (client_id, client_secret, refresh_token) are correct."
+                )
+            
             response.raise_for_status()
+            
+            # Check for HTML response
+            content_type = response.headers.get('Content-Type', '')
+            if 'text/html' in content_type:
+                raise Exception(
+                    f"Token refresh failed: Received HTML page instead of JSON response. "
+                    f"Please verify Zoho credentials are correct."
+                )
+            
             token_data = response.json()
 
             if 'access_token' not in token_data:
@@ -202,7 +244,20 @@ class ZohoClient:
                 f"Fetching Zoho items page {page} with {per_page} items per page. "
                 f"URL: {url}, Organization ID: {self.credentials.organization_id}"
             )
-            response = requests.get(url, headers=headers, params=params, timeout=30)
+            # Disable automatic redirects to prevent following login page redirects
+            response = requests.get(url, headers=headers, params=params, timeout=30, allow_redirects=False)
+            
+            # Check if we're being redirected (usually means invalid/expired token)
+            if response.status_code in (301, 302, 303, 307, 308):
+                redirect_location = response.headers.get('Location', 'unknown')
+                logger.error(
+                    f"Zoho API returned redirect (status {response.status_code}) to: {redirect_location}. "
+                    f"This typically indicates an invalid or expired access token."
+                )
+                raise Exception(
+                    f"Authentication failed: Zoho API redirected to login page (status {response.status_code}). "
+                    f"The access token may be invalid or expired. Please re-authenticate with Zoho."
+                )
             
             # Check for HTTP errors and capture response body for better error messages
             if response.status_code != 200:
@@ -225,6 +280,22 @@ class ZohoClient:
                 logger.error(f"Zoho API returned {response.status_code}: {error_msg}. Details: {error_details}")
                 raise Exception(f"Zoho API error ({response.status_code}): {error_msg}")
             
+            # Check if response is HTML (indicates we hit a web page, not an API)
+            content_type = response.headers.get('Content-Type', '')
+            if 'text/html' in content_type:
+                response_preview = response.text[:500] if response.text else "(empty response)"
+                logger.error(
+                    f"Received HTML response instead of JSON from Zoho API. "
+                    f"URL: {response.url}, Status: {response.status_code}, "
+                    f"Content-Type: {content_type}, "
+                    f"Response preview: {response_preview}"
+                )
+                raise Exception(
+                    f"Authentication failed: Received HTML page instead of JSON API response. "
+                    f"The access token may be invalid or expired, or the API endpoint may be incorrect. "
+                    f"Please verify Zoho credentials and re-authenticate if necessary."
+                )
+            
             # Parse JSON response with better error handling
             try:
                 data = response.json()
@@ -234,7 +305,7 @@ class ZohoClient:
                 logger.error(
                     f"Failed to parse JSON response from Zoho API. "
                     f"URL: {response.url}, Status: {response.status_code}, "
-                    f"Content-Type: {response.headers.get('Content-Type')}, "
+                    f"Content-Type: {content_type}, "
                     f"Response preview: {response_preview}"
                 )
                 raise Exception(
