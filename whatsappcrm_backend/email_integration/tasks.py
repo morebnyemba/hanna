@@ -589,6 +589,30 @@ def _create_order_from_invoice_data(attachment: EmailAttachment, data: dict, log
                 product = Product.objects.filter(sku=product_code).first()
             if not product and product_description:
                 product = Product.objects.filter(name=product_description).first()
+            
+            # If product doesn't exist, create it (but don't update if it exists)
+            if not product and (product_code or product_description):
+                try:
+                    product = Product.objects.create(
+                        name=product_description or f"Product {product_code}",
+                        sku=product_code,
+                        description=f"Auto-created from invoice processing: {attachment.filename}",
+                        product_type='hardware',  # Default type
+                        price=item_data.get('unit_price', 0),
+                        provisional=True,  # Mark as provisional for review
+                        is_active=True
+                    )
+                    logger.info(
+                        f"{log_prefix} Auto-created provisional product: '{product.name}' "
+                        f"(SKU: {product_code or 'None'}) from invoice."
+                    )
+                except Exception as e:
+                    # If creation fails (e.g., duplicate SKU from concurrent processing), skip
+                    logger.warning(
+                        f"{log_prefix} Could not auto-create product for SKU '{product_code}': {str(e)}. "
+                        f"Will create OrderItem without product link."
+                    )
+                    product = None
 
             # Create OrderItem with or without product
             OrderItem.objects.create(
