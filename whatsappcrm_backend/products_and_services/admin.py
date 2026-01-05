@@ -8,10 +8,42 @@ class ProductCategoryAdmin(admin.ModelAdmin):
     """
     Admin interface for the ProductCategory model.
     """
-    list_display = ('name', 'parent', 'description')
+    list_display = ('name', 'parent', 'product_count', 'description')
     search_fields = ('name', 'description')
     list_filter = ('parent',)
     ordering = ('name',)
+    filter_horizontal = ('products',)  # This will be available if we add reverse M2M accessor
+    
+    # Add a custom form field to display and select products for this category
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        # Add a custom field to select products for this category
+        if obj:
+            from django import forms
+            form.base_fields['category_products'] = forms.ModelMultipleChoiceField(
+                queryset=Product.objects.all(),
+                required=False,
+                initial=obj.products.all() if obj else Product.objects.none(),
+                widget=admin.widgets.FilteredSelectMultiple('Products', False),
+                help_text='Select products to assign to this category'
+            )
+        return form
+    
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # Update the products if the field exists in the form
+        if 'category_products' in form.cleaned_data:
+            # Clear existing products in this category
+            obj.products.clear()
+            # Add selected products to this category
+            for product in form.cleaned_data['category_products']:
+                product.category = obj
+                product.save()
+    
+    def product_count(self, obj):
+        """Display the number of products in this category"""
+        return obj.products.count()
+    product_count.short_description = 'Products'
 
 class ProductImageInline(admin.TabularInline):
     """
