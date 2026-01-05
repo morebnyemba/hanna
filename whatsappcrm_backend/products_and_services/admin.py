@@ -12,7 +12,6 @@ class ProductCategoryAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     list_filter = ('parent',)
     ordering = ('name',)
-    filter_horizontal = ('products',)  # This will be available if we add reverse M2M accessor
     
     # Add a custom form field to display and select products for this category
     def get_form(self, request, obj=None, **kwargs):
@@ -69,7 +68,7 @@ class ProductAdmin(admin.ModelAdmin):
     
     fieldsets = (
         (None, {
-            'fields': ('name', 'sku', 'barcode', 'description', 'product_type', 'category', 'brand')
+            'fields': ('name', 'sku', 'barcode', 'description', 'product_type', 'category', 'brand', 'google_product_category')
         }),
         ('Pricing & Availability', {
             'fields': ('price', 'currency', 'is_active')
