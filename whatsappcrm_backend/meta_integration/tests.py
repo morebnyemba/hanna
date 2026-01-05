@@ -306,3 +306,96 @@ class SignalImportTest(TestCase):
         
         # Verify the result is a list (even if empty)
         self.assertIsInstance(result, list)
+
+
+class GoogleProductCategoryTestCase(TestCase):
+    """Test cases for google_product_category functionality"""
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig')
+    def test_product_with_google_category_includes_in_payload(self, mock_config):
+        """Test that google_product_category is included in Meta API payload when set"""
+        # Setup mock config
+        mock_active_config = MagicMock()
+        mock_active_config.api_version = 'v23.0'
+        mock_active_config.access_token = 'test_token'
+        mock_active_config.catalog_id = 'test_catalog_id'
+        mock_config.objects.get_active_config.return_value = mock_active_config
+        
+        # Create product with google_product_category
+        product = Product.objects.create(
+            name='Solar Panel Test',
+            sku='SOLAR-001',
+            description='100W Solar Panel',
+            product_type='hardware',
+            price=150.00,
+            currency='USD',
+            stock_quantity=5,
+            brand='SolarTech',
+            google_product_category='Electronics > Renewable Energy > Solar Panels',
+            is_active=True
+        )
+        
+        service = MetaCatalogService()
+        product_data = service._get_product_data(product)
+        
+        # Verify google_product_category is in the payload
+        self.assertIn('google_product_category', product_data)
+        self.assertEqual(product_data['google_product_category'], 'Electronics > Renewable Energy > Solar Panels')
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig')
+    def test_product_without_google_category_excludes_from_payload(self, mock_config):
+        """Test that google_product_category is not included when not set"""
+        # Setup mock config
+        mock_active_config = MagicMock()
+        mock_active_config.api_version = 'v23.0'
+        mock_active_config.access_token = 'test_token'
+        mock_active_config.catalog_id = 'test_catalog_id'
+        mock_config.objects.get_active_config.return_value = mock_active_config
+        
+        # Create product without google_product_category
+        product = Product.objects.create(
+            name='Generic Product',
+            sku='GENERIC-001',
+            description='Generic Product',
+            product_type='hardware',
+            price=100.00,
+            currency='USD',
+            stock_quantity=10,
+            is_active=True
+        )
+        
+        service = MetaCatalogService()
+        product_data = service._get_product_data(product)
+        
+        # Verify google_product_category is NOT in the payload
+        self.assertNotIn('google_product_category', product_data)
+    
+    @patch('meta_integration.catalog_service.MetaAppConfig')
+    def test_product_with_category_id_includes_in_payload(self, mock_config):
+        """Test that google_product_category works with category IDs (numeric format)"""
+        # Setup mock config
+        mock_active_config = MagicMock()
+        mock_active_config.api_version = 'v23.0'
+        mock_active_config.access_token = 'test_token'
+        mock_active_config.catalog_id = 'test_catalog_id'
+        mock_config.objects.get_active_config.return_value = mock_active_config
+        
+        # Create product with category ID
+        product = Product.objects.create(
+            name='Laptop Test',
+            sku='LAPTOP-001',
+            description='Business Laptop',
+            product_type='hardware',
+            price=800.00,
+            currency='USD',
+            stock_quantity=3,
+            google_product_category='328',  # Electronics > Computers > Laptops
+            is_active=True
+        )
+        
+        service = MetaCatalogService()
+        product_data = service._get_product_data(product)
+        
+        # Verify category ID is in the payload
+        self.assertIn('google_product_category', product_data)
+        self.assertEqual(product_data['google_product_category'], '328')
