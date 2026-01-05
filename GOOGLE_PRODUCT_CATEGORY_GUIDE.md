@@ -2,11 +2,19 @@
 
 ## Overview
 
-This guide explains how to use the `google_product_category` field to categorize products when syncing to Meta (Facebook/WhatsApp) Catalog.
+This guide explains how to use the `google_product_category` field on ProductCategory to categorize products when syncing to Meta (Facebook/WhatsApp) Catalog.
 
 ## What is Google Product Category?
 
-The `google_product_category` field is a standardized taxonomy used by Meta to categorize products in their catalog. It helps:
+The `google_product_category` field is a standardized taxonomy used by Meta to categorize products in their catalog. It's configured at the **ProductCategory** level, so all products in a category automatically inherit the same Google Product Category mapping.
+
+This approach provides:
+- **Single source of truth**: Define category mapping once
+- **Consistency**: All products in a category use the same Google categorization
+- **Maintainability**: Update one category to affect all its products
+- **Hierarchy support**: Category hierarchies are respected
+
+The field helps:
 - Improve product discoverability in WhatsApp and Facebook Shops
 - Enable better ad targeting and campaign performance
 - Ensure compliance with platform policies (especially for regulated categories like alcohol, apparel, etc.)
@@ -16,12 +24,15 @@ The `google_product_category` field is a standardized taxonomy used by Meta to c
 
 ### In Django Admin
 
-1. Go to Django Admin → Products and Services → Products
-2. Click on a product to edit it
-3. Find the **Google Product Category** field in the main section
+1. Go to Django Admin → Products and Services → **Product Categories**
+2. Click on a category to edit it (or create a new one)
+3. Find the **Google Product Category** field
 4. Enter either:
    - **Category Path**: e.g., `Apparel & Accessories > Clothing > Shirts & Tops`
    - **Category ID**: e.g., `212` (for Shirts & Tops)
+5. Save the category
+
+**All products assigned to this category will automatically use this Google Product Category when syncing to Meta.**
 
 ### Field Format
 
@@ -153,14 +164,18 @@ For more information:
 
 ```python
 # In Django shell or management command
-from products_and_services.models import Product
+from products_and_services.models import Product, ProductCategory
 
-# Update a product with category
-product = Product.objects.get(sku='SOLAR-PANEL-100W')
-product.google_product_category = 'Electronics > Renewable Energy > Solar Panels'
-product.save()  # This will trigger sync to Meta if images are present
+# Create or update a category with Google Product Category
+category = ProductCategory.objects.get(name='Solar Products')
+category.google_product_category = 'Electronics > Renewable Energy > Solar Panels'
+category.save()
+
+# All products in this category now inherit the mapping
+products = category.products.all()
+# When these products sync to Meta, they'll include the Google Product Category
 
 # Or use the category ID
-product.google_product_category = '7380'
-product.save()
+category.google_product_category = '7380'
+category.save()
 ```

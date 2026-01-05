@@ -16,6 +16,13 @@ class ProductCategory(models.Model):
         related_name='children',
         help_text=_("Parent category for creating a hierarchy (e.g., 'Software' -> 'Accounting').")
     )
+    google_product_category = models.CharField(
+        _("Google Product Category"), 
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        help_text=_("Google Product Category for Meta Catalog (e.g., 'Apparel & Accessories > Clothing' or category ID like '212'). All products in this category will use this mapping.")
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -60,13 +67,6 @@ class Product(models.Model):
     brand = models.CharField(_("Brand"), max_length=255, blank=True, null=True, help_text=_("The brand name of the product, required for WhatsApp Catalog."))
     supplier_sku = models.CharField(_("Supplier SKU"), max_length=120, blank=True, null=True, help_text=_("Original supplier or partner provided product code."))
     provisional = models.BooleanField(_("Provisional"), default=False, help_text=_("Marks products auto-created from imports pending review."))
-    google_product_category = models.CharField(
-        _("Google Product Category"), 
-        max_length=255, 
-        blank=True, 
-        null=True, 
-        help_text=_("Google Product Category for Meta Catalog (e.g., 'Apparel & Accessories > Clothing' or category ID like '212')")
-    )
     
     # Zoho Integration
     zoho_item_id = models.CharField(_("Zoho Item ID"), max_length=100, blank=True, null=True, unique=True, db_index=True, help_text=_("Zoho Inventory Item ID for sync tracking"))

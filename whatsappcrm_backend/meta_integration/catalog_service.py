@@ -156,11 +156,12 @@ class MetaCatalogService:
         if product.brand:
             data["brand"] = product.brand
         
-        # Add optional google_product_category if present
+        # Add optional google_product_category from the product's category if present
         # This helps Meta categorize products for better discovery and targeting
         # Accepts either category name (e.g., 'Apparel & Accessories > Clothing') or ID (e.g., '212')
-        if product.google_product_category:
-            data["google_product_category"] = product.google_product_category
+        # The category mapping is defined at the ProductCategory level for consistency
+        if product.category and product.category.google_product_category:
+            data["google_product_category"] = product.category.google_product_category
 
         # Get the first image URL, if available
         # Meta API requires absolute URLs, not relative paths

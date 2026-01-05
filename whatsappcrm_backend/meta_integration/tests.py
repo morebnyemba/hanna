@@ -313,7 +313,7 @@ class GoogleProductCategoryTestCase(TestCase):
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
     def test_product_with_google_category_includes_in_payload(self, mock_config):
-        """Test that google_product_category is included in Meta API payload when set"""
+        """Test that google_product_category from ProductCategory is included in Meta API payload"""
         # Setup mock config
         mock_active_config = MagicMock()
         mock_active_config.api_version = 'v23.0'
@@ -321,17 +321,23 @@ class GoogleProductCategoryTestCase(TestCase):
         mock_active_config.catalog_id = 'test_catalog_id'
         mock_config.objects.get_active_config.return_value = mock_active_config
         
-        # Create product with google_product_category
+        # Create category with google_product_category
+        category = ProductCategory.objects.create(
+            name='Solar Energy',
+            google_product_category='Electronics > Renewable Energy > Solar Panels'
+        )
+        
+        # Create product in that category
         product = Product.objects.create(
             name='Solar Panel Test',
             sku='SOLAR-001',
             description='100W Solar Panel',
             product_type='hardware',
+            category=category,
             price=150.00,
             currency='USD',
             stock_quantity=5,
             brand='SolarTech',
-            google_product_category='Electronics > Renewable Energy > Solar Panels',
             is_active=True
         )
         
@@ -343,8 +349,8 @@ class GoogleProductCategoryTestCase(TestCase):
         self.assertEqual(product_data['google_product_category'], 'Electronics > Renewable Energy > Solar Panels')
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
-    def test_product_without_google_category_excludes_from_payload(self, mock_config):
-        """Test that google_product_category is not included when not set"""
+    def test_product_without_category_excludes_google_category_from_payload(self, mock_config):
+        """Test that google_product_category is not included when product has no category"""
         # Setup mock config
         mock_active_config = MagicMock()
         mock_active_config.api_version = 'v23.0'
@@ -352,7 +358,7 @@ class GoogleProductCategoryTestCase(TestCase):
         mock_active_config.catalog_id = 'test_catalog_id'
         mock_config.objects.get_active_config.return_value = mock_active_config
         
-        # Create product without google_product_category
+        # Create product without category
         product = Product.objects.create(
             name='Generic Product',
             sku='GENERIC-001',
@@ -371,8 +377,8 @@ class GoogleProductCategoryTestCase(TestCase):
         self.assertNotIn('google_product_category', product_data)
     
     @patch('meta_integration.catalog_service.MetaAppConfig')
-    def test_product_with_category_id_includes_in_payload(self, mock_config):
-        """Test that google_product_category works with category IDs (numeric format)"""
+    def test_product_with_category_without_google_mapping_excludes_from_payload(self, mock_config):
+        """Test that google_product_category is not included when category has no mapping"""
         # Setup mock config
         mock_active_config = MagicMock()
         mock_active_config.api_version = 'v23.0'
@@ -380,22 +386,26 @@ class GoogleProductCategoryTestCase(TestCase):
         mock_active_config.catalog_id = 'test_catalog_id'
         mock_config.objects.get_active_config.return_value = mock_active_config
         
-        # Create product with category ID
+        # Create category without google_product_category
+        category = ProductCategory.objects.create(
+            name='Uncategorized'
+        )
+        
+        # Create product with category but no google mapping
         product = Product.objects.create(
             name='Laptop Test',
             sku='LAPTOP-001',
             description='Business Laptop',
             product_type='hardware',
+            category=category,
             price=800.00,
             currency='USD',
             stock_quantity=3,
-            google_product_category='328',  # Electronics > Computers > Laptops
             is_active=True
         )
         
         service = MetaCatalogService()
         product_data = service._get_product_data(product)
         
-        # Verify category ID is in the payload
-        self.assertIn('google_product_category', product_data)
-        self.assertEqual(product_data['google_product_category'], '328')
+        # Verify google_product_category is NOT in the payload
+        self.assertNotIn('google_product_category', product_data)

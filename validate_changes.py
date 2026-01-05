@@ -11,23 +11,32 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'whatsappcrm_backend'))
 
 def validate_model_changes():
-    """Validate that the Product model has the google_product_category field"""
-    print("✓ Checking Product model for google_product_category field...")
+    """Validate that the ProductCategory model has the google_product_category field"""
+    print("✓ Checking ProductCategory model for google_product_category field...")
     
     with open('whatsappcrm_backend/products_and_services/models.py', 'r') as f:
         content = f.read()
         
-    # Check for the field definition
+    # Check for the field definition in ProductCategory
     if 'google_product_category' not in content:
-        print("✗ FAIL: google_product_category field not found in Product model")
+        print("✗ FAIL: google_product_category field not found in models")
         return False
     
-    # Check for proper field type
-    if 'models.CharField' not in content or 'Google Product Category' not in content:
-        print("✗ FAIL: google_product_category field not properly defined")
+    # Check it's in ProductCategory, not Product
+    # Find ProductCategory class and check field is there
+    category_section = content.split('class ProductCategory')[1].split('class Product(')[0]
+    if 'google_product_category' not in category_section:
+        print("✗ FAIL: google_product_category field not in ProductCategory model")
+        return False
+    
+    # Check it's NOT in Product model
+    product_section = content.split('class Product(')[1].split('class ProductImage')[0]
+    if 'google_product_category' in product_section:
+        print("✗ FAIL: google_product_category field should not be in Product model")
         return False
         
-    print("  ✓ google_product_category field found in Product model")
+    print("  ✓ google_product_category field found in ProductCategory model")
+    print("  ✓ google_product_category field correctly NOT in Product model")
     return True
 
 def validate_admin_changes():
@@ -44,12 +53,24 @@ def validate_admin_changes():
     
     print("  ✓ filter_horizontal line removed")
     
-    # Check that google_product_category is in fieldsets
-    if 'google_product_category' not in content:
-        print("✗ FAIL: google_product_category not added to admin fieldsets")
+    # Check that google_product_category is in ProductCategoryAdmin
+    category_admin_section = content.split('class ProductCategoryAdmin')[1].split('class ProductImageInline')[0]
+    if 'google_product_category' not in category_admin_section:
+        print("✗ FAIL: google_product_category not added to ProductCategoryAdmin")
         return False
     
-    print("  ✓ google_product_category added to admin fieldsets")
+    print("  ✓ google_product_category added to ProductCategoryAdmin")
+    
+    # Check that google_product_category is NOT in ProductAdmin fieldsets
+    product_admin_section = content.split('class ProductAdmin')[1]
+    # Look specifically in fieldsets for google_product_category on Product
+    if 'fieldsets' in product_admin_section:
+        fieldsets_section = product_admin_section.split('fieldsets')[1].split('readonly_fields')[0]
+        if 'google_product_category' in fieldsets_section:
+            print("✗ FAIL: google_product_category should not be in ProductAdmin fieldsets")
+            return False
+    
+    print("  ✓ google_product_category correctly NOT in ProductAdmin")
     return True
 
 def validate_catalog_service_changes():
@@ -64,12 +85,17 @@ def validate_catalog_service_changes():
         print("✗ FAIL: google_product_category not mentioned in catalog_service.py")
         return False
     
-    # Check that it's added to product data
-    if 'product.google_product_category' not in content:
-        print("✗ FAIL: product.google_product_category not used in _get_product_data")
+    # Check that it's getting category from product.category.google_product_category
+    if 'product.category.google_product_category' not in content:
+        print("✗ FAIL: catalog service should use product.category.google_product_category")
         return False
     
-    print("  ✓ google_product_category integrated in catalog service")
+    # Make sure it's NOT using product.google_product_category directly
+    if 'if product.google_product_category:' in content:
+        print("✗ FAIL: catalog service should not use product.google_product_category directly")
+        return False
+    
+    print("  ✓ google_product_category integrated correctly via product.category")
     return True
 
 def validate_test_changes():
@@ -84,11 +110,11 @@ def validate_test_changes():
         print("✗ FAIL: GoogleProductCategoryTestCase test class not found")
         return False
     
-    # Check for test methods
+    # Check for updated test methods (reflecting category-based approach)
     expected_tests = [
         'test_product_with_google_category_includes_in_payload',
-        'test_product_without_google_category_excludes_from_payload',
-        'test_product_with_category_id_includes_in_payload'
+        'test_product_without_category_excludes_google_category_from_payload',
+        'test_product_with_category_without_google_mapping_excludes_from_payload'
     ]
     
     for test in expected_tests:
@@ -96,7 +122,7 @@ def validate_test_changes():
             print(f"✗ FAIL: Test method {test} not found")
             return False
     
-    print("  ✓ All test cases added")
+    print("  ✓ All test cases added (category-based approach)")
     return True
 
 def validate_documentation():

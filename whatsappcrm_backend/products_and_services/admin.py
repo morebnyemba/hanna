@@ -8,10 +8,16 @@ class ProductCategoryAdmin(admin.ModelAdmin):
     """
     Admin interface for the ProductCategory model.
     """
-    list_display = ('name', 'parent', 'product_count', 'description')
-    search_fields = ('name', 'description')
+    list_display = ('name', 'parent', 'google_product_category', 'product_count', 'description')
+    search_fields = ('name', 'description', 'google_product_category')
     list_filter = ('parent',)
     ordering = ('name',)
+    
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'description', 'parent', 'google_product_category')
+        }),
+    )
     
     # Add a custom form field to display and select products for this category
     def get_form(self, request, obj=None, **kwargs):
@@ -68,7 +74,7 @@ class ProductAdmin(admin.ModelAdmin):
     
     fieldsets = (
         (None, {
-            'fields': ('name', 'sku', 'barcode', 'description', 'product_type', 'category', 'brand', 'google_product_category')
+            'fields': ('name', 'sku', 'barcode', 'description', 'product_type', 'category', 'brand')
         }),
         ('Pricing & Availability', {
             'fields': ('price', 'currency', 'is_active')
