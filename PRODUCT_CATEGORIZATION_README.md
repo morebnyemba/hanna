@@ -2,7 +2,18 @@
 
 ## Overview
 
-This implementation adds support for product categorization in Meta (Facebook/WhatsApp) Catalog using the standard `google_product_category` field. This addresses the question: **"do we have a method to categorise products in meta catalog?"** - Yes, we now do!
+This implementation adds support for product categorization in Meta (Facebook/WhatsApp) Catalog using the standard `google_product_category` field on **ProductCategory** model. This addresses the question: **"do we have a method to categorise products in meta catalog?"** - Yes, we now do!
+
+## Architecture Decision
+
+**Based on user feedback**, the `google_product_category` field is placed on the **ProductCategory** model (not Product). This provides:
+
+✅ **Single source of truth**: Define Google category mapping once per category  
+✅ **Automatic inheritance**: All products in a category inherit the mapping  
+✅ **Better maintainability**: Update one category, affects all its products  
+✅ **Leverages existing structure**: Uses the existing ProductCategory hierarchy  
+
+This is a cleaner, more maintainable approach than adding the field to individual products.
 
 ## Problem Statement
 
@@ -23,45 +34,48 @@ From Issue #240:
 
 ### 2. Added google_product_category Field ✅
 
-**What**: New optional CharField on the Product model
+**What**: New optional CharField on the **ProductCategory** model (not Product)
 
-**Purpose**: Stores Google Product Category taxonomy for Meta Catalog sync
+**Purpose**: Stores Google Product Category taxonomy for Meta Catalog sync. All products in a category automatically inherit this mapping.
 
 **Format**: Accepts either:
 - Text path: `"Electronics > Renewable Energy > Solar Panels"`
 - Numeric ID: `"7380"`
 
-**File**: `whatsappcrm_backend/products_and_services/models.py` (line 63-69)
+**Location**: **ProductCategory** model - single mapping per category
+
+**File**: `whatsappcrm_backend/products_and_services/models.py` (ProductCategory class)
 
 ### 3. Enhanced Meta Catalog Service ✅
 
-**What**: Updated `_get_product_data()` method to include google_product_category
+**What**: Updated `_get_product_data()` method to include google_product_category from product's category
 
 **Behavior**: 
-- Includes category in Meta API payload when set
-- Omits field when not set (optional)
+- Includes category in Meta API payload when product has a category with google_product_category set
+- Uses `product.category.google_product_category` 
+- Omits field when product has no category or category has no mapping (optional)
 - Documented in method docstring
 
-**File**: `whatsappcrm_backend/meta_integration/catalog_service.py` (lines 125-127, 158-164)
+**File**: `whatsappcrm_backend/meta_integration/catalog_service.py`
 
 ### 4. Updated Admin Interface ✅
 
-**What**: Added google_product_category to ProductAdmin fieldsets
+**What**: Added google_product_category to **ProductCategoryAdmin** (not ProductAdmin)
 
-**Location**: Main fieldset, visible alongside category, brand, etc.
+**Location**: ProductCategory admin interface - visible in list view and edit form
 
-**File**: `whatsappcrm_backend/products_and_services/admin.py` (line 71)
+**File**: `whatsappcrm_backend/products_and_services/admin.py` (ProductCategoryAdmin class)
 
 ### 5. Added Comprehensive Tests ✅
 
-**What**: New `GoogleProductCategoryTestCase` with 3 test methods
+**What**: Updated `GoogleProductCategoryTestCase` with 3 test methods for category-based approach
 
 **Tests**:
-1. `test_product_with_google_category_includes_in_payload`: Verifies category is sent to Meta
-2. `test_product_without_google_category_excludes_from_payload`: Verifies optional behavior
-3. `test_product_with_category_id_includes_in_payload`: Verifies numeric IDs work
+1. `test_product_with_google_category_includes_in_payload`: Verifies category's google_product_category is sent to Meta
+2. `test_product_without_category_excludes_google_category_from_payload`: Verifies products without category don't send field
+3. `test_product_with_category_without_google_mapping_excludes_from_payload`: Verifies categories without mapping don't send field
 
-**File**: `whatsappcrm_backend/meta_integration/tests.py` (lines 311-397)
+**File**: `whatsappcrm_backend/meta_integration/tests.py`
 
 ### 6. Created Documentation ✅
 
@@ -94,37 +108,51 @@ From Issue #240:
 
 ## Usage Guide
 
-### Step 1: Update Products
+### Step 1: Set Up Category Mappings
 
 In Django Admin:
-1. Go to Products and Services → Products
-2. Click on a product to edit
+1. Go to Products and Services → **Product Categories**
+2. Click on a category to edit (or create new)
 3. Find "Google Product Category" field
 4. Enter either a category path or ID
 
 **Examples**:
 ```
-Solar Panels: "Electronics > Renewable Energy > Solar Panels" or "7380"
-Software: "Software > Business & Productivity > Accounting" or "4196"
-Laptops: "Electronics > Computers > Laptops" or "328"
+Category: "Solar Products"
+  Google Product Category: "Electronics > Renewable Energy > Solar Panels" (or "7380")
+
+Category: "Software"  
+  Google Product Category: "Software > Business & Productivity > Accounting" (or "4196")
+
+Category: "Laptops"
+  Google Product Category: "Electronics > Computers > Laptops" (or "328")
 ```
 
-### Step 2: Sync to Meta
+### Step 2: Assign Products to Categories
+
+1. Go to Products and Services → Products
+2. Click on a product to edit
+3. Select the appropriate **Category** from dropdown
+4. Save the product
+
+**The product automatically inherits the Google Product Category from its category!**
+
+### Step 3: Sync to Meta
 
 **Option A - Automatic Sync**:
 - Products with images auto-sync when saved
-- Category is included automatically
+- Category's Google Product Category is included automatically if set
 
 **Option B - Manual Sync**:
 1. Select products in admin list
 2. Choose "Actions" → "Sync selected products to Meta Catalog"
-3. Categories are included in the sync
+3. Products inherit Google Product Category from their categories
 
-### Step 3: Verify
+### Step 4: Verify
 
 1. Log in to Meta Business Manager
 2. Go to Commerce Manager → Catalog
-3. Check products show correct categories
+3. Check products show correct categories (inherited from ProductCategory)
 4. Filter by category to verify grouping
 
 ## Common Categories for HANNA

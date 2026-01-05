@@ -2,7 +2,16 @@
 
 ## Changes Made
 
-This PR addresses the issues mentioned in #240 and adds support for product categorization in Meta Catalog.
+This PR addresses the issues mentioned in #240 and adds support for product categorization in Meta Catalog using a category-based approach.
+
+### Architecture Decision
+
+**Based on user feedback**, the `google_product_category` field is placed on the **ProductCategory** model (not Product). This provides:
+
+✅ **Single source of truth**: Define Google category mapping once per category  
+✅ **Automatic inheritance**: All products in a category inherit the mapping  
+✅ **Better maintainability**: Update one category, affects all its products  
+✅ **Leverages existing structure**: Uses the existing ProductCategory hierarchy  
 
 ### 1. Fixed SystemCheckError ✅
 
@@ -10,34 +19,34 @@ This PR addresses the issues mentioned in #240 and adds support for product cate
 
 **Fix**: Removed the invalid `filter_horizontal` line. The existing `get_form()` method already provides the product selection functionality through a custom form field.
 
-**File**: `whatsappcrm_backend/products_and_services/admin.py` (line 15)
+**File**: `whatsappcrm_backend/products_and_services/admin.py`
 
 ### 2. Added google_product_category Support ✅
 
-**Issue**: The user asked "do we have a method to categorise products in meta catalog?"
+**Issue**: The user asked "do we have a method to categorise products in meta catalog?" and later suggested using the existing category relationship.
 
-**Solution**: Implemented support for Meta's `google_product_category` field, which is the standard way to categorize products in Meta (Facebook/WhatsApp) Product Catalogs.
+**Solution**: Implemented support for Meta's `google_product_category` field on the **ProductCategory** model. All products in a category automatically inherit the Google Product Category mapping.
 
 #### Changes:
 
-1. **Product Model** (`whatsappcrm_backend/products_and_services/models.py`)
-   - Added `google_product_category` CharField (max_length=255, optional)
+1. **ProductCategory Model** (`whatsappcrm_backend/products_and_services/models.py`)
+   - Added `google_product_category` CharField (max_length=255, optional) to **ProductCategory** (not Product)
    - Accepts either category paths (e.g., "Electronics > Renewable Energy > Solar Panels") or category IDs (e.g., "7380")
 
-2. **Product Admin** (`whatsappcrm_backend/products_and_services/admin.py`)
-   - Added `google_product_category` to the main fieldset for easy editing
-   - Field is now visible and editable in Django Admin
+2. **ProductCategory Admin** (`whatsappcrm_backend/products_and_services/admin.py`)
+   - Added `google_product_category` to ProductCategoryAdmin list display and fieldsets
+   - Field is now visible and editable in Django Admin for categories
 
 3. **Meta Catalog Service** (`whatsappcrm_backend/meta_integration/catalog_service.py`)
-   - Updated `_get_product_data()` method to include `google_product_category` in Meta API payloads
-   - Only included when the field has a value (optional)
+   - Updated `_get_product_data()` method to include `product.category.google_product_category` in Meta API payloads
+   - Only included when product has a category and the category has google_product_category set
    - Updated documentation to explain the field's purpose
 
 4. **Tests** (`whatsappcrm_backend/meta_integration/tests.py`)
-   - Added `GoogleProductCategoryTestCase` with 3 test methods:
-     - `test_product_with_google_category_includes_in_payload`: Verifies category is sent to Meta
-     - `test_product_without_google_category_excludes_from_payload`: Verifies optional behavior
-     - `test_product_with_category_id_includes_in_payload`: Verifies numeric IDs work
+   - Updated `GoogleProductCategoryTestCase` with 3 test methods:
+     - `test_product_with_google_category_includes_in_payload`: Verifies category's mapping is sent to Meta
+     - `test_product_without_category_excludes_google_category_from_payload`: Verifies products without category don't send field
+     - `test_product_with_category_without_google_mapping_excludes_from_payload`: Verifies categories without mapping don't send field
 
 5. **Documentation** (`GOOGLE_PRODUCT_CATEGORY_GUIDE.md`)
    - Comprehensive guide on using Google Product Categories
@@ -85,13 +94,19 @@ python manage.py migrate
 ## Usage
 
 1. **In Django Admin**:
-   - Edit a product
-   - Find "Google Product Category" field in the main section
+   - Go to Products and Services → **Product Categories**
+   - Edit a category
+   - Find "Google Product Category" field
    - Enter either a category path or ID (see guide for examples)
-   - Save the product
+   - Save the category
+   - All products in this category will inherit the mapping
 
-2. **Sync to Meta**:
-   - Products with categories will automatically include them when syncing to Meta
+2. **Assign products to categories**:
+   - Edit products and select the appropriate category
+   - Products automatically inherit the Google Product Category from their category
+
+3. **Sync to Meta**:
+   - Products with categories will automatically include the inherited Google Product Category when syncing to Meta
    - Use "Sync selected products to Meta Catalog" action to update existing products
 
 ## Example Categories for HANNA
