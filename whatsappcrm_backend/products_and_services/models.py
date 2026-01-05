@@ -16,6 +16,13 @@ class ProductCategory(models.Model):
         related_name='children',
         help_text=_("Parent category for creating a hierarchy (e.g., 'Software' -> 'Accounting').")
     )
+    google_product_category = models.CharField(
+        _("Google Product Category"), 
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        help_text=_("Google Product Category for Meta Catalog (e.g., 'Apparel & Accessories > Clothing' or category ID like '212'). All products in this category will use this mapping.")
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
