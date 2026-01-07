@@ -84,14 +84,15 @@ curl -v -X OPTIONS \
 # Should also return CORS headers
 ```
 
-Test with unauthorized origin (should not have CORS headers):
+Test with unauthorized origin (should not have valid CORS headers):
 ```bash
 curl -v -X OPTIONS \
   -H "Origin: https://unauthorized.com" \
   -H "Access-Control-Request-Method: POST" \
   https://backend.hanna.co.zw/crm-api/auth/token/
 
-# Should return 204 but without Access-Control-Allow-Origin header
+# Should return 204 but with Access-Control-Allow-Origin: (empty)
+# Browser will reject this as invalid CORS per specification
 ```
 
 ### 5. Test Login Functionality
@@ -104,10 +105,13 @@ curl -v -X OPTIONS \
    - You're redirected to the admin dashboard
 
 ## Security Considerations
-- Only explicitly allowed origins receive CORS headers
-- The map directive ensures unauthorized origins don't get valid CORS headers
-- Credentials (cookies, authorization headers) are allowed only for allowed origins
-- Follows CORS security best practices
+- **Origin Validation**: Only explicitly allowed origins receive valid CORS headers
+- **Empty Origin Handling**: Unauthorized origins get an empty `Access-Control-Allow-Origin` header, which is invalid per CORS specification and causes browsers to block the request
+- **Map Directive**: The map directive ensures that requests from unknown origins are automatically rejected by setting an invalid CORS header value
+- **Credentials**: Cookies and authorization headers are allowed only for origins that match the allowed list
+- **Development Origins**: Localhost origins (http://localhost:5173 and http://127.0.0.1:5173) are only accessible during local development and won't match in production since browsers send the actual HTTPS origin
+- **No Wildcards**: The configuration does not use wildcards (*) for origins, ensuring explicit control over which domains can access the API
+- **Follows CORS Best Practices**: Implementation aligns with W3C CORS specification and OWASP security guidelines
 
 ## Allowed Origins
 The following origins are configured to access the backend:
