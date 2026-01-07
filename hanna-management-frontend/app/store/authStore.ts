@@ -80,6 +80,7 @@ export const loginAction = async (username: string, password: string, selectedRe
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
+    credentials: 'include', // Required for CORS requests with cookies
   });
 
   if (!response.ok) throw new Error('Login failed. Please check your credentials.');
