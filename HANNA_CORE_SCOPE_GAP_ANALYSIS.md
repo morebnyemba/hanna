@@ -13,6 +13,8 @@ This document provides a comprehensive gap analysis comparing the current Hanna 
 - ✅ Warranty tracking system
 - ✅ Multiple portals (Admin, Client, Technician, Manufacturer, Retailer, Branch)
 - ✅ WhatsApp flow automation
+- ✅ **AI-powered email invoice processing** (extracts data, creates orders & installation requests automatically)
+- ✅ Job card processing from email attachments
 - ⚠️ Limited solar-specific workflow
 - ❌ No centralized Solar System Record (SSR)
 - ❌ No remote monitoring integration
@@ -350,6 +352,63 @@ Ongoing Service & Upsell
 
 ---
 
+## 7. AI-Powered Email Invoice Processing (Discovered Feature)
+
+### Current Implementation:
+Hanna has a sophisticated **email integration system** that was not initially documented in the analysis but represents a significant automation capability:
+
+**Features:**
+- ✅ **Automatic Invoice Processing:** Uses Google Gemini AI to extract structured data from invoice PDFs sent via email
+- ✅ **Document Classification:** AI identifies document type (invoice, job card, or unknown)
+- ✅ **Order Creation:** Automatically creates Order with OrderItems from extracted invoice data
+- ✅ **Installation Request Generation:** Auto-creates InstallationRequest linked to Order
+- ✅ **Customer Profile Creation:** Auto-creates or links CustomerProfile and Contact based on phone number
+- ✅ **Product Provisioning:** Creates provisional products if they don't exist in catalog
+- ✅ **Job Card Processing:** Extracts and creates JobCard records from service documents
+- ✅ **Notification System:** Sends WhatsApp notifications to admins and customers
+- ✅ **Email Confirmation:** Sends receipt confirmation to sender
+- ✅ **Error Handling:** Admin notification on processing failures with detailed logs
+- ✅ **Duplicate Detection:** Prevents duplicate order creation from same invoice
+
+**Technical Implementation:**
+- `email_integration` Django app
+- Celery background tasks for async processing
+- Google Gemini 2.5 Flash API for document parsing
+- IMAP integration for email fetching
+- SMTP configuration for sending confirmations
+- Robust JSON parsing with validation
+
+**Data Flow:**
+```
+Email with Invoice PDF → IMAP Fetch (Celery) → 
+Gemini AI Extraction → Document Classification → 
+Order Creation + InstallationRequest → 
+Notifications (WhatsApp + Email)
+```
+
+### Alignment with PDF Vision:
+This feature **partially addresses** the "Sale → SSR → Installation" pipeline automation described in the PDF:
+
+**Strengths:**
+- ✅ Automates order creation from external invoices
+- ✅ Creates installation request automatically
+- ✅ Links customer, order, and installation request
+- ✅ Notifies relevant parties
+
+**Gaps:**
+- ❌ Does not create Solar System Record (SSR) - creates Order + InstallationRequest separately
+- ❌ No system capacity/size extraction specific to solar
+- ❌ No warranty activation trigger
+- ❌ No commissioning checklist creation
+- ❌ No monitoring linkage
+
+### Recommendation:
+**Extend this existing automation** to create SSR instead of (or in addition to) InstallationRequest when processing solar product invoices. This would leverage the proven AI extraction pipeline to kickstart the SSR lifecycle from email-based sales.
+
+**Impact:** HIGH - This existing automation provides a proven foundation for SSR auto-creation, reducing implementation risk for Issue #3 (Automated SSR Creation).
+
+---
+
 ## Technical Infrastructure Assessment
 
 ### Backend (Django)
@@ -364,6 +423,10 @@ Ongoing Service & Upsell
 - ✅ Barcode scanning support
 - ✅ Zoho integration
 - ✅ WhatsApp flow automation
+- ✅ **AI-powered email invoice processing** (Gemini API integration)
+- ✅ **Automatic order & installation request creation from emails**
+- ✅ Document classification (invoice vs. job card)
+- ✅ Notification system (WhatsApp + Email)
 
 **Gaps:**
 - ❌ No monitoring integration app

@@ -61,6 +61,9 @@ Hanna is currently a well-structured WhatsApp CRM system with:
 - ✅ Payment integration (Paynow)
 - ✅ Barcode scanning for product tracking
 - ✅ Zoho integration for accounting
+- ✅ **AI-powered email invoice processing** (auto-creates orders & installation requests)
+- ✅ **Job card processing from email attachments**
+- ✅ Gemini AI integration for document extraction
 
 ### Target State: Solar Lifecycle Operating System
 The PDF envisions Hanna as a specialized system managing:
@@ -213,6 +216,60 @@ Reactive Service (via JobCard)
 - ✅ Fully implemented
 - ⚠️ Partially implemented
 - ❌ Not implemented
+
+---
+
+## 🎉 Important Discovery: AI-Powered Email Invoice Processing
+
+### Feature Overview
+During the analysis, a sophisticated **email integration system** was discovered that represents significant automation capability:
+
+**What It Does:**
+1. **Monitors email inbox** via IMAP for attachments (PDFs)
+2. **AI Classification:** Uses Google Gemini 2.5 Flash to identify document type (invoice, job card, or unknown)
+3. **Data Extraction:** Extracts structured data including:
+   - Invoice details (number, date, amounts, line items)
+   - Customer information (name, phone, address)
+   - Product details (codes, descriptions, quantities, prices)
+4. **Automatic Record Creation:**
+   - Creates or finds CustomerProfile and Contact
+   - Creates Order with OrderItems
+   - **Auto-creates InstallationRequest linked to Order**
+   - Creates provisional products if not in catalog
+   - Processes job cards into JobCard records
+5. **Notifications:**
+   - WhatsApp notifications to admins and customers
+   - Email confirmation to sender
+   - Error alerts to admin recipients
+
+**Technical Stack:**
+- `email_integration` Django app
+- Celery for background processing
+- Google Gemini AI API
+- IMAP/SMTP integration
+- Robust error handling and retry logic
+
+**Data Flow:**
+```
+Email → IMAP Fetch → Gemini AI → Document Classification → 
+Order + InstallationRequest → WhatsApp/Email Notifications
+```
+
+### Relevance to Solar Vision
+This feature **already automates part of the sales-to-installation pipeline** described in the PDF:
+
+**Current:** `Email Invoice → Order + InstallationRequest`
+
+**Target (PDF):** `Sale → SSR → Installation → Warranty → Monitoring`
+
+### Recommendation
+**Extend Issue #3 (Automated SSR Creation)** to leverage this existing email processing pipeline. When invoice contains solar products, create SSR in addition to Order. This provides:
+- ✅ Proven AI extraction pipeline
+- ✅ Existing error handling
+- ✅ Notification infrastructure
+- ✅ Customer profile automation
+
+**Impact:** Reduces risk and development time for SSR automation by building on working code.
 
 ---
 

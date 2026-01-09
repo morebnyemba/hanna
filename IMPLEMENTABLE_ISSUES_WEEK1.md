@@ -105,6 +105,8 @@ Create a `SystemBundle` model to represent pre-configured solar packages (e.g., 
 ### Description
 Implement automatic Solar System Record creation when a solar bundle or solar installation is sold. This is the first step in automating the "Sale → SSR → Installation → Warranty" pipeline described in the PDF.
 
+**IMPORTANT:** Hanna already has AI-powered email invoice processing (`email_integration` app) that auto-creates Orders and InstallationRequests from emailed invoices using Gemini AI. This issue should **extend that existing automation** to also create SSR when the invoice contains solar products.
+
 ### Acceptance Criteria
 - [ ] Create Django signal handler in `solar_installations` app
 - [ ] When Order is created with stage='closed_won' and contains solar products:
@@ -112,7 +114,11 @@ Implement automatic Solar System Record creation when a solar bundle or solar in
   - Link SSR to Order and CustomerProfile
   - Extract system size from bundle or calculate from components
   - Set status to 'pending'
-  - Create InstallationRequest linked to SSR
+  - Link to existing InstallationRequest (created by email processor or manual)
+- [ ] **Extend email invoice processor** in `email_integration/tasks.py`:
+  - Add SSR creation when processing solar invoices
+  - Extract system capacity from product descriptions or line items
+  - Link SSR to auto-generated InstallationRequest
 - [ ] Add `solar_system_record` field to InstallationRequest (ForeignKey, nullable)
 - [ ] Create Celery task for SSR creation (async processing)
 - [ ] Send notification to admin when SSR is created
@@ -120,15 +126,19 @@ Implement automatic Solar System Record creation when a solar bundle or solar in
 - [ ] Write integration tests
 
 ### Technical Notes
-- Use `post_save` signal on Order model
+- Use `post_save` signal on Order model for manual orders
+- For email-processed orders, extend `_create_order_from_invoice_data()` in `email_integration/tasks.py`
 - Check if order contains products in solar categories or system bundles
+- Detect solar keywords in product descriptions (panel, inverter, battery, solar kit)
 - Handle edge cases (partial orders, returns)
 - Log all SSR creation events
+- Leverage existing Gemini AI extraction for system capacity detection
 
 ### Files to Create/Modify
 - `whatsappcrm_backend/solar_installations/signals.py`
 - `whatsappcrm_backend/solar_installations/apps.py` (connect signals)
 - `whatsappcrm_backend/solar_installations/tasks.py`
+- **`whatsappcrm_backend/email_integration/tasks.py`** (extend invoice processor)
 - `whatsappcrm_backend/solar_installations/management/commands/backfill_ssrs.py`
 - `whatsappcrm_backend/customer_data/models.py` (add SSR foreign key)
 - `whatsappcrm_backend/solar_installations/tests.py`
