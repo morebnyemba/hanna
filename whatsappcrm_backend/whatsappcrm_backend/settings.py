@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'analytics.apps.AnalyticsConfig',
     'email_integration.apps.EmailIntegrationConfig',
     'warranty.apps.WarrantyConfig',
+    'installation_systems.apps.InstallationSystemsConfig',
 ]
 
 MIDDLEWARE = [
