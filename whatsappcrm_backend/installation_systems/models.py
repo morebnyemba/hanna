@@ -13,7 +13,11 @@ class InstallationSystemRecord(models.Model):
     """
     
     class InstallationType(models.TextChoices):
-        """Installation type choices matching InstallationRequest.INSTALLATION_TYPES"""
+        """
+        Installation type choices based on InstallationRequest.INSTALLATION_TYPES.
+        Excludes legacy 'residential' and 'commercial' values as those are now 
+        captured in the system_classification field.
+        """
         STARLINK = 'starlink', _('Starlink Installation')
         SOLAR = 'solar', _('Solar Panel Installation')
         HYBRID = 'hybrid', _('Hybrid (Starlink + Solar)')

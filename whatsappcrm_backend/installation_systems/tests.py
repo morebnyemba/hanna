@@ -120,14 +120,14 @@ class InstallationSystemRecordModelTest(TestCase):
             system_size=Decimal('3.0'),
             capacity_unit='units',
             system_classification='residential',
-            installation_status='completed',
+            installation_status='active',
             installation_date=date(2024, 3, 10),
             installation_address='789 Residential Ave'
         )
         
         self.assertEqual(isr.installation_type, 'custom_furniture')
         self.assertEqual(isr.capacity_unit, 'units')
-        self.assertEqual(isr.installation_status, 'completed')
+        self.assertEqual(isr.installation_status, 'active')
     
     def test_create_hybrid_installation_record(self):
         """Test creating a hybrid (starlink + solar) installation record"""
