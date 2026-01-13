@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.contrib import messages
-from .models import Product, ProductCategory, ProductImage, SerializedItem, Cart, CartItem
+from .models import (
+    Product, ProductCategory, ProductImage, SerializedItem, 
+    Cart, CartItem, SystemBundle, BundleComponent
+)
 
 @admin.register(ProductCategory)
 class ProductCategoryAdmin(admin.ModelAdmin):
@@ -393,3 +396,145 @@ class CartItemAdmin(admin.ModelAdmin):
                 f'Failed to sync {error_count} product(s).',
                 messages.ERROR
             )
+
+
+# ============================================================================
+# System Bundle Admin
+# ============================================================================
+
+class BundleComponentInline(admin.TabularInline):
+    """
+    Inline admin for BundleComponent model.
+    """
+    model = BundleComponent
+    extra = 1
+    fields = ('product', 'quantity', 'is_required', 'component_price', 'is_in_stock')
+    readonly_fields = ('component_price', 'is_in_stock')
+    autocomplete_fields = ('product',)
+
+
+@admin.register(SystemBundle)
+class SystemBundleAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the SystemBundle model.
+    """
+    list_display = (
+        'name', 'sku', 'installation_type', 'bundle_classification',
+        'system_capacity', 'capacity_unit', 'final_price', 'is_active',
+        'component_count', 'all_in_stock'
+    )
+    search_fields = ('name', 'sku', 'description')
+    list_filter = ('installation_type', 'bundle_classification', 'is_active', 'capacity_unit')
+    ordering = ('name',)
+    inlines = [BundleComponentInline]
+    actions = ['validate_selected_bundles', 'activate_bundles', 'deactivate_bundles']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'sku', 'description', 'image')
+        }),
+        ('Installation Details', {
+            'fields': ('installation_type', 'bundle_classification', 'system_capacity', 'capacity_unit')
+        }),
+        ('Pricing', {
+            'fields': ('total_price', 'currency'),
+            'description': 'Total price can be manually set or will be calculated from components.'
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+    )
+    
+    readonly_fields = ()
+    
+    def final_price(self, obj):
+        """Display the final price (manual or calculated)"""
+        price = obj.get_total_price()
+        return f"{obj.currency} {price:,.2f}"
+    final_price.short_description = 'Final Price'
+    
+    def component_count(self, obj):
+        """Display the number of components"""
+        return obj.components.count()
+    component_count.short_description = '# Components'
+    
+    def all_in_stock(self, obj):
+        """Display stock availability status"""
+        if obj.are_all_components_in_stock():
+            return format_html('<span style="color: green;">✓ In Stock</span>')
+        else:
+            return format_html('<span style="color: red;">✗ Out of Stock</span>')
+    all_in_stock.short_description = 'Stock Status'
+    
+    @admin.action(description='Validate selected bundles')
+    def validate_selected_bundles(self, request, queryset):
+        """Validate bundle configurations"""
+        valid_count = 0
+        invalid_count = 0
+        error_messages = []
+        
+        for bundle in queryset:
+            is_valid, errors = bundle.validate_bundle_components()
+            if is_valid:
+                valid_count += 1
+            else:
+                invalid_count += 1
+                error_messages.append(f"{bundle.name}: {', '.join(errors)}")
+        
+        if invalid_count == 0:
+            self.message_user(
+                request,
+                f'All {valid_count} bundle(s) are valid.',
+                messages.SUCCESS
+            )
+        else:
+            message = f'{valid_count} valid, {invalid_count} invalid. Errors: ' + '; '.join(error_messages[:5])
+            if len(error_messages) > 5:
+                message += f' (and {len(error_messages) - 5} more)'
+            self.message_user(request, message, messages.WARNING)
+    
+    @admin.action(description='Activate selected bundles')
+    def activate_bundles(self, request, queryset):
+        """Activate selected bundles"""
+        count = queryset.update(is_active=True)
+        self.message_user(
+            request,
+            f'Activated {count} bundle(s).',
+            messages.SUCCESS
+        )
+    
+    @admin.action(description='Deactivate selected bundles')
+    def deactivate_bundles(self, request, queryset):
+        """Deactivate selected bundles"""
+        count = queryset.update(is_active=False)
+        self.message_user(
+            request,
+            f'Deactivated {count} bundle(s).',
+            messages.SUCCESS
+        )
+
+
+@admin.register(BundleComponent)
+class BundleComponentAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the BundleComponent model.
+    """
+    list_display = ('id', 'bundle', 'product', 'quantity', 'is_required', 'component_price', 'is_in_stock')
+    search_fields = ('bundle__name', 'product__name')
+    list_filter = ('is_required', 'bundle__installation_type')
+    autocomplete_fields = ('bundle', 'product')
+    readonly_fields = ('component_price', 'is_in_stock', 'created_at', 'updated_at')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('bundle', 'product', 'quantity', 'is_required')
+        }),
+        ('Calculated Fields', {
+            'fields': ('component_price', 'is_in_stock'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )

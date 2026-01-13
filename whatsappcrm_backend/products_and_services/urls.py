@@ -16,6 +16,8 @@ router.register(r'item-location-history', views.ItemLocationHistoryViewSet, base
 router.register(r'retailer', views.RetailerPortalViewSet, basename='retailer-portal')
 # Retailer Branch portal endpoints (main portal for branch operations)
 router.register(r'retailer-branch', views.RetailerBranchPortalViewSet, basename='retailer-branch-portal')
+# System Bundle endpoints
+router.register(r'system-bundles', views.SystemBundleViewSet, basename='system-bundle')
 
 app_name = 'products_and_services_api'
 

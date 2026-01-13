@@ -5,7 +5,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory
+from .models import (
+    Product, ProductCategory, SerializedItem, Cart, CartItem, 
+    ItemLocationHistory, SystemBundle, BundleComponent
+)
 from .serializers import (
     ProductSerializer, 
     ProductCategorySerializer, 
@@ -36,6 +39,12 @@ from .serializers import (
     MetaCatalogBatchUpdateSerializer,
     MetaCatalogProductStatusSerializer,
     MetaCatalogSyncResultSerializer,
+    # System bundle serializers
+    SystemBundleSerializer,
+    SystemBundleListSerializer,
+    BundleComponentSerializer,
+    BundleValidationSerializer,
+    SystemBundleCreateSerializer,
 )
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
@@ -2154,3 +2163,202 @@ def trigger_sync_view(request: HttpRequest) -> HttpResponse:
     
     # Redirect back to the product list in admin
     return redirect('admin:products_and_services_product_changelist')
+
+
+# ============================================================================
+# System Bundle ViewSet
+# ============================================================================
+
+class SystemBundleViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for System Bundles - pre-configured installation packages.
+    Supports filtering by installation type and provides validation endpoints.
+    """
+    queryset = SystemBundle.objects.prefetch_related('components', 'components__product').all()
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == 'list':
+            return SystemBundleListSerializer
+        elif self.action == 'create':
+            return SystemBundleCreateSerializer
+        return SystemBundleSerializer
+    
+    def get_queryset(self):
+        """
+        Get bundles with optional filtering:
+        - installation_type: Filter by installation type (solar, starlink, custom_furniture, hybrid)
+        - is_active: Filter by active status (default: True for public list)
+        - bundle_classification: Filter by classification (residential, commercial, hybrid)
+        """
+        queryset = super().get_queryset()
+        
+        # For public list view, only show active bundles by default
+        if self.action == 'list' and not self.request.user.is_authenticated:
+            queryset = queryset.filter(is_active=True)
+        
+        # Filter by installation type
+        installation_type = self.request.query_params.get('installation_type')
+        if installation_type:
+            queryset = queryset.filter(installation_type=installation_type)
+        
+        # Filter by is_active
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        # Filter by bundle classification
+        bundle_classification = self.request.query_params.get('bundle_classification')
+        if bundle_classification:
+            queryset = queryset.filter(bundle_classification=bundle_classification)
+        
+        return queryset
+    
+    @action(detail=True, methods=['post'], url_path='validate')
+    def validate_bundle(self, request, pk=None):
+        """
+        Validate bundle compatibility and completeness.
+        
+        POST /crm-api/products/system-bundles/{id}/validate/
+        
+        Returns validation result with any errors or warnings.
+        """
+        bundle = self.get_object()
+        
+        # Validate components
+        is_valid, errors = bundle.validate_bundle_components()
+        
+        # Check stock availability
+        warnings = []
+        if not bundle.are_all_components_in_stock():
+            warnings.append("Some required components are not in stock")
+            
+            # Add details about which components are out of stock
+            for component in bundle.components.filter(is_required=True):
+                if component.product.stock_quantity < component.quantity:
+                    warnings.append(
+                        f"{component.product.name}: Required {component.quantity}, "
+                        f"Available {component.product.stock_quantity}"
+                    )
+        
+        # Build response
+        response_data = {
+            'is_valid': is_valid,
+            'errors': errors,
+            'warnings': warnings
+        }
+        
+        serializer = BundleValidationSerializer(response_data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['get'], url_path='components')
+    def list_components(self, request, pk=None):
+        """
+        List all components in a bundle with details.
+        
+        GET /crm-api/products/system-bundles/{id}/components/
+        """
+        bundle = self.get_object()
+        components = bundle.components.all()
+        serializer = BundleComponentSerializer(components, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='add-component')
+    def add_component(self, request, pk=None):
+        """
+        Add a component to an existing bundle.
+        
+        POST /crm-api/products/system-bundles/{id}/add-component/
+        Body: {
+            "product_id": 123,
+            "quantity": 2,
+            "is_required": true
+        }
+        """
+        bundle = self.get_object()
+        
+        # Validate input
+        product_id = request.data.get('product_id')
+        if not product_id:
+            return Response(
+                {'error': 'product_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response(
+                {'error': 'Product not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if component already exists
+        if bundle.components.filter(product=product).exists():
+            return Response(
+                {'error': 'This product is already a component of this bundle'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create component
+        quantity = request.data.get('quantity', 1)
+        is_required = request.data.get('is_required', True)
+        
+        component = BundleComponent.objects.create(
+            bundle=bundle,
+            product=product,
+            quantity=quantity,
+            is_required=is_required
+        )
+        
+        serializer = BundleComponentSerializer(component)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['delete'], url_path='remove-component/(?P<component_id>[^/.]+)')
+    def remove_component(self, request, pk=None, component_id=None):
+        """
+        Remove a component from a bundle.
+        
+        DELETE /crm-api/products/system-bundles/{id}/remove-component/{component_id}/
+        """
+        bundle = self.get_object()
+        
+        try:
+            component = bundle.components.get(id=component_id)
+            component.delete()
+            return Response(
+                {'message': 'Component removed successfully'},
+                status=status.HTTP_200_OK
+            )
+        except BundleComponent.DoesNotExist:
+            return Response(
+                {'error': 'Component not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['get'], url_path='installation-types')
+    def installation_types(self, request):
+        """
+        Get all available installation types.
+        
+        GET /crm-api/products/system-bundles/installation-types/
+        """
+        types = [
+            {'value': choice[0], 'label': choice[1]}
+            for choice in SystemBundle.InstallationType.choices
+        ]
+        return Response(types)
+    
+    @action(detail=False, methods=['get'], url_path='bundle-classifications')
+    def bundle_classifications(self, request):
+        """
+        Get all available bundle classifications.
+        
+        GET /crm-api/products/system-bundles/bundle-classifications/
+        """
+        classifications = [
+            {'value': choice[0], 'label': choice[1]}
+            for choice in SystemBundle.BundleClassification.choices
+        ]
+        return Response(classifications)

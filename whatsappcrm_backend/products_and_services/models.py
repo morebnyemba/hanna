@@ -466,3 +466,266 @@ class CartItem(models.Model):
         verbose_name_plural = _("Cart Items")
         ordering = ['-created_at']
         unique_together = ['cart', 'product']
+
+
+class SystemBundle(models.Model):
+    """
+    Represents a pre-configured installation package for various installation types.
+    Can include solar packages, Starlink packages, custom furniture packages, or hybrid bundles.
+    """
+    
+    class InstallationType(models.TextChoices):
+        """Installation type choices matching InstallationRequest.INSTALLATION_TYPES"""
+        SOLAR = 'solar', _('Solar Panel Installation')
+        STARLINK = 'starlink', _('Starlink Installation')
+        CUSTOM_FURNITURE = 'custom_furniture', _('Custom Furniture Installation')
+        HYBRID = 'hybrid', _('Hybrid (Solar + Starlink)')
+    
+    class BundleClassification(models.TextChoices):
+        """Bundle classification choices"""
+        RESIDENTIAL = 'residential', _('Residential')
+        COMMERCIAL = 'commercial', _('Commercial')
+        HYBRID = 'hybrid', _('Hybrid')
+    
+    class CapacityUnit(models.TextChoices):
+        """Capacity measurement units"""
+        KW = 'kW', _('Kilowatts (kW)')
+        MBPS = 'Mbps', _('Megabits per second (Mbps)')
+        UNITS = 'units', _('Units')
+    
+    # Basic Information
+    name = models.CharField(
+        _("Bundle Name"),
+        max_length=255,
+        help_text=_("Name of the bundle (e.g., '3kW Residential Solar Kit', 'Starlink Business Kit')")
+    )
+    sku = models.CharField(
+        _("SKU/Code"),
+        max_length=100,
+        unique=True,
+        help_text=_("Unique SKU or product code for this bundle")
+    )
+    description = models.TextField(
+        _("Description"),
+        blank=True,
+        help_text=_("Detailed description of the bundle and what's included")
+    )
+    image = models.ImageField(
+        _("Bundle Image"),
+        upload_to='bundle_images/',
+        blank=True,
+        null=True,
+        help_text=_("Image representing the bundle")
+    )
+    
+    # Installation and Classification
+    installation_type = models.CharField(
+        _("Installation Type"),
+        max_length=50,
+        choices=InstallationType.choices,
+        db_index=True,
+        help_text=_("Type of installation this bundle is for")
+    )
+    bundle_classification = models.CharField(
+        _("Bundle Classification"),
+        max_length=20,
+        choices=BundleClassification.choices,
+        db_index=True,
+        help_text=_("Classification of the bundle (residential, commercial, hybrid)")
+    )
+    
+    # Capacity Information
+    system_capacity = models.DecimalField(
+        _("System Capacity"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("System capacity value (e.g., 3.0 for 3kW solar, 150 for 150Mbps Starlink)")
+    )
+    capacity_unit = models.CharField(
+        _("Capacity Unit"),
+        max_length=10,
+        choices=CapacityUnit.choices,
+        default=CapacityUnit.UNITS,
+        help_text=_("Unit of measurement for system capacity")
+    )
+    
+    # Pricing
+    total_price = models.DecimalField(
+        _("Total Price"),
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Total price of the bundle. If not set, calculated from component prices.")
+    )
+    currency = models.CharField(
+        _("Currency"),
+        max_length=3,
+        default='USD',
+        help_text=_("Currency code (e.g., USD, ZWL)")
+    )
+    
+    # Status
+    is_active = models.BooleanField(
+        _("Is Active"),
+        default=True,
+        db_index=True,
+        help_text=_("Whether this bundle is available for sale")
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.name} ({self.sku})"
+    
+    def get_calculated_price(self):
+        """Calculate total price from components if not manually set."""
+        if self.total_price is not None:
+            return self.total_price
+        
+        from decimal import Decimal
+        total = Decimal('0.00')
+        for component in self.components.all():
+            if component.product.price:
+                total += component.product.price * component.quantity
+        return total
+    
+    def get_total_price(self):
+        """Get the total price (either manual or calculated)."""
+        return self.get_calculated_price()
+    
+    def are_all_components_in_stock(self):
+        """Check if all required components are in stock."""
+        for component in self.components.filter(is_required=True):
+            if component.product.stock_quantity < component.quantity:
+                return False
+        return True
+    
+    def validate_bundle_components(self):
+        """
+        Validate that the bundle has the required components based on installation type.
+        Returns tuple (is_valid, error_messages)
+        """
+        errors = []
+        components = self.components.all()
+        
+        # Get product types for validation
+        component_types = [c.product.product_type for c in components]
+        
+        if self.installation_type == self.InstallationType.SOLAR:
+            # Solar bundles need: inverter, battery, and solar panel
+            required_keywords = ['inverter', 'battery', 'panel']
+            component_names = [c.product.name.lower() for c in components]
+            
+            for keyword in required_keywords:
+                if not any(keyword in name for name in component_names):
+                    errors.append(f"Solar bundle must include at least one {keyword}")
+        
+        elif self.installation_type == self.InstallationType.STARLINK:
+            # Starlink bundles need: router and dish
+            required_keywords = ['router', 'dish']
+            component_names = [c.product.name.lower() for c in components]
+            
+            for keyword in required_keywords:
+                if not any(keyword in name for name in component_names):
+                    errors.append(f"Starlink bundle must include at least one {keyword}")
+        
+        elif self.installation_type == self.InstallationType.CUSTOM_FURNITURE:
+            # Custom furniture needs at least one furniture piece
+            if not components.exists():
+                errors.append("Custom furniture bundle must include at least one furniture piece")
+        
+        elif self.installation_type == self.InstallationType.HYBRID:
+            # Hybrid bundles need both solar and starlink components
+            component_names = [c.product.name.lower() for c in components]
+            
+            # Check for solar components
+            has_solar = any(keyword in ' '.join(component_names) for keyword in ['inverter', 'battery', 'panel'])
+            # Check for starlink components
+            has_starlink = any(keyword in ' '.join(component_names) for keyword in ['router', 'dish'])
+            
+            if not has_solar:
+                errors.append("Hybrid bundle must include solar components (inverter, battery, panel)")
+            if not has_starlink:
+                errors.append("Hybrid bundle must include starlink components (router, dish)")
+        
+        return (len(errors) == 0, errors)
+    
+    def save(self, *args, **kwargs):
+        """Generate SKU if not provided."""
+        if not self.sku:
+            # Generate SKU based on installation type and classification
+            prefix = self.installation_type[:3].upper()
+            classification = self.bundle_classification[:3].upper()
+            import uuid
+            unique_id = uuid.uuid4().hex[:6].upper()
+            self.sku = f"{prefix}-{classification}-{unique_id}"
+        super().save(*args, **kwargs)
+    
+    class Meta:
+        verbose_name = _("System Bundle")
+        verbose_name_plural = _("System Bundles")
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['installation_type', 'is_active']),
+            models.Index(fields=['bundle_classification', 'is_active']),
+        ]
+
+
+class BundleComponent(models.Model):
+    """
+    Represents a product component within a system bundle.
+    Links products to bundles with quantity and requirement information.
+    """
+    
+    bundle = models.ForeignKey(
+        SystemBundle,
+        on_delete=models.CASCADE,
+        related_name='components',
+        help_text=_("The bundle this component belongs to")
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name='bundle_inclusions',
+        help_text=_("The product included in this bundle")
+    )
+    quantity = models.PositiveIntegerField(
+        _("Quantity"),
+        default=1,
+        help_text=_("Number of units of this product in the bundle")
+    )
+    is_required = models.BooleanField(
+        _("Is Required"),
+        default=True,
+        help_text=_("Whether this component is mandatory for the bundle")
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.quantity}x {self.product.name} in {self.bundle.name}"
+    
+    @property
+    def component_price(self):
+        """Calculate the price for this component (quantity * unit price)."""
+        if self.product.price:
+            return self.product.price * self.quantity
+        return 0
+    
+    @property
+    def is_in_stock(self):
+        """Check if this component has sufficient stock."""
+        return self.product.stock_quantity >= self.quantity
+    
+    class Meta:
+        verbose_name = _("Bundle Component")
+        verbose_name_plural = _("Bundle Components")
+        ordering = ['bundle', '-is_required', 'product__name']
+        unique_together = ['bundle', 'product']

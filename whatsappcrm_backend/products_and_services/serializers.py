@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, ProductImage
+from .models import (
+    Product, ProductCategory, SerializedItem, Cart, CartItem, 
+    ItemLocationHistory, ProductImage, SystemBundle, BundleComponent
+)
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -556,3 +559,180 @@ class MetaCatalogSyncResultSerializer(serializers.Serializer):
     catalog_id = serializers.CharField(allow_null=True)
     message = serializers.CharField()
     error = serializers.CharField(allow_null=True, required=False)
+
+
+# ============================================================================
+# System Bundle Serializers
+# ============================================================================
+
+class BundleComponentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for bundle components with product details.
+    """
+    product = ProductSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+        source='product',
+        write_only=True
+    )
+    component_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    is_in_stock = serializers.BooleanField(read_only=True)
+    
+    class Meta:
+        model = BundleComponent
+        fields = [
+            'id', 'product', 'product_id', 'quantity', 'is_required',
+            'component_price', 'is_in_stock', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class SystemBundleSerializer(serializers.ModelSerializer):
+    """
+    Serializer for system bundles with nested components.
+    """
+    components = BundleComponentSerializer(many=True, read_only=True)
+    calculated_price = serializers.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        read_only=True,
+        source='get_calculated_price'
+    )
+    final_price = serializers.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        read_only=True,
+        source='get_total_price'
+    )
+    all_components_in_stock = serializers.BooleanField(
+        read_only=True,
+        source='are_all_components_in_stock'
+    )
+    installation_type_display = serializers.CharField(
+        source='get_installation_type_display', 
+        read_only=True
+    )
+    bundle_classification_display = serializers.CharField(
+        source='get_bundle_classification_display', 
+        read_only=True
+    )
+    capacity_unit_display = serializers.CharField(
+        source='get_capacity_unit_display', 
+        read_only=True
+    )
+    
+    class Meta:
+        model = SystemBundle
+        fields = [
+            'id', 'name', 'sku', 'description', 'image',
+            'installation_type', 'installation_type_display',
+            'bundle_classification', 'bundle_classification_display',
+            'system_capacity', 'capacity_unit', 'capacity_unit_display',
+            'total_price', 'calculated_price', 'final_price', 'currency',
+            'is_active', 'components', 'all_components_in_stock',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class SystemBundleListSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for bundle lists (without nested components).
+    """
+    component_count = serializers.SerializerMethodField()
+    final_price = serializers.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        read_only=True,
+        source='get_total_price'
+    )
+    installation_type_display = serializers.CharField(
+        source='get_installation_type_display', 
+        read_only=True
+    )
+    bundle_classification_display = serializers.CharField(
+        source='get_bundle_classification_display', 
+        read_only=True
+    )
+    
+    class Meta:
+        model = SystemBundle
+        fields = [
+            'id', 'name', 'sku', 'description', 'image',
+            'installation_type', 'installation_type_display',
+            'bundle_classification', 'bundle_classification_display',
+            'system_capacity', 'capacity_unit',
+            'final_price', 'currency', 'is_active',
+            'component_count', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_component_count(self, obj):
+        """Get the number of components in the bundle."""
+        return obj.components.count()
+
+
+class BundleValidationSerializer(serializers.Serializer):
+    """
+    Serializer for bundle validation response.
+    """
+    is_valid = serializers.BooleanField()
+    errors = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=True
+    )
+    warnings = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=True,
+        required=False
+    )
+
+
+class BundleComponentCreateSerializer(serializers.Serializer):
+    """
+    Serializer for creating bundle components.
+    """
+    product_id = serializers.IntegerField(required=True)
+    quantity = serializers.IntegerField(min_value=1, default=1)
+    is_required = serializers.BooleanField(default=True)
+    
+    def validate_product_id(self, value):
+        """Validate that the product exists."""
+        try:
+            Product.objects.get(id=value)
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("Product with this ID does not exist.")
+        return value
+
+
+class SystemBundleCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating system bundles with components.
+    """
+    components = BundleComponentCreateSerializer(many=True, required=False)
+    
+    class Meta:
+        model = SystemBundle
+        fields = [
+            'name', 'sku', 'description', 'image',
+            'installation_type', 'bundle_classification',
+            'system_capacity', 'capacity_unit',
+            'total_price', 'currency', 'is_active', 'components'
+        ]
+    
+    def create(self, validated_data):
+        """Create bundle with components."""
+        components_data = validated_data.pop('components', [])
+        bundle = SystemBundle.objects.create(**validated_data)
+        
+        # Create components
+        for component_data in components_data:
+            product = Product.objects.get(id=component_data['product_id'])
+            BundleComponent.objects.create(
+                bundle=bundle,
+                product=product,
+                quantity=component_data.get('quantity', 1),
+                is_required=component_data.get('is_required', True)
+            )
+        
+        return bundle
