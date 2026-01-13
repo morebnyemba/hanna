@@ -2203,10 +2203,12 @@ class SystemBundleViewSet(viewsets.ModelViewSet):
         if installation_type:
             queryset = queryset.filter(installation_type=installation_type)
         
-        # Filter by is_active
+        # Filter by is_active - improved boolean parsing
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
-            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+            # Parse boolean more robustly: accepts 'true', '1', 'yes', 'on' (case-insensitive)
+            is_active_bool = is_active.lower() in ('true', '1', 'yes', 'on')
+            queryset = queryset.filter(is_active=is_active_bool)
         
         # Filter by bundle classification
         bundle_classification = self.request.query_params.get('bundle_classification')
@@ -2321,6 +2323,9 @@ class SystemBundleViewSet(viewsets.ModelViewSet):
         Remove a component from a bundle.
         
         DELETE /crm-api/products/system-bundles/{id}/remove-component/{component_id}/
+        
+        Note: Uses URL path parameter for component_id to maintain RESTful semantics
+        where the resource being deleted is clearly identified in the URL path.
         """
         bundle = self.get_object()
         

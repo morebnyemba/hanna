@@ -472,10 +472,17 @@ class SystemBundle(models.Model):
     """
     Represents a pre-configured installation package for various installation types.
     Can include solar packages, Starlink packages, custom furniture packages, or hybrid bundles.
+    
+    Note: InstallationType choices match InstallationRequest.INSTALLATION_TYPES from customer_data app,
+    excluding legacy 'residential' and 'commercial' values which are now captured in the 
+    bundle_classification field instead.
     """
     
     class InstallationType(models.TextChoices):
-        """Installation type choices matching InstallationRequest.INSTALLATION_TYPES"""
+        """
+        Installation type choices matching InstallationRequest.INSTALLATION_TYPES.
+        Legacy 'residential' and 'commercial' types excluded as they're now in bundle_classification.
+        """
         SOLAR = 'solar', _('Solar Panel Installation')
         STARLINK = 'starlink', _('Starlink Installation')
         CUSTOM_FURNITURE = 'custom_furniture', _('Custom Furniture Installation')
@@ -609,6 +616,11 @@ class SystemBundle(models.Model):
         """
         Validate that the bundle has the required components based on installation type.
         Returns tuple (is_valid, error_messages)
+        
+        Note: This validation uses keyword matching on product names. For production use,
+        consider adding a product_category or component_type field for more reliable validation.
+        Ensure consistent product naming conventions (e.g., products should contain keywords
+        like 'inverter', 'battery', 'panel', 'router', 'dish' in their names).
         """
         errors = []
         components = self.components.all()
@@ -618,12 +630,13 @@ class SystemBundle(models.Model):
         
         if self.installation_type == self.InstallationType.SOLAR:
             # Solar bundles need: inverter, battery, and solar panel
+            # Note: Uses case-insensitive keyword matching on product names
             required_keywords = ['inverter', 'battery', 'panel']
             component_names = [c.product.name.lower() for c in components]
             
             for keyword in required_keywords:
                 if not any(keyword in name for name in component_names):
-                    errors.append(f"Solar bundle must include at least one {keyword}")
+                    errors.append(f"Solar bundle must include at least one product with '{keyword}' in the name")
         
         elif self.installation_type == self.InstallationType.STARLINK:
             # Starlink bundles need: router and dish
@@ -632,7 +645,7 @@ class SystemBundle(models.Model):
             
             for keyword in required_keywords:
                 if not any(keyword in name for name in component_names):
-                    errors.append(f"Starlink bundle must include at least one {keyword}")
+                    errors.append(f"Starlink bundle must include at least one product with '{keyword}' in the name")
         
         elif self.installation_type == self.InstallationType.CUSTOM_FURNITURE:
             # Custom furniture needs at least one furniture piece
@@ -644,14 +657,25 @@ class SystemBundle(models.Model):
             component_names = [c.product.name.lower() for c in components]
             
             # Check for solar components
-            has_solar = any(keyword in ' '.join(component_names) for keyword in ['inverter', 'battery', 'panel'])
+            solar_keywords = ['inverter', 'battery', 'panel']
+            has_solar = any(
+                keyword in name 
+                for keyword in solar_keywords 
+                for name in component_names
+            )
+            
             # Check for starlink components
-            has_starlink = any(keyword in ' '.join(component_names) for keyword in ['router', 'dish'])
+            starlink_keywords = ['router', 'dish']
+            has_starlink = any(
+                keyword in name 
+                for keyword in starlink_keywords 
+                for name in component_names
+            )
             
             if not has_solar:
-                errors.append("Hybrid bundle must include solar components (inverter, battery, panel)")
+                errors.append("Hybrid bundle must include solar components (products with keywords: inverter, battery, or panel)")
             if not has_starlink:
-                errors.append("Hybrid bundle must include starlink components (router, dish)")
+                errors.append("Hybrid bundle must include starlink components (products with keywords: router or dish)")
         
         return (len(errors) == 0, errors)
     
