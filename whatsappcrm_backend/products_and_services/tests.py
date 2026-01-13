@@ -4,7 +4,10 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
 from unittest.mock import patch, MagicMock
-from .models import Product, ProductCategory, ProductImage, SerializedItem
+from .models import (
+    Product, ProductCategory, ProductImage, SerializedItem,
+    SystemBundle, BundleComponent
+)
 
 User = get_user_model()
 
@@ -1607,3 +1610,565 @@ class ZohoAdminViewTest(TestCase):
         
         # Task should be triggered
         mock_task.assert_called_once()
+
+
+# ============================================================================
+# System Bundle Tests
+# ============================================================================
+
+class SystemBundleModelTestCase(TestCase):
+    """
+    Test cases for SystemBundle and BundleComponent models.
+    """
+    
+    def setUp(self):
+        """Set up test data"""
+        self.category = ProductCategory.objects.create(
+            name='Solar Equipment',
+            description='Solar installation equipment'
+        )
+        
+        # Create products for solar bundle
+        self.inverter = Product.objects.create(
+            name='Solar Inverter 3kW',
+            sku='INV-3KW-001',
+            product_type='hardware',
+            category=self.category,
+            price=500.00,
+            stock_quantity=10
+        )
+        
+        self.battery = Product.objects.create(
+            name='Solar Battery 200Ah',
+            sku='BAT-200AH-001',
+            product_type='hardware',
+            category=self.category,
+            price=300.00,
+            stock_quantity=8
+        )
+        
+        self.panel = Product.objects.create(
+            name='Solar Panel 250W',
+            sku='PAN-250W-001',
+            product_type='hardware',
+            category=self.category,
+            price=150.00,
+            stock_quantity=20
+        )
+        
+        # Create products for Starlink bundle
+        self.router = Product.objects.create(
+            name='Starlink Router',
+            sku='RTR-001',
+            product_type='hardware',
+            category=self.category,
+            price=200.00,
+            stock_quantity=5
+        )
+        
+        self.dish = Product.objects.create(
+            name='Starlink Dish',
+            sku='DSH-001',
+            product_type='hardware',
+            category=self.category,
+            price=600.00,
+            stock_quantity=3
+        )
+    
+    def test_create_system_bundle(self):
+        """Test creating a system bundle"""
+        bundle = SystemBundle.objects.create(
+            name='3kW Residential Solar Kit',
+            sku='SOL-RES-001',
+            description='Complete 3kW solar system for residential use',
+            installation_type='solar',
+            bundle_classification='residential',
+            system_capacity=3.0,
+            capacity_unit='kW',
+            is_active=True
+        )
+        
+        self.assertEqual(bundle.name, '3kW Residential Solar Kit')
+        self.assertEqual(bundle.installation_type, 'solar')
+        self.assertTrue(bundle.is_active)
+    
+    def test_bundle_sku_generation(self):
+        """Test that SKU is auto-generated if not provided"""
+        bundle = SystemBundle.objects.create(
+            name='Auto SKU Bundle',
+            installation_type='solar',
+            bundle_classification='residential'
+        )
+        
+        self.assertIsNotNone(bundle.sku)
+        self.assertTrue(bundle.sku.startswith('SOL-RES-'))
+    
+    def test_add_components_to_bundle(self):
+        """Test adding components to a bundle"""
+        bundle = SystemBundle.objects.create(
+            name='3kW Solar Kit',
+            sku='SOL-001',
+            installation_type='solar',
+            bundle_classification='residential'
+        )
+        
+        # Add components
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.inverter,
+            quantity=1,
+            is_required=True
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.battery,
+            quantity=2,
+            is_required=True
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.panel,
+            quantity=4,
+            is_required=True
+        )
+        
+        self.assertEqual(bundle.components.count(), 3)
+    
+    def test_bundle_calculated_price(self):
+        """Test that bundle price is calculated from components"""
+        bundle = SystemBundle.objects.create(
+            name='3kW Solar Kit',
+            sku='SOL-001',
+            installation_type='solar',
+            bundle_classification='residential'
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.inverter,
+            quantity=1
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.battery,
+            quantity=2
+        )
+        
+        # Calculated price should be: 500 + (300 * 2) = 1100
+        calculated_price = bundle.get_calculated_price()
+        self.assertEqual(calculated_price, 1100.00)
+    
+    def test_bundle_manual_price_override(self):
+        """Test that manual price overrides calculated price"""
+        bundle = SystemBundle.objects.create(
+            name='3kW Solar Kit',
+            sku='SOL-001',
+            installation_type='solar',
+            bundle_classification='residential',
+            total_price=999.99  # Manual price
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.inverter,
+            quantity=1
+        )
+        
+        # Manual price should be used
+        self.assertEqual(bundle.get_total_price(), 999.99)
+    
+    def test_bundle_stock_availability(self):
+        """Test checking if all components are in stock"""
+        bundle = SystemBundle.objects.create(
+            name='3kW Solar Kit',
+            sku='SOL-001',
+            installation_type='solar',
+            bundle_classification='residential'
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.inverter,
+            quantity=1,
+            is_required=True
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.battery,
+            quantity=2,
+            is_required=True
+        )
+        
+        # All components should be in stock
+        self.assertTrue(bundle.are_all_components_in_stock())
+        
+        # Create a component that exceeds stock
+        out_of_stock_product = Product.objects.create(
+            name='Out of Stock Item',
+            sku='OOS-001',
+            product_type='hardware',
+            price=100.00,
+            stock_quantity=0
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=out_of_stock_product,
+            quantity=1,
+            is_required=True
+        )
+        
+        # Now bundle should not be fully in stock
+        self.assertFalse(bundle.are_all_components_in_stock())
+    
+    def test_solar_bundle_validation(self):
+        """Test validation for solar bundles"""
+        bundle = SystemBundle.objects.create(
+            name='3kW Solar Kit',
+            sku='SOL-001',
+            installation_type='solar',
+            bundle_classification='residential'
+        )
+        
+        # Incomplete bundle - should fail validation
+        is_valid, errors = bundle.validate_bundle_components()
+        self.assertFalse(is_valid)
+        self.assertGreater(len(errors), 0)
+        
+        # Add required components
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.inverter,
+            quantity=1
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.battery,
+            quantity=1
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.panel,
+            quantity=4
+        )
+        
+        # Now should be valid
+        is_valid, errors = bundle.validate_bundle_components()
+        self.assertTrue(is_valid)
+        self.assertEqual(len(errors), 0)
+    
+    def test_starlink_bundle_validation(self):
+        """Test validation for Starlink bundles"""
+        bundle = SystemBundle.objects.create(
+            name='Starlink Business Kit',
+            sku='STL-BUS-001',
+            installation_type='starlink',
+            bundle_classification='commercial'
+        )
+        
+        # Incomplete bundle - should fail
+        is_valid, errors = bundle.validate_bundle_components()
+        self.assertFalse(is_valid)
+        
+        # Add required components
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.router,
+            quantity=1
+        )
+        
+        BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.dish,
+            quantity=1
+        )
+        
+        # Now should be valid
+        is_valid, errors = bundle.validate_bundle_components()
+        self.assertTrue(is_valid)
+    
+    def test_hybrid_bundle_validation(self):
+        """Test validation for hybrid bundles"""
+        bundle = SystemBundle.objects.create(
+            name='Solar + Starlink Hybrid',
+            sku='HYB-001',
+            installation_type='hybrid',
+            bundle_classification='hybrid'
+        )
+        
+        # Need both solar and starlink components
+        BundleComponent.objects.create(bundle=bundle, product=self.inverter, quantity=1)
+        BundleComponent.objects.create(bundle=bundle, product=self.battery, quantity=1)
+        BundleComponent.objects.create(bundle=bundle, product=self.panel, quantity=2)
+        BundleComponent.objects.create(bundle=bundle, product=self.router, quantity=1)
+        BundleComponent.objects.create(bundle=bundle, product=self.dish, quantity=1)
+        
+        is_valid, errors = bundle.validate_bundle_components()
+        self.assertTrue(is_valid)
+    
+    def test_bundle_component_price(self):
+        """Test component price calculation"""
+        bundle = SystemBundle.objects.create(
+            name='Test Bundle',
+            sku='TST-001',
+            installation_type='solar',
+            bundle_classification='residential'
+        )
+        
+        component = BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.inverter,
+            quantity=2
+        )
+        
+        # Component price should be: 500 * 2 = 1000
+        self.assertEqual(component.component_price, 1000.00)
+    
+    def test_bundle_component_stock_check(self):
+        """Test component stock availability check"""
+        bundle = SystemBundle.objects.create(
+            name='Test Bundle',
+            sku='TST-001',
+            installation_type='solar',
+            bundle_classification='residential'
+        )
+        
+        # Component with quantity less than stock
+        component1 = BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.inverter,
+            quantity=5
+        )
+        self.assertTrue(component1.is_in_stock)
+        
+        # Component with quantity exceeding stock
+        component2 = BundleComponent.objects.create(
+            bundle=bundle,
+            product=self.dish,
+            quantity=10
+        )
+        self.assertFalse(component2.is_in_stock)
+
+
+class SystemBundleAPITestCase(TestCase):
+    """
+    Test cases for System Bundle API endpoints.
+    """
+    
+    def setUp(self):
+        """Set up test client and test data"""
+        self.client = APIClient()
+        
+        # Create a test user
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+        self.client.force_authenticate(user=self.user)
+        
+        # Create test category and products
+        self.category = ProductCategory.objects.create(name='Test Category')
+        
+        self.product1 = Product.objects.create(
+            name='Solar Inverter',
+            sku='INV-001',
+            product_type='hardware',
+            category=self.category,
+            price=500.00,
+            stock_quantity=10
+        )
+        
+        self.product2 = Product.objects.create(
+            name='Solar Battery',
+            sku='BAT-001',
+            product_type='hardware',
+            category=self.category,
+            price=300.00,
+            stock_quantity=5
+        )
+        
+        self.product3 = Product.objects.create(
+            name='Solar Panel',
+            sku='PAN-001',
+            product_type='hardware',
+            category=self.category,
+            price=150.00,
+            stock_quantity=20
+        )
+        
+        # Create test bundle
+        self.bundle = SystemBundle.objects.create(
+            name='3kW Solar Kit',
+            sku='SOL-3KW-001',
+            description='Complete solar kit',
+            installation_type='solar',
+            bundle_classification='residential',
+            system_capacity=3.0,
+            capacity_unit='kW',
+            is_active=True
+        )
+        
+        # Add components
+        BundleComponent.objects.create(
+            bundle=self.bundle,
+            product=self.product1,
+            quantity=1,
+            is_required=True
+        )
+        
+        BundleComponent.objects.create(
+            bundle=self.bundle,
+            product=self.product2,
+            quantity=2,
+            is_required=True
+        )
+    
+    def test_list_bundles(self):
+        """Test listing all bundles"""
+        response = self.client.get('/crm-api/products/system-bundles/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+    
+    def test_list_bundles_filtered_by_installation_type(self):
+        """Test filtering bundles by installation type"""
+        # Create a Starlink bundle
+        SystemBundle.objects.create(
+            name='Starlink Kit',
+            sku='STL-001',
+            installation_type='starlink',
+            bundle_classification='residential',
+            is_active=True
+        )
+        
+        response = self.client.get('/crm-api/products/system-bundles/?installation_type=solar')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should only return solar bundles
+        for bundle in response.data:
+            self.assertEqual(bundle['installation_type'], 'solar')
+    
+    def test_get_bundle_details(self):
+        """Test retrieving a single bundle with components"""
+        response = self.client.get(f'/crm-api/products/system-bundles/{self.bundle.id}/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], '3kW Solar Kit')
+        self.assertEqual(response.data['installation_type'], 'solar')
+        self.assertIn('components', response.data)
+        self.assertEqual(len(response.data['components']), 2)
+    
+    def test_validate_bundle(self):
+        """Test bundle validation endpoint"""
+        response = self.client.post(
+            f'/crm-api/products/system-bundles/{self.bundle.id}/validate/'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('is_valid', response.data)
+        self.assertIn('errors', response.data)
+        self.assertIn('warnings', response.data)
+    
+    def test_list_bundle_components(self):
+        """Test listing bundle components"""
+        response = self.client.get(
+            f'/crm-api/products/system-bundles/{self.bundle.id}/components/'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+    
+    def test_add_component_to_bundle(self):
+        """Test adding a component to an existing bundle"""
+        response = self.client.post(
+            f'/crm-api/products/system-bundles/{self.bundle.id}/add-component/',
+            {
+                'product_id': self.product3.id,
+                'quantity': 4,
+                'is_required': True
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self.bundle.components.count(), 3)
+    
+    def test_add_duplicate_component_fails(self):
+        """Test that adding a duplicate component fails"""
+        response = self.client.post(
+            f'/crm-api/products/system-bundles/{self.bundle.id}/add-component/',
+            {
+                'product_id': self.product1.id,  # Already in bundle
+                'quantity': 1
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+    
+    def test_remove_component_from_bundle(self):
+        """Test removing a component from a bundle"""
+        component = self.bundle.components.first()
+        
+        response = self.client.delete(
+            f'/crm-api/products/system-bundles/{self.bundle.id}/remove-component/{component.id}/'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.bundle.components.count(), 1)
+    
+    def test_get_installation_types(self):
+        """Test getting available installation types"""
+        response = self.client.get('/crm-api/products/system-bundles/installation-types/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+        self.assertGreater(len(response.data), 0)
+        
+        # Check structure
+        for item in response.data:
+            self.assertIn('value', item)
+            self.assertIn('label', item)
+    
+    def test_get_bundle_classifications(self):
+        """Test getting available bundle classifications"""
+        response = self.client.get('/crm-api/products/system-bundles/bundle-classifications/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+        self.assertGreater(len(response.data), 0)
+    
+    def test_public_can_list_active_bundles(self):
+        """Test that unauthenticated users can list active bundles"""
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.get('/crm-api/products/system-bundles/')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should only show active bundles
+        for bundle in response.data:
+            self.assertTrue(bundle['is_active'])
+    
+    def test_public_cannot_create_bundle(self):
+        """Test that unauthenticated users cannot create bundles"""
+        self.client.force_authenticate(user=None)
+        
+        response = self.client.post(
+            '/crm-api/products/system-bundles/',
+            {
+                'name': 'New Bundle',
+                'installation_type': 'solar',
+                'bundle_classification': 'residential'
+            },
+            format='json'
+        )
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
