@@ -1778,7 +1778,7 @@ class SystemBundleModelTestCase(TestCase):
         )
         
         # Manual price should be used
-        self.assertEqual(bundle.get_total_price(), 999.99)
+        self.assertEqual(bundle.get_calculated_price(), 999.99)
     
     def test_bundle_stock_availability(self):
         """Test checking if all components are in stock"""

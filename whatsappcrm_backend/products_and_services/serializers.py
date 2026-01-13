@@ -602,7 +602,7 @@ class SystemBundleSerializer(serializers.ModelSerializer):
         max_digits=12, 
         decimal_places=2, 
         read_only=True,
-        source='get_total_price'
+        source='get_calculated_price'  # Updated to use single method
     )
     all_components_in_stock = serializers.BooleanField(
         read_only=True,
@@ -644,7 +644,7 @@ class SystemBundleListSerializer(serializers.ModelSerializer):
         max_digits=12, 
         decimal_places=2, 
         read_only=True,
-        source='get_total_price'
+        source='get_calculated_price'  # Updated to use single method
     )
     installation_type_display = serializers.CharField(
         source='get_installation_type_display', 
@@ -721,18 +721,31 @@ class SystemBundleCreateSerializer(serializers.ModelSerializer):
         ]
     
     def create(self, validated_data):
-        """Create bundle with components."""
+        """
+        Create bundle with components.
+        Optimized to minimize database queries.
+        """
         components_data = validated_data.pop('components', [])
         bundle = SystemBundle.objects.create(**validated_data)
         
-        # Create components
-        for component_data in components_data:
-            product = Product.objects.get(id=component_data['product_id'])
-            BundleComponent.objects.create(
-                bundle=bundle,
-                product=product,
-                quantity=component_data.get('quantity', 1),
-                is_required=component_data.get('is_required', True)
-            )
+        # Bulk fetch all products to avoid N+1 queries
+        if components_data:
+            product_ids = [comp['product_id'] for comp in components_data]
+            products_dict = {p.id: p for p in Product.objects.filter(id__in=product_ids)}
+            
+            # Create components in bulk
+            components_to_create = []
+            for component_data in components_data:
+                product_id = component_data['product_id']
+                if product_id in products_dict:
+                    components_to_create.append(BundleComponent(
+                        bundle=bundle,
+                        product=products_dict[product_id],
+                        quantity=component_data.get('quantity', 1),
+                        is_required=component_data.get('is_required', True)
+                    ))
+            
+            if components_to_create:
+                BundleComponent.objects.bulk_create(components_to_create)
         
         return bundle

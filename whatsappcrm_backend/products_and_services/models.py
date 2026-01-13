@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 import uuid
+from decimal import Decimal
 
 class ProductCategory(models.Model):
     """
@@ -590,20 +591,18 @@ class SystemBundle(models.Model):
         return f"{self.name} ({self.sku})"
     
     def get_calculated_price(self):
-        """Calculate total price from components if not manually set."""
+        """
+        Calculate total price from components if not manually set.
+        Returns the manual total_price if set, otherwise calculates from components.
+        """
         if self.total_price is not None:
             return self.total_price
         
-        from decimal import Decimal
         total = Decimal('0.00')
         for component in self.components.all():
             if component.product.price:
                 total += component.product.price * component.quantity
         return total
-    
-    def get_total_price(self):
-        """Get the total price (either manual or calculated)."""
-        return self.get_calculated_price()
     
     def are_all_components_in_stock(self):
         """Check if all required components are in stock."""
@@ -685,7 +684,6 @@ class SystemBundle(models.Model):
             # Generate SKU based on installation type and classification
             prefix = self.installation_type[:3].upper()
             classification = self.bundle_classification[:3].upper()
-            import uuid
             unique_id = uuid.uuid4().hex[:6].upper()
             self.sku = f"{prefix}-{classification}-{unique_id}"
         super().save(*args, **kwargs)
