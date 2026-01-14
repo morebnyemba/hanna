@@ -285,3 +285,242 @@ Potential additions to consider:
    - Maintenance reminders
    - Warranty expiration alerts
    - System performance alerts
+
+---
+
+# Commissioning Checklist System
+
+## Overview
+
+The Digital Commissioning Checklist System provides a structured way to track installation progress through three phases: Pre-Installation, Installation, and Commissioning. This ensures quality control and prevents installations from being marked as complete without proper verification.
+
+## Models
+
+### CommissioningChecklistTemplate
+
+Defines the structure and requirements for a checklist.
+
+**Key Fields:**
+- `name`: Template name (e.g., "Solar Pre-Installation Checklist")
+- `checklist_type`: Type of checklist (`pre_install`, `installation`, `commissioning`)
+- `installation_type`: Optional - restrict to specific installation type (`solar`, `starlink`, `hybrid`, `custom_furniture`)
+- `items`: JSON array of checklist items
+- `is_active`: Whether the template is currently active
+
+**Item Structure:**
+```json
+{
+  "id": "unique_item_id",
+  "title": "Item Title",
+  "description": "Detailed description",
+  "required": true,
+  "requires_photo": true,
+  "photo_count": 2,
+  "notes_required": false
+}
+```
+
+### InstallationChecklistEntry
+
+Tracks completion of a checklist for a specific installation.
+
+**Key Fields:**
+- `installation_record`: Link to InstallationSystemRecord
+- `template`: Link to CommissioningChecklistTemplate
+- `technician`: Technician who completed the checklist
+- `completed_items`: JSON object tracking completion of each item
+- `completion_status`: Overall status (`not_started`, `in_progress`, `completed`)
+- `completion_percentage`: Calculated percentage (0-100)
+
+**Completed Item Structure:**
+```json
+{
+  "item_id": {
+    "completed": true,
+    "completed_at": "2024-01-15T10:30:00Z",
+    "notes": "Additional notes",
+    "photos": ["media_uuid_1", "media_uuid_2"],
+    "completed_by": "user_id"
+  }
+}
+```
+
+## Validation Rules
+
+### Hard Control
+An installation **cannot** be marked as `COMMISSIONED` or `ACTIVE` unless:
+1. All checklist entries linked to the installation are 100% complete
+2. All required items in each checklist have been completed
+3. If no checklists exist, the installation can be commissioned (allows flexibility)
+
+### Validation Error
+If attempting to commission an incomplete installation:
+```
+ValidationError: Cannot mark installation as Commissioned until all checklists 
+are 100% complete. Incomplete checklists: Solar Installation Checklist (75%)
+```
+
+## API Endpoints
+
+### Checklist Templates
+
+**List Templates**
+```
+GET /api/admin/checklist-templates/
+```
+
+**Create Template**
+```
+POST /api/admin/checklist-templates/
+{
+  "name": "Custom Checklist",
+  "checklist_type": "installation",
+  "installation_type": "solar",
+  "description": "Description",
+  "items": [...],
+  "is_active": true
+}
+```
+
+**Duplicate Template**
+```
+POST /api/admin/checklist-templates/{id}/duplicate/
+```
+
+### Checklist Entries
+
+**List Entries**
+```
+GET /api/admin/checklist-entries/
+```
+
+**Create Entry**
+```
+POST /api/admin/checklist-entries/
+{
+  "installation_record": "uuid",
+  "template": "uuid",
+  "technician": "technician_id"
+}
+```
+
+**Update Item**
+```
+POST /api/admin/checklist-entries/{id}/update_item/
+{
+  "item_id": "item_1",
+  "completed": true,
+  "notes": "Item completed successfully",
+  "photos": ["media_uuid_1"]
+}
+```
+
+**Get Checklist Status**
+```
+GET /api/admin/checklist-entries/{id}/checklist_status/
+```
+
+**Get Checklists by Installation**
+```
+GET /api/admin/checklist-entries/by_installation/?installation_id=uuid
+```
+
+## Management Commands
+
+### Seed Default Templates
+
+Creates default checklist templates for Solar and Starlink installations:
+
+```bash
+python manage.py seed_checklist_templates
+# Or with Docker:
+docker compose exec backend python manage.py seed_checklist_templates
+```
+
+This creates:
+- Solar Pre-Installation Checklist (5 items)
+- Solar Installation Checklist (6 items)
+- Solar Commissioning Checklist (6 items)
+- Starlink Pre-Installation Checklist (4 items)
+- Starlink Installation Checklist (4 items)
+- Starlink Commissioning Checklist (4 items)
+- General Pre-Installation Checklist (3 items)
+
+## Usage Flow
+
+### 1. Admin Creates Templates
+Admin uses Django admin or API to create/edit checklist templates.
+
+### 2. Technician Assignment
+When an installation is assigned to a technician:
+1. Create `InstallationChecklistEntry` records for each applicable template
+2. Link entries to the `InstallationSystemRecord`
+3. Assign the technician
+
+### 3. Field Work
+Technician completes checklist items:
+1. For each item, mark as completed
+2. Add required photos
+3. Add notes if required
+4. System automatically calculates completion percentage
+
+### 4. Validation
+When attempting to commission the installation:
+1. System checks all checklist entries
+2. Validates 100% completion of required items
+3. Either allows commissioning or returns validation error
+
+## Model Methods
+
+### InstallationChecklistEntry
+
+**`calculate_completion_percentage()`**
+Returns completion percentage based on required items.
+
+**`update_completion_status()`**
+Updates status and timestamps based on completion percentage.
+
+**`is_fully_completed()`**
+Returns True if all required items are completed.
+
+### InstallationSystemRecord
+
+**`are_all_checklists_complete()`**
+Returns tuple: (all_complete: bool, incomplete_checklists: list)
+
+**`clean()`**
+Validates installation status changes.
+
+## Testing
+
+Run tests:
+```bash
+python manage.py test installation_systems
+# Or with Docker:
+docker compose exec backend python manage.py test installation_systems
+```
+
+Test coverage includes:
+- Model creation and relationships
+- Completion percentage calculation
+- Status updates
+- Validation logic preventing premature commissioning
+- API endpoints (basic)
+
+## Security
+
+- Only admin users can manage templates
+- Technicians can only update their assigned checklists
+- All changes are logged with timestamps and user IDs
+- Photos stored securely with UUID references
+
+## Future Enhancements for Checklist System
+
+1. **Offline Support**: PWA with local storage for field work
+2. **Photo Analysis**: AI-powered quality checks on uploaded photos
+3. **GPS Verification**: Ensure technician is on-site
+4. **Time Tracking**: Track time spent on each item
+5. **Customer Sign-off**: Digital signature capture
+6. **Reporting**: Generate PDF completion reports
+7. **Notifications**: Alert admins of checklist completion
+8. **Templates per Customer**: Custom checklists for VIP customers
