@@ -280,6 +280,7 @@ class InstallationSystemRecord(models.Model):
                     # Check required photos
                     photos_complete, missing_photos = self.are_all_required_photos_uploaded()
                     if not photos_complete:
+                        # Format photo type names for display (capitalize and replace underscores)
                         missing_list = ', '.join([
                             photo_type.replace('_', ' ').title()
                             for photo_type in missing_photos

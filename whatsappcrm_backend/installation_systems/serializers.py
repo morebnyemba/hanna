@@ -5,6 +5,7 @@ from warranty.models import Technician, Warranty
 from customer_data.models import JobCard
 from products_and_services.models import SerializedItem
 from media_manager.serializers import MediaAssetSerializer
+from media_manager.models import MediaAsset
 
 
 class CommissioningChecklistTemplateSerializer(serializers.ModelSerializer):
@@ -614,8 +615,6 @@ class InstallationPhotoCreateSerializer(serializers.ModelSerializer):
         """
         Create InstallationPhoto with associated MediaAsset.
         """
-        from media_manager.models import MediaAsset
-        
         # Extract file and create MediaAsset
         file = validated_data.pop('file')
         media_asset_name = validated_data.pop('media_asset_name', None)

@@ -333,7 +333,7 @@ class InstallationPhotoPermission(permissions.BasePermission):
         
         # Technicians can upload and view
         if hasattr(request.user, 'technician_profile'):
-            return request.method in permissions.SAFE_METHODS or request.method == 'POST'
+            return request.method in list(permissions.SAFE_METHODS) + ['POST']
         
         # Clients can only view (read-only)
         if hasattr(request.user, 'customer_profile'):
