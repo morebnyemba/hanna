@@ -60,8 +60,8 @@ def create_installation_system_record(sender, instance, created, **kwargs):
                 capacity_unit=capacity_unit,
                 installation_status='pending',
                 installation_address=instance.address or '',
-                latitude=instance.location_latitude or instance.latitude,
-                longitude=instance.location_longitude or instance.longitude,
+                latitude=instance.location_latitude or getattr(instance, 'latitude', None),
+                longitude=instance.location_longitude or getattr(instance, 'longitude', None),
             )
             
             # Copy technicians (ManyToMany relationship)

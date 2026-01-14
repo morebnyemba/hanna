@@ -3,6 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
+from warranty.models import Technician
+from products_and_services.models import SerializedItem
 from .models import InstallationSystemRecord
 from .serializers import (
     InstallationSystemRecordListSerializer,
@@ -230,7 +232,6 @@ class InstallationSystemRecordViewSet(viewsets.ModelViewSet):
         if not technician_id:
             return Response({'error': 'technician_id required'}, status=400)
         
-        from warranty.models import Technician
         try:
             technician = Technician.objects.get(id=technician_id)
             installation.technicians.add(technician)
@@ -252,7 +253,6 @@ class InstallationSystemRecordViewSet(viewsets.ModelViewSet):
         if not component_id:
             return Response({'error': 'component_id required'}, status=400)
         
-        from products_and_services.models import SerializedItem
         try:
             component = SerializedItem.objects.get(id=component_id)
             installation.installed_components.add(component)
