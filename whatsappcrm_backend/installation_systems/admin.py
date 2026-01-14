@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry, InstallationPhoto
 
 
 @admin.register(InstallationSystemRecord)
@@ -194,3 +194,74 @@ class InstallationChecklistEntryAdmin(admin.ModelAdmin):
         return f"{str(obj.id)[:8]}"
     short_id.short_description = "ID"
     short_id.admin_order_field = 'id'
+
+
+@admin.register(InstallationPhoto)
+class InstallationPhotoAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the InstallationPhoto model.
+    """
+    list_display = (
+        'short_id',
+        'installation_record_display',
+        'photo_type',
+        'caption',
+        'is_required',
+        'uploaded_by',
+        'uploaded_at',
+    )
+    list_filter = (
+        'photo_type',
+        'is_required',
+        'uploaded_at',
+    )
+    search_fields = (
+        'caption',
+        'description',
+        'installation_record__customer__first_name',
+        'installation_record__customer__last_name',
+        'uploaded_by__user__username',
+    )
+    readonly_fields = ('id', 'uploaded_at', 'updated_at', 'media_preview')
+    autocomplete_fields = ['installation_record', 'media_asset', 'uploaded_by']
+    list_per_page = 25
+    list_select_related = ('installation_record', 'media_asset', 'uploaded_by', 'uploaded_by__user')
+    date_hierarchy = 'uploaded_at'
+    
+    fieldsets = (
+        ('Photo Information', {
+            'fields': ('id', 'installation_record', 'media_asset', 'media_preview')
+        }),
+        ('Photo Details', {
+            'fields': (
+                'photo_type',
+                'caption',
+                'description',
+                'is_required',
+                'checklist_item',
+            )
+        }),
+        ('Upload Information', {
+            'fields': ('uploaded_by', 'uploaded_at', 'updated_at')
+        }),
+    )
+    
+    def short_id(self, obj):
+        """Display shortened UUID for readability"""
+        return f"{str(obj.id)[:8]}"
+    short_id.short_description = "Photo ID"
+    short_id.admin_order_field = 'id'
+    
+    def installation_record_display(self, obj):
+        """Display shortened installation record ID"""
+        return f"ISR-{str(obj.installation_record.id)[:8]}"
+    installation_record_display.short_description = "Installation"
+    installation_record_display.admin_order_field = 'installation_record'
+    
+    def media_preview(self, obj):
+        """Display image preview if available"""
+        if obj.media_asset and obj.media_asset.file:
+            return f'<img src="{obj.media_asset.file.url}" style="max-width: 300px; max-height: 300px;" />'
+        return "No preview available"
+    media_preview.short_description = "Preview"
+    media_preview.allow_tags = True

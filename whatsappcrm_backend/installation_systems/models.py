@@ -211,10 +211,48 @@ class InstallationSystemRecord(models.Model):
         
         return len(incomplete) == 0, incomplete
     
+    def get_required_photo_types(self):
+        """
+        Get list of required photo types for this installation.
+        Returns list of photo types that must be uploaded.
+        """
+        # Define required photo types based on installation type
+        required_photos = {
+            'solar': ['serial_number', 'test_result', 'after'],
+            'starlink': ['serial_number', 'equipment', 'after'],
+            'hybrid': ['serial_number', 'test_result', 'equipment', 'after'],
+            'custom_furniture': ['before', 'after'],
+        }
+        return required_photos.get(self.installation_type, [])
+    
+    def are_all_required_photos_uploaded(self):
+        """
+        Check if all required photo types have been uploaded.
+        Returns tuple: (all_uploaded: bool, missing_photo_types: list)
+        """
+        required_types = self.get_required_photo_types()
+        
+        if not required_types:
+            # No required photos for this installation type
+            return True, []
+        
+        # Get all uploaded photo types
+        uploaded_types = set(
+            self.photos.values_list('photo_type', flat=True).distinct()
+        )
+        
+        # Find missing photo types
+        missing_types = [
+            photo_type for photo_type in required_types
+            if photo_type not in uploaded_types
+        ]
+        
+        return len(missing_types) == 0, missing_types
+    
     def clean(self):
         """
         Validate the model before saving.
-        Prevent marking installation as COMMISSIONED without complete checklists.
+        Prevent marking installation as COMMISSIONED without complete checklists and required photos.
         """
         # Only validate if status is being set to COMMISSIONED or ACTIVE
         if self.installation_status in [self.InstallationStatus.COMMISSIONED, self.InstallationStatus.ACTIVE]:
@@ -226,6 +264,7 @@ class InstallationSystemRecord(models.Model):
                     self.InstallationStatus.COMMISSIONED, 
                     self.InstallationStatus.ACTIVE
                 ]:
+                    # Check checklists
                     all_complete, incomplete = self.are_all_checklists_complete()
                     if not all_complete:
                         incomplete_list = ', '.join([
@@ -236,6 +275,19 @@ class InstallationSystemRecord(models.Model):
                             f"Cannot mark installation as {self.get_installation_status_display()} "
                             f"until all checklists are 100% complete. "
                             f"Incomplete checklists: {incomplete_list}"
+                        )
+                    
+                    # Check required photos
+                    photos_complete, missing_photos = self.are_all_required_photos_uploaded()
+                    if not photos_complete:
+                        missing_list = ', '.join([
+                            photo_type.replace('_', ' ').title()
+                            for photo_type in missing_photos
+                        ])
+                        raise ValidationError(
+                            f"Cannot mark installation as {self.get_installation_status_display()} "
+                            f"until all required photos are uploaded. "
+                            f"Missing photo types: {missing_list}"
                         )
     
     def save(self, *args, **kwargs):
@@ -513,4 +565,104 @@ class InstallationChecklistEntry(models.Model):
         indexes = [
             models.Index(fields=['installation_record', 'template']),
             models.Index(fields=['completion_status', 'completion_percentage']),
+        ]
+
+
+class InstallationPhoto(models.Model):
+    """
+    Stores photos uploaded during installation process.
+    Photos are linked to installation records and can be categorized by type.
+    Used for commissioning evidence and installation reports.
+    """
+    
+    class PhotoType(models.TextChoices):
+        """Photo type choices for categorizing installation photos"""
+        BEFORE = 'before', _('Before Installation')
+        DURING = 'during', _('During Installation')
+        AFTER = 'after', _('After Installation')
+        SERIAL_NUMBER = 'serial_number', _('Serial Number')
+        TEST_RESULT = 'test_result', _('Test Result')
+        SITE = 'site', _('Site Photo')
+        EQUIPMENT = 'equipment', _('Equipment Photo')
+        OTHER = 'other', _('Other')
+    
+    # Primary key
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relationships
+    installation_record = models.ForeignKey(
+        InstallationSystemRecord,
+        on_delete=models.CASCADE,
+        related_name='photos',
+        help_text=_("The installation system record this photo belongs to")
+    )
+    media_asset = models.ForeignKey(
+        'media_manager.MediaAsset',
+        on_delete=models.CASCADE,
+        related_name='installation_photos',
+        help_text=_("The media asset containing the actual photo file")
+    )
+    checklist_item = models.CharField(
+        _("Checklist Item ID"),
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text=_("Optional: ID of the checklist item this photo is linked to")
+    )
+    uploaded_by = models.ForeignKey(
+        'warranty.Technician',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='uploaded_photos',
+        help_text=_("The technician who uploaded this photo")
+    )
+    
+    # Photo metadata
+    photo_type = models.CharField(
+        _("Photo Type"),
+        max_length=20,
+        choices=PhotoType.choices,
+        db_index=True,
+        help_text=_("Category/type of the photo")
+    )
+    caption = models.CharField(
+        _("Caption"),
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text=_("Short caption or title for the photo")
+    )
+    description = models.TextField(
+        _("Description"),
+        blank=True,
+        null=True,
+        help_text=_("Detailed description of what the photo shows")
+    )
+    is_required = models.BooleanField(
+        _("Is Required"),
+        default=False,
+        help_text=_("Whether this photo type is required for commissioning")
+    )
+    
+    # Timestamps
+    uploaded_at = models.DateTimeField(
+        _("Uploaded At"),
+        auto_now_add=True,
+        help_text=_("When the photo was uploaded")
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        """Returns string representation"""
+        return f"{self.get_photo_type_display()} - {self.installation_record} ({self.uploaded_at.strftime('%Y-%m-%d')})"
+    
+    class Meta:
+        verbose_name = _("Installation Photo")
+        verbose_name_plural = _("Installation Photos")
+        ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['installation_record', 'photo_type']),
+            models.Index(fields=['photo_type', 'is_required']),
+            models.Index(fields=['uploaded_by', 'uploaded_at']),
         ]

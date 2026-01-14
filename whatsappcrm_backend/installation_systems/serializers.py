@@ -1,9 +1,10 @@
 from rest_framework import serializers
-from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry, InstallationPhoto
 from customer_data.models import CustomerProfile, Order, InstallationRequest
 from warranty.models import Technician, Warranty
 from customer_data.models import JobCard
 from products_and_services.models import SerializedItem
+from media_manager.serializers import MediaAssetSerializer
 
 
 class CommissioningChecklistTemplateSerializer(serializers.ModelSerializer):
@@ -216,6 +217,9 @@ class InstallationSystemRecordDetailSerializer(serializers.ModelSerializer):
     component_details = serializers.SerializerMethodField()
     warranty_details = serializers.SerializerMethodField()
     job_card_details = serializers.SerializerMethodField()
+    photo_details = serializers.SerializerMethodField()
+    required_photo_types = serializers.SerializerMethodField()
+    photos_status = serializers.SerializerMethodField()
     
     installation_type_display = serializers.CharField(source='get_installation_type_display', read_only=True)
     system_classification_display = serializers.CharField(source='get_system_classification_display', read_only=True)
@@ -316,6 +320,50 @@ class InstallationSystemRecordDetailSerializer(serializers.ModelSerializer):
             'is_under_warranty': job_card.is_under_warranty,
             'creation_date': job_card.creation_date,
         } for job_card in job_cards]
+    
+    def get_photo_details(self, obj):
+        """Get installation photos grouped by type"""
+        photos = obj.photos.select_related('media_asset', 'uploaded_by__user').all()
+        request = self.context.get('request')
+        
+        photo_data = []
+        for photo in photos:
+            file_url = None
+            if photo.media_asset.file and hasattr(photo.media_asset.file, 'url') and request:
+                file_url = request.build_absolute_uri(photo.media_asset.file.url)
+            
+            photo_data.append({
+                'id': str(photo.id),
+                'photo_type': photo.photo_type,
+                'photo_type_display': photo.get_photo_type_display(),
+                'caption': photo.caption,
+                'description': photo.description,
+                'is_required': photo.is_required,
+                'checklist_item': photo.checklist_item,
+                'file_url': file_url,
+                'file_size': photo.media_asset.file_size,
+                'mime_type': photo.media_asset.mime_type,
+                'uploaded_by': photo.uploaded_by.user.get_full_name() if photo.uploaded_by else None,
+                'uploaded_at': photo.uploaded_at,
+            })
+        
+        return photo_data
+    
+    def get_required_photo_types(self, obj):
+        """Get list of required photo types for this installation"""
+        return obj.get_required_photo_types()
+    
+    def get_photos_status(self, obj):
+        """Get status of required photos"""
+        all_uploaded, missing = obj.are_all_required_photos_uploaded()
+        uploaded_types = list(obj.photos.values_list('photo_type', flat=True).distinct())
+        
+        return {
+            'all_required_uploaded': all_uploaded,
+            'missing_photo_types': missing,
+            'uploaded_photo_types': uploaded_types,
+            'total_photos': obj.photos.count(),
+        }
 
 
 class InstallationSystemRecordCreateUpdateSerializer(serializers.ModelSerializer):
@@ -424,3 +472,188 @@ class InstallationSystemRecordCreateUpdateSerializer(serializers.ModelSerializer
             instance.job_cards.set(job_cards)
         
         return instance
+
+
+class InstallationPhotoListSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for listing installation photos.
+    """
+    media_asset_details = serializers.SerializerMethodField()
+    uploaded_by_name = serializers.SerializerMethodField()
+    photo_type_display = serializers.CharField(source='get_photo_type_display', read_only=True)
+    
+    class Meta:
+        model = InstallationPhoto
+        fields = [
+            'id',
+            'installation_record',
+            'media_asset',
+            'media_asset_details',
+            'photo_type',
+            'photo_type_display',
+            'caption',
+            'description',
+            'is_required',
+            'checklist_item',
+            'uploaded_by',
+            'uploaded_by_name',
+            'uploaded_at',
+        ]
+        read_only_fields = ['id', 'uploaded_at']
+    
+    def get_media_asset_details(self, obj):
+        """Get media asset file URL and basic info"""
+        if obj.media_asset:
+            request = self.context.get('request')
+            file_url = None
+            if obj.media_asset.file and hasattr(obj.media_asset.file, 'url') and request:
+                file_url = request.build_absolute_uri(obj.media_asset.file.url)
+            
+            return {
+                'id': obj.media_asset.id,
+                'name': obj.media_asset.name,
+                'file_url': file_url,
+                'file_size': obj.media_asset.file_size,
+                'mime_type': obj.media_asset.mime_type,
+            }
+        return None
+    
+    def get_uploaded_by_name(self, obj):
+        """Get technician name who uploaded the photo"""
+        if obj.uploaded_by:
+            return obj.uploaded_by.user.get_full_name() or obj.uploaded_by.user.username
+        return None
+
+
+class InstallationPhotoDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for installation photos with full media asset details.
+    """
+    media_asset_details = MediaAssetSerializer(source='media_asset', read_only=True)
+    uploaded_by_details = serializers.SerializerMethodField()
+    photo_type_display = serializers.CharField(source='get_photo_type_display', read_only=True)
+    installation_record_short_id = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = InstallationPhoto
+        fields = [
+            'id',
+            'installation_record',
+            'installation_record_short_id',
+            'media_asset',
+            'media_asset_details',
+            'photo_type',
+            'photo_type_display',
+            'caption',
+            'description',
+            'is_required',
+            'checklist_item',
+            'uploaded_by',
+            'uploaded_by_details',
+            'uploaded_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'uploaded_at', 'updated_at']
+    
+    def get_installation_record_short_id(self, obj):
+        """Get shortened ISR ID"""
+        return f"ISR-{str(obj.installation_record.id)[:8]}"
+    
+    def get_uploaded_by_details(self, obj):
+        """Get detailed technician info"""
+        if obj.uploaded_by:
+            return {
+                'id': obj.uploaded_by.id,
+                'name': obj.uploaded_by.user.get_full_name() or obj.uploaded_by.user.username,
+                'email': obj.uploaded_by.user.email,
+                'specialization': obj.uploaded_by.specialization,
+            }
+        return None
+
+
+class InstallationPhotoCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating installation photos.
+    """
+    # Accept file upload directly in photo creation
+    file = serializers.FileField(write_only=True, required=True)
+    media_asset_name = serializers.CharField(write_only=True, required=False)
+    
+    class Meta:
+        model = InstallationPhoto
+        fields = [
+            'installation_record',
+            'file',
+            'media_asset_name',
+            'photo_type',
+            'caption',
+            'description',
+            'is_required',
+            'checklist_item',
+            'uploaded_by',
+        ]
+    
+    def validate_file(self, value):
+        """Validate uploaded file"""
+        # Check file size (max 10MB for photos)
+        max_size = 10 * 1024 * 1024  # 10MB
+        if value.size > max_size:
+            raise serializers.ValidationError(
+                f"File size cannot exceed {max_size // (1024*1024)}MB."
+            )
+        
+        # Check if it's an image
+        if not value.content_type.startswith('image/'):
+            raise serializers.ValidationError(
+                "Only image files are allowed for installation photos."
+            )
+        
+        return value
+    
+    def create(self, validated_data):
+        """
+        Create InstallationPhoto with associated MediaAsset.
+        """
+        from media_manager.models import MediaAsset
+        
+        # Extract file and create MediaAsset
+        file = validated_data.pop('file')
+        media_asset_name = validated_data.pop('media_asset_name', None)
+        
+        if not media_asset_name:
+            # Generate name from photo type and installation
+            photo_type = validated_data.get('photo_type', 'unknown')
+            installation = validated_data.get('installation_record')
+            media_asset_name = f"{installation} - {photo_type} - {file.name}"
+        
+        # Create MediaAsset
+        media_asset = MediaAsset.objects.create(
+            name=media_asset_name,
+            file=file,
+            media_type='image',
+            status='local'
+        )
+        
+        # Create InstallationPhoto
+        installation_photo = InstallationPhoto.objects.create(
+            media_asset=media_asset,
+            **validated_data
+        )
+        
+        return installation_photo
+
+
+class InstallationPhotoUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating installation photo metadata.
+    Does not allow changing the file itself.
+    """
+    class Meta:
+        model = InstallationPhoto
+        fields = [
+            'photo_type',
+            'caption',
+            'description',
+            'is_required',
+            'checklist_item',
+        ]
