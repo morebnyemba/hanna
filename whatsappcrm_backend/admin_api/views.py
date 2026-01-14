@@ -9,6 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 # Import models
 from notifications.models import Notification, NotificationTemplate
@@ -585,7 +586,6 @@ class InstallationChecklistEntryViewSet(viewsets.ModelViewSet):
         if item_id not in entry.completed_items:
             entry.completed_items[item_id] = {}
 
-        from django.utils import timezone
         entry.completed_items[item_id].update({
             'completed': completed,
             'completed_at': timezone.now().isoformat() if completed else None,

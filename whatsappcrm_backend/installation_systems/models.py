@@ -474,20 +474,20 @@ class InstallationChecklistEntry(models.Model):
         Update the completion status and percentage.
         Should be called after modifying completed_items.
         """
+        from django.utils import timezone
+        
         self.completion_percentage = self.calculate_completion_percentage()
         
-        if self.completion_percentage == 0:
+        if self.completion_percentage == Decimal('0'):
             self.completion_status = self.CompletionStatus.NOT_STARTED
             self.started_at = None
-        elif self.completion_percentage < 100:
+        elif self.completion_percentage < Decimal('100'):
             self.completion_status = self.CompletionStatus.IN_PROGRESS
             if not self.started_at:
-                from django.utils import timezone
                 self.started_at = timezone.now()
         else:
             self.completion_status = self.CompletionStatus.COMPLETED
             if not self.completed_at:
-                from django.utils import timezone
                 self.completed_at = timezone.now()
     
     def is_fully_completed(self):
@@ -495,7 +495,7 @@ class InstallationChecklistEntry(models.Model):
         Check if all required items are completed.
         Returns True if 100% complete, False otherwise.
         """
-        return self.completion_percentage == 100
+        return self.completion_percentage == Decimal('100')
     
     def __str__(self):
         """Returns string representation"""

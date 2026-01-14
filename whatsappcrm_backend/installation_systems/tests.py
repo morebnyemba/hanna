@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 from datetime import date
 from conversations.models import Contact
@@ -410,7 +411,6 @@ class CommissioningChecklistTemplateModelTest(TestCase):
     
     def test_create_checklist_template(self):
         """Test creating a checklist template"""
-        from .models import CommissioningChecklistTemplate
         
         items = [
             {
@@ -451,7 +451,6 @@ class CommissioningChecklistTemplateModelTest(TestCase):
         
     def test_str_method(self):
         """Test __str__ method"""
-        from .models import CommissioningChecklistTemplate
         
         template = CommissioningChecklistTemplate.objects.create(
             name='Solar Commissioning',
@@ -465,7 +464,6 @@ class CommissioningChecklistTemplateModelTest(TestCase):
     
     def test_template_without_installation_type(self):
         """Test template without specific installation type (general template)"""
-        from .models import CommissioningChecklistTemplate
         
         template = CommissioningChecklistTemplate.objects.create(
             name='General Safety Checklist',
@@ -482,7 +480,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def setUp(self):
         """Set up test data"""
-        from .models import CommissioningChecklistTemplate
         
         # Create user for technician
         self.user = User.objects.create_user(
@@ -552,7 +549,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def test_create_checklist_entry(self):
         """Test creating a checklist entry"""
-        from .models import InstallationChecklistEntry
         
         entry = InstallationChecklistEntry.objects.create(
             installation_record=self.isr,
@@ -569,7 +565,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def test_calculate_completion_percentage_empty(self):
         """Test completion percentage calculation with no completed items"""
-        from .models import InstallationChecklistEntry
         
         entry = InstallationChecklistEntry.objects.create(
             installation_record=self.isr,
@@ -581,7 +576,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def test_calculate_completion_percentage_partial(self):
         """Test completion percentage calculation with partial completion"""
-        from .models import InstallationChecklistEntry
         
         entry = InstallationChecklistEntry.objects.create(
             installation_record=self.isr,
@@ -598,7 +592,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def test_calculate_completion_percentage_full(self):
         """Test completion percentage calculation with full completion"""
-        from .models import InstallationChecklistEntry
         
         entry = InstallationChecklistEntry.objects.create(
             installation_record=self.isr,
@@ -616,7 +609,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def test_update_completion_status_not_started(self):
         """Test update_completion_status for not started"""
-        from .models import InstallationChecklistEntry
         
         entry = InstallationChecklistEntry.objects.create(
             installation_record=self.isr,
@@ -629,7 +621,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def test_update_completion_status_in_progress(self):
         """Test update_completion_status for in progress"""
-        from .models import InstallationChecklistEntry
         
         entry = InstallationChecklistEntry.objects.create(
             installation_record=self.isr,
@@ -645,7 +636,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def test_update_completion_status_completed(self):
         """Test update_completion_status for completed"""
-        from .models import InstallationChecklistEntry
         
         entry = InstallationChecklistEntry.objects.create(
             installation_record=self.isr,
@@ -662,7 +652,6 @@ class InstallationChecklistEntryModelTest(TestCase):
     
     def test_is_fully_completed(self):
         """Test is_fully_completed method"""
-        from .models import InstallationChecklistEntry
         
         entry = InstallationChecklistEntry.objects.create(
             installation_record=self.isr,
@@ -687,7 +676,6 @@ class InstallationValidationTest(TestCase):
     
     def setUp(self):
         """Set up test data"""
-        from .models import CommissioningChecklistTemplate
         
         # Create user
         self.user = User.objects.create_user(
@@ -732,7 +720,6 @@ class InstallationValidationTest(TestCase):
     def test_cannot_commission_without_complete_checklist(self):
         """Test that installation cannot be commissioned without complete checklist"""
         from django.core.exceptions import ValidationError
-        from .models import InstallationChecklistEntry
         
         # Create installation
         isr = InstallationSystemRecord.objects.create(
@@ -761,7 +748,6 @@ class InstallationValidationTest(TestCase):
     
     def test_can_commission_with_complete_checklist(self):
         """Test that installation can be commissioned with complete checklist"""
-        from .models import InstallationChecklistEntry
         
         # Create installation
         isr = InstallationSystemRecord.objects.create(
