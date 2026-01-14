@@ -7,7 +7,7 @@ from conversations.models import Contact
 from customer_data.models import CustomerProfile, Order
 from warranty.models import Technician
 from products_and_services.models import Product, SerializedItem
-from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry, InstallationPhoto
 
 User = get_user_model()
 
@@ -785,3 +785,322 @@ class InstallationValidationTest(TestCase):
         isr.save()  # Should not raise exception
         
         self.assertEqual(isr.installation_status, 'commissioned')
+
+
+class InstallationPhotoModelTest(TestCase):
+    """Tests for the InstallationPhoto model"""
+    
+    def setUp(self):
+        """Set up test data"""
+        from media_manager.models import MediaAsset
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        # Create user for technician
+        self.user = User.objects.create_user(
+            username='techuser',
+            email='tech@example.com',
+            password='testpass123'
+        )
+        
+        # Create WhatsApp contact
+        self.contact = Contact.objects.create(
+            whatsapp_id='+263771234567',
+            name='John Doe'
+        )
+        
+        # Create customer profile
+        self.customer = CustomerProfile.objects.create(
+            contact=self.contact,
+            first_name='John',
+            last_name='Doe',
+            email='john.doe@example.com'
+        )
+        
+        # Create technician
+        self.technician = Technician.objects.create(
+            user=self.user,
+            specialization='Solar Installation'
+        )
+        
+        # Create installation record
+        self.isr = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+            system_size=Decimal('5.0'),
+            capacity_unit='kW',
+            installation_status='pending'
+        )
+        
+        # Create a simple test image file
+        image_file = SimpleUploadedFile(
+            name='test_image.jpg',
+            content=b'fake image content',
+            content_type='image/jpeg'
+        )
+        
+        # Create media asset
+        self.media_asset = MediaAsset.objects.create(
+            name='Test Photo',
+            file=image_file,
+            media_type='image'
+        )
+    
+    def test_create_installation_photo(self):
+        """Test creating an installation photo"""
+        from .models import InstallationPhoto
+        
+        photo = InstallationPhoto.objects.create(
+            installation_record=self.isr,
+            media_asset=self.media_asset,
+            photo_type='serial_number',
+            caption='Serial number plate',
+            description='Photo of the serial number on the equipment',
+            uploaded_by=self.technician,
+            is_required=True
+        )
+        
+        self.assertEqual(photo.installation_record, self.isr)
+        self.assertEqual(photo.media_asset, self.media_asset)
+        self.assertEqual(photo.photo_type, 'serial_number')
+        self.assertEqual(photo.caption, 'Serial number plate')
+        self.assertTrue(photo.is_required)
+        self.assertEqual(photo.uploaded_by, self.technician)
+        self.assertIsNotNone(photo.id)
+        self.assertIsNotNone(photo.uploaded_at)
+    
+    def test_photo_type_choices(self):
+        """Test that all photo type choices are available"""
+        from .models import InstallationPhoto
+        
+        expected_types = [
+            'before', 'during', 'after', 'serial_number',
+            'test_result', 'site', 'equipment', 'other'
+        ]
+        
+        available_types = [choice[0] for choice in InstallationPhoto.PhotoType.choices]
+        
+        for photo_type in expected_types:
+            self.assertIn(photo_type, available_types)
+    
+    def test_photo_str_method(self):
+        """Test __str__ method"""
+        from .models import InstallationPhoto
+        
+        photo = InstallationPhoto.objects.create(
+            installation_record=self.isr,
+            media_asset=self.media_asset,
+            photo_type='after',
+            uploaded_by=self.technician
+        )
+        
+        str_repr = str(photo)
+        self.assertIn('After Installation', str_repr)
+        self.assertIn('ISR-', str_repr)
+    
+    def test_photo_relationship_with_installation(self):
+        """Test relationship between photo and installation"""
+        from .models import InstallationPhoto
+        
+        photo = InstallationPhoto.objects.create(
+            installation_record=self.isr,
+            media_asset=self.media_asset,
+            photo_type='before',
+        )
+        
+        # Test forward relationship
+        self.assertEqual(photo.installation_record, self.isr)
+        
+        # Test reverse relationship
+        self.assertIn(photo, self.isr.photos.all())
+        self.assertEqual(self.isr.photos.count(), 1)
+    
+    def test_checklist_item_linkage(self):
+        """Test linking photo to checklist item"""
+        from .models import InstallationPhoto
+        
+        photo = InstallationPhoto.objects.create(
+            installation_record=self.isr,
+            media_asset=self.media_asset,
+            photo_type='test_result',
+            checklist_item='item_1',
+        )
+        
+        self.assertEqual(photo.checklist_item, 'item_1')
+    
+    def test_multiple_photos_same_installation(self):
+        """Test creating multiple photos for same installation"""
+        from .models import InstallationPhoto
+        from media_manager.models import MediaAsset
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        # Create additional media assets
+        image_file2 = SimpleUploadedFile(
+            name='test_image2.jpg',
+            content=b'fake image content 2',
+            content_type='image/jpeg'
+        )
+        media_asset2 = MediaAsset.objects.create(
+            name='Test Photo 2',
+            file=image_file2,
+            media_type='image'
+        )
+        
+        photo1 = InstallationPhoto.objects.create(
+            installation_record=self.isr,
+            media_asset=self.media_asset,
+            photo_type='before',
+        )
+        
+        photo2 = InstallationPhoto.objects.create(
+            installation_record=self.isr,
+            media_asset=media_asset2,
+            photo_type='after',
+        )
+        
+        self.assertEqual(self.isr.photos.count(), 2)
+        self.assertIn(photo1, self.isr.photos.all())
+        self.assertIn(photo2, self.isr.photos.all())
+    
+    def test_required_photo_types_solar(self):
+        """Test required photo types for solar installation"""
+        required = self.isr.get_required_photo_types()
+        
+        self.assertIn('serial_number', required)
+        self.assertIn('test_result', required)
+        self.assertIn('after', required)
+    
+    def test_required_photo_types_starlink(self):
+        """Test required photo types for starlink installation"""
+        isr_starlink = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='starlink',
+        )
+        
+        required = isr_starlink.get_required_photo_types()
+        
+        self.assertIn('serial_number', required)
+        self.assertIn('equipment', required)
+        self.assertIn('after', required)
+    
+    def test_required_photo_types_custom_furniture(self):
+        """Test required photo types for custom furniture installation"""
+        isr_furniture = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='custom_furniture',
+        )
+        
+        required = isr_furniture.get_required_photo_types()
+        
+        self.assertIn('before', required)
+        self.assertIn('after', required)
+    
+    def test_are_all_required_photos_uploaded_missing(self):
+        """Test checking for missing required photos"""
+        all_uploaded, missing = self.isr.are_all_required_photos_uploaded()
+        
+        self.assertFalse(all_uploaded)
+        self.assertEqual(len(missing), 3)  # solar requires 3 photo types
+        self.assertIn('serial_number', missing)
+        self.assertIn('test_result', missing)
+        self.assertIn('after', missing)
+    
+    def test_are_all_required_photos_uploaded_complete(self):
+        """Test when all required photos are uploaded"""
+        from .models import InstallationPhoto
+        from media_manager.models import MediaAsset
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        # Upload all required photo types for solar
+        for photo_type in ['serial_number', 'test_result', 'after']:
+            image_file = SimpleUploadedFile(
+                name=f'{photo_type}.jpg',
+                content=b'fake image content',
+                content_type='image/jpeg'
+            )
+            media_asset = MediaAsset.objects.create(
+                name=f'{photo_type} photo',
+                file=image_file,
+                media_type='image'
+            )
+            InstallationPhoto.objects.create(
+                installation_record=self.isr,
+                media_asset=media_asset,
+                photo_type=photo_type,
+            )
+        
+        all_uploaded, missing = self.isr.are_all_required_photos_uploaded()
+        
+        self.assertTrue(all_uploaded)
+        self.assertEqual(len(missing), 0)
+    
+    def test_cannot_commission_without_required_photos(self):
+        """Test that installation cannot be commissioned without required photos"""
+        # Create a checklist to pass checklist validation
+        template = CommissioningChecklistTemplate.objects.create(
+            name='Test Checklist',
+            checklist_type='commissioning',
+            items=[
+                {'id': 'item_1', 'title': 'Item 1', 'required': True}
+            ]
+        )
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=template,
+            completed_items={'item_1': {'completed': True}}
+        )
+        entry.update_completion_status()
+        entry.save()
+        
+        # Try to commission without photos
+        self.isr.installation_status = 'commissioned'
+        
+        with self.assertRaises(ValidationError) as context:
+            self.isr.save()
+        
+        self.assertIn('required photos', str(context.exception).lower())
+    
+    def test_can_commission_with_all_required_photos(self):
+        """Test that installation can be commissioned with all required photos"""
+        from .models import InstallationPhoto
+        from media_manager.models import MediaAsset
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        # Create checklist
+        template = CommissioningChecklistTemplate.objects.create(
+            name='Test Checklist',
+            checklist_type='commissioning',
+            items=[
+                {'id': 'item_1', 'title': 'Item 1', 'required': True}
+            ]
+        )
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=template,
+            completed_items={'item_1': {'completed': True}}
+        )
+        entry.update_completion_status()
+        entry.save()
+        
+        # Upload all required photos
+        for photo_type in ['serial_number', 'test_result', 'after']:
+            image_file = SimpleUploadedFile(
+                name=f'{photo_type}.jpg',
+                content=b'fake image content',
+                content_type='image/jpeg'
+            )
+            media_asset = MediaAsset.objects.create(
+                name=f'{photo_type} photo',
+                file=image_file,
+                media_type='image'
+            )
+            InstallationPhoto.objects.create(
+                installation_record=self.isr,
+                media_asset=media_asset,
+                photo_type=photo_type,
+            )
+        
+        # Should be able to commission now
+        self.isr.installation_status = 'commissioned'
+        self.isr.save()  # Should not raise exception
+        
+        self.assertEqual(self.isr.installation_status, 'commissioned')

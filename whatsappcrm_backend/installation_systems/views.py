@@ -1,15 +1,20 @@
-from rest_framework import viewsets, permissions, filters
+from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
 from warranty.models import Technician
 from products_and_services.models import SerializedItem
-from .models import InstallationSystemRecord
+from .models import InstallationSystemRecord, InstallationPhoto
 from .serializers import (
     InstallationSystemRecordListSerializer,
     InstallationSystemRecordDetailSerializer,
     InstallationSystemRecordCreateUpdateSerializer,
+    InstallationPhotoListSerializer,
+    InstallationPhotoDetailSerializer,
+    InstallationPhotoCreateSerializer,
+    InstallationPhotoUpdateSerializer,
 )
 
 
@@ -305,3 +310,265 @@ class InstallationSystemRecordViewSet(viewsets.ModelViewSet):
             }
         
         return Response(stats)
+
+
+class InstallationPhotoPermission(permissions.BasePermission):
+    """
+    Custom permission for InstallationPhoto:
+    - Admin users: Full CRUD access
+    - Technician users: Can upload (create) and view photos for assigned installations
+    - Client users: Can view photos for their installations (read-only)
+    - Unauthenticated: No access
+    """
+    
+    def has_permission(self, request, view):
+        """Check if user has permission to access the view"""
+        # Require authentication
+        if not request.user or not request.user.is_authenticated:
+            return False
+        
+        # Admins and staff have full access
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+        
+        # Technicians can upload and view
+        if hasattr(request.user, 'technician_profile'):
+            return request.method in list(permissions.SAFE_METHODS) + ['POST']
+        
+        # Clients can only view (read-only)
+        if hasattr(request.user, 'customer_profile'):
+            return request.method in permissions.SAFE_METHODS
+        
+        return False
+    
+    def has_object_permission(self, request, view, obj):
+        """Check if user has permission to access specific photo"""
+        # Admins and staff have full access
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+        
+        # Technicians can view and update photos for their assigned installations
+        if hasattr(request.user, 'technician_profile'):
+            technician = request.user.technician_profile
+            installation = obj.installation_record
+            if installation.technicians.filter(id=technician.id).exists():
+                return request.method in permissions.SAFE_METHODS or request.method in ['PUT', 'PATCH', 'DELETE']
+            return False
+        
+        # Clients can only view photos for their own installations
+        if hasattr(request.user, 'customer_profile'):
+            customer = request.user.customer_profile
+            return obj.installation_record.customer == customer and request.method in permissions.SAFE_METHODS
+        
+        return False
+
+
+class InstallationPhotoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Installation Photos.
+    
+    Provides CRUD operations with the following access control:
+    - Admin: Full access to all photos
+    - Technician: Can upload and view photos for assigned installations
+    - Client: Can view photos for own installations only (read-only)
+    
+    Filtering:
+    - By installation_record: ?installation_record=<uuid>
+    - By photo_type: ?photo_type=serial_number
+    - By uploaded_by: ?uploaded_by=<technician_id>
+    - By is_required: ?is_required=true
+    
+    Search:
+    - By caption, description
+    
+    Ordering:
+    - By any field using ?ordering=field_name
+    - Default: -uploaded_at (newest first)
+    """
+    
+    queryset = InstallationPhoto.objects.all()
+    permission_classes = [InstallationPhotoPermission]
+    parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = [
+        'installation_record',
+        'photo_type',
+        'uploaded_by',
+        'is_required',
+        'checklist_item',
+    ]
+    search_fields = [
+        'caption',
+        'description',
+    ]
+    ordering_fields = [
+        'uploaded_at',
+        'photo_type',
+    ]
+    ordering = ['-uploaded_at']
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action"""
+        if self.action == 'list':
+            return InstallationPhotoListSerializer
+        elif self.action == 'create':
+            return InstallationPhotoCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return InstallationPhotoUpdateSerializer
+        return InstallationPhotoDetailSerializer
+    
+    def get_queryset(self):
+        """
+        Filter queryset based on user permissions.
+        
+        - Admin/Staff: See all photos
+        - Technician: See only photos for assigned installations
+        - Client: See only photos for their own installations
+        """
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        # Prefetch related objects for performance
+        queryset = queryset.select_related(
+            'installation_record',
+            'installation_record__customer',
+            'media_asset',
+            'uploaded_by',
+            'uploaded_by__user',
+        )
+        
+        # Admin and staff see all
+        if user.is_staff or user.is_superuser:
+            return queryset
+        
+        # Technicians see photos for their assigned installations
+        if hasattr(user, 'technician_profile'):
+            technician = user.technician_profile
+            return queryset.filter(installation_record__technicians=technician)
+        
+        # Clients see photos for their own installations
+        if hasattr(user, 'customer_profile'):
+            customer = user.customer_profile
+            return queryset.filter(installation_record__customer=customer)
+        
+        # No access for other users
+        return queryset.none()
+    
+    def perform_create(self, serializer):
+        """Set uploaded_by to current technician if applicable"""
+        uploaded_by = None
+        if hasattr(self.request.user, 'technician_profile'):
+            uploaded_by = self.request.user.technician_profile
+        
+        serializer.save(uploaded_by=uploaded_by)
+    
+    @action(detail=False, methods=['get'])
+    def by_installation(self, request):
+        """
+        Get all photos for a specific installation, grouped by photo type.
+        Query parameter: installation_id
+        """
+        installation_id = request.query_params.get('installation_id')
+        
+        if not installation_id:
+            return Response(
+                {'error': 'installation_id query parameter required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            installation = InstallationSystemRecord.objects.get(id=installation_id)
+        except InstallationSystemRecord.DoesNotExist:
+            return Response(
+                {'error': 'Installation not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check permissions
+        if not self.check_installation_access(request.user, installation):
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get photos grouped by type
+        photos = self.get_queryset().filter(installation_record=installation)
+        
+        grouped_photos = {}
+        for photo_type in InstallationPhoto.PhotoType.values:
+            type_photos = photos.filter(photo_type=photo_type)
+            if type_photos.exists():
+                serializer = self.get_serializer(type_photos, many=True)
+                grouped_photos[photo_type] = serializer.data
+        
+        # Also include required photo types
+        required_types = installation.get_required_photo_types()
+        all_uploaded, missing_types = installation.are_all_required_photos_uploaded()
+        
+        return Response({
+            'installation_id': str(installation.id),
+            'installation_short_id': f"ISR-{str(installation.id)[:8]}",
+            'photos_by_type': grouped_photos,
+            'required_photo_types': required_types,
+            'missing_photo_types': missing_types,
+            'all_required_uploaded': all_uploaded,
+            'total_photos': photos.count(),
+        })
+    
+    @action(detail=False, methods=['get'])
+    def required_photos_status(self, request):
+        """
+        Check status of required photos for an installation.
+        Query parameter: installation_id
+        """
+        installation_id = request.query_params.get('installation_id')
+        
+        if not installation_id:
+            return Response(
+                {'error': 'installation_id query parameter required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            installation = InstallationSystemRecord.objects.get(id=installation_id)
+        except InstallationSystemRecord.DoesNotExist:
+            return Response(
+                {'error': 'Installation not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check permissions
+        if not self.check_installation_access(request.user, installation):
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        required_types = installation.get_required_photo_types()
+        all_uploaded, missing_types = installation.are_all_required_photos_uploaded()
+        
+        uploaded_counts = {}
+        for photo_type in required_types:
+            count = installation.photos.filter(photo_type=photo_type).count()
+            uploaded_counts[photo_type] = count
+        
+        return Response({
+            'installation_id': str(installation.id),
+            'required_photo_types': required_types,
+            'missing_photo_types': missing_types,
+            'uploaded_counts': uploaded_counts,
+            'all_required_uploaded': all_uploaded,
+        })
+    
+    def check_installation_access(self, user, installation):
+        """Helper method to check if user has access to installation"""
+        if user.is_staff or user.is_superuser:
+            return True
+        
+        if hasattr(user, 'technician_profile'):
+            return installation.technicians.filter(id=user.technician_profile.id).exists()
+        
+        if hasattr(user, 'customer_profile'):
+            return installation.customer == user.customer_profile
+        
+        return False
