@@ -58,6 +58,10 @@ router.register(r'site-assessment-requests', views.AdminSiteAssessmentRequestVie
 # Loan Applications
 router.register(r'loan-applications', views.AdminLoanApplicationViewSet, basename='loan-application')
 
+# Commissioning Checklists
+router.register(r'checklist-templates', views.CommissioningChecklistTemplateViewSet, basename='checklist-template')
+router.register(r'checklist-entries', views.InstallationChecklistEntryViewSet, basename='checklist-entry')
+
 urlpatterns = [
     path('', include(router.urls)),
 ]

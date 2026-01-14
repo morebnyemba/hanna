@@ -1,12 +1,13 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 from datetime import date
 from conversations.models import Contact
 from customer_data.models import CustomerProfile, Order
 from warranty.models import Technician
 from products_and_services.models import Product, SerializedItem
-from .models import InstallationSystemRecord
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
 
 User = get_user_model()
 
@@ -403,3 +404,384 @@ class InstallationSystemRecordModelTest(TestCase):
         
         # Test reverse relationship
         self.assertIn(isr, job_card.installation_system_records.all())
+
+
+class CommissioningChecklistTemplateModelTest(TestCase):
+    """Tests for the CommissioningChecklistTemplate model"""
+    
+    def test_create_checklist_template(self):
+        """Test creating a checklist template"""
+        
+        items = [
+            {
+                'id': 'item_1',
+                'title': 'Check item 1',
+                'description': 'Description 1',
+                'required': True,
+                'requires_photo': True,
+                'photo_count': 2,
+                'notes_required': False
+            },
+            {
+                'id': 'item_2',
+                'title': 'Check item 2',
+                'description': 'Description 2',
+                'required': True,
+                'requires_photo': False,
+                'photo_count': 0,
+                'notes_required': True
+            }
+        ]
+        
+        template = CommissioningChecklistTemplate.objects.create(
+            name='Test Pre-Installation Checklist',
+            checklist_type='pre_install',
+            installation_type='solar',
+            description='Test checklist for solar pre-installation',
+            items=items,
+            is_active=True
+        )
+        
+        self.assertEqual(template.name, 'Test Pre-Installation Checklist')
+        self.assertEqual(template.checklist_type, 'pre_install')
+        self.assertEqual(template.installation_type, 'solar')
+        self.assertEqual(len(template.items), 2)
+        self.assertTrue(template.is_active)
+        self.assertIsNotNone(template.id)
+        
+    def test_str_method(self):
+        """Test __str__ method"""
+        
+        template = CommissioningChecklistTemplate.objects.create(
+            name='Solar Commissioning',
+            checklist_type='commissioning',
+            items=[]
+        )
+        
+        str_repr = str(template)
+        self.assertIn('Solar Commissioning', str_repr)
+        self.assertIn('Commissioning', str_repr)
+    
+    def test_template_without_installation_type(self):
+        """Test template without specific installation type (general template)"""
+        
+        template = CommissioningChecklistTemplate.objects.create(
+            name='General Safety Checklist',
+            checklist_type='pre_install',
+            installation_type=None,
+            items=[]
+        )
+        
+        self.assertIsNone(template.installation_type)
+
+
+class InstallationChecklistEntryModelTest(TestCase):
+    """Tests for the InstallationChecklistEntry model"""
+    
+    def setUp(self):
+        """Set up test data"""
+        
+        # Create user for technician
+        self.user = User.objects.create_user(
+            username='techuser',
+            email='tech@example.com',
+            password='testpass123'
+        )
+        
+        # Create WhatsApp contact
+        self.contact = Contact.objects.create(
+            whatsapp_id='+263771234567',
+            name='John Doe'
+        )
+        
+        # Create customer profile
+        self.customer = CustomerProfile.objects.create(
+            contact=self.contact,
+            first_name='John',
+            last_name='Doe',
+            email='john.doe@example.com'
+        )
+        
+        # Create technician
+        self.technician = Technician.objects.create(
+            user=self.user,
+            specialization='Solar Installation'
+        )
+        
+        # Create installation record
+        self.isr = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+            system_size=Decimal('5.0'),
+            capacity_unit='kW',
+            installation_status='pending'
+        )
+        
+        # Create checklist template
+        self.template = CommissioningChecklistTemplate.objects.create(
+            name='Test Checklist',
+            checklist_type='installation',
+            installation_type='solar',
+            items=[
+                {
+                    'id': 'item_1',
+                    'title': 'Required Item 1',
+                    'required': True,
+                    'requires_photo': True,
+                    'photo_count': 2
+                },
+                {
+                    'id': 'item_2',
+                    'title': 'Required Item 2',
+                    'required': True,
+                    'requires_photo': False,
+                    'photo_count': 0
+                },
+                {
+                    'id': 'item_3',
+                    'title': 'Optional Item',
+                    'required': False,
+                    'requires_photo': False,
+                    'photo_count': 0
+                }
+            ]
+        )
+    
+    def test_create_checklist_entry(self):
+        """Test creating a checklist entry"""
+        
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=self.template,
+            technician=self.technician
+        )
+        
+        self.assertEqual(entry.installation_record, self.isr)
+        self.assertEqual(entry.template, self.template)
+        self.assertEqual(entry.technician, self.technician)
+        self.assertEqual(entry.completion_status, 'not_started')
+        self.assertEqual(entry.completion_percentage, 0)
+        self.assertIsNotNone(entry.id)
+    
+    def test_calculate_completion_percentage_empty(self):
+        """Test completion percentage calculation with no completed items"""
+        
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=self.template
+        )
+        
+        percentage = entry.calculate_completion_percentage()
+        self.assertEqual(percentage, Decimal('0'))
+    
+    def test_calculate_completion_percentage_partial(self):
+        """Test completion percentage calculation with partial completion"""
+        
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=self.template,
+            completed_items={
+                'item_1': {'completed': True},
+                'item_2': {'completed': False}
+            }
+        )
+        
+        percentage = entry.calculate_completion_percentage()
+        # 1 out of 2 required items = 50%
+        self.assertEqual(percentage, Decimal('50.00'))
+    
+    def test_calculate_completion_percentage_full(self):
+        """Test completion percentage calculation with full completion"""
+        
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=self.template,
+            completed_items={
+                'item_1': {'completed': True},
+                'item_2': {'completed': True},
+                'item_3': {'completed': False}  # Optional, doesn't affect percentage
+            }
+        )
+        
+        percentage = entry.calculate_completion_percentage()
+        # 2 out of 2 required items = 100%
+        self.assertEqual(percentage, Decimal('100.00'))
+    
+    def test_update_completion_status_not_started(self):
+        """Test update_completion_status for not started"""
+        
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=self.template
+        )
+        
+        entry.update_completion_status()
+        self.assertEqual(entry.completion_status, 'not_started')
+        self.assertIsNone(entry.started_at)
+    
+    def test_update_completion_status_in_progress(self):
+        """Test update_completion_status for in progress"""
+        
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=self.template,
+            completed_items={
+                'item_1': {'completed': True}
+            }
+        )
+        
+        entry.update_completion_status()
+        self.assertEqual(entry.completion_status, 'in_progress')
+        self.assertIsNotNone(entry.started_at)
+    
+    def test_update_completion_status_completed(self):
+        """Test update_completion_status for completed"""
+        
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=self.template,
+            completed_items={
+                'item_1': {'completed': True},
+                'item_2': {'completed': True}
+            }
+        )
+        
+        entry.update_completion_status()
+        self.assertEqual(entry.completion_status, 'completed')
+        self.assertIsNotNone(entry.completed_at)
+    
+    def test_is_fully_completed(self):
+        """Test is_fully_completed method"""
+        
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=self.isr,
+            template=self.template,
+            completed_items={
+                'item_1': {'completed': True},
+                'item_2': {'completed': True}
+            }
+        )
+        entry.update_completion_status()
+        
+        self.assertTrue(entry.is_fully_completed())
+        
+        # Test incomplete
+        entry.completed_items['item_2']['completed'] = False
+        entry.update_completion_status()
+        self.assertFalse(entry.is_fully_completed())
+
+
+class InstallationValidationTest(TestCase):
+    """Tests for installation validation logic"""
+    
+    def setUp(self):
+        """Set up test data"""
+        
+        # Create user
+        self.user = User.objects.create_user(
+            username='techuser',
+            email='tech@example.com',
+            password='testpass123'
+        )
+        
+        # Create WhatsApp contact
+        self.contact = Contact.objects.create(
+            whatsapp_id='+263771234567',
+            name='John Doe'
+        )
+        
+        # Create customer profile
+        self.customer = CustomerProfile.objects.create(
+            contact=self.contact,
+            first_name='John',
+            last_name='Doe',
+            email='john.doe@example.com'
+        )
+        
+        # Create technician
+        self.technician = Technician.objects.create(
+            user=self.user,
+            specialization='Solar Installation'
+        )
+        
+        # Create checklist template
+        self.template = CommissioningChecklistTemplate.objects.create(
+            name='Test Checklist',
+            checklist_type='commissioning',
+            items=[
+                {
+                    'id': 'item_1',
+                    'title': 'Required Item',
+                    'required': True
+                }
+            ]
+        )
+    
+    def test_cannot_commission_without_complete_checklist(self):
+        """Test that installation cannot be commissioned without complete checklist"""
+        # Create installation
+        isr = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+            installation_status='pending'
+        )
+        
+        # Create incomplete checklist
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=isr,
+            template=self.template,
+            completed_items={}
+        )
+        entry.update_completion_status()
+        entry.save()
+        
+        # Try to change status to commissioned
+        isr.installation_status = 'commissioned'
+        
+        with self.assertRaises(ValidationError) as context:
+            isr.save()
+        
+        self.assertIn('Cannot mark installation', str(context.exception))
+        self.assertIn('100% complete', str(context.exception))
+    
+    def test_can_commission_with_complete_checklist(self):
+        """Test that installation can be commissioned with complete checklist"""
+        
+        # Create installation
+        isr = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+            installation_status='pending'
+        )
+        
+        # Create complete checklist
+        entry = InstallationChecklistEntry.objects.create(
+            installation_record=isr,
+            template=self.template,
+            completed_items={
+                'item_1': {'completed': True}
+            }
+        )
+        entry.update_completion_status()
+        entry.save()
+        
+        # Change status to commissioned - should work
+        isr.installation_status = 'commissioned'
+        isr.save()  # Should not raise exception
+        
+        self.assertEqual(isr.installation_status, 'commissioned')
+    
+    def test_can_commission_without_checklists(self):
+        """Test that installation can be commissioned if no checklists exist"""
+        # Create installation without any checklists
+        isr = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+            installation_status='pending'
+        )
+        
+        # Change status to commissioned - should work
+        isr.installation_status = 'commissioned'
+        isr.save()  # Should not raise exception
+        
+        self.assertEqual(isr.installation_status, 'commissioned')
