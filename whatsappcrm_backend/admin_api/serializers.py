@@ -14,6 +14,7 @@ from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
 from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
+from installation_systems.models import InstallationSystemRecord
 
 
 # User Serializer
@@ -226,3 +227,28 @@ class LoanApplicationSerializer(serializers.ModelSerializer):
         if obj.customer:
             return f"{obj.customer.first_name or ''} {obj.customer.last_name or ''}".strip() or obj.customer.contact.name
         return None
+
+
+# InstallationSystemRecord
+class InstallationSystemRecordSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(source='customer.first_name', read_only=True)
+    customer_full_name = serializers.SerializerMethodField()
+    order_number = serializers.CharField(source='order.order_number', read_only=True, allow_null=True)
+    installation_type_display = serializers.CharField(source='get_installation_type_display', read_only=True)
+    system_classification_display = serializers.CharField(source='get_system_classification_display', read_only=True)
+    installation_status_display = serializers.CharField(source='get_installation_status_display', read_only=True)
+    capacity_unit_display = serializers.CharField(source='get_capacity_unit_display', read_only=True)
+    short_id = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = InstallationSystemRecord
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_customer_full_name(self, obj):
+        if obj.customer:
+            return obj.customer.get_full_name() or obj.customer.contact.name or obj.customer.contact.whatsapp_id
+        return None
+    
+    def get_short_id(self, obj):
+        return f"ISR-{str(obj.id)[:8]}"

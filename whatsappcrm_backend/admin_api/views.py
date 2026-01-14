@@ -19,6 +19,7 @@ from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
 from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
+from installation_systems.models import InstallationSystemRecord
 
 # Import serializers
 from .serializers import (
@@ -28,7 +29,8 @@ from .serializers import (
     RetailerSerializer, RetailerBranchSerializer,
     ManufacturerSerializer, TechnicianSerializer, WarrantySerializer, WarrantyClaimSerializer,
     DailyStatSerializer, CartSerializer, CartItemSerializer,
-    UserSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer, LoanApplicationSerializer
+    UserSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer, LoanApplicationSerializer,
+    InstallationSystemRecordSerializer,
 )
 
 
@@ -374,3 +376,122 @@ class AdminLoanApplicationViewSet(viewsets.ModelViewSet):
             'message': 'Loan application rejected.',
             'data': serializer.data
         })
+
+
+# Installation System Records
+class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
+    """Admin API for Installation System Records (SSR)"""
+    queryset = InstallationSystemRecord.objects.select_related(
+        'customer', 'customer__contact', 'order', 'installation_request'
+    ).prefetch_related(
+        'technicians', 'installed_components', 'warranties', 'job_cards'
+    ).all()
+    serializer_class = InstallationSystemRecordSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = [
+        'installation_type', 'installation_status', 'system_classification',
+        'capacity_unit', 'customer', 'order'
+    ]
+    search_fields = [
+        'customer__first_name', 'customer__last_name',
+        'customer__contact__whatsapp_id', 'installation_address',
+        'remote_monitoring_id'
+    ]
+    ordering_fields = [
+        'created_at', 'updated_at', 'installation_date',
+        'commissioning_date', 'installation_status', 'system_size'
+    ]
+    ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'])
+    def update_status(self, request, pk=None):
+        """
+        Custom action to update installation status.
+        """
+        installation = self.get_object()
+        new_status = request.data.get('status')
+        
+        if new_status not in dict(InstallationSystemRecord.InstallationStatus.choices):
+            return Response(
+                {'error': 'Invalid status value'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        installation.installation_status = new_status
+        installation.save(update_fields=['installation_status', 'updated_at'])
+        
+        serializer = self.get_serializer(installation)
+        return Response({
+            'message': f'Installation status updated to {new_status}.',
+            'data': serializer.data
+        })
+
+    @action(detail=True, methods=['post'])
+    def assign_technician(self, request, pk=None):
+        """
+        Custom action to assign a technician to the installation.
+        """
+        installation = self.get_object()
+        technician_id = request.data.get('technician_id')
+        
+        if not technician_id:
+            return Response(
+                {'error': 'technician_id required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            technician = Technician.objects.get(id=technician_id)
+            installation.technicians.add(technician)
+            
+            serializer = self.get_serializer(installation)
+            return Response({
+                'message': f'Technician {technician.user.get_full_name()} assigned successfully.',
+                'data': serializer.data
+            })
+        except Technician.DoesNotExist:
+            return Response(
+                {'error': 'Technician not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=False, methods=['get'])
+    def statistics(self, request):
+        """
+        Get installation statistics.
+        """
+        queryset = self.get_queryset()
+        
+        stats = {
+            'total': queryset.count(),
+            'by_type': {},
+            'by_status': {},
+            'by_classification': {},
+        }
+        
+        # Count by installation type
+        for choice in InstallationSystemRecord.InstallationType.choices:
+            count = queryset.filter(installation_type=choice[0]).count()
+            stats['by_type'][choice[0]] = {
+                'count': count,
+                'label': choice[1],
+            }
+        
+        # Count by installation status
+        for choice in InstallationSystemRecord.InstallationStatus.choices:
+            count = queryset.filter(installation_status=choice[0]).count()
+            stats['by_status'][choice[0]] = {
+                'count': count,
+                'label': choice[1],
+            }
+        
+        # Count by system classification
+        for choice in InstallationSystemRecord.SystemClassification.choices:
+            count = queryset.filter(system_classification=choice[0]).count()
+            stats['by_classification'][choice[0]] = {
+                'count': count,
+                'label': choice[1],
+            }
+        
+        return Response(stats)
