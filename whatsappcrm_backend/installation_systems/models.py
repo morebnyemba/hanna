@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 from decimal import Decimal
 import uuid
 
@@ -213,8 +215,6 @@ class InstallationSystemRecord(models.Model):
         Validate the model before saving.
         Prevent marking installation as COMMISSIONED without complete checklists.
         """
-        from django.core.exceptions import ValidationError
-        
         # Only validate if status is being set to COMMISSIONED or ACTIVE
         if self.installation_status in [self.InstallationStatus.COMMISSIONED, self.InstallationStatus.ACTIVE]:
             # Check if we're actually changing the status (not on initial save)
@@ -474,8 +474,6 @@ class InstallationChecklistEntry(models.Model):
         Update the completion status and percentage.
         Should be called after modifying completed_items.
         """
-        from django.utils import timezone
-        
         self.completion_percentage = self.calculate_completion_percentage()
         
         if self.completion_percentage == Decimal('0'):

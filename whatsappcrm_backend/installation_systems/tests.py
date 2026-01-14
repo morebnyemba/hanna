@@ -719,8 +719,6 @@ class InstallationValidationTest(TestCase):
     
     def test_cannot_commission_without_complete_checklist(self):
         """Test that installation cannot be commissioned without complete checklist"""
-        from django.core.exceptions import ValidationError
-        
         # Create installation
         isr = InstallationSystemRecord.objects.create(
             customer=self.customer,
