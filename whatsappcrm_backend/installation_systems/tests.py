@@ -319,3 +319,87 @@ class InstallationSystemRecordModelTest(TestCase):
         records = list(InstallationSystemRecord.objects.all())
         self.assertEqual(records[0], isr2)  # Most recent first
         self.assertEqual(records[1], isr1)
+    
+    def test_installation_request_relationship(self):
+        """Test OneToOne relationship with InstallationRequest"""
+        from customer_data.models import InstallationRequest
+        
+        # Create InstallationRequest
+        inst_request = InstallationRequest.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+            full_name='John Doe',
+            address='123 Test St',
+            preferred_datetime='2024-01-15',
+            contact_phone='+263771234567'
+        )
+        
+        # Create ISR linked to InstallationRequest
+        isr = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_request=inst_request,
+            installation_type='solar',
+        )
+        
+        # Test forward relationship
+        self.assertEqual(isr.installation_request, inst_request)
+        
+        # Test reverse relationship
+        self.assertEqual(inst_request.installation_system_record, isr)
+    
+    def test_warranties_relationship(self):
+        """Test ManyToMany relationship with Warranty"""
+        from warranty.models import Warranty, Manufacturer
+        
+        # Create manufacturer
+        manufacturer = Manufacturer.objects.create(name='Test Manufacturer')
+        
+        # Create warranty
+        warranty = Warranty.objects.create(
+            manufacturer=manufacturer,
+            serialized_item=self.serialized_item,
+            customer=self.customer,
+            start_date=date(2024, 1, 1),
+            end_date=date(2025, 1, 1)
+        )
+        
+        # Create ISR
+        isr = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+        )
+        
+        # Add warranty
+        isr.warranties.add(warranty)
+        self.assertEqual(isr.warranties.count(), 1)
+        self.assertEqual(isr.warranties.first(), warranty)
+        
+        # Test reverse relationship
+        self.assertIn(isr, warranty.installation_system_records.all())
+    
+    def test_job_cards_relationship(self):
+        """Test ManyToMany relationship with JobCard"""
+        from customer_data.models import JobCard
+        
+        # Create job card
+        job_card = JobCard.objects.create(
+            job_card_number='JC-001',
+            customer=self.customer,
+            serialized_item=self.serialized_item,
+            reported_fault='Test fault',
+            is_under_warranty=True
+        )
+        
+        # Create ISR
+        isr = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+        )
+        
+        # Add job card
+        isr.job_cards.add(job_card)
+        self.assertEqual(isr.job_cards.count(), 1)
+        self.assertEqual(isr.job_cards.first(), job_card)
+        
+        # Test reverse relationship
+        self.assertIn(isr, job_card.installation_system_records.all())

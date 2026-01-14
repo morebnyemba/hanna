@@ -47,6 +47,14 @@ class InstallationSystemRecord(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     # Relationships
+    installation_request = models.OneToOneField(
+        'customer_data.InstallationRequest',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='installation_system_record',
+        help_text=_("The installation request that initiated this installation.")
+    )
     customer = models.ForeignKey(
         'customer_data.CustomerProfile',
         on_delete=models.PROTECT,
@@ -72,6 +80,18 @@ class InstallationSystemRecord(models.Model):
         related_name='installation_system_records',
         blank=True,
         help_text=_("SerializedItems that are part of this installation.")
+    )
+    warranties = models.ManyToManyField(
+        'warranty.Warranty',
+        related_name='installation_system_records',
+        blank=True,
+        help_text=_("Warranties associated with this installation.")
+    )
+    job_cards = models.ManyToManyField(
+        'customer_data.JobCard',
+        related_name='installation_system_records',
+        blank=True,
+        help_text=_("Service job cards associated with this installation.")
     )
     
     # Installation details

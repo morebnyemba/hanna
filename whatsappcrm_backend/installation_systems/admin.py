@@ -34,15 +34,15 @@ class InstallationSystemRecordAdmin(admin.ModelAdmin):
         'remote_monitoring_id',
     )
     readonly_fields = ('id', 'created_at', 'updated_at')
-    autocomplete_fields = ['customer', 'order']
-    filter_horizontal = ('technicians', 'installed_components')
+    autocomplete_fields = ['customer', 'order', 'installation_request']
+    filter_horizontal = ('technicians', 'installed_components', 'warranties', 'job_cards')
     list_per_page = 25
     list_select_related = ('customer', 'order', 'customer__contact')
     date_hierarchy = 'installation_date'
     
     fieldsets = (
         ('System Identification', {
-            'fields': ('id', 'customer', 'order')
+            'fields': ('id', 'installation_request', 'customer', 'order')
         }),
         ('Installation Details', {
             'fields': (
@@ -65,8 +65,8 @@ class InstallationSystemRecordAdmin(admin.ModelAdmin):
                 'remote_monitoring_id',
             )
         }),
-        ('Assignment', {
-            'fields': ('technicians', 'installed_components'),
+        ('Assignment & Service', {
+            'fields': ('technicians', 'installed_components', 'warranties', 'job_cards'),
         }),
         ('System Timestamps', {
             'fields': ('created_at', 'updated_at'),

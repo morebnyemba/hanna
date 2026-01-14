@@ -49,6 +49,9 @@ router.register(r'cart-items', views.AdminCartItemViewSet, basename='cart-item')
 # Installation Requests
 router.register(r'installation-requests', views.AdminInstallationRequestViewSet, basename='installation-request')
 
+# Installation System Records (SSR)
+router.register(r'installation-system-records', views.AdminInstallationSystemRecordViewSet, basename='installation-system-record')
+
 # Site Assessment Requests
 router.register(r'site-assessment-requests', views.AdminSiteAssessmentRequestViewSet, basename='site-assessment-request')
 
