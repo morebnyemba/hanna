@@ -19,7 +19,7 @@ from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
 from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
-from installation_systems.models import InstallationSystemRecord
+from installation_systems.models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
 
 # Import serializers
 from .serializers import (
@@ -31,6 +31,9 @@ from .serializers import (
     DailyStatSerializer, CartSerializer, CartItemSerializer,
     UserSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer, LoanApplicationSerializer,
     InstallationSystemRecordSerializer,
+    CommissioningChecklistTemplateSerializer,
+    InstallationChecklistEntrySerializer,
+    InstallationChecklistEntryCreateSerializer,
 )
 
 
@@ -495,3 +498,154 @@ class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
             }
         
         return Response(stats)
+
+
+# Commissioning Checklist Templates
+class CommissioningChecklistTemplateViewSet(viewsets.ModelViewSet):
+    """Admin API for Commissioning Checklist Templates"""
+    queryset = CommissioningChecklistTemplate.objects.all()
+    serializer_class = CommissioningChecklistTemplateSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['checklist_type', 'installation_type', 'is_active']
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'checklist_type', 'updated_at']
+    ordering = ['checklist_type', 'name']
+
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """
+        Custom action to duplicate a checklist template.
+        """
+        template = self.get_object()
+        new_template = CommissioningChecklistTemplate.objects.create(
+            name=f"{template.name} (Copy)",
+            checklist_type=template.checklist_type,
+            installation_type=template.installation_type,
+            description=template.description,
+            items=template.items,
+            is_active=False  # New templates start inactive
+        )
+        serializer = self.get_serializer(new_template)
+        return Response({
+            'message': 'Template duplicated successfully.',
+            'data': serializer.data
+        })
+
+
+# Installation Checklist Entries
+class InstallationChecklistEntryViewSet(viewsets.ModelViewSet):
+    """Admin API for Installation Checklist Entries"""
+    queryset = InstallationChecklistEntry.objects.select_related(
+        'installation_record', 'template', 'technician', 'technician__user'
+    ).all()
+    serializer_class = InstallationChecklistEntrySerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = [
+        'completion_status', 'template__checklist_type',
+        'installation_record', 'technician'
+    ]
+    search_fields = [
+        'installation_record__customer__first_name',
+        'installation_record__customer__last_name',
+        'template__name',
+    ]
+    ordering_fields = [
+        'created_at', 'updated_at', 'completion_percentage',
+        'started_at', 'completed_at'
+    ]
+    ordering = ['-created_at']
+
+    def get_serializer_class(self):
+        """Use different serializer for create action"""
+        if self.action == 'create':
+            return InstallationChecklistEntryCreateSerializer
+        return InstallationChecklistEntrySerializer
+
+    @action(detail=True, methods=['post'])
+    def update_item(self, request, pk=None):
+        """
+        Custom action to update a single checklist item.
+        Expects: item_id, completed (bool), notes (optional), photos (optional)
+        """
+        entry = self.get_object()
+        item_id = request.data.get('item_id')
+        completed = request.data.get('completed', False)
+        notes = request.data.get('notes', '')
+        photos = request.data.get('photos', [])
+
+        if not item_id:
+            return Response(
+                {'error': 'item_id required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update completed_items
+        if item_id not in entry.completed_items:
+            entry.completed_items[item_id] = {}
+
+        from django.utils import timezone
+        entry.completed_items[item_id].update({
+            'completed': completed,
+            'completed_at': timezone.now().isoformat() if completed else None,
+            'notes': notes,
+            'photos': photos,
+            'completed_by': str(request.user.id) if request.user.is_authenticated else None,
+        })
+
+        # Recalculate completion status
+        entry.update_completion_status()
+        entry.save()
+
+        serializer = self.get_serializer(entry)
+        return Response({
+            'message': f'Checklist item {item_id} updated successfully.',
+            'data': serializer.data
+        })
+
+    @action(detail=True, methods=['get'])
+    def checklist_status(self, request, pk=None):
+        """
+        Get detailed status of checklist completion.
+        """
+        entry = self.get_object()
+        template_items = entry.template.items
+
+        items_status = []
+        for item in template_items:
+            item_id = item.get('id')
+            completed_data = entry.completed_items.get(item_id, {})
+            items_status.append({
+                'item_id': item_id,
+                'title': item.get('title'),
+                'required': item.get('required', False),
+                'completed': completed_data.get('completed', False),
+                'notes': completed_data.get('notes', ''),
+                'photos': completed_data.get('photos', []),
+                'completed_at': completed_data.get('completed_at'),
+            })
+
+        return Response({
+            'entry_id': str(entry.id),
+            'completion_status': entry.completion_status,
+            'completion_percentage': float(entry.completion_percentage),
+            'items': items_status,
+        })
+
+    @action(detail=False, methods=['get'])
+    def by_installation(self, request):
+        """
+        Get all checklists for a specific installation.
+        Query param: installation_id
+        """
+        installation_id = request.query_params.get('installation_id')
+        if not installation_id:
+            return Response(
+                {'error': 'installation_id query parameter required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        entries = self.get_queryset().filter(installation_record_id=installation_id)
+        serializer = self.get_serializer(entries, many=True)
+        return Response(serializer.data)

@@ -1,9 +1,155 @@
 from rest_framework import serializers
-from .models import InstallationSystemRecord
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
 from customer_data.models import CustomerProfile, Order, InstallationRequest
 from warranty.models import Technician, Warranty
 from customer_data.models import JobCard
 from products_and_services.models import SerializedItem
+
+
+class CommissioningChecklistTemplateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CommissioningChecklistTemplate model.
+    """
+    checklist_type_display = serializers.CharField(source='get_checklist_type_display', read_only=True)
+    installation_type_display = serializers.CharField(source='get_installation_type_display', read_only=True)
+    item_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CommissioningChecklistTemplate
+        fields = [
+            'id',
+            'name',
+            'checklist_type',
+            'checklist_type_display',
+            'installation_type',
+            'installation_type_display',
+            'description',
+            'items',
+            'is_active',
+            'item_count',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_item_count(self, obj):
+        """Get count of items in the checklist"""
+        return len(obj.items) if obj.items else 0
+    
+    def validate_items(self, value):
+        """
+        Validate checklist items structure.
+        Each item should have: id, title, required fields.
+        """
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Items must be a list")
+        
+        for idx, item in enumerate(value):
+            if not isinstance(item, dict):
+                raise serializers.ValidationError(f"Item {idx} must be a dictionary")
+            
+            # Check required fields
+            required_fields = ['id', 'title', 'required']
+            for field in required_fields:
+                if field not in item:
+                    raise serializers.ValidationError(
+                        f"Item {idx} missing required field: {field}"
+                    )
+        
+        return value
+
+
+class InstallationChecklistEntrySerializer(serializers.ModelSerializer):
+    """
+    Serializer for InstallationChecklistEntry model.
+    """
+    template_details = serializers.SerializerMethodField()
+    installation_record_short_id = serializers.SerializerMethodField()
+    technician_name = serializers.SerializerMethodField()
+    completion_status_display = serializers.CharField(source='get_completion_status_display', read_only=True)
+    
+    class Meta:
+        model = InstallationChecklistEntry
+        fields = [
+            'id',
+            'installation_record',
+            'installation_record_short_id',
+            'template',
+            'template_details',
+            'technician',
+            'technician_name',
+            'completed_items',
+            'completion_status',
+            'completion_status_display',
+            'completion_percentage',
+            'started_at',
+            'completed_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'completion_percentage', 'created_at', 'updated_at']
+    
+    def get_template_details(self, obj):
+        """Get template details"""
+        return {
+            'id': str(obj.template.id),
+            'name': obj.template.name,
+            'checklist_type': obj.template.checklist_type,
+            'checklist_type_display': obj.template.get_checklist_type_display(),
+            'items': obj.template.items,
+        }
+    
+    def get_installation_record_short_id(self, obj):
+        """Get shortened ISR ID"""
+        return f"ISR-{str(obj.installation_record.id)[:8]}"
+    
+    def get_technician_name(self, obj):
+        """Get technician name"""
+        if obj.technician:
+            return obj.technician.user.get_full_name() or obj.technician.user.username
+        return None
+    
+    def validate_completed_items(self, value):
+        """Validate completed items structure"""
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("completed_items must be a dictionary")
+        return value
+    
+    def update(self, instance, validated_data):
+        """
+        Update instance and recalculate completion status.
+        """
+        # Update fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Recalculate completion status
+        instance.update_completion_status()
+        instance.save()
+        
+        return instance
+
+
+class InstallationChecklistEntryCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating new checklist entries.
+    """
+    class Meta:
+        model = InstallationChecklistEntry
+        fields = [
+            'installation_record',
+            'template',
+            'technician',
+        ]
+    
+    def create(self, validated_data):
+        """
+        Create new checklist entry with initial status.
+        """
+        instance = InstallationChecklistEntry.objects.create(**validated_data)
+        instance.update_completion_status()
+        instance.save()
+        return instance
 
 
 class InstallationSystemRecordListSerializer(serializers.ModelSerializer):

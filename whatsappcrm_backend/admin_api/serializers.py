@@ -14,7 +14,12 @@ from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
 from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
-from installation_systems.models import InstallationSystemRecord
+from installation_systems.models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
+from installation_systems.serializers import (
+    CommissioningChecklistTemplateSerializer,
+    InstallationChecklistEntrySerializer,
+    InstallationChecklistEntryCreateSerializer,
+)
 
 
 # User Serializer
