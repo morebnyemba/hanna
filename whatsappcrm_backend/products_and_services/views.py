@@ -420,6 +420,400 @@ class SerializedItemViewSet(viewsets.ModelViewSet):
     queryset = SerializedItem.objects.all()
     serializer_class = SerializedItemSerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter queryset based on query parameters"""
+        queryset = super().get_queryset().select_related('product', 'order_item')
+        
+        # Filter by product type for technician installation
+        product_type = self.request.query_params.get('product_type')
+        if product_type:
+            queryset = queryset.filter(product__product_type=product_type)
+        
+        # Filter by status
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        # Filter by availability (not already assigned to installation)
+        available_only = self.request.query_params.get('available_only')
+        if available_only and available_only.lower() == 'true':
+            queryset = queryset.filter(
+                status=SerializedItem.Status.IN_STOCK,
+                installation_system_records__isnull=True
+            )
+        
+        return queryset
+    
+    @action(detail=False, methods=['post'], url_path='validate-serial-number')
+    def validate_serial_number(self, request):
+        """
+        Validate a serial number for installation assignment.
+        
+        POST /crm-api/products/serialized-items/validate-serial-number/
+        Body: {
+            "serial_number": "SN12345",
+            "product_type": "hardware",  // optional filter
+            "installation_id": "uuid"    // optional - check if not already in this installation
+        }
+        
+        Returns:
+        - exists: boolean
+        - valid: boolean (exists and not already assigned)
+        - item: SerializedItem data if found
+        - already_assigned: boolean
+        - assigned_to: installation details if assigned
+        - errors: list of validation errors
+        """
+        serial_number = request.data.get('serial_number')
+        product_type = request.data.get('product_type')
+        installation_id = request.data.get('installation_id')
+        
+        if not serial_number:
+            return Response(
+                {'error': 'serial_number is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        errors = []
+        
+        # Check if serial number exists
+        try:
+            item = SerializedItem.objects.select_related('product').get(
+                serial_number=serial_number
+            )
+        except SerializedItem.DoesNotExist:
+            return Response({
+                'exists': False,
+                'valid': False,
+                'item': None,
+                'already_assigned': False,
+                'assigned_to': None,
+                'errors': ['Serial number does not exist in database']
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Validate product type if specified
+        if product_type and item.product.product_type != product_type:
+            errors.append(
+                f'Product type mismatch. Expected {product_type}, got {item.product.product_type}'
+            )
+        
+        # Check if already assigned to an installation
+        assigned_installations = item.installation_system_records.all()
+        already_assigned = assigned_installations.exists()
+        assigned_to = None
+        
+        if already_assigned:
+            # Check if it's assigned to a different installation
+            if installation_id:
+                is_in_current = assigned_installations.filter(id=installation_id).exists()
+                if not is_in_current:
+                    installation = assigned_installations.first()
+                    assigned_to = {
+                        'installation_id': str(installation.id),
+                        'short_id': f"ISR-{str(installation.id)[:8]}",
+                        'customer_name': installation.customer.get_full_name(),
+                        'installation_type': installation.get_installation_type_display(),
+                        'status': installation.get_installation_status_display()
+                    }
+                    errors.append(
+                        f'Serial number already assigned to installation {assigned_to["short_id"]}'
+                    )
+            else:
+                installation = assigned_installations.first()
+                assigned_to = {
+                    'installation_id': str(installation.id),
+                    'short_id': f"ISR-{str(installation.id)[:8]}",
+                    'customer_name': installation.customer.get_full_name(),
+                    'installation_type': installation.get_installation_type_display(),
+                    'status': installation.get_installation_status_display()
+                }
+                errors.append(
+                    f'Serial number already assigned to installation {assigned_to["short_id"]}'
+                )
+        
+        # Item is valid if it exists and passes all checks
+        is_valid = len(errors) == 0
+        
+        return Response({
+            'exists': True,
+            'valid': is_valid,
+            'item': SerializedItemSerializer(item).data,
+            'already_assigned': already_assigned,
+            'assigned_to': assigned_to,
+            'errors': errors
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'], url_path='lookup-by-barcode')
+    def lookup_by_barcode(self, request):
+        """
+        Lookup serial number by barcode scan.
+        
+        POST /crm-api/products/serialized-items/lookup-by-barcode/
+        Body: {
+            "barcode": "123456789",
+            "product_type": "hardware"  // optional filter
+        }
+        
+        Returns SerializedItem if found, or searches Product by barcode.
+        """
+        barcode = request.data.get('barcode')
+        product_type = request.data.get('product_type')
+        
+        if not barcode:
+            return Response(
+                {'error': 'barcode is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Try to find SerializedItem by barcode
+        try:
+            item = SerializedItem.objects.select_related('product').get(barcode=barcode)
+            
+            # Filter by product type if specified
+            if product_type and item.product.product_type != product_type:
+                return Response({
+                    'found': True,
+                    'type': 'serialized_item',
+                    'item': SerializedItemSerializer(item).data,
+                    'warning': f'Product type mismatch. Expected {product_type}, got {item.product.product_type}'
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                'found': True,
+                'type': 'serialized_item',
+                'item': SerializedItemSerializer(item).data,
+                'message': 'Serial number found by barcode'
+            }, status=status.HTTP_200_OK)
+        except SerializedItem.DoesNotExist:
+            pass
+        
+        # Try to find SerializedItem by serial_number (barcode might be serial)
+        try:
+            item = SerializedItem.objects.select_related('product').get(serial_number=barcode)
+            
+            if product_type and item.product.product_type != product_type:
+                return Response({
+                    'found': True,
+                    'type': 'serialized_item',
+                    'item': SerializedItemSerializer(item).data,
+                    'warning': f'Product type mismatch. Expected {product_type}, got {item.product.product_type}'
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                'found': True,
+                'type': 'serialized_item',
+                'item': SerializedItemSerializer(item).data,
+                'message': 'Serial number found by serial number match'
+            }, status=status.HTTP_200_OK)
+        except SerializedItem.DoesNotExist:
+            pass
+        
+        # Try to find Product by barcode (might be scanning product for first time)
+        try:
+            product = Product.objects.get(barcode=barcode)
+            
+            if product_type and product.product_type != product_type:
+                return Response({
+                    'found': True,
+                    'type': 'product',
+                    'product': ProductSerializer(product).data,
+                    'warning': f'Product type mismatch. Expected {product_type}, got {product.product_type}',
+                    'message': 'Product found, but no serialized item exists yet'
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                'found': True,
+                'type': 'product',
+                'product': ProductSerializer(product).data,
+                'message': 'Product found, but no serialized item exists yet'
+            }, status=status.HTTP_200_OK)
+        except Product.DoesNotExist:
+            pass
+        
+        # Nothing found
+        return Response({
+            'found': False,
+            'type': None,
+            'message': f'No item or product found with barcode: {barcode}'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=False, methods=['post'], url_path='batch-capture')
+    def batch_capture(self, request):
+        """
+        Batch capture multiple serial numbers for an installation.
+        
+        POST /crm-api/products/serialized-items/batch-capture/
+        Body: {
+            "installation_id": "uuid",
+            "serial_numbers": [
+                {
+                    "serial_number": "SN123",
+                    "product_id": 1,
+                    "barcode": "123456",  // optional
+                    "notes": "Panel 1"    // optional
+                },
+                ...
+            ]
+        }
+        
+        Returns:
+        - success_count: number of items successfully captured
+        - error_count: number of items that failed
+        - results: array of results for each serial number
+        """
+        from installation_systems.models import InstallationSystemRecord
+        
+        installation_id = request.data.get('installation_id')
+        serial_numbers = request.data.get('serial_numbers', [])
+        
+        if not installation_id:
+            return Response(
+                {'error': 'installation_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not serial_numbers or not isinstance(serial_numbers, list):
+            return Response(
+                {'error': 'serial_numbers must be a non-empty list'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get the installation
+        try:
+            installation = InstallationSystemRecord.objects.get(id=installation_id)
+        except InstallationSystemRecord.DoesNotExist:
+            return Response(
+                {'error': 'Installation not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check permission - must be technician assigned to installation or admin
+        if not (request.user.is_staff or request.user.is_superuser):
+            if not hasattr(request.user, 'technician_profile'):
+                return Response(
+                    {'error': 'Only technicians or admins can capture serial numbers'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            technician = request.user.technician_profile
+            if not installation.technicians.filter(id=technician.id).exists():
+                return Response(
+                    {'error': 'You are not assigned to this installation'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Process each serial number
+        results = []
+        success_count = 0
+        error_count = 0
+        
+        for sn_data in serial_numbers:
+            serial_number = sn_data.get('serial_number')
+            product_id = sn_data.get('product_id')
+            barcode = sn_data.get('barcode')
+            notes = sn_data.get('notes', '')
+            
+            if not serial_number:
+                results.append({
+                    'serial_number': None,
+                    'success': False,
+                    'error': 'Serial number is required'
+                })
+                error_count += 1
+                continue
+            
+            try:
+                # Try to find existing item
+                item = SerializedItem.objects.select_related('product').get(
+                    serial_number=serial_number
+                )
+                
+                # Check if already assigned to this installation
+                if installation.installed_components.filter(id=item.id).exists():
+                    results.append({
+                        'serial_number': serial_number,
+                        'success': True,
+                        'already_added': True,
+                        'item': SerializedItemSerializer(item).data,
+                        'message': 'Item already added to this installation'
+                    })
+                    success_count += 1
+                    continue
+                
+                # Check if assigned to another installation
+                other_installations = item.installation_system_records.exclude(id=installation_id)
+                if other_installations.exists():
+                    other = other_installations.first()
+                    results.append({
+                        'serial_number': serial_number,
+                        'success': False,
+                        'error': f'Item already assigned to installation {other.short_id}'
+                    })
+                    error_count += 1
+                    continue
+                
+                # Add to installation
+                installation.installed_components.add(item)
+                
+                results.append({
+                    'serial_number': serial_number,
+                    'success': True,
+                    'item': SerializedItemSerializer(item).data,
+                    'message': 'Item added to installation'
+                })
+                success_count += 1
+                
+            except SerializedItem.DoesNotExist:
+                # Create new item if product_id provided
+                if product_id:
+                    try:
+                        from products_and_services.models import Product
+                        product = Product.objects.get(id=product_id)
+                        
+                        # Create new serialized item
+                        item = SerializedItem.objects.create(
+                            product=product,
+                            serial_number=serial_number,
+                            barcode=barcode or '',
+                            status=SerializedItem.Status.IN_STOCK,
+                            current_location=SerializedItem.Location.CUSTOMER,
+                            location_notes=notes
+                        )
+                        
+                        # Add to installation
+                        installation.installed_components.add(item)
+                        
+                        results.append({
+                            'serial_number': serial_number,
+                            'success': True,
+                            'created': True,
+                            'item': SerializedItemSerializer(item).data,
+                            'message': 'New item created and added to installation'
+                        })
+                        success_count += 1
+                        
+                    except Product.DoesNotExist:
+                        results.append({
+                            'serial_number': serial_number,
+                            'success': False,
+                            'error': 'Product not found'
+                        })
+                        error_count += 1
+                else:
+                    results.append({
+                        'serial_number': serial_number,
+                        'success': False,
+                        'error': 'Serial number not found and no product_id provided to create new item'
+                    })
+                    error_count += 1
+        
+        return Response({
+            'success_count': success_count,
+            'error_count': error_count,
+            'total': len(serial_numbers),
+            'results': results
+        }, status=status.HTTP_200_OK)
 
 class BarcodeScanViewSet(viewsets.ViewSet):
     """

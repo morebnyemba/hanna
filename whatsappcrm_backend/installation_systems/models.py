@@ -296,6 +296,11 @@ class InstallationSystemRecord(models.Model):
         self.clean()
         super().save(*args, **kwargs)
     
+    @property
+    def short_id(self):
+        """Get shortened UUID for display (ISR-xxxxxxxx)"""
+        return f"ISR-{str(self.id)[:8]}"
+    
     def __str__(self):
         """
         Returns string representation: "ISR-{id} - {customer_name} - {installation_type} - {system_size}{unit}"
