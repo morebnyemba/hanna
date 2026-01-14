@@ -511,7 +511,7 @@ class SerializedItemViewSet(viewsets.ModelViewSet):
                     installation = assigned_installations.first()
                     assigned_to = {
                         'installation_id': str(installation.id),
-                        'short_id': f"ISR-{str(installation.id)[:8]}",
+                        'short_id': installation.short_id,
                         'customer_name': installation.customer.get_full_name(),
                         'installation_type': installation.get_installation_type_display(),
                         'status': installation.get_installation_status_display()
@@ -523,7 +523,7 @@ class SerializedItemViewSet(viewsets.ModelViewSet):
                 installation = assigned_installations.first()
                 assigned_to = {
                     'installation_id': str(installation.id),
-                    'short_id': f"ISR-{str(installation.id)[:8]}",
+                    'short_id': installation.short_id,
                     'customer_name': installation.customer.get_full_name(),
                     'installation_type': installation.get_installation_type_display(),
                     'status': installation.get_installation_status_display()
@@ -768,7 +768,6 @@ class SerializedItemViewSet(viewsets.ModelViewSet):
                 # Create new item if product_id provided
                 if product_id:
                     try:
-                        from products_and_services.models import Product
                         product = Product.objects.get(id=product_id)
                         
                         # Create new serialized item
