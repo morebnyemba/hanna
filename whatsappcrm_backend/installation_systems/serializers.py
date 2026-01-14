@@ -92,7 +92,7 @@ class InstallationChecklistEntrySerializer(serializers.ModelSerializer):
     def get_template_details(self, obj):
         """Get template details"""
         return {
-            'id': str(obj.template.id),
+            'id': obj.template.id,
             'name': obj.template.name,
             'checklist_type': obj.template.checklist_type,
             'checklist_type_display': obj.template.get_checklist_type_display(),

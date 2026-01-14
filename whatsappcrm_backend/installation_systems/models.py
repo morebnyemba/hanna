@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from decimal import Decimal
 import uuid
@@ -428,6 +429,7 @@ class InstallationChecklistEntry(models.Model):
         max_digits=5,
         decimal_places=2,
         default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         help_text=_("Percentage of required items completed (0-100)")
     )
     
@@ -466,7 +468,12 @@ class InstallationChecklistEntry(models.Model):
                 if self.completed_items[item_id].get('completed', False):
                     completed_count += 1
         
-        percentage = (Decimal(completed_count) / Decimal(len(required_items))) * Decimal('100')
+        # Safety check to prevent division by zero (though should never occur)
+        total_required = len(required_items)
+        if total_required == 0:
+            return Decimal('100')
+        
+        percentage = (Decimal(completed_count) / Decimal(total_required)) * Decimal('100')
         return percentage.quantize(Decimal('0.01'))
     
     def update_completion_status(self):
