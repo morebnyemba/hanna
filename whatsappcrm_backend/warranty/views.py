@@ -451,5 +451,3 @@ class InstallationReportPDFView(APIView):
                 {'error': f'Failed to generate installation report: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        }
-        return Response(data)
