@@ -44,6 +44,11 @@ import AdminWarrantyClaimsPage from './pages/admin/AdminWarrantyClaimsPage';
 import AdminDailyStatsPage from './pages/admin/AdminDailyStatsPage';
 import AdminCartsPage from './pages/admin/AdminCartsPage';
 
+// Retailer Pages
+import RetailerSolarPackagesPage from './pages/retailer/RetailerSolarPackagesPage';
+import RetailerCreateOrderPage from './pages/retailer/RetailerCreateOrderPage';
+import RetailerOrdersPage from './pages/retailer/RetailerOrdersPage';
+
 const NotFoundPage = () => (
   <div className="p-10 text-center">
     <h1 className="text-3xl font-bold text-red-600 dark:text-red-400">404 - Page Not Found</h1>
@@ -102,6 +107,11 @@ const router = createBrowserRouter([
   { path: 'ministries', element: <MinistriesPage /> },
   { path: 'ministries/new', element: <MinistryFormPage /> },
   { path: 'ministries/edit/:ministryId', element: <MinistryFormPage /> },
+
+  // Retailer Portal
+  { path: 'retailer/solar-packages', element: <RetailerSolarPackagesPage /> },
+  { path: 'retailer/orders/new', element: <RetailerCreateOrderPage /> },
+  { path: 'retailer/orders', element: <RetailerOrdersPage /> },
 
   // Admin Panel
   { path: 'admin', element: <AdminRoute><AdminOverviewPage /></AdminRoute> },

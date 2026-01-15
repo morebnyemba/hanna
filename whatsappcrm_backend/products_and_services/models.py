@@ -466,3 +466,98 @@ class CartItem(models.Model):
         verbose_name_plural = _("Cart Items")
         ordering = ['-created_at']
         unique_together = ['cart', 'product']
+
+
+class SolarPackage(models.Model):
+    """
+    Pre-configured solar system packages for retailers to sell.
+    Packages include a combination of products (inverter, panels, batteries, etc.)
+    with defined system size and pricing.
+    """
+    name = models.CharField(
+        _("Package Name"),
+        max_length=255,
+        help_text=_("Name of the solar package (e.g., '3kW Starter System')")
+    )
+    system_size = models.DecimalField(
+        _("System Size (kW)"),
+        max_digits=10,
+        decimal_places=2,
+        help_text=_("Size of the solar system in kilowatts")
+    )
+    description = models.TextField(
+        _("Description"),
+        blank=True,
+        null=True,
+        help_text=_("Detailed description of the package and what's included")
+    )
+    included_products = models.ManyToManyField(
+        Product,
+        through='SolarPackageProduct',
+        related_name='solar_packages',
+        help_text=_("Products included in this package")
+    )
+    price = models.DecimalField(
+        _("Package Price"),
+        max_digits=12,
+        decimal_places=2,
+        help_text=_("Total price for the complete package")
+    )
+    currency = models.CharField(
+        _("Currency"),
+        max_length=3,
+        default='USD'
+    )
+    is_active = models.BooleanField(
+        _("Is Active"),
+        default=True,
+        help_text=_("Whether this package is available for sale")
+    )
+    compatibility_rules = models.JSONField(
+        _("Compatibility Rules"),
+        default=dict,
+        blank=True,
+        help_text=_("JSON field for storing compatibility validation rules")
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.name} ({self.system_size}kW)"
+    
+    class Meta:
+        verbose_name = _("Solar Package")
+        verbose_name_plural = _("Solar Packages")
+        ordering = ['system_size', 'name']
+
+
+class SolarPackageProduct(models.Model):
+    """
+    Through model for the many-to-many relationship between SolarPackage and Product.
+    Allows specifying quantity of each product in the package.
+    """
+    solar_package = models.ForeignKey(
+        SolarPackage,
+        on_delete=models.CASCADE,
+        related_name='package_products'
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='package_memberships'
+    )
+    quantity = models.PositiveIntegerField(
+        _("Quantity"),
+        default=1,
+        help_text=_("Number of this product included in the package")
+    )
+    
+    def __str__(self):
+        return f"{self.quantity}x {self.product.name} in {self.solar_package.name}"
+    
+    class Meta:
+        verbose_name = _("Solar Package Product")
+        verbose_name_plural = _("Solar Package Products")
+        unique_together = ['solar_package', 'product']

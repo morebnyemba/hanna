@@ -10,6 +10,8 @@ from .views import (
     RetailerListForSelectionView,
     RetailerViewSet,
     RetailerBranchViewSet,
+    RetailerSolarPackageViewSet,
+    RetailerOrderViewSet,
 )
 
 app_name = 'users_api'
@@ -17,6 +19,8 @@ app_name = 'users_api'
 router = DefaultRouter()
 router.register(r'retailers', RetailerViewSet, basename='retailer')
 router.register(r'retailer-branches', RetailerBranchViewSet, basename='retailer-branch')
+router.register(r'retailer/solar-packages', RetailerSolarPackageViewSet, basename='retailer-solar-package')
+router.register(r'retailer/orders', RetailerOrderViewSet, basename='retailer-order')
 
 urlpatterns = [
     path('', UserListView.as_view(), name='user-list'),

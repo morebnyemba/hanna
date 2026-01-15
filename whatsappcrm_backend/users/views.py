@@ -258,3 +258,88 @@ class RetailerBranchViewSet(viewsets.ModelViewSet):
             )
         serializer = RetailerBranchSerializer(request.user.retailer_branch_profile)
         return Response(serializer.data)
+
+
+class RetailerSolarPackageViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for retailers to view available solar packages.
+    Read-only access to active solar packages.
+    """
+    from products_and_services.models import SolarPackage
+    from products_and_services.serializers import SolarPackageSerializer
+    
+    queryset = SolarPackage.objects.filter(is_active=True).prefetch_related(
+        'package_products__product__images'
+    )
+    serializer_class = SolarPackageSerializer
+    permission_classes = [permissions.IsAuthenticated, IsRetailerOrAdmin]
+    
+    def get_queryset(self):
+        """Only show active solar packages"""
+        return super().get_queryset().filter(is_active=True)
+
+
+class RetailerOrderViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for retailers to create and manage customer orders.
+    - POST: Create a new order with customer details and solar package
+    - GET: List all orders created by the retailer
+    - GET /<id>: View order details
+    """
+    from customer_data.models import Order
+    from customer_data.serializers import OrderSerializer, RetailerOrderCreationSerializer
+    
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated, IsRetailerOrAdmin]
+    
+    def get_queryset(self):
+        """
+        Retailers see orders they created or from their retailer account.
+        Admins see all orders.
+        """
+        user = self.request.user
+        queryset = Order.objects.select_related('customer', 'assigned_agent').prefetch_related('items__product')
+        
+        if user.is_staff:
+            return queryset.all()
+        
+        # Filter by retailer or retailer branch
+        if hasattr(user, 'retailer_profile'):
+            # Get orders where the assigned agent is the retailer or any of their branches
+            retailer_users = [user]
+            retailer_users.extend([branch.user for branch in user.retailer_profile.branches.all()])
+            return queryset.filter(assigned_agent__in=retailer_users)
+        elif hasattr(user, 'retailer_branch_profile'):
+            # Get orders created by this branch
+            return queryset.filter(assigned_agent=user)
+        
+        return Order.objects.none()
+    
+    def get_serializer_class(self):
+        """Use different serializer for creation"""
+        if self.action == 'create':
+            from customer_data.serializers import RetailerOrderCreationSerializer
+            return RetailerOrderCreationSerializer
+        from customer_data.serializers import OrderSerializer
+        return OrderSerializer
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new order with complete workflow.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        
+        # Return the created order data
+        from customer_data.serializers import OrderSerializer
+        order_serializer = OrderSerializer(result['order'])
+        
+        return Response(
+            {
+                'message': 'Order created successfully',
+                'order': order_serializer.data,
+                'order_number': result['order'].order_number,
+            },
+            status=status.HTTP_201_CREATED
+        )

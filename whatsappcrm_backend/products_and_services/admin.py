@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.contrib import messages
-from .models import Product, ProductCategory, ProductImage, SerializedItem, Cart, CartItem
+from .models import Product, ProductCategory, ProductImage, SerializedItem, Cart, CartItem, SolarPackage, SolarPackageProduct
 
 @admin.register(ProductCategory)
 class ProductCategoryAdmin(admin.ModelAdmin):
@@ -328,6 +328,53 @@ class CartItemAdmin(admin.ModelAdmin):
     list_filter = ('created_at', 'updated_at')
     readonly_fields = ('subtotal', 'created_at', 'updated_at')
     autocomplete_fields = ('cart', 'product')
+
+
+class SolarPackageProductInline(admin.TabularInline):
+    """
+    Inline admin for SolarPackageProduct model.
+    Allows managing products within a package directly from the package admin page.
+    """
+    model = SolarPackageProduct
+    extra = 1
+    fields = ('product', 'quantity')
+    autocomplete_fields = ('product',)
+
+
+@admin.register(SolarPackage)
+class SolarPackageAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the SolarPackage model.
+    """
+    list_display = ('name', 'system_size', 'price', 'currency', 'is_active', 'product_count', 'created_at')
+    search_fields = ('name', 'description')
+    list_filter = ('is_active', 'system_size', 'created_at')
+    ordering = ['system_size', 'name']
+    inlines = [SolarPackageProductInline]
+    
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'system_size', 'description')
+        }),
+        ('Pricing', {
+            'fields': ('price', 'currency')
+        }),
+        ('Availability', {
+            'fields': ('is_active',)
+        }),
+        ('Advanced', {
+            'classes': ('collapse',),
+            'fields': ('compatibility_rules',),
+            'description': 'JSON field for storing compatibility validation rules'
+        }),
+    )
+    
+    readonly_fields = ('created_at', 'updated_at')
+    
+    def product_count(self, obj):
+        """Display the number of products in this package"""
+        return obj.package_products.count()
+    product_count.short_description = 'Products'
     @admin.action(description='Sync selected products from Zoho')
     def sync_selected_items(self, request, queryset):
         """

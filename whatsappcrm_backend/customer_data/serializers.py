@@ -317,3 +317,243 @@ class InstallationRequestSerializer(serializers.ModelSerializer):
         model = InstallationRequest
         fields = '__all__'
         read_only_fields = ('id', 'created_at', 'updated_at')
+
+
+class RetailerOrderCreationSerializer(serializers.Serializer):
+    """
+    Serializer for retailers to create orders for solar package sales.
+    Handles the complete workflow: customer creation, order, installation request, and SSR.
+    """
+    # Solar package selection
+    solar_package_id = serializers.IntegerField(
+        required=True,
+        help_text="ID of the solar package being ordered"
+    )
+    
+    # Customer details
+    customer_first_name = serializers.CharField(max_length=100, required=True)
+    customer_last_name = serializers.CharField(max_length=100, required=True)
+    customer_phone = serializers.CharField(
+        max_length=50,
+        required=True,
+        help_text="Customer phone number (will be used for WhatsApp contact)"
+    )
+    customer_email = serializers.EmailField(required=False, allow_blank=True)
+    customer_company = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    
+    # Address details
+    address_line_1 = serializers.CharField(max_length=255, required=True)
+    address_line_2 = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    city = serializers.CharField(max_length=100, required=True)
+    state_province = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    country = serializers.CharField(max_length=100, default='Zimbabwe')
+    
+    # Location details (optional)
+    latitude = serializers.DecimalField(
+        max_digits=10, decimal_places=7, required=False, allow_null=True
+    )
+    longitude = serializers.DecimalField(
+        max_digits=10, decimal_places=7, required=False, allow_null=True
+    )
+    
+    # Payment details
+    payment_method = serializers.ChoiceField(
+        choices=Order.PaymentMethod.choices,
+        required=True,
+        help_text="Payment method selected by customer"
+    )
+    
+    # Loan details (if applicable)
+    loan_approved = serializers.BooleanField(
+        default=False,
+        help_text="Whether the customer has loan approval"
+    )
+    loan_application_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="ID of the loan application if applicable"
+    )
+    
+    # Installation details
+    preferred_installation_date = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        help_text="Customer's preferred installation date/time"
+    )
+    installation_notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Additional notes for the installation"
+    )
+    
+    def validate_solar_package_id(self, value):
+        """Validate that the solar package exists and is active"""
+        from products_and_services.models import SolarPackage
+        try:
+            package = SolarPackage.objects.get(id=value, is_active=True)
+        except SolarPackage.DoesNotExist:
+            raise serializers.ValidationError(
+                "Solar package not found or is not active"
+            )
+        return value
+    
+    def validate_customer_phone(self, value):
+        """Normalize phone number to E.164 format"""
+        normalized = normalize_phone_number(value)
+        if not normalized:
+            raise serializers.ValidationError(
+                "Invalid phone number format. Please provide a valid phone number."
+            )
+        return normalized
+    
+    def validate_loan_application_id(self, value):
+        """Validate loan application exists if provided"""
+        if value:
+            if not LoanApplication.objects.filter(id=value).exists():
+                raise serializers.ValidationError(
+                    "Loan application not found"
+                )
+        return value
+    
+    def create(self, validated_data):
+        """
+        Create the complete order workflow:
+        1. Get or create Contact
+        2. Get or create CustomerProfile
+        3. Create Order with order items
+        4. Create InstallationRequest
+        5. Create InstallationSystemRecord (if applicable)
+        6. Send confirmation notification
+        """
+        from products_and_services.models import SolarPackage
+        from conversations.models import Contact
+        
+        # Get the solar package
+        package = SolarPackage.objects.prefetch_related('package_products__product').get(
+            id=validated_data['solar_package_id']
+        )
+        
+        # Get the retailer from request context
+        request = self.context.get('request')
+        retailer = None
+        if request and hasattr(request.user, 'retailer_profile'):
+            retailer = request.user.retailer_profile
+        elif request and hasattr(request.user, 'retailer_branch_profile'):
+            retailer = request.user.retailer_branch_profile.retailer
+        
+        # 1. Get or create Contact
+        contact, _ = Contact.objects.get_or_create(
+            whatsapp_id=validated_data['customer_phone'],
+            defaults={'name': f"{validated_data['customer_first_name']} {validated_data['customer_last_name']}"}
+        )
+        
+        # 2. Get or create CustomerProfile
+        customer_profile, _ = CustomerProfile.objects.get_or_create(
+            contact=contact,
+            defaults={
+                'first_name': validated_data['customer_first_name'],
+                'last_name': validated_data['customer_last_name'],
+                'email': validated_data.get('customer_email', ''),
+                'company': validated_data.get('customer_company', ''),
+                'address_line_1': validated_data['address_line_1'],
+                'address_line_2': validated_data.get('address_line_2', ''),
+                'city': validated_data['city'],
+                'state_province': validated_data.get('state_province', ''),
+                'postal_code': validated_data.get('postal_code', ''),
+                'country': validated_data['country'],
+                'lead_status': 'qualified',
+                'acquisition_source': f'Retailer: {retailer.company_name if retailer else "Unknown"}',
+            }
+        )
+        
+        # Update profile if it already exists
+        if not _:
+            customer_profile.first_name = validated_data['customer_first_name']
+            customer_profile.last_name = validated_data['customer_last_name']
+            if validated_data.get('customer_email'):
+                customer_profile.email = validated_data['customer_email']
+            customer_profile.address_line_1 = validated_data['address_line_1']
+            customer_profile.city = validated_data['city']
+            customer_profile.country = validated_data['country']
+            customer_profile.save()
+        
+        # 3. Create Order
+        import uuid
+        order_number = f"ORD-{uuid.uuid4().hex[:8].upper()}"
+        order = Order.objects.create(
+            order_number=order_number,
+            name=f"{package.name} for {customer_profile.get_full_name()}",
+            customer=customer_profile,
+            stage=Order.Stage.CLOSED_WON,
+            payment_status=Order.PaymentStatus.PENDING,
+            source=Order.Source.API,
+            amount=package.price,
+            currency=package.currency,
+            payment_method=validated_data['payment_method'],
+            assigned_agent=request.user if request else None,
+            notes=f"Ordered by retailer: {retailer.company_name if retailer else 'Unknown'}\n" +
+                  (f"Loan approved: {validated_data['loan_approved']}\n" if validated_data.get('loan_approved') else "")
+        )
+        
+        # Create order items from package products
+        for package_product in package.package_products.all():
+            OrderItem.objects.create(
+                order=order,
+                product=package_product.product,
+                quantity=package_product.quantity,
+                unit_price=package_product.product.price or 0,
+                total_amount=(package_product.product.price or 0) * package_product.quantity
+            )
+        
+        # Update order total
+        order.update_total_amount()
+        order.save()
+        
+        # 4. Create InstallationRequest
+        installation_request = InstallationRequest.objects.create(
+            customer=customer_profile,
+            associated_order=order,
+            status='pending',
+            installation_type='solar',
+            order_number=order_number,
+            full_name=customer_profile.get_full_name(),
+            address=validated_data['address_line_1'],
+            location_latitude=validated_data.get('latitude'),
+            location_longitude=validated_data.get('longitude'),
+            preferred_datetime=validated_data.get('preferred_installation_date', 'To be scheduled'),
+            contact_phone=validated_data['customer_phone'],
+            notes=validated_data.get('installation_notes', '')
+        )
+        
+        # 5. Create InstallationSystemRecord (SSR) if model exists
+        try:
+            from installation_systems.models import InstallationSystemRecord
+            
+            isr = InstallationSystemRecord.objects.create(
+                installation_request=installation_request,
+                customer=customer_profile,
+                order=order,
+                installation_type='solar',
+                system_size=package.system_size,
+                capacity_unit='kW',
+                system_classification='residential',
+                installation_status='pending',
+                installation_address=validated_data['address_line_1'],
+                latitude=validated_data.get('latitude'),
+                longitude=validated_data.get('longitude')
+            )
+        except ImportError:
+            # SSR model not available yet, skip
+            isr = None
+        
+        # 6. Send confirmation notification (optional - can be implemented later)
+        # TODO: Send WhatsApp/Email notification to customer
+        
+        return {
+            'order': order,
+            'installation_request': installation_request,
+            'installation_system_record': isr,
+            'customer_profile': customer_profile
+        }

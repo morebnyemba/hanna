@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, ProductImage
+from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, ProductImage, SolarPackage, SolarPackageProduct
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -556,3 +556,36 @@ class MetaCatalogSyncResultSerializer(serializers.Serializer):
     catalog_id = serializers.CharField(allow_null=True)
     message = serializers.CharField()
     error = serializers.CharField(allow_null=True, required=False)
+
+
+class SolarPackageProductSerializer(serializers.ModelSerializer):
+    """
+    Serializer for products included in a solar package.
+    """
+    product = ProductSerializer(read_only=True)
+    
+    class Meta:
+        model = SolarPackageProduct
+        fields = ['id', 'product', 'quantity']
+
+
+class SolarPackageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for solar packages with included products.
+    """
+    package_products = SolarPackageProductSerializer(many=True, read_only=True)
+    total_products = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SolarPackage
+        fields = [
+            'id', 'name', 'system_size', 'description', 
+            'price', 'currency', 'is_active', 
+            'package_products', 'total_products',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def get_total_products(self, obj):
+        """Calculate total number of products in the package"""
+        return sum(pp.quantity for pp in obj.package_products.all())
