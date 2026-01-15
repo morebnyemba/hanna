@@ -332,8 +332,17 @@ class WarrantyCertificatePDFView(APIView):
     
     def get(self, request, warranty_id):
         """Generate warranty certificate PDF"""
-        # Get warranty object
-        warranty = get_object_or_404(Warranty, id=warranty_id)
+        # Get warranty object with optimized query
+        warranty = get_object_or_404(
+            Warranty.objects.select_related(
+                'manufacturer',
+                'serialized_item',
+                'serialized_item__product',
+                'customer',
+                'customer__contact'
+            ),
+            id=warranty_id
+        )
         
         # Check permissions
         user = request.user
@@ -397,8 +406,25 @@ class InstallationReportPDFView(APIView):
     
     def get(self, request, installation_id):
         """Generate installation report PDF"""
-        # Get installation record
-        installation = get_object_or_404(InstallationSystemRecord, id=installation_id)
+        # Get installation record with optimized query
+        installation = get_object_or_404(
+            InstallationSystemRecord.objects.select_related(
+                'customer',
+                'customer__contact',
+                'order',
+                'installation_request'
+            ).prefetch_related(
+                'technicians',
+                'technicians__user',
+                'installed_components',
+                'installed_components__product',
+                'checklist_entries',
+                'checklist_entries__template',
+                'photos',
+                'photos__media_asset'
+            ),
+            id=installation_id
+        )
         
         # Check permissions
         user = request.user

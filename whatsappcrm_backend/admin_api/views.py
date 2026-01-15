@@ -223,7 +223,7 @@ class AdminWarrantyViewSet(viewsets.ModelViewSet):
     def generate_certificate(self, request, pk=None):
         """
         Generate and download warranty certificate PDF for admin users.
-        Endpoint: /api/warranties/{id}/certificate/
+        Endpoint: /crm-api/admin-panel/warranties/{id}/certificate/
         """
         warranty = self.get_object()
         
@@ -546,7 +546,7 @@ class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
     def generate_report(self, request, pk=None):
         """
         Generate and download installation report PDF for admin users.
-        Endpoint: /api/installation-system-records/{id}/report/
+        Endpoint: /crm-api/admin-panel/installation-system-records/{id}/report/
         """
         installation = self.get_object()
         

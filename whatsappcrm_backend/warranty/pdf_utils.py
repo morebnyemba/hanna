@@ -16,6 +16,9 @@ from django.conf import settings
 from datetime import datetime
 import os
 
+# Default frontend URL for QR code generation
+DEFAULT_FRONTEND_URL = 'https://dashboard.hanna.co.zw'
+
 
 class PDFGenerator:
     """Base class for PDF generation with common utilities"""
@@ -263,7 +266,8 @@ class WarrantyCertificateGenerator(PDFGenerator):
         
         # QR Code section
         # Generate URL for digital verification
-        qr_url = f"{getattr(settings, 'FRONTEND_URL', 'https://dashboard.hanna.co.zw')}/warranty/{warranty.id}"
+        frontend_url = getattr(settings, 'FRONTEND_URL', DEFAULT_FRONTEND_URL)
+        qr_url = f"{frontend_url}/warranty/{warranty.id}"
         qr_image = self.generate_qr_code(qr_url, size=80)
         
         qr_data = [
@@ -510,7 +514,8 @@ class InstallationReportGenerator(PDFGenerator):
         
         # QR Code section
         elements.append(Spacer(1, 0.4*inch))
-        qr_url = f"{getattr(settings, 'FRONTEND_URL', 'https://dashboard.hanna.co.zw')}/installation/{installation_record.id}"
+        frontend_url = getattr(settings, 'FRONTEND_URL', DEFAULT_FRONTEND_URL)
+        qr_url = f"{frontend_url}/installation/{installation_record.id}"
         qr_image = self.generate_qr_code(qr_url, size=80)
         
         qr_data = [
