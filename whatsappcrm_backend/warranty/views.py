@@ -5,6 +5,9 @@ from rest_framework.permissions import IsAdminUser
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
+from django.core.cache import cache
+from django.shortcuts import get_object_or_404
 
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard, CustomerProfile
@@ -13,6 +16,8 @@ from products_and_services.models import Product
 from products_and_services.serializers import ProductSerializer
 from .permissions import IsManufacturer
 from .serializers import WarrantyClaimListSerializer, WarrantyClaimCreateSerializer, ManufacturerSerializer, WarrantySerializer
+from .pdf_utils import WarrantyCertificateGenerator, InstallationReportGenerator
+from installation_systems.models import InstallationSystemRecord
 
 class AdminWarrantyClaimListView(generics.ListAPIView):
     """
@@ -314,5 +319,137 @@ class TechnicianInstallationDetailView(generics.RetrieveAPIView):
             'updated_at': installation.updated_at.isoformat(),
             'notes': installation.notes,
             'associated_order': order_data,
+        }
+        return Response(data)
+
+
+class WarrantyCertificatePDFView(APIView):
+    """
+    Generate and download warranty certificate PDF.
+    Accessible by authenticated users (customers, admins, manufacturers).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, warranty_id):
+        """Generate warranty certificate PDF"""
+        # Get warranty object
+        warranty = get_object_or_404(Warranty, id=warranty_id)
+        
+        # Check permissions
+        user = request.user
+        has_permission = False
+        
+        # Admin users can access all warranties
+        if user.is_staff or user.is_superuser:
+            has_permission = True
+        # Manufacturers can access their warranties
+        elif hasattr(user, 'manufacturer_profile'):
+            if warranty.manufacturer == user.manufacturer_profile:
+                has_permission = True
+        # Customers can access their own warranties
+        elif hasattr(user, 'customer_profile'):
+            if warranty.customer == user.customer_profile:
+                has_permission = True
+        
+        if not has_permission:
+            return Response(
+                {'error': 'You do not have permission to access this warranty certificate.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check cache for existing PDF
+        cache_key = f'warranty_certificate_{warranty_id}'
+        cached_pdf = cache.get(cache_key)
+        
+        if cached_pdf:
+            # Return cached PDF
+            response = HttpResponse(cached_pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="warranty_certificate_{warranty_id}.pdf"'
+            return response
+        
+        # Generate new PDF
+        try:
+            generator = WarrantyCertificateGenerator()
+            pdf_buffer = generator.generate(warranty)
+            pdf_data = pdf_buffer.getvalue()
+            
+            # Cache the PDF for 1 hour
+            cache.set(cache_key, pdf_data, 60 * 60)
+            
+            # Return PDF response
+            response = HttpResponse(pdf_data, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="warranty_certificate_{warranty_id}.pdf"'
+            return response
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate warranty certificate: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class InstallationReportPDFView(APIView):
+    """
+    Generate and download installation report PDF.
+    Accessible by authenticated users (customers, admins, technicians).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, installation_id):
+        """Generate installation report PDF"""
+        # Get installation record
+        installation = get_object_or_404(InstallationSystemRecord, id=installation_id)
+        
+        # Check permissions
+        user = request.user
+        has_permission = False
+        
+        # Admin users can access all installation reports
+        if user.is_staff or user.is_superuser:
+            has_permission = True
+        # Technicians can access installations they worked on
+        elif hasattr(user, 'technician_profile'):
+            if installation.technicians.filter(id=user.technician_profile.id).exists():
+                has_permission = True
+        # Customers can access their own installation reports
+        elif hasattr(user, 'customer_profile'):
+            if installation.customer == user.customer_profile:
+                has_permission = True
+        
+        if not has_permission:
+            return Response(
+                {'error': 'You do not have permission to access this installation report.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check cache for existing PDF
+        cache_key = f'installation_report_{installation_id}'
+        cached_pdf = cache.get(cache_key)
+        
+        if cached_pdf:
+            # Return cached PDF
+            response = HttpResponse(cached_pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="installation_report_{installation_id}.pdf"'
+            return response
+        
+        # Generate new PDF
+        try:
+            generator = InstallationReportGenerator()
+            pdf_buffer = generator.generate(installation)
+            pdf_data = pdf_buffer.getvalue()
+            
+            # Cache the PDF for 1 hour
+            cache.set(cache_key, pdf_data, 60 * 60)
+            
+            # Return PDF response
+            response = HttpResponse(pdf_data, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="installation_report_{installation_id}.pdf"'
+            return response
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate installation report: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         }
         return Response(data)

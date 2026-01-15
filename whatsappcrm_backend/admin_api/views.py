@@ -10,6 +10,8 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.http import HttpResponse
+from django.core.cache import cache
 
 # Import models
 from notifications.models import Notification, NotificationTemplate
@@ -21,6 +23,9 @@ from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
 from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
 from installation_systems.models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
+
+# Import PDF generators
+from warranty.pdf_utils import WarrantyCertificateGenerator, InstallationReportGenerator
 
 # Import serializers
 from .serializers import (
@@ -213,6 +218,43 @@ class AdminWarrantyViewSet(viewsets.ModelViewSet):
     search_fields = ['serialized_item__serial_number', 'customer__name']
     ordering_fields = ['start_date', 'end_date']
     ordering = ['-start_date']
+    
+    @action(detail=True, methods=['get'], url_path='certificate')
+    def generate_certificate(self, request, pk=None):
+        """
+        Generate and download warranty certificate PDF for admin users.
+        Endpoint: /api/warranties/{id}/certificate/
+        """
+        warranty = self.get_object()
+        
+        # Check cache for existing PDF
+        cache_key = f'warranty_certificate_{warranty.id}'
+        cached_pdf = cache.get(cache_key)
+        
+        if cached_pdf:
+            response = HttpResponse(cached_pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="warranty_certificate_{warranty.id}.pdf"'
+            return response
+        
+        # Generate new PDF
+        try:
+            generator = WarrantyCertificateGenerator()
+            pdf_buffer = generator.generate(warranty)
+            pdf_data = pdf_buffer.getvalue()
+            
+            # Cache the PDF for 1 hour
+            cache.set(cache_key, pdf_data, 60 * 60)
+            
+            # Return PDF response
+            response = HttpResponse(pdf_data, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="warranty_certificate_{warranty.id}.pdf"'
+            return response
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate warranty certificate: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class AdminWarrantyClaimViewSet(viewsets.ModelViewSet):
@@ -499,6 +541,43 @@ class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
             }
         
         return Response(stats)
+    
+    @action(detail=True, methods=['get'], url_path='report')
+    def generate_report(self, request, pk=None):
+        """
+        Generate and download installation report PDF for admin users.
+        Endpoint: /api/installation-system-records/{id}/report/
+        """
+        installation = self.get_object()
+        
+        # Check cache for existing PDF
+        cache_key = f'installation_report_{installation.id}'
+        cached_pdf = cache.get(cache_key)
+        
+        if cached_pdf:
+            response = HttpResponse(cached_pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="installation_report_{installation.id}.pdf"'
+            return response
+        
+        # Generate new PDF
+        try:
+            generator = InstallationReportGenerator()
+            pdf_buffer = generator.generate(installation)
+            pdf_data = pdf_buffer.getvalue()
+            
+            # Cache the PDF for 1 hour
+            cache.set(cache_key, pdf_data, 60 * 60)
+            
+            # Return PDF response
+            response = HttpResponse(pdf_data, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="installation_report_{installation.id}.pdf"'
+            return response
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate installation report: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 # Commissioning Checklist Templates
