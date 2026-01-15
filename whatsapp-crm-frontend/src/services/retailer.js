@@ -148,7 +148,7 @@ export async function getProductMovements(params = {}) {
  * @returns {Promise<Object>} Product movement statistics
  */
 export async function getProductMovementStats() {
-  return apiCall('/api/users/retailer/product-movements/stats/', 'GET', null, false);
+  return apiCall('/api/users/retailer/product-movements/summary_stats/', 'GET', null, false);
 }
 
 const retailerAPI = {

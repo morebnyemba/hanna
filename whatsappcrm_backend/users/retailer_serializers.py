@@ -5,6 +5,7 @@ Provides read-only access to installation and warranty data for products sold by
 """
 
 from rest_framework import serializers
+from django.utils import timezone
 from installation_systems.models import InstallationSystemRecord, InstallationPhoto
 from warranty.models import Warranty, WarrantyClaim
 from products_and_services.models import SerializedItem
@@ -305,7 +306,6 @@ class RetailerWarrantySerializer(serializers.ModelSerializer):
     
     def get_days_remaining(self, obj):
         """Calculate days remaining until warranty expires"""
-        from django.utils import timezone
         today = timezone.now().date()
         if obj.end_date > today:
             return (obj.end_date - today).days
@@ -376,7 +376,6 @@ class RetailerWarrantyDetailSerializer(serializers.ModelSerializer):
     
     def get_warranty_details(self, obj):
         """Get warranty details"""
-        from django.utils import timezone
         today = timezone.now().date()
         days_remaining = (obj.end_date - today).days if obj.end_date > today else 0
         

@@ -27,7 +27,37 @@ from .retailer_serializers import (
 )
 
 
-class RetailerInstallationTrackingViewSet(viewsets.ReadOnlyModelViewSet):
+class RetailerAccessMixin:
+    """
+    Mixin to handle retailer access logic for filtering data to only
+    products/orders associated with the retailer.
+    """
+    
+    def get_retailer(self):
+        """Get the retailer instance for the current user"""
+        user = self.request.user
+        if hasattr(user, 'retailer_profile'):
+            return user.retailer_profile
+        elif hasattr(user, 'retailer_branch_profile'):
+            return user.retailer_branch_profile.retailer
+        return None
+    
+    def get_retailer_orders(self):
+        """
+        Get all orders associated with this retailer.
+        Uses string matching in notes and acquisition_source fields.
+        """
+        retailer = self.get_retailer()
+        if not retailer:
+            return Order.objects.none()
+        
+        return Order.objects.filter(
+            Q(notes__icontains=f"retailer: {retailer.company_name}") |
+            Q(acquisition_source__icontains=f"Retailer: {retailer.company_name}")
+        )
+
+
+class RetailerInstallationTrackingViewSet(RetailerAccessMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for retailers to track installations of products they sold.
     Read-only access with filtering and search.
@@ -55,15 +85,6 @@ class RetailerInstallationTrackingViewSet(viewsets.ReadOnlyModelViewSet):
             return RetailerInstallationDetailSerializer
         return RetailerInstallationTrackingSerializer
     
-    def get_retailer(self):
-        """Get the retailer instance for the current user"""
-        user = self.request.user
-        if hasattr(user, 'retailer_profile'):
-            return user.retailer_profile
-        elif hasattr(user, 'retailer_branch_profile'):
-            return user.retailer_branch_profile.retailer
-        return None
-    
     def get_queryset(self):
         """
         Filter installations to only those for products sold by this retailer.
@@ -74,12 +95,7 @@ class RetailerInstallationTrackingViewSet(viewsets.ReadOnlyModelViewSet):
             return InstallationSystemRecord.objects.none()
         
         # Get all orders associated with this retailer
-        # This includes orders where the retailer is explicitly linked
-        # or orders created through the retailer's system
-        retailer_orders = Order.objects.filter(
-            Q(notes__icontains=f"retailer: {retailer.company_name}") |
-            Q(acquisition_source__icontains=f"Retailer: {retailer.company_name}")
-        )
+        retailer_orders = self.get_retailer_orders()
         
         # Get installations for these orders
         queryset = InstallationSystemRecord.objects.filter(
@@ -154,7 +170,7 @@ class RetailerInstallationTrackingViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 
-class RetailerWarrantyTrackingViewSet(viewsets.ReadOnlyModelViewSet):
+class RetailerWarrantyTrackingViewSet(RetailerAccessMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for retailers to track warranties for products they sold.
     Read-only access with filtering and search.
@@ -182,15 +198,6 @@ class RetailerWarrantyTrackingViewSet(viewsets.ReadOnlyModelViewSet):
             return RetailerWarrantyDetailSerializer
         return RetailerWarrantySerializer
     
-    def get_retailer(self):
-        """Get the retailer instance for the current user"""
-        user = self.request.user
-        if hasattr(user, 'retailer_profile'):
-            return user.retailer_profile
-        elif hasattr(user, 'retailer_branch_profile'):
-            return user.retailer_branch_profile.retailer
-        return None
-    
     def get_queryset(self):
         """
         Filter warranties to only those for products sold by this retailer.
@@ -201,10 +208,7 @@ class RetailerWarrantyTrackingViewSet(viewsets.ReadOnlyModelViewSet):
             return Warranty.objects.none()
         
         # Get all orders associated with this retailer
-        retailer_orders = Order.objects.filter(
-            Q(notes__icontains=f"retailer: {retailer.company_name}") |
-            Q(acquisition_source__icontains=f"Retailer: {retailer.company_name}")
-        )
+        retailer_orders = self.get_retailer_orders()
         
         # Get warranties for these orders
         queryset = Warranty.objects.filter(
@@ -304,7 +308,7 @@ class RetailerWarrantyTrackingViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 
-class RetailerProductMovementViewSet(viewsets.ReadOnlyModelViewSet):
+class RetailerProductMovementViewSet(RetailerAccessMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for retailers to track product movements (scanned in/out).
     Read-only access to see where products are located.
@@ -326,15 +330,6 @@ class RetailerProductMovementViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['checked_in_at', 'checked_out_at', 'created_at', 'updated_at']
     ordering = ['-updated_at']
     
-    def get_retailer(self):
-        """Get the retailer instance for the current user"""
-        user = self.request.user
-        if hasattr(user, 'retailer_profile'):
-            return user.retailer_profile
-        elif hasattr(user, 'retailer_branch_profile'):
-            return user.retailer_branch_profile.retailer
-        return None
-    
     def get_queryset(self):
         """
         Filter products to only those sold by this retailer.
@@ -345,10 +340,7 @@ class RetailerProductMovementViewSet(viewsets.ReadOnlyModelViewSet):
             return SerializedItem.objects.none()
         
         # Get all orders associated with this retailer
-        retailer_orders = Order.objects.filter(
-            Q(notes__icontains=f"retailer: {retailer.company_name}") |
-            Q(acquisition_source__icontains=f"Retailer: {retailer.company_name}")
-        )
+        retailer_orders = self.get_retailer_orders()
         
         # Get order items from these orders
         retailer_order_items = OrderItem.objects.filter(order__in=retailer_orders)
