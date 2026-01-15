@@ -48,6 +48,10 @@ import AdminCartsPage from './pages/admin/AdminCartsPage';
 import RetailerSolarPackagesPage from './pages/retailer/RetailerSolarPackagesPage';
 import RetailerCreateOrderPage from './pages/retailer/RetailerCreateOrderPage';
 import RetailerOrdersPage from './pages/retailer/RetailerOrdersPage';
+import RetailerInstallationsPage from './pages/retailer/RetailerInstallationsPage';
+import RetailerInstallationDetailPage from './pages/retailer/RetailerInstallationDetailPage';
+import RetailerWarrantiesPage from './pages/retailer/RetailerWarrantiesPage';
+import RetailerWarrantyDetailPage from './pages/retailer/RetailerWarrantyDetailPage';
 
 const NotFoundPage = () => (
   <div className="p-10 text-center">
@@ -112,6 +116,10 @@ const router = createBrowserRouter([
   { path: 'retailer/solar-packages', element: <RetailerSolarPackagesPage /> },
   { path: 'retailer/orders/new', element: <RetailerCreateOrderPage /> },
   { path: 'retailer/orders', element: <RetailerOrdersPage /> },
+  { path: 'retailer/installations', element: <RetailerInstallationsPage /> },
+  { path: 'retailer/installations/:id', element: <RetailerInstallationDetailPage /> },
+  { path: 'retailer/warranties', element: <RetailerWarrantiesPage /> },
+  { path: 'retailer/warranties/:id', element: <RetailerWarrantyDetailPage /> },
 
   // Admin Panel
   { path: 'admin', element: <AdminRoute><AdminOverviewPage /></AdminRoute> },
