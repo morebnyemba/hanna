@@ -18,6 +18,12 @@ import {
   Package,
   AlertCircle
 } from 'lucide-react';
+import {
+  getWarrantyStatusIcon,
+  getWarrantyStatusColor,
+  getExpirationColor,
+  formatDaysRemaining
+} from '../../utils/statusHelpers';
 
 const RetailerWarrantiesPage = () => {
   const [warranties, setWarranties] = useState([]);
@@ -87,57 +93,6 @@ const RetailerWarrantiesPage = () => {
   });
 
   const totalPages = Math.ceil(totalCount / pageSize);
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle2 className="w-4 h-4" />;
-      case 'expired':
-        return <Clock className="w-4 h-4" />;
-      case 'void':
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <AlertCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-      expired: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-      void: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-  };
-
-  const getExpirationColor = (daysRemaining) => {
-    if (daysRemaining === null || daysRemaining < 0) {
-      return 'text-gray-500 dark:text-gray-400';
-    }
-    if (daysRemaining <= 30) {
-      return 'text-red-600 dark:text-red-400 font-semibold';
-    }
-    if (daysRemaining <= 90) {
-      return 'text-yellow-600 dark:text-yellow-400';
-    }
-    return 'text-green-600 dark:text-green-400';
-  };
-
-  const formatDaysRemaining = (daysRemaining) => {
-    if (daysRemaining === null) {
-      return 'N/A';
-    }
-    if (daysRemaining < 0) {
-      return 'Expired';
-    }
-    if (daysRemaining === 0) {
-      return 'Expires today';
-    }
-    if (daysRemaining === 1) {
-      return '1 day';
-    }
-    return `${daysRemaining} days`;
-  };
 
   if (loading && warranties.length === 0) {
     return (
@@ -374,8 +329,8 @@ const RetailerWarrantiesPage = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(warranty.status)}`}>
-                        {getStatusIcon(warranty.status)}
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${getWarrantyStatusColor(warranty.status)}`}>
+                        {getWarrantyStatusIcon(warranty.status)}
                         {warranty.status_display}
                       </span>
                     </td>

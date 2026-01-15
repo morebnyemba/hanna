@@ -18,6 +18,11 @@ import {
   Tag,
   AlertTriangle
 } from 'lucide-react';
+import {
+  getWarrantyStatusIcon,
+  getWarrantyStatusColor,
+  getClaimStatusColor
+} from '../../utils/statusHelpers';
 
 const RetailerWarrantyDetailPage = () => {
   const { id } = useParams();
@@ -40,42 +45,6 @@ const RetailerWarrantyDetailPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusIcon = (status) => {
-    const normalizedStatus = status?.toLowerCase();
-    switch (normalizedStatus) {
-      case 'active':
-        return <CheckCircle2 className="w-5 h-5" />;
-      case 'expired':
-        return <Clock className="w-5 h-5" />;
-      case 'void':
-        return <XCircle className="w-5 h-5" />;
-      default:
-        return <AlertCircle className="w-5 h-5" />;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    const normalizedStatus = status?.toLowerCase();
-    const colors = {
-      active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-      expired: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-      void: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-    };
-    return colors[normalizedStatus] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-  };
-
-  const getClaimStatusColor = (status) => {
-    const normalizedStatus = status?.toLowerCase();
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-      approved: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-      in_progress: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-      resolved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-      rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-    };
-    return colors[normalizedStatus] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   };
 
   const calculateProgress = (startDate, endDate) => {
@@ -152,8 +121,8 @@ const RetailerWarrantyDetailPage = () => {
             </p>
           )}
         </div>
-        <span className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(warranty.warranty_details?.status)}`}>
-          {getStatusIcon(warranty.warranty_details?.status)}
+        <span className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-full ${getWarrantyStatusColor(warranty.warranty_details?.status)}`}>
+          {getWarrantyStatusIcon(warranty.warranty_details?.status)}
           {warranty.warranty_details?.status}
         </span>
       </div>
