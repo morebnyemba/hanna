@@ -61,6 +61,96 @@ export async function getRetailerProfile() {
   return apiCall('/api/users/retailers/me/', 'GET', null, false);
 }
 
+/**
+ * Get installations for retailer
+ * @param {Object} params - Query parameters (page, page_size, installation_status, installation_type)
+ * @returns {Promise<Object>} Paginated installations list
+ */
+export async function getInstallations(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const endpoint = queryString 
+    ? `/api/users/retailer/installations/?${queryString}`
+    : '/api/users/retailer/installations/';
+  return apiCall(endpoint, 'GET', null, true);
+}
+
+/**
+ * Get a specific installation by ID
+ * @param {string} installationId - Installation ID
+ * @returns {Promise<Object>} Installation details
+ */
+export async function getInstallationDetail(installationId) {
+  return apiCall(`/api/users/retailer/installations/${installationId}/`, 'GET', null, false);
+}
+
+/**
+ * Get installation statistics
+ * @returns {Promise<Object>} Installation statistics
+ */
+export async function getInstallationStats() {
+  return apiCall('/api/users/retailer/installations/summary_stats/', 'GET', null, false);
+}
+
+/**
+ * Get warranties for retailer
+ * @param {Object} params - Query parameters (page, page_size, status, warranty_status, expiring_soon, has_active_claims, search)
+ * @returns {Promise<Object>} Paginated warranties list
+ */
+export async function getWarranties(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const endpoint = queryString 
+    ? `/api/users/retailer/warranties/?${queryString}`
+    : '/api/users/retailer/warranties/';
+  return apiCall(endpoint, 'GET', null, true);
+}
+
+/**
+ * Get a specific warranty by ID
+ * @param {string} warrantyId - Warranty ID
+ * @returns {Promise<Object>} Warranty details
+ */
+export async function getWarrantyDetail(warrantyId) {
+  return apiCall(`/api/users/retailer/warranties/${warrantyId}/`, 'GET', null, false);
+}
+
+/**
+ * Get warranty statistics
+ * @returns {Promise<Object>} Warranty statistics
+ */
+export async function getWarrantyStats() {
+  return apiCall('/api/users/retailer/warranties/summary_stats/', 'GET', null, false);
+}
+
+/**
+ * Get warranty claims for a specific warranty
+ * @param {string} warrantyId - Warranty ID
+ * @returns {Promise<Array>} List of warranty claims
+ */
+export async function getWarrantyClaims(warrantyId) {
+  return apiCall(`/api/users/retailer/warranties/${warrantyId}/claims/`, 'GET', null, false);
+}
+
+/**
+ * Get product movements for retailer
+ * @param {Object} params - Query parameters (page, page_size)
+ * @returns {Promise<Object>} Paginated product movements list
+ */
+export async function getProductMovements(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const endpoint = queryString 
+    ? `/api/users/retailer/product-movements/?${queryString}`
+    : '/api/users/retailer/product-movements/';
+  return apiCall(endpoint, 'GET', null, true);
+}
+
+/**
+ * Get product movement statistics
+ * @returns {Promise<Object>} Product movement statistics
+ */
+export async function getProductMovementStats() {
+  return apiCall('/api/users/retailer/product-movements/stats/', 'GET', null, false);
+}
+
 const retailerAPI = {
   getSolarPackages,
   getSolarPackage,
@@ -68,6 +158,15 @@ const retailerAPI = {
   getOrders,
   getOrder,
   getRetailerProfile,
+  getInstallations,
+  getInstallationDetail,
+  getInstallationStats,
+  getWarranties,
+  getWarrantyDetail,
+  getWarrantyStats,
+  getWarrantyClaims,
+  getProductMovements,
+  getProductMovementStats,
 };
 
 export default retailerAPI;
