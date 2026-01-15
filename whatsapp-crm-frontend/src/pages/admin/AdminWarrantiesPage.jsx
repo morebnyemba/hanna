@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import AdminDataTable from '@/components/admin/AdminDataTable';
 import { adminAPI } from '@/services/adminAPI';
+import { DownloadWarrantyCertificateButton } from '@/components/DownloadButtons';
 
 export default function AdminWarrantiesPage() {
   const [data, setData] = useState([]);
@@ -35,6 +36,17 @@ export default function AdminWarrantiesPage() {
       key: 'end_date',
       label: 'End Date',
       render: (row) => new Date(row.end_date).toLocaleDateString(),
+    },
+    {
+      key: 'actions',
+      label: 'Certificate',
+      render: (row) => (
+        <DownloadWarrantyCertificateButton 
+          warrantyId={row.id} 
+          variant="icon"
+          isAdmin={true}
+        />
+      ),
     },
   ];
 

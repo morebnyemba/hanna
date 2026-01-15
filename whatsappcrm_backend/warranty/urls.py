@@ -17,6 +17,8 @@ from .views import (
     TechnicianJobCardViewSet,
     TechnicianInstallationHistoryView,
     TechnicianInstallationDetailView,
+    WarrantyCertificatePDFView,
+    InstallationReportPDFView,
 )
 
 app_name = 'warranty_api'
@@ -48,5 +50,10 @@ urlpatterns = [
     path('dashboards/technician/', TechnicianDashboardStatsAPIView.as_view(), name='technician_dashboard_stats'),
     path('claims/', AdminWarrantyClaimListView.as_view(), name='admin_warranty_claims_list'),
     path('claims/create/', AdminWarrantyClaimCreateView.as_view(), name='admin_warranty_claim_create'),
+    
+    # PDF Generation endpoints
+    path('warranty/<int:warranty_id>/certificate/', WarrantyCertificatePDFView.as_view(), name='warranty_certificate_pdf'),
+    path('installation/<uuid:installation_id>/report/', InstallationReportPDFView.as_view(), name='installation_report_pdf'),
+    
     path('', include(router.urls)),
 ]

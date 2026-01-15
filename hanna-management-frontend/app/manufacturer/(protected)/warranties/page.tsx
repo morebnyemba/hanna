@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FiCheckSquare } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import Link from 'next/link';
+import { DownloadWarrantyCertificateButton } from '@/app/components/shared/DownloadButtons';
 
 interface Warranty {
   id: number;
@@ -25,6 +26,8 @@ export default function WarrantiesPage() {
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchWarranties = async () => {
     setLoading(true);
@@ -52,6 +55,16 @@ export default function WarrantiesPage() {
     }
   };
 
+  const handleSuccess = (message: string) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleError = (message: string) => {
+    setErrorMessage(message);
+    setTimeout(() => setErrorMessage(null), 3000);
+  };
+
   return (
     <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
@@ -63,6 +76,17 @@ export default function WarrantiesPage() {
           <a className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Create Warranty</a>
         </Link>
       </div>
+
+      {successMessage && (
+        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-md">
+          {successMessage}
+        </div>
+      )}
+      {errorMessage && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+          {errorMessage}
+        </div>
+      )}
 
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
         {loading && <p className="text-center text-gray-500 py-4">Loading warranties...</p>}
@@ -77,6 +101,7 @@ export default function WarrantiesPage() {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate</th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -88,6 +113,16 @@ export default function WarrantiesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{warranty.start_date}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{warranty.end_date}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{warranty.status}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <DownloadWarrantyCertificateButton
+                        warrantyId={warranty.id}
+                        variant="icon"
+                        size="sm"
+                        isAdmin={false}
+                        onSuccess={handleSuccess}
+                        onError={handleError}
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link href={`/manufacturer/warranties/${warranty.id}`}>
                         <a className="text-indigo-600 hover:text-indigo-900">Edit</a>
