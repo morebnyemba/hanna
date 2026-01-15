@@ -170,6 +170,15 @@ export const adminAPI = {
     update: (id, data) => axios.patch(`${ADMIN_API_URL}/cart-items/${id}/`, data, getAuthHeaders()),
     delete: (id) => axios.delete(`${ADMIN_API_URL}/cart-items/${id}/`, getAuthHeaders()),
   },
+
+  // Installation System Records
+  installationSystemRecords: {
+    list: (params) => axios.get(`${ADMIN_API_URL}/installation-system-records/`, { ...getAuthHeaders(), params }),
+    get: (id) => axios.get(`${ADMIN_API_URL}/installation-system-records/${id}/`, getAuthHeaders()),
+    create: (data) => axios.post(`${ADMIN_API_URL}/installation-system-records/`, data, getAuthHeaders()),
+    update: (id, data) => axios.patch(`${ADMIN_API_URL}/installation-system-records/${id}/`, data, getAuthHeaders()),
+    delete: (id) => axios.delete(`${ADMIN_API_URL}/installation-system-records/${id}/`, getAuthHeaders()),
+  },
 };
 
 export default adminAPI;
