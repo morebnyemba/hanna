@@ -45,7 +45,7 @@ class RetailerAccessMixin:
     def get_retailer_orders(self):
         """
         Get all orders associated with this retailer.
-        Uses string matching in notes and acquisition_source fields.
+        Uses string matching in notes field and customer acquisition_source.
         """
         retailer = self.get_retailer()
         if not retailer:
@@ -53,7 +53,7 @@ class RetailerAccessMixin:
         
         return Order.objects.filter(
             Q(notes__icontains=f"retailer: {retailer.company_name}") |
-            Q(acquisition_source__icontains=f"Retailer: {retailer.company_name}")
+            Q(customer__acquisition_source__icontains=f"Retailer: {retailer.company_name}")
         )
 
 

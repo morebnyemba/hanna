@@ -887,20 +887,32 @@ class AdminInstallationPipelineViewSet(viewsets.ViewSet):
             # Filter installations by current stage
             installations = InstallationRequest.objects.filter(
                 status=stage
-            ).select_related('customer', 'assigned_technician').order_by('-created_at')
+            ).select_related('customer', 'customer__contact').prefetch_related('technicians', 'technicians__user').order_by('-created_at')
             
             # Build installation data
             installation_list = []
             for inst in installations[:20]:  # Limit to 20 per stage for performance
+                # Get first technician or None for assigned_technician display
+                first_technician = inst.technicians.first()
+                technician_name = first_technician.user.get_full_name() if first_technician else None
+                
+                # Get customer name from customer profile
+                customer_name = 'N/A'
+                if inst.customer:
+                    if inst.customer.first_name or inst.customer.last_name:
+                        customer_name = f"{inst.customer.first_name or ''} {inst.customer.last_name or ''}".strip()
+                    elif inst.customer.contact:
+                        customer_name = inst.customer.contact.name or 'N/A'
+                
                 installation_list.append({
                     'id': str(inst.id),
-                    'customer_name': inst.customer.name if inst.customer else 'N/A',
+                    'customer_name': customer_name,
                     'installation_type': inst.installation_type or 'N/A',
-                    'system_size': float(inst.system_size) if inst.system_size else 0,
-                    'capacity_unit': inst.capacity_unit or 'kW',
+                    'system_size': 0,  # InstallationRequest doesn't have system_size
+                    'capacity_unit': 'N/A',  # InstallationRequest doesn't have capacity_unit
                     'current_stage': inst.status,
                     'days_in_stage': (timezone.now() - inst.updated_at).days,
-                    'assigned_technician': inst.assigned_technician.user.get_full_name() if inst.assigned_technician else None,
+                    'assigned_technician': technician_name,
                     'created_at': inst.created_at.isoformat(),
                     'priority': 'high' if (timezone.now() - inst.created_at).days > 14 else 'medium' if (timezone.now() - inst.created_at).days > 7 else 'low',
                 })
