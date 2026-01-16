@@ -175,7 +175,7 @@ class WarrantyRuleServiceTests(TestCase):
         )
         
         # Create warranty with same start and end date
-        start_date = datetime.now().date()
+        start_date = timezone.now().date()
         warranty = Warranty.objects.create(
             serialized_item=self.serialized_item,
             customer=self.customer,
@@ -204,7 +204,7 @@ class WarrantyRuleServiceTests(TestCase):
             is_active=True
         )
         
-        start_date = datetime.now().date()
+        start_date = timezone.now().date()
         end_date = WarrantyRuleService.calculate_warranty_end_date(self.product, start_date)
         
         expected_end_date = start_date + timedelta(days=365)
@@ -266,8 +266,8 @@ class WarrantyCertificatePDFTests(APITestCase):
             manufacturer=self.manufacturer,
             serialized_item=self.serialized_item,
             customer=self.customer,
-            start_date=datetime.now().date(),
-            end_date=(datetime.now() + timedelta(days=365)).date(),
+            start_date=timezone.now().date(),
+            end_date=(timezone.now() + timedelta(days=365)).date(),
             status='active'
         )
         
@@ -413,8 +413,8 @@ class InstallationReportPDFTests(APITestCase):
             capacity_unit='kW',
             system_classification='residential',
             installation_status='commissioned',
-            installation_date=datetime.now().date(),
-            commissioning_date=datetime.now().date(),
+            installation_date=timezone.now().date(),
+            commissioning_date=timezone.now().date(),
             installation_address='123 Test Street, Harare'
         )
         self.installation.technicians.add(self.technician)
@@ -555,8 +555,8 @@ class PDFGeneratorUnitTests(TestCase):
             manufacturer=self.manufacturer,
             serialized_item=self.serialized_item,
             customer=self.customer,
-            start_date=datetime.now().date(),
-            end_date=(datetime.now() + timedelta(days=365)).date(),
+            start_date=timezone.now().date(),
+            end_date=(timezone.now() + timedelta(days=365)).date(),
             status='active'
         )
         
@@ -568,8 +568,8 @@ class PDFGeneratorUnitTests(TestCase):
             capacity_unit='kW',
             system_classification='residential',
             installation_status='commissioned',
-            installation_date=datetime.now().date(),
-            commissioning_date=datetime.now().date(),
+            installation_date=timezone.now().date(),
+            commissioning_date=timezone.now().date(),
             installation_address='123 Test Street, Harare'
         )
     
@@ -685,7 +685,7 @@ class SLAServiceTests(TestCase):
     
     def test_create_sla_status(self):
         """Test creating SLA status for a request"""
-        created_at = datetime.now()
+        created_at = timezone.now()
         
         sla_status = SLAService.create_sla_status(
             request_object=self.installation_request,
@@ -825,7 +825,7 @@ class SLAStatusModelTests(TestCase):
     def test_sla_status_breached(self):
         """Test SLA status breached when past deadline"""
         # Create SLA status with past deadline
-        past_time = datetime.now() - timedelta(days=5)
+        past_time = timezone.now() - timedelta(days=5)
         sla_status = SLAService.create_sla_status(
             request_object=self.installation_request,
             request_type='installation',
@@ -845,7 +845,7 @@ class SLAStatusModelTests(TestCase):
         sla_status = SLAService.create_sla_status(
             request_object=self.installation_request,
             request_type='installation',
-            created_at=datetime.now() - timedelta(days=5)
+            created_at=timezone.now() - timedelta(days=5)
         )
         
         # Update status to breached

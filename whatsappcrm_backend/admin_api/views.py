@@ -215,6 +215,8 @@ class AdminWarrantyViewSet(viewsets.ModelViewSet):
         'serialized_item__product__category',
         'manufacturer',
         'customer__contact'
+    ).prefetch_related(
+        'serialized_item__product__warranty_rules'
     ).all()
     serializer_class = WarrantySerializer
     permission_classes = [IsAdminUser]

@@ -289,6 +289,22 @@ class SLAThreshold(models.Model):
         verbose_name_plural = _("SLA Thresholds")
         ordering = ['request_type', 'name']
         unique_together = [['request_type', 'name']]
+    
+    def clean(self):
+        """Validate SLA threshold configuration"""
+        from django.core.exceptions import ValidationError
+        
+        # Ensure notification threshold is valid
+        if self.notification_threshold_percent <= 0 or self.notification_threshold_percent > 100:
+            raise ValidationError(_("Notification threshold must be between 1 and 100."))
+        
+        # Ensure time values make sense
+        if self.response_time_hours <= 0:
+            raise ValidationError(_("Response time must be greater than 0."))
+        if self.resolution_time_hours <= 0:
+            raise ValidationError(_("Resolution time must be greater than 0."))
+        if self.response_time_hours > self.resolution_time_hours:
+            raise ValidationError(_("Response time cannot be greater than resolution time."))
 
 
 class SLAStatus(models.Model):

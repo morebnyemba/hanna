@@ -110,7 +110,7 @@ def monitor_sla_compliance():
                     }
                     
                     # Determine recipients based on request type
-                    recipients = self._get_sla_notification_recipients(request_object)
+                    recipients = _get_sla_notification_recipients(request_object)
                     
                     # Send notification to each recipient
                     for recipient_email in recipients:
