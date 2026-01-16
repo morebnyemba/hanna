@@ -110,12 +110,7 @@ def monitor_sla_compliance():
                     }
                     
                     # Determine recipients based on request type
-                    recipients = []
-                    
-                    # Add customer if available
-                    if hasattr(request_object, 'customer') and request_object.customer is not None:
-                        if hasattr(request_object.customer, 'email') and request_object.customer.email:
-                            recipients.append(request_object.customer.email)
+                    recipients = self._get_sla_notification_recipients(request_object)
                     
                     # Send notification to each recipient
                     for recipient_email in recipients:
@@ -140,6 +135,33 @@ def monitor_sla_compliance():
     except Exception as e:
         logger.error(f"Error in SLA monitoring task: {str(e)}")
         raise
+
+
+def _get_sla_notification_recipients(request_object):
+    """
+    Helper function to extract notification recipients from a request object.
+    
+    Args:
+        request_object: The request object (InstallationRequest, WarrantyClaim, etc.)
+        
+    Returns:
+        list: List of email addresses
+    """
+    recipients = []
+    
+    # Try to get customer email
+    try:
+        if hasattr(request_object, 'customer'):
+            customer = request_object.customer
+            if customer is not None:
+                email = getattr(customer, 'email', None)
+                if email:
+                    recipients.append(email)
+    except Exception:
+        # Silently handle any errors
+        pass
+    
+    return recipients
 
 
 @shared_task(queue='celery')

@@ -17,23 +17,28 @@ class WarrantySerializer(serializers.ModelSerializer):
     def get_applied_rule_name(self, obj):
         """
         Get the name of the warranty rule that was applied (if any).
-        Note: For optimal performance when serializing multiple warranties,
-        consider prefetching warranty rules in the viewset.
+        Uses cached/prefetched data when available to avoid N+1 queries.
         """
-        # Check if rules have been prefetched to avoid N+1 queries
-        product = obj.serialized_item.product
-        
-        # Try to use prefetched data if available
-        if hasattr(product, '_prefetched_warranty_rules'):
-            # Rules already prefetched, use them
-            for rule in product._prefetched_warranty_rules:
-                if rule.is_active:
-                    return rule.name
-        
-        # Fallback to service method (will cause additional query)
-        from .services import WarrantyRuleService
-        rule = WarrantyRuleService.find_applicable_rule(product)
-        return rule.name if rule else None
+        try:
+            product = obj.serialized_item.product
+            
+            # Check if product has warranty_rules already loaded via prefetch_related
+            # This avoids N+1 queries when listing multiple warranties
+            if hasattr(product, 'warranty_rules'):
+                # Get the first active rule with highest priority
+                active_rules = [r for r in product.warranty_rules.all() if r.is_active]
+                if active_rules:
+                    # Sort by priority (descending)
+                    active_rules.sort(key=lambda x: x.priority, reverse=True)
+                    return active_rules[0].name
+            
+            # Fallback: use service method (causes additional query but ensures correctness)
+            from .services import WarrantyRuleService
+            rule = WarrantyRuleService.find_applicable_rule(product)
+            return rule.name if rule else None
+        except Exception:
+            # Gracefully handle any errors
+            return None
 
 class WarrantyClaimCreateSerializer(serializers.ModelSerializer):
     serial_number = serializers.CharField(write_only=True)

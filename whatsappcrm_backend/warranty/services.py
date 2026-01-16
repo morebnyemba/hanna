@@ -155,6 +155,7 @@ class SLAService:
     def mark_response_completed(request_object):
         """
         Mark response as completed for a request.
+        Uses select_for_update() to prevent race conditions.
         
         Args:
             request_object: The request object
@@ -162,19 +163,24 @@ class SLAService:
         Returns:
             SLAStatus instance or None
         """
+        from django.db import transaction
+        
         content_type = ContentType.objects.get_for_model(request_object)
         
         try:
-            sla_status = SLAStatus.objects.get(
-                content_type=content_type,
-                object_id=str(request_object.pk)
-            )
-            
-            if not sla_status.response_completed_at:
-                sla_status.response_completed_at = timezone.now()
-                sla_status.update_status()
-            
-            return sla_status
+            # Use select_for_update to lock the row during update
+            with transaction.atomic():
+                sla_status = SLAStatus.objects.select_for_update().get(
+                    content_type=content_type,
+                    object_id=str(request_object.pk)
+                )
+                
+                if not sla_status.response_completed_at:
+                    sla_status.response_completed_at = timezone.now()
+                    sla_status.update_status()
+                    # Note: update_status() internally calls save()
+                
+                return sla_status
         except SLAStatus.DoesNotExist:
             return None
     
@@ -182,6 +188,7 @@ class SLAService:
     def mark_resolution_completed(request_object):
         """
         Mark resolution as completed for a request.
+        Uses select_for_update() to prevent race conditions.
         
         Args:
             request_object: The request object
@@ -189,19 +196,24 @@ class SLAService:
         Returns:
             SLAStatus instance or None
         """
+        from django.db import transaction
+        
         content_type = ContentType.objects.get_for_model(request_object)
         
         try:
-            sla_status = SLAStatus.objects.get(
-                content_type=content_type,
-                object_id=str(request_object.pk)
-            )
-            
-            if not sla_status.resolution_completed_at:
-                sla_status.resolution_completed_at = timezone.now()
-                sla_status.update_status()
-            
-            return sla_status
+            # Use select_for_update to lock the row during update
+            with transaction.atomic():
+                sla_status = SLAStatus.objects.select_for_update().get(
+                    content_type=content_type,
+                    object_id=str(request_object.pk)
+                )
+                
+                if not sla_status.resolution_completed_at:
+                    sla_status.resolution_completed_at = timezone.now()
+                    sla_status.update_status()
+                    # Note: update_status() internally calls save()
+                
+                return sla_status
         except SLAStatus.DoesNotExist:
             return None
     

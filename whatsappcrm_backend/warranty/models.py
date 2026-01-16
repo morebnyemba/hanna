@@ -6,6 +6,11 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 import uuid
 
+
+def get_current_date():
+    """Helper function for DateField default to avoid lambda serialization issues in migrations"""
+    return timezone.now().date()
+
 class Manufacturer(models.Model):
     """
     Represents a product manufacturer.
@@ -92,7 +97,7 @@ class Warranty(models.Model):
     )
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='warranties')
     associated_order = models.ForeignKey('customer_data.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='warranties')
-    start_date = models.DateField(_("Warranty Start Date"), default=lambda: timezone.now().date())
+    start_date = models.DateField(_("Warranty Start Date"), default=get_current_date)
     end_date = models.DateField(_("Warranty End Date"))
     manufacturer_email = models.EmailField(_("Manufacturer Email"), max_length=254, blank=True, null=True, help_text=_("Email for sending warranty claim notifications to the product manufacturer."))
     status = models.CharField(_("Status"), max_length=20, choices=WarrantyStatus.choices, default=WarrantyStatus.ACTIVE)
@@ -346,51 +351,55 @@ class SLAStatus(models.Model):
             models.Index(fields=['resolution_status']),
         ]
 
+    def _calculate_status_from_deadline(self, now, deadline, completed_at):
+        """
+        Calculate status based on deadline and completion time.
+        
+        Args:
+            now: Current datetime
+            deadline: Deadline datetime
+            completed_at: Completion datetime (nullable)
+            
+        Returns:
+            StatusType enum value
+        """
+        if completed_at:
+            # Task completed - check if it was on time
+            if completed_at <= deadline:
+                return self.StatusType.COMPLIANT
+            else:
+                return self.StatusType.BREACHED
+        else:
+            # Task not completed yet - check deadline
+            if now > deadline:
+                return self.StatusType.BREACHED
+            else:
+                # Check if approaching deadline (based on notification threshold)
+                time_elapsed = (now - self.request_created_at).total_seconds()
+                time_allowed = (deadline - self.request_created_at).total_seconds()
+                # Avoid division by zero
+                if time_allowed > 0 and time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
+                    return self.StatusType.WARNING
+                else:
+                    return self.StatusType.COMPLIANT
+
     def update_status(self):
         """Update SLA status based on current time"""
         now = timezone.now()
         
         # Update response status
-        if self.response_completed_at:
-            # Response completed - check if it was on time
-            if self.response_completed_at <= self.response_time_deadline:
-                self.response_status = self.StatusType.COMPLIANT
-            else:
-                self.response_status = self.StatusType.BREACHED
-        else:
-            # Response not completed yet - check deadline
-            if now > self.response_time_deadline:
-                self.response_status = self.StatusType.BREACHED
-            else:
-                # Check if approaching deadline (based on notification threshold)
-                time_elapsed = (now - self.request_created_at).total_seconds()
-                time_allowed = (self.response_time_deadline - self.request_created_at).total_seconds()
-                # Avoid division by zero
-                if time_allowed > 0 and time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
-                    self.response_status = self.StatusType.WARNING
-                else:
-                    self.response_status = self.StatusType.COMPLIANT
+        self.response_status = self._calculate_status_from_deadline(
+            now, 
+            self.response_time_deadline, 
+            self.response_completed_at
+        )
         
         # Update resolution status
-        if self.resolution_completed_at:
-            # Resolution completed - check if it was on time
-            if self.resolution_completed_at <= self.resolution_time_deadline:
-                self.resolution_status = self.StatusType.COMPLIANT
-            else:
-                self.resolution_status = self.StatusType.BREACHED
-        else:
-            # Resolution not completed yet - check deadline
-            if now > self.resolution_time_deadline:
-                self.resolution_status = self.StatusType.BREACHED
-            else:
-                # Check if approaching deadline
-                time_elapsed = (now - self.request_created_at).total_seconds()
-                time_allowed = (self.resolution_time_deadline - self.request_created_at).total_seconds()
-                # Avoid division by zero
-                if time_allowed > 0 and time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
-                    self.resolution_status = self.StatusType.WARNING
-                else:
-                    self.resolution_status = self.StatusType.COMPLIANT
+        self.resolution_status = self._calculate_status_from_deadline(
+            now,
+            self.resolution_time_deadline,
+            self.resolution_completed_at
+        )
         
         self.save()
 
