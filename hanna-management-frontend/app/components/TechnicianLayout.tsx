@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiBarChart2, FiChevronLeft, FiChevronRight, FiArchive, FiList } from 'react-icons/fi';
+import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiBarChart2, FiChevronLeft, FiChevronRight, FiArchive, FiList, FiCheckSquare, FiCamera } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
@@ -83,6 +83,8 @@ export default function TechnicianLayout({ children }: { children: ReactNode }) 
           <SidebarLink href="/technician/dashboard" icon={FiGrid} isCollapsed={isSidebarCollapsed}>Dashboard</SidebarLink>
           <SidebarLink href="/technician/analytics" icon={FiBarChart2} isCollapsed={isSidebarCollapsed}>Analytics</SidebarLink>
           <SidebarLink href="/technician/job-cards" icon={FiTool} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
+          <SidebarLink href="/technician/checklists" icon={FiCheckSquare} isCollapsed={isSidebarCollapsed}>Checklists</SidebarLink>
+          <SidebarLink href="/technician/photos" icon={FiCamera} isCollapsed={isSidebarCollapsed}>Photos</SidebarLink>
           <SidebarLink href="/technician/check-in-out" icon={FiArchive} isCollapsed={isSidebarCollapsed}>Check-In/Out</SidebarLink>
           <SidebarLink href="/technician/installation-history" icon={FiList} isCollapsed={isSidebarCollapsed}>Installation History</SidebarLink>
         </nav>

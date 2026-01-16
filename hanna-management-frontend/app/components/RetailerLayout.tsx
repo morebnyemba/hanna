@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiGrid, FiLogOut, FiMenu, FiX, FiGitBranch, FiSettings, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiGrid, FiLogOut, FiMenu, FiX, FiGitBranch, FiSettings, FiChevronLeft, FiChevronRight, FiSun, FiShoppingCart, FiPackage, FiShield } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
@@ -81,6 +81,10 @@ export default function RetailerLayout({ children }: { children: ReactNode }) {
         <p className={`text-sm text-center text-gray-300 capitalize mb-4 ${isSidebarCollapsed ? 'hidden md:block' : ''}`}>Retailer Portal</p>
         <nav className="space-y-2 flex-1 overflow-y-auto pr-1">
           <SidebarLink href="/retailer/dashboard" icon={FiGrid} isCollapsed={isSidebarCollapsed}>Dashboard</SidebarLink>
+          <SidebarLink href="/retailer/solar-packages" icon={FiSun} isCollapsed={isSidebarCollapsed}>Solar Packages</SidebarLink>
+          <SidebarLink href="/retailer/orders" icon={FiShoppingCart} isCollapsed={isSidebarCollapsed}>Orders</SidebarLink>
+          <SidebarLink href="/retailer/installations" icon={FiPackage} isCollapsed={isSidebarCollapsed}>Installations</SidebarLink>
+          <SidebarLink href="/retailer/warranties" icon={FiShield} isCollapsed={isSidebarCollapsed}>Warranties</SidebarLink>
           <SidebarLink href="/retailer/branches" icon={FiGitBranch} isCollapsed={isSidebarCollapsed}>Manage Branches</SidebarLink>
           <SidebarLink href="/retailer/settings" icon={FiSettings} isCollapsed={isSidebarCollapsed}>Settings</SidebarLink>
         </nav>
