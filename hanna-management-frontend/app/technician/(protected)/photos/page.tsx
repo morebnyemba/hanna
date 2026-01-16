@@ -27,7 +27,7 @@ export default function TechnicianPhotosPage() {
   const fetchPhotos = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/installation-photos/`, {
+      const response = await fetch(`${apiUrl}/crm-api/installation-photos/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ export default function TechnicianPhotosPage() {
       formData.append('installation_id', installationId);
       formData.append('photo_type', photoType);
 
-      const response = await fetch(`${apiUrl}/api/installation-photos/`, {
+      const response = await fetch(`${apiUrl}/crm-api/installation-photos/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

@@ -34,7 +34,7 @@ export default function RetailerSolarPackagesPage() {
     const fetchPackages = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/api/users/retailer/solar-packages/`, {
+        const response = await fetch(`${apiUrl}/crm-api/users/retailer/solar-packages/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
