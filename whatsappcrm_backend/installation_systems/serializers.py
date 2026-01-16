@@ -1,5 +1,12 @@
 from rest_framework import serializers
-from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry, InstallationPhoto
+from .models import (
+    InstallationSystemRecord, 
+    CommissioningChecklistTemplate, 
+    InstallationChecklistEntry, 
+    InstallationPhoto,
+    PayoutConfiguration,
+    InstallerPayout
+)
 from customer_data.models import CustomerProfile, Order, InstallationRequest
 from warranty.models import Technician, Warranty
 from customer_data.models import JobCard
@@ -656,3 +663,355 @@ class InstallationPhotoUpdateSerializer(serializers.ModelSerializer):
             'is_required',
             'checklist_item',
         ]
+
+
+class PayoutConfigurationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for PayoutConfiguration model.
+    """
+    installation_type_display = serializers.CharField(
+        source='get_installation_type_display', 
+        read_only=True
+    )
+    rate_type_display = serializers.CharField(
+        source='get_rate_type_display', 
+        read_only=True
+    )
+    capacity_unit_display = serializers.CharField(
+        source='get_capacity_unit_display', 
+        read_only=True
+    )
+    
+    class Meta:
+        model = PayoutConfiguration
+        fields = [
+            'id',
+            'name',
+            'installation_type',
+            'installation_type_display',
+            'min_system_size',
+            'max_system_size',
+            'capacity_unit',
+            'capacity_unit_display',
+            'rate_type',
+            'rate_type_display',
+            'rate_amount',
+            'quality_bonus_enabled',
+            'quality_bonus_amount',
+            'is_active',
+            'priority',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate(self, data):
+        """Validate payout configuration"""
+        # Validate size range
+        min_size = data.get('min_system_size')
+        max_size = data.get('max_system_size')
+        
+        if min_size and max_size and min_size > max_size:
+            raise serializers.ValidationError({
+                'max_system_size': 'Maximum size must be greater than minimum size.'
+            })
+        
+        # Validate rate amount
+        rate_amount = data.get('rate_amount')
+        if rate_amount and rate_amount <= 0:
+            raise serializers.ValidationError({
+                'rate_amount': 'Rate amount must be greater than zero.'
+            })
+        
+        # Validate quality bonus
+        if data.get('quality_bonus_enabled'):
+            if not data.get('quality_bonus_amount') or data.get('quality_bonus_amount') <= 0:
+                raise serializers.ValidationError({
+                    'quality_bonus_amount': 'Quality bonus amount is required when quality bonus is enabled.'
+                })
+        
+        return data
+
+
+class InstallerPayoutListSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for listing installer payouts.
+    """
+    technician_name = serializers.SerializerMethodField()
+    installation_count = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    short_id = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = InstallerPayout
+        fields = [
+            'id',
+            'short_id',
+            'technician',
+            'technician_name',
+            'installation_count',
+            'payout_amount',
+            'status',
+            'status_display',
+            'approved_by',
+            'approved_by_name',
+            'approved_at',
+            'paid_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_short_id(self, obj):
+        """Get shortened UUID for display"""
+        return obj.short_id
+    
+    def get_technician_name(self, obj):
+        """Get technician full name"""
+        return obj.technician.user.get_full_name() or obj.technician.user.username
+    
+    def get_installation_count(self, obj):
+        """Get count of installations in this payout"""
+        return obj.installations.count()
+    
+    def get_approved_by_name(self, obj):
+        """Get approver name"""
+        if obj.approved_by:
+            return obj.approved_by.get_full_name() or obj.approved_by.username
+        return None
+
+
+class InstallerPayoutDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for installer payouts with all information.
+    """
+    technician_details = serializers.SerializerMethodField()
+    installation_details = serializers.SerializerMethodField()
+    configuration_details = serializers.SerializerMethodField()
+    approval_details = serializers.SerializerMethodField()
+    zoho_details = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    short_id = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = InstallerPayout
+        fields = [
+            'id',
+            'short_id',
+            'technician',
+            'technician_details',
+            'installations',
+            'installation_details',
+            'configuration',
+            'configuration_details',
+            'payout_amount',
+            'calculation_method',
+            'calculation_breakdown',
+            'status',
+            'status_display',
+            'notes',
+            'admin_notes',
+            'rejection_reason',
+            'approved_by',
+            'approval_details',
+            'approved_at',
+            'paid_at',
+            'payment_reference',
+            'zoho_details',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_short_id(self, obj):
+        """Get shortened UUID for display"""
+        return obj.short_id
+    
+    def get_technician_details(self, obj):
+        """Get detailed technician information"""
+        tech = obj.technician
+        return {
+            'id': tech.id,
+            'name': tech.user.get_full_name() or tech.user.username,
+            'email': tech.user.email,
+            'phone': tech.contact_phone,
+            'specialization': tech.specialization,
+            'technician_type': tech.technician_type,
+            'technician_type_display': tech.get_technician_type_display(),
+        }
+    
+    def get_installation_details(self, obj):
+        """Get details of all installations in this payout"""
+        installations = obj.installations.select_related('customer', 'order').all()
+        return [{
+            'id': str(inst.id),
+            'short_id': inst.short_id,
+            'customer_name': inst.customer.get_full_name() or str(inst.customer.contact.whatsapp_id),
+            'installation_type': inst.installation_type,
+            'installation_type_display': inst.get_installation_type_display(),
+            'system_size': str(inst.system_size) if inst.system_size else None,
+            'capacity_unit': inst.capacity_unit,
+            'installation_status': inst.installation_status,
+            'installation_status_display': inst.get_installation_status_display(),
+            'installation_date': inst.installation_date,
+            'commissioning_date': inst.commissioning_date,
+            'order_number': inst.order.order_number if inst.order else None,
+        } for inst in installations]
+    
+    def get_configuration_details(self, obj):
+        """Get payout configuration details"""
+        if not obj.configuration:
+            return None
+        
+        config = obj.configuration
+        return {
+            'id': str(config.id),
+            'name': config.name,
+            'installation_type': config.installation_type,
+            'rate_type': config.rate_type,
+            'rate_type_display': config.get_rate_type_display(),
+            'rate_amount': str(config.rate_amount),
+            'min_system_size': str(config.min_system_size) if config.min_system_size else None,
+            'max_system_size': str(config.max_system_size) if config.max_system_size else None,
+            'capacity_unit': config.capacity_unit,
+        }
+    
+    def get_approval_details(self, obj):
+        """Get approval workflow details"""
+        if not obj.approved_by:
+            return None
+        
+        return {
+            'approved_by_id': obj.approved_by.id,
+            'approved_by_name': obj.approved_by.get_full_name() or obj.approved_by.username,
+            'approved_by_email': obj.approved_by.email,
+            'approved_at': obj.approved_at,
+        }
+    
+    def get_zoho_details(self, obj):
+        """Get Zoho integration details"""
+        return {
+            'bill_id': obj.zoho_bill_id,
+            'sync_status': obj.zoho_sync_status,
+            'sync_error': obj.zoho_sync_error,
+            'synced_at': obj.zoho_synced_at,
+        }
+
+
+class InstallerPayoutCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating new installer payouts.
+    """
+    class Meta:
+        model = InstallerPayout
+        fields = [
+            'technician',
+            'installations',
+            'notes',
+        ]
+    
+    def validate_installations(self, value):
+        """Validate installations"""
+        if not value:
+            raise serializers.ValidationError("At least one installation is required.")
+        
+        # Check that all installations are completed
+        for installation in value:
+            if installation.installation_status not in [
+                InstallationSystemRecord.InstallationStatus.COMMISSIONED,
+                InstallationSystemRecord.InstallationStatus.ACTIVE
+            ]:
+                raise serializers.ValidationError(
+                    f"Installation {installation.short_id} must be commissioned or active."
+                )
+        
+        return value
+    
+    def validate(self, data):
+        """Validate that technician is assigned to all installations"""
+        technician = data.get('technician')
+        installations = data.get('installations', [])
+        
+        for installation in installations:
+            if not installation.technicians.filter(id=technician.id).exists():
+                raise serializers.ValidationError({
+                    'installations': f"Technician is not assigned to installation {installation.short_id}"
+                })
+        
+        return data
+    
+    def create(self, validated_data):
+        """
+        Create payout using the service layer for calculation.
+        """
+        from .services import PayoutCalculationService
+        
+        technician = validated_data['technician']
+        installations = validated_data['installations']
+        notes = validated_data.get('notes', '')
+        
+        # Use service to create payout with calculation
+        payout = PayoutCalculationService.create_payout_for_installations(
+            technician=technician,
+            installations=list(installations),
+            notes=notes
+        )
+        
+        return payout
+
+
+class InstallerPayoutUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating installer payout metadata.
+    Only allows updating notes and admin notes.
+    """
+    class Meta:
+        model = InstallerPayout
+        fields = [
+            'notes',
+            'admin_notes',
+        ]
+
+
+class InstallerPayoutApprovalSerializer(serializers.Serializer):
+    """
+    Serializer for approving or rejecting payouts.
+    """
+    action = serializers.ChoiceField(
+        choices=['approve', 'reject'],
+        required=True
+    )
+    rejection_reason = serializers.CharField(
+        required=False,
+        allow_blank=True
+    )
+    admin_notes = serializers.CharField(
+        required=False,
+        allow_blank=True
+    )
+    
+    def validate(self, data):
+        """Validate that rejection reason is provided when rejecting"""
+        if data.get('action') == 'reject' and not data.get('rejection_reason'):
+            raise serializers.ValidationError({
+                'rejection_reason': 'Rejection reason is required when rejecting a payout.'
+            })
+        return data
+
+
+class InstallerPayoutPaymentSerializer(serializers.Serializer):
+    """
+    Serializer for marking payouts as paid.
+    """
+    payment_reference = serializers.CharField(
+        required=True,
+        max_length=255
+    )
+    payment_date = serializers.DateTimeField(
+        required=False
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True
+    )
