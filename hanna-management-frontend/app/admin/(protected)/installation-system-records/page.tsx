@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FiTool } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import ActionButtons from '@/app/components/shared/ActionButtons';
@@ -59,6 +60,7 @@ export default function InstallationSystemRecordsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { accessToken } = useAuthStore();
+  const router = useRouter();
 
   const fetchRecords = async () => {
     try {
@@ -160,7 +162,7 @@ export default function InstallationSystemRecordsPage() {
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
           <button
             type="button"
-            onClick={() => window.location.href = '/admin/installation-system-records/create'}
+            onClick={() => router.push('/admin/installation-system-records/create')}
             className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
           >
             Create New Record

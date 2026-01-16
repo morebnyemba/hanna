@@ -928,10 +928,18 @@ class AdminFaultAnalyticsViewSet(viewsets.ViewSet):
         
         sort_by = request.query_params.get('sort_by', 'rate')  # 'rate' or 'count'
         
-        # Get all products with installations
-        products = Product.objects.filter(
-            orderitem__order__installation_requests__isnull=False
-        ).distinct()
+        # Optimize with annotations to avoid N+1 queries
+        products = Product.objects.annotate(
+            installations_count=Count(
+                'orderitem__order__installation_requests',
+                filter=Q(orderitem__order__installation_requests__status='completed'),
+                distinct=True
+            ),
+            fault_count=Count(
+                'warranty__warrantyclaim',
+                distinct=True
+            )
+        ).filter(installations_count__gt=0)
         
         product_data = []
         total_installations = 0
@@ -939,16 +947,8 @@ class AdminFaultAnalyticsViewSet(viewsets.ViewSet):
         high_risk_count = 0
         
         for product in products:
-            # Count installations for this product
-            installations_count = InstallationRequest.objects.filter(
-                order__orderitem__product=product,
-                status='completed'
-            ).count()
-            
-            # Count warranty claims (faults) for this product
-            fault_count = WarrantyClaim.objects.filter(
-                warranty__product=product
-            ).count()
+            installations_count = product.installations_count
+            fault_count = product.fault_count
             
             if installations_count > 0:
                 fault_rate = (fault_count / installations_count) * 100
@@ -1026,14 +1026,14 @@ class AdminDeviceMonitoringViewSet(viewsets.ViewSet):
             last_update = record.updated_at if record.updated_at else record.installation_date
             days_since_update = (timezone.now() - last_update).days
             
-            if days_since_update > 7:
-                device_status = 'offline'
-            elif days_since_update > 3:
+            if days_since_update <= 1:
+                device_status = 'online'
+            elif days_since_update <= 3:
                 device_status = 'warning'
-            elif days_since_update > 1:
+            elif days_since_update <= 7:
                 device_status = 'critical'
             else:
-                device_status = 'online'
+                device_status = 'offline'
             
             # Build device data
             devices.append({
