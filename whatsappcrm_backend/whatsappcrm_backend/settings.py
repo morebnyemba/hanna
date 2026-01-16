@@ -329,6 +329,11 @@ CELERY_BEAT_SCHEDULE = {
         # Runs every 5 minutes to check for idle sessions.
         'schedule': crontab(minute='*/5'),
     },
+    'monitor-sla-compliance': {
+        'task': 'warranty.tasks.monitor_sla_compliance',
+        # Runs every hour at the top of the hour to check SLA status.
+        'schedule': crontab(minute=0, hour='*'),
+    },
     # 'fetch-mailu-attachments-periodically': {
     #     'task': 'email_integration.fetch_email_attachments_task',
     #     'schedule': 5.0,  # This is now replaced by the idle_email_fetcher service
