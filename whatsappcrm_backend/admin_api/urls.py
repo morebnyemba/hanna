@@ -38,6 +38,9 @@ router.register(r'manufacturers', views.AdminManufacturerViewSet, basename='manu
 router.register(r'technicians', views.AdminTechnicianViewSet, basename='technician')
 router.register(r'warranties', views.AdminWarrantyViewSet, basename='warranty')
 router.register(r'warranty-claims', views.AdminWarrantyClaimViewSet, basename='warranty-claim')
+router.register(r'warranty-rules', views.AdminWarrantyRuleViewSet, basename='warranty-rule')
+router.register(r'sla-thresholds', views.AdminSLAThresholdViewSet, basename='sla-threshold')
+router.register(r'sla-statuses', views.AdminSLAStatusViewSet, basename='sla-status')
 
 # Stats
 router.register(r'daily-stats', views.AdminDailyStatViewSet, basename='daily-stat')

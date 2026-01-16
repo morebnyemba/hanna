@@ -10,7 +10,7 @@ from notifications.models import Notification, NotificationTemplate
 from ai_integration.models import AIProvider
 from email_integration.models import SMTPConfig, EmailAccount, EmailAttachment, ParsedInvoice, AdminEmailRecipient
 from users.models import Retailer, RetailerBranch
-from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
+from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim, WarrantyRule, SLAThreshold, SLAStatus
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
 from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
@@ -142,6 +142,117 @@ class WarrantyClaimSerializer(serializers.ModelSerializer):
     class Meta:
         model = WarrantyClaim
         fields = '__all__'
+
+
+class WarrantyRuleSerializer(serializers.ModelSerializer):
+    """Serializer for WarrantyRule CRUD operations in admin"""
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    category_name = serializers.CharField(source='product_category.name', read_only=True)
+    
+    class Meta:
+        model = WarrantyRule
+        fields = [
+            'id',
+            'name',
+            'product',
+            'product_name',
+            'product_category',
+            'category_name',
+            'warranty_duration_days',
+            'terms_and_conditions',
+            'is_active',
+            'priority',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def validate(self, data):
+        """Ensure either product or category is set, not both"""
+        product = data.get('product')
+        category = data.get('product_category')
+        
+        if product and category:
+            raise serializers.ValidationError(
+                "A warranty rule cannot apply to both a specific product and a category. Choose one."
+            )
+        if not product and not category:
+            raise serializers.ValidationError(
+                "A warranty rule must apply to either a specific product or a product category."
+            )
+        
+        return data
+
+
+class SLAThresholdSerializer(serializers.ModelSerializer):
+    """Serializer for SLAThreshold CRUD operations in admin"""
+    request_type_display = serializers.CharField(source='get_request_type_display', read_only=True)
+    
+    class Meta:
+        model = SLAThreshold
+        fields = [
+            'id',
+            'name',
+            'request_type',
+            'request_type_display',
+            'response_time_hours',
+            'resolution_time_hours',
+            'escalation_rules',
+            'notification_threshold_percent',
+            'is_active',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def validate_notification_threshold_percent(self, value):
+        """Ensure notification threshold is between 1 and 100"""
+        if value < 1 or value > 100:
+            raise serializers.ValidationError("Notification threshold must be between 1 and 100.")
+        return value
+
+
+class SLAStatusSerializer(serializers.ModelSerializer):
+    """Serializer for SLAStatus read operations in admin"""
+    request_type = serializers.CharField(source='sla_threshold.request_type', read_only=True)
+    request_type_display = serializers.CharField(source='sla_threshold.get_request_type_display', read_only=True)
+    sla_threshold_name = serializers.CharField(source='sla_threshold.name', read_only=True)
+    response_status_display = serializers.CharField(source='get_response_status_display', read_only=True)
+    resolution_status_display = serializers.CharField(source='get_resolution_status_display', read_only=True)
+    is_breached = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SLAStatus
+        fields = [
+            'id',
+            'content_type',
+            'object_id',
+            'sla_threshold',
+            'sla_threshold_name',
+            'request_type',
+            'request_type_display',
+            'request_created_at',
+            'response_time_deadline',
+            'resolution_time_deadline',
+            'response_completed_at',
+            'resolution_completed_at',
+            'response_status',
+            'response_status_display',
+            'resolution_status',
+            'resolution_status_display',
+            'is_breached',
+            'last_notification_sent',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = '__all__'
+    
+    def get_is_breached(self, obj):
+        """Check if either response or resolution is breached"""
+        return (
+            obj.response_status == SLAStatus.StatusType.BREACHED or 
+            obj.resolution_status == SLAStatus.StatusType.BREACHED
+        )
 
 
 # Stats

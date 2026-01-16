@@ -165,3 +165,241 @@ class TechnicianComment(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class WarrantyRule(models.Model):
+    """
+    Configurable warranty rules for automatic duration assignment.
+    Links warranty duration to specific products or product categories.
+    """
+    name = models.CharField(_("Rule Name"), max_length=255, help_text=_("Descriptive name for this warranty rule"))
+    product = models.ForeignKey(
+        'products_and_services.Product',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='warranty_rules',
+        help_text=_("Specific product this rule applies to (leave blank if using category)")
+    )
+    product_category = models.ForeignKey(
+        'products_and_services.ProductCategory',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='warranty_rules',
+        help_text=_("Product category this rule applies to (leave blank if using specific product)")
+    )
+    warranty_duration_days = models.PositiveIntegerField(
+        _("Warranty Duration (Days)"),
+        help_text=_("Number of days the warranty is valid for")
+    )
+    terms_and_conditions = models.TextField(
+        _("Terms and Conditions"),
+        blank=True,
+        null=True,
+        help_text=_("Specific terms and conditions for this warranty rule")
+    )
+    is_active = models.BooleanField(
+        _("Active"),
+        default=True,
+        help_text=_("Whether this rule is currently active and should be applied")
+    )
+    priority = models.PositiveIntegerField(
+        _("Priority"),
+        default=0,
+        help_text=_("Higher priority rules are applied first (0 is lowest)")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        target = self.product.name if self.product else (self.product_category.name if self.product_category else "General")
+        return f"{self.name} - {target} ({self.warranty_duration_days} days)"
+
+    class Meta:
+        verbose_name = _("Warranty Rule")
+        verbose_name_plural = _("Warranty Rules")
+        ordering = ['-priority', '-created_at']
+
+    def clean(self):
+        """Ensure either product or category is set, not both"""
+        from django.core.exceptions import ValidationError
+        if self.product and self.product_category:
+            raise ValidationError(_("A warranty rule cannot apply to both a specific product and a category. Choose one."))
+        if not self.product and not self.product_category:
+            raise ValidationError(_("A warranty rule must apply to either a specific product or a product category."))
+
+
+class SLAThreshold(models.Model):
+    """
+    Service Level Agreement thresholds for different request types.
+    Defines response and resolution time expectations.
+    """
+    class RequestType(models.TextChoices):
+        INSTALLATION = 'installation', _('Installation Request')
+        SERVICE = 'service', _('Service Request')
+        WARRANTY_CLAIM = 'warranty_claim', _('Warranty Claim')
+        SITE_ASSESSMENT = 'site_assessment', _('Site Assessment')
+
+    name = models.CharField(_("SLA Name"), max_length=255, help_text=_("Descriptive name for this SLA threshold"))
+    request_type = models.CharField(
+        _("Request Type"),
+        max_length=50,
+        choices=RequestType.choices,
+        db_index=True,
+        help_text=_("Type of request this SLA applies to")
+    )
+    response_time_hours = models.PositiveIntegerField(
+        _("Response Time (Hours)"),
+        help_text=_("Maximum hours for initial response to customer")
+    )
+    resolution_time_hours = models.PositiveIntegerField(
+        _("Resolution Time (Hours)"),
+        help_text=_("Maximum hours for complete resolution")
+    )
+    escalation_rules = models.TextField(
+        _("Escalation Rules"),
+        blank=True,
+        null=True,
+        help_text=_("JSON or text describing escalation procedures when SLA is breached")
+    )
+    notification_threshold_percent = models.PositiveIntegerField(
+        _("Notification Threshold (%)"),
+        default=80,
+        help_text=_("Send alerts when this percentage of time has elapsed (e.g., 80 for 80%)")
+    )
+    is_active = models.BooleanField(
+        _("Active"),
+        default=True,
+        help_text=_("Whether this SLA threshold is currently active")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.get_request_type_display()} (Response: {self.response_time_hours}h, Resolution: {self.resolution_time_hours}h)"
+
+    class Meta:
+        verbose_name = _("SLA Threshold")
+        verbose_name_plural = _("SLA Thresholds")
+        ordering = ['request_type', 'name']
+        unique_together = [['request_type', 'name']]
+
+
+class SLAStatus(models.Model):
+    """
+    Tracks SLA compliance status for individual requests.
+    Stores calculated SLA metrics and violation flags.
+    """
+    class StatusType(models.TextChoices):
+        COMPLIANT = 'compliant', _('Compliant')
+        WARNING = 'warning', _('Warning - Approaching Deadline')
+        BREACHED = 'breached', _('SLA Breached')
+
+    # Generic Foreign Key to support different request types
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.CharField(max_length=36)  # To accommodate UUIDs and other PKs
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    sla_threshold = models.ForeignKey(
+        SLAThreshold,
+        on_delete=models.PROTECT,
+        related_name='sla_statuses',
+        help_text=_("The SLA threshold being tracked")
+    )
+    
+    request_created_at = models.DateTimeField(_("Request Created At"))
+    response_time_deadline = models.DateTimeField(_("Response Deadline"))
+    resolution_time_deadline = models.DateTimeField(_("Resolution Deadline"))
+    
+    response_completed_at = models.DateTimeField(_("Response Completed At"), null=True, blank=True)
+    resolution_completed_at = models.DateTimeField(_("Resolution Completed At"), null=True, blank=True)
+    
+    response_status = models.CharField(
+        _("Response Status"),
+        max_length=20,
+        choices=StatusType.choices,
+        default=StatusType.COMPLIANT
+    )
+    resolution_status = models.CharField(
+        _("Resolution Status"),
+        max_length=20,
+        choices=StatusType.choices,
+        default=StatusType.COMPLIANT
+    )
+    
+    last_notification_sent = models.DateTimeField(_("Last Notification Sent"), null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"SLA Status for {self.content_object} - Response: {self.response_status}, Resolution: {self.resolution_status}"
+
+    class Meta:
+        verbose_name = _("SLA Status")
+        verbose_name_plural = _("SLA Statuses")
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['response_status']),
+            models.Index(fields=['resolution_status']),
+        ]
+
+    def update_status(self):
+        """Update SLA status based on current time"""
+        now = timezone.now()
+        
+        # Update response status
+        if self.response_completed_at:
+            # Response completed - check if it was on time
+            if self.response_completed_at <= self.response_time_deadline:
+                self.response_status = self.StatusType.COMPLIANT
+            else:
+                self.response_status = self.StatusType.BREACHED
+        else:
+            # Response not completed yet - check deadline
+            if now > self.response_time_deadline:
+                self.response_status = self.StatusType.BREACHED
+            else:
+                # Check if approaching deadline (based on notification threshold)
+                time_elapsed = (now - self.request_created_at).total_seconds()
+                time_allowed = (self.response_time_deadline - self.request_created_at).total_seconds()
+                if time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
+                    self.response_status = self.StatusType.WARNING
+                else:
+                    self.response_status = self.StatusType.COMPLIANT
+        
+        # Update resolution status
+        if self.resolution_completed_at:
+            # Resolution completed - check if it was on time
+            if self.resolution_completed_at <= self.resolution_time_deadline:
+                self.resolution_status = self.StatusType.COMPLIANT
+            else:
+                self.resolution_status = self.StatusType.BREACHED
+        else:
+            # Resolution not completed yet - check deadline
+            if now > self.resolution_time_deadline:
+                self.resolution_status = self.StatusType.BREACHED
+            else:
+                # Check if approaching deadline
+                time_elapsed = (now - self.request_created_at).total_seconds()
+                time_allowed = (self.resolution_time_deadline - self.request_created_at).total_seconds()
+                if time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
+                    self.resolution_status = self.StatusType.WARNING
+                else:
+                    self.resolution_status = self.StatusType.COMPLIANT
+        
+        self.save()
+
+    def should_send_notification(self):
+        """Check if notification should be sent"""
+        if self.response_status == self.StatusType.WARNING or self.resolution_status == self.StatusType.WARNING:
+            # Only send if not sent recently (within last hour)
+            if not self.last_notification_sent or (timezone.now() - self.last_notification_sent).total_seconds() > 3600:
+                return True
+        elif self.response_status == self.StatusType.BREACHED or self.resolution_status == self.StatusType.BREACHED:
+            # Always notify on breach if not sent in last 4 hours
+            if not self.last_notification_sent or (timezone.now() - self.last_notification_sent).total_seconds() > 14400:
+                return True
+        return False
