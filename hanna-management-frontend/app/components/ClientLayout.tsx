@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiHome, FiBarChart2, FiBox, FiWifi, FiSettings, FiLogOut, FiMenu, FiX } from 'react-icons/fi';
+import { FiHome, FiBarChart2, FiBox, FiWifi, FiSettings, FiLogOut, FiMenu, FiX, FiTool, FiShield } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
@@ -78,6 +78,8 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
           <SidebarLink href="/client/monitoring" icon={FiWifi}>Monitoring</SidebarLink>
           <SidebarLink href="/client/orders" icon={FiBarChart2}>My Orders</SidebarLink>
           <SidebarLink href="/client/shop" icon={FiBox}>My Shop</SidebarLink>
+          <SidebarLink href="/client/warranties" icon={FiShield}>My Warranties</SidebarLink>
+          <SidebarLink href="/client/service-requests" icon={FiTool}>Service Requests</SidebarLink>
           <SidebarLink href="/client/settings" icon={FiSettings}>Settings</SidebarLink>
         </nav>
         <div className="mt-4 px-2 pt-2 border-t border-purple-700">

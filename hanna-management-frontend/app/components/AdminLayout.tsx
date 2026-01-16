@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiHome, FiUsers, FiShield, FiGitMerge, FiSettings, FiLogOut, FiMenu, FiX, FiPackage, FiBox, FiList, FiArchive, FiBarChart2, FiTool, FiWifi, FiShoppingCart } from 'react-icons/fi';
+import { FiHome, FiUsers, FiShield, FiGitMerge, FiSettings, FiLogOut, FiMenu, FiX, FiPackage, FiBox, FiList, FiArchive, FiBarChart2, FiTool, FiWifi, FiShoppingCart, FiAlertTriangle, FiTrello, FiDollarSign, FiDatabase } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
@@ -82,6 +82,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarLink href="/admin/users" icon={FiUsers}>Users</SidebarLink>
           <SidebarLink href="/admin/orders" icon={FiShoppingCart}>Order Tracking</SidebarLink>
           <SidebarLink href="/admin/installations" icon={FiTool}>Installations</SidebarLink>
+          <SidebarLink href="/admin/installation-pipeline" icon={FiTrello}>Pipeline View</SidebarLink>
+          <SidebarLink href="/admin/installation-system-records" icon={FiDatabase}>System Records</SidebarLink>
           <SidebarLink href="/admin/monitoring" icon={FiWifi}>Monitoring</SidebarLink>
           <SidebarLink href="/admin/check-in-out" icon={FiArchive}>Check-In/Out</SidebarLink>
           <SidebarDropdown title="Products" icon={FiPackage}>
@@ -95,6 +97,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarDropdown title="Service" icon={FiTool}>
             <SidebarLink href="/admin/service-requests" icon={FiTool}>Service Requests</SidebarLink>
           </SidebarDropdown>
+          <SidebarLink href="/admin/analytics-fault-rate" icon={FiAlertTriangle}>Fault Analytics</SidebarLink>
+          <SidebarLink href="/admin/payouts" icon={FiDollarSign}>Payouts</SidebarLink>
           <SidebarLink href="/admin/flows" icon={FiGitMerge}>Flows</SidebarLink>
           <SidebarLink href="/admin/settings" icon={FiSettings}>Settings</SidebarLink>
         </nav>
