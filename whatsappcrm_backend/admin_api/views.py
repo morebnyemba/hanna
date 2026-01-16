@@ -211,7 +211,11 @@ class AdminTechnicianViewSet(viewsets.ModelViewSet):
 
 class AdminWarrantyViewSet(viewsets.ModelViewSet):
     """Admin API for Warranties"""
-    queryset = Warranty.objects.all()
+    queryset = Warranty.objects.select_related(
+        'serialized_item__product__category',
+        'manufacturer',
+        'customer__contact'
+    ).all()
     serializer_class = WarrantySerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

@@ -15,9 +15,23 @@ class WarrantySerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def get_applied_rule_name(self, obj):
-        """Get the name of the warranty rule that was applied (if any)"""
-        from .services import WarrantyRuleService
+        """
+        Get the name of the warranty rule that was applied (if any).
+        Note: For optimal performance when serializing multiple warranties,
+        consider prefetching warranty rules in the viewset.
+        """
+        # Check if rules have been prefetched to avoid N+1 queries
         product = obj.serialized_item.product
+        
+        # Try to use prefetched data if available
+        if hasattr(product, '_prefetched_warranty_rules'):
+            # Rules already prefetched, use them
+            for rule in product._prefetched_warranty_rules:
+                if rule.is_active:
+                    return rule.name
+        
+        # Fallback to service method (will cause additional query)
+        from .services import WarrantyRuleService
         rule = WarrantyRuleService.find_applicable_rule(product)
         return rule.name if rule else None
 

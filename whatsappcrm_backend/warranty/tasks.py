@@ -113,7 +113,7 @@ def monitor_sla_compliance():
                     recipients = []
                     
                     # Add customer if available
-                    if hasattr(request_object, 'customer') and request_object.customer:
+                    if hasattr(request_object, 'customer') and request_object.customer is not None:
                         if hasattr(request_object.customer, 'email') and request_object.customer.email:
                             recipients.append(request_object.customer.email)
                     
@@ -170,11 +170,14 @@ def create_sla_status_for_request(request_type, request_id, request_model_name):
         # Get the request object
         request_object = model_class.objects.get(pk=request_id)
         
+        # Get created_at timestamp, defaulting to now if not available
+        created_at = getattr(request_object, 'created_at', None) or timezone.now()
+        
         # Create SLA status
         sla_status = SLAService.create_sla_status(
             request_object=request_object,
             request_type=request_type,
-            created_at=request_object.created_at if hasattr(request_object, 'created_at') else None
+            created_at=created_at
         )
         
         if sla_status:

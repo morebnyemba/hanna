@@ -92,7 +92,7 @@ class Warranty(models.Model):
     )
     customer = models.ForeignKey('customer_data.CustomerProfile', on_delete=models.CASCADE, related_name='warranties')
     associated_order = models.ForeignKey('customer_data.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='warranties')
-    start_date = models.DateField(_("Warranty Start Date"), default=timezone.now)
+    start_date = models.DateField(_("Warranty Start Date"), default=lambda: timezone.now().date())
     end_date = models.DateField(_("Warranty End Date"))
     manufacturer_email = models.EmailField(_("Manufacturer Email"), max_length=254, blank=True, null=True, help_text=_("Email for sending warranty claim notifications to the product manufacturer."))
     status = models.CharField(_("Status"), max_length=20, choices=WarrantyStatus.choices, default=WarrantyStatus.ACTIVE)
@@ -365,7 +365,8 @@ class SLAStatus(models.Model):
                 # Check if approaching deadline (based on notification threshold)
                 time_elapsed = (now - self.request_created_at).total_seconds()
                 time_allowed = (self.response_time_deadline - self.request_created_at).total_seconds()
-                if time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
+                # Avoid division by zero
+                if time_allowed > 0 and time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
                     self.response_status = self.StatusType.WARNING
                 else:
                     self.response_status = self.StatusType.COMPLIANT
@@ -385,7 +386,8 @@ class SLAStatus(models.Model):
                 # Check if approaching deadline
                 time_elapsed = (now - self.request_created_at).total_seconds()
                 time_allowed = (self.resolution_time_deadline - self.request_created_at).total_seconds()
-                if time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
+                # Avoid division by zero
+                if time_allowed > 0 and time_elapsed / time_allowed >= (self.sla_threshold.notification_threshold_percent / 100):
                     self.resolution_status = self.StatusType.WARNING
                 else:
                     self.resolution_status = self.StatusType.COMPLIANT
