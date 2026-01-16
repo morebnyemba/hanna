@@ -19,6 +19,7 @@ import {
   TrendingDown,
   Users
 } from 'lucide-react';
+import { useAuthStore } from '@/app/store/authStore';
 
 interface Device {
   id: string;
@@ -38,81 +39,47 @@ interface Device {
   location: string;
 }
 
-// Dummy data for demonstration
-const generateDummyDevices = (): Device[] => {
-  const customers = [
-    { id: 'C001', name: 'John Doe' },
-    { id: 'C002', name: 'Jane Smith' },
-    { id: 'C003', name: 'Bob Johnson' },
-    { id: 'C004', name: 'Alice Williams' },
-    { id: 'C005', name: 'Charlie Brown' },
-    { id: 'C006', name: 'Diana Prince' },
-    { id: 'C007', name: 'Eve Adams' },
-    { id: 'C008', name: 'Frank Miller' },
-  ];
-
-  const statuses: Array<'online' | 'offline' | 'warning' | 'critical'> = ['online', 'online', 'online', 'offline', 'warning', 'critical'];
-  const deviceTypes: Array<'inverter' | 'starlink' | 'solar_panel' | 'battery'> = ['inverter', 'starlink', 'solar_panel', 'battery'];
-  const locations = ['Harare', 'Bulawayo', 'Mutare', 'Gweru', 'Kwekwe', 'Masvingo'];
-
-  return customers.flatMap((customer, idx) => {
-    const numDevices = Math.floor(Math.random() * 3) + 1;
-    return Array.from({ length: numDevices }, (_, i) => {
-      const type = deviceTypes[Math.floor(Math.random() * deviceTypes.length)];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
-      
-      return {
-        id: `DEV-${customer.id}-${i + 1}`,
-        name: `${type.charAt(0).toUpperCase() + type.slice(1)} ${i + 1}`,
-        type,
-        customer_name: customer.name,
-        customer_id: customer.id,
-        status,
-        last_seen: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        metrics: {
-          battery_level: type === 'battery' || type === 'inverter' ? Math.floor(Math.random() * 100) : undefined,
-          power_output: type === 'inverter' || type === 'solar_panel' ? Math.floor(Math.random() * 5000) : undefined,
-          temperature: Math.floor(Math.random() * 40) + 20,
-          signal_strength: type === 'starlink' ? Math.floor(Math.random() * 100) : undefined,
-          uptime: Math.floor(Math.random() * 30),
-        },
-        location: locations[Math.floor(Math.random() * locations.length)],
-      };
-    });
-  });
-};
-
 export default function AdminDeviceMonitoringPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const { accessToken } = useAuthStore();
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setDevices(generateDummyDevices());
-      setLoading(false);
-    }, 1000);
+    const fetchDevices = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        const response = await fetch(`${apiUrl}/crm-api/admin-panel/device-monitoring/`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-    // Simulate real-time updates
-    const interval = setInterval(() => {
-      setDevices(prev => prev.map(device => ({
-        ...device,
-        status: Math.random() > 0.95 ? 
-          (['online', 'offline', 'warning', 'critical'] as const)[Math.floor(Math.random() * 4)] : 
-          device.status,
-        metrics: {
-          ...device.metrics,
-          battery_level: device.metrics.battery_level ? Math.max(0, Math.min(100, device.metrics.battery_level + (Math.random() - 0.5) * 5)) : undefined,
-          power_output: device.metrics.power_output ? Math.max(0, device.metrics.power_output + (Math.random() - 0.5) * 200) : undefined,
+        if (!response.ok) {
+          throw new Error('Failed to fetch device monitoring data. Status: ' + response.status);
         }
-      })));
-    }, 5000);
 
-    return () => clearInterval(interval);
-  }, []);
+        const result = await response.json();
+        setDevices(result.devices || []);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (accessToken) {
+      fetchDevices();
+      
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchDevices, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [accessToken]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -169,6 +136,18 @@ export default function AdminDeviceMonitoringPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading device monitoring data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-4 md:p-6">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <p className="font-bold">Error</p>
+          <p>{error}</p>
+          <p className="mt-2 text-sm">Please check that the device monitoring endpoint is accessible.</p>
         </div>
       </div>
     );

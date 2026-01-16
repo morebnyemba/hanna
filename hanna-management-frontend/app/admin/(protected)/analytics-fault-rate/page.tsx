@@ -33,7 +33,7 @@ export default function AdminFaultRateAnalyticsPage() {
     const fetchFaultAnalytics = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/api/admin/fault-analytics/?sort_by=${sortBy}`, {
+        const response = await fetch(`${apiUrl}/crm-api/admin-panel/fault-analytics/?sort_by=${sortBy}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',

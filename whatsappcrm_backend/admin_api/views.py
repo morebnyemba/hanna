@@ -822,3 +822,236 @@ class AdminInstallerPayoutViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return InstallerPayoutListSerializer
         return InstallerPayoutDetailSerializer
+    
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Approve a payout"""
+        payout = self.get_object()
+        if payout.status != 'pending':
+            return Response(
+                {'error': 'Only pending payouts can be approved'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        payout.status = 'approved'
+        payout.approved_by = request.user
+        payout.approved_at = timezone.now()
+        payout.save()
+        
+        serializer = self.get_serializer(payout)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Reject a payout"""
+        payout = self.get_object()
+        if payout.status != 'pending':
+            return Response(
+                {'error': 'Only pending payouts can be rejected'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        reason = request.data.get('reason', '')
+        payout.status = 'rejected'
+        payout.notes = f"Rejected: {reason}" if reason else "Rejected"
+        payout.save()
+        
+        serializer = self.get_serializer(payout)
+        return Response(serializer.data)
+
+
+# Installation Pipeline View
+class AdminInstallationPipelineViewSet(viewsets.ViewSet):
+    """Admin API for Installation Pipeline visualization"""
+    permission_classes = [IsAdminUser]
+    
+    def list(self, request):
+        """Get installation pipeline data grouped by stage"""
+        from customer_data.models import InstallationRequest
+        from django.db.models import Count, F
+        
+        # Define pipeline stages
+        stages = [
+            'order_received',
+            'site_survey',
+            'installation_scheduled',
+            'installation_in_progress',
+            'testing',
+            'commissioning',
+            'completed',
+        ]
+        
+        pipeline_data = []
+        
+        for stage in stages:
+            # Filter installations by current stage
+            installations = InstallationRequest.objects.filter(
+                status=stage
+            ).select_related('customer', 'assigned_technician').order_by('-created_at')
+            
+            # Build installation data
+            installation_list = []
+            for inst in installations[:20]:  # Limit to 20 per stage for performance
+                installation_list.append({
+                    'id': str(inst.id),
+                    'customer_name': inst.customer.name if inst.customer else 'N/A',
+                    'installation_type': inst.installation_type or 'N/A',
+                    'system_size': float(inst.system_size) if inst.system_size else 0,
+                    'capacity_unit': inst.capacity_unit or 'kW',
+                    'current_stage': inst.status,
+                    'days_in_stage': (timezone.now() - inst.updated_at).days,
+                    'assigned_technician': inst.assigned_technician.user.get_full_name() if inst.assigned_technician else None,
+                    'created_at': inst.created_at.isoformat(),
+                    'priority': 'high' if (timezone.now() - inst.created_at).days > 14 else 'medium' if (timezone.now() - inst.created_at).days > 7 else 'low',
+                })
+            
+            pipeline_data.append({
+                'stage': stage,
+                'count': installations.count(),
+                'installations': installation_list,
+            })
+        
+        return Response({'stages': pipeline_data})
+
+
+# Fault Rate Analytics View
+class AdminFaultAnalyticsViewSet(viewsets.ViewSet):
+    """Admin API for Product Fault Rate Analytics"""
+    permission_classes = [IsAdminUser]
+    
+    def list(self, request):
+        """Get fault rate analytics by product"""
+        from warranty.models import WarrantyClaim
+        from customer_data.models import InstallationRequest
+        from products_and_services.models import Product
+        from django.db.models import Count, Q
+        
+        sort_by = request.query_params.get('sort_by', 'rate')  # 'rate' or 'count'
+        
+        # Get all products with installations
+        products = Product.objects.filter(
+            orderitem__order__installation_requests__isnull=False
+        ).distinct()
+        
+        product_data = []
+        total_installations = 0
+        total_faults = 0
+        high_risk_count = 0
+        
+        for product in products:
+            # Count installations for this product
+            installations_count = InstallationRequest.objects.filter(
+                order__orderitem__product=product,
+                status='completed'
+            ).count()
+            
+            # Count warranty claims (faults) for this product
+            fault_count = WarrantyClaim.objects.filter(
+                warranty__product=product
+            ).count()
+            
+            if installations_count > 0:
+                fault_rate = (fault_count / installations_count) * 100
+                
+                # Determine trend (simplified - could be enhanced with historical data)
+                if fault_rate >= 20:
+                    trend = 'up'
+                    high_risk_count += 1
+                elif fault_rate <= 5:
+                    trend = 'down'
+                else:
+                    trend = 'stable'
+                
+                # Get common fault types
+                common_faults = list(
+                    WarrantyClaim.objects.filter(
+                        warranty__product=product
+                    ).values_list('issue_description', flat=True)
+                    .distinct()[:3]
+                )
+                
+                product_data.append({
+                    'product_id': str(product.id),
+                    'product_name': product.name,
+                    'total_installations': installations_count,
+                    'fault_count': fault_count,
+                    'fault_rate': round(fault_rate, 2),
+                    'trend': trend,
+                    'common_faults': common_faults,
+                })
+                
+                total_installations += installations_count
+                total_faults += fault_count
+        
+        # Sort data
+        if sort_by == 'count':
+            product_data.sort(key=lambda x: x['fault_count'], reverse=True)
+        else:  # sort by rate
+            product_data.sort(key=lambda x: x['fault_rate'], reverse=True)
+        
+        # Calculate summary
+        overall_fault_rate = (total_faults / total_installations * 100) if total_installations > 0 else 0
+        
+        return Response({
+            'products': product_data,
+            'summary': {
+                'total_installations': total_installations,
+                'total_faults': total_faults,
+                'overall_fault_rate': round(overall_fault_rate, 2),
+                'high_risk_products': high_risk_count,
+            }
+        })
+
+
+# Device Monitoring View
+class AdminDeviceMonitoringViewSet(viewsets.ViewSet):
+    """Admin API for Device Monitoring (IoT devices)"""
+    permission_classes = [IsAdminUser]
+    
+    def list(self, request):
+        """Get device monitoring data"""
+        from installation_systems.models import InstallationSystemRecord
+        from customer_data.models import CustomerProfile
+        
+        # Get all installation system records with customer info
+        records = InstallationSystemRecord.objects.select_related(
+            'customer'
+        ).filter(
+            status='active'
+        ).order_by('-installation_date')[:100]  # Limit to recent 100
+        
+        devices = []
+        for record in records:
+            # Determine device status based on last update
+            last_update = record.updated_at if record.updated_at else record.installation_date
+            days_since_update = (timezone.now() - last_update).days
+            
+            if days_since_update > 7:
+                device_status = 'offline'
+            elif days_since_update > 3:
+                device_status = 'warning'
+            elif days_since_update > 1:
+                device_status = 'critical'
+            else:
+                device_status = 'online'
+            
+            # Build device data
+            devices.append({
+                'id': f'DEV-{record.serial_number}' if record.serial_number else f'DEV-{record.id}',
+                'name': record.system_type or 'Solar System',
+                'type': 'solar_panel',  # Could be enhanced with actual device type
+                'customer_name': record.customer.name if record.customer else 'N/A',
+                'customer_id': str(record.customer.id) if record.customer else 'N/A',
+                'status': device_status,
+                'last_seen': last_update.isoformat(),
+                'metrics': {
+                    'battery_level': None,  # Would need IoT integration
+                    'power_output': float(record.system_size) if record.system_size else None,
+                    'temperature': None,  # Would need IoT integration
+                    'signal_strength': None,
+                    'uptime': days_since_update,
+                },
+                'location': record.installation_address or 'Unknown',
+            })
+        
+        return Response({'devices': devices})
