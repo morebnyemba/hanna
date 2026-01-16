@@ -270,7 +270,7 @@ export default function InstallationSystemRecordsPage() {
                             entityId={record.id}
                             showView={false}
                             showEdit={true}
-                            editLink={`/admin/installation-system-records/${record.id}/edit`}
+                            editPath={`/admin/installation-system-records/${record.id}/edit`}
                             onDelete={() => handleDeleteClick(record)}
                           />
                         </td>

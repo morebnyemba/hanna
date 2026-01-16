@@ -1,6 +1,6 @@
-# HANNA - WhatsApp CRM Application
+# HANNA - Solar Lifecycle Operating System
 
-A comprehensive WhatsApp CRM system with Django backend, React dashboard, and Next.js management frontend.
+A comprehensive solar energy CRM and lifecycle management system with WhatsApp integration, Django backend, React dashboard, and Next.js multi-portal frontend. HANNA manages the complete solar installation lifecycle from sales through installation, warranty, monitoring, and ongoing service.
 
 ## Quick Start
 
@@ -94,6 +94,70 @@ For detailed SSL setup and troubleshooting, see:
 - **Location:** `nginx_proxy/`
 - **Ports:** 80 (HTTP), 443 (HTTPS)
 - **Config:** `nginx_proxy/nginx.conf`
+
+## Core Features & Implementation Status
+
+### Multi-Portal Architecture
+HANNA provides role-based portals for different stakeholders:
+
+- ✅ **Admin Portal** - System control tower for governance, oversight, and configuration
+- ✅ **Client Portal** - Customer self-service with system monitoring and warranty access
+- ✅ **Technician Portal** - Field operations dashboard with job tracking and analytics
+- ✅ **Manufacturer Portal** - Warranty management, product tracking, and barcode scanning
+- ✅ **Retailer Portal** - Sales distribution with branch management
+- ✅ **Branch Portal** - Local operations with inventory and dispatch management
+
+### AI-Powered Automation
+HANNA leverages Google Gemini AI for intelligent document processing:
+
+- ✅ **Automatic Invoice Processing** - Extracts structured data from invoice PDFs sent via email
+- ✅ **Document Classification** - AI identifies document type (invoice, job card, or unknown)
+- ✅ **Order Auto-Creation** - Automatically creates orders with line items from invoices
+- ✅ **Installation Request Generation** - Auto-creates installation requests linked to orders
+- ✅ **Customer Profile Creation** - Auto-creates or links customer profiles based on phone number
+- ✅ **Job Card Processing** - Extracts and creates job card records from service documents
+- ✅ **Smart Notifications** - Sends WhatsApp and email notifications to admins and customers
+- ✅ **Duplicate Detection** - Prevents duplicate order creation from the same invoice
+
+**Email Integration Pipeline:**
+```
+Email with PDF → IMAP Fetch → Gemini AI Extraction → 
+Document Classification → Order/Installation Creation → 
+WhatsApp + Email Notifications
+```
+
+### Warranty & Service Management
+- ✅ **Serial Number Tracking** - Individual product tracking throughout lifecycle
+- ✅ **Warranty Registration** - Automatic warranty record creation
+- ✅ **Warranty Claims** - Multi-portal claim submission and approval workflow
+- ✅ **Job Card System** - Service request tracking and technician assignment
+- ✅ **Barcode Scanning** - Product check-in/out during warranty service
+- ✅ **Installation Photos** - Photo upload and gallery for installations
+
+### Solar-Specific Features (In Progress)
+The following features are part of the HANNA Core Scope roadmap:
+
+- 🚧 **Solar System Record (SSR)** - Unified digital file per installation
+- 🚧 **Digital Commissioning Checklist** - Step-by-step installation validation
+- 🚧 **Remote Monitoring Integration** - Inverter and battery monitoring APIs
+- 🚧 **Automated Fault Detection** - Proactive issue identification and ticketing
+- 🚧 **Solar Package Bundles** - Pre-configured system packages with compatibility logic
+- 🚧 **Automated Workflow Orchestration** - Sale → Installation → Warranty → Monitoring pipeline
+
+**For detailed gap analysis and roadmap, see:** [HANNA_CORE_SCOPE_GAP_ANALYSIS.md](HANNA_CORE_SCOPE_GAP_ANALYSIS.md)
+
+### E-Commerce & Payment
+- ✅ **Product Catalog** - Comprehensive product and category management
+- ✅ **Order Management** - Full order lifecycle from creation to fulfillment
+- ✅ **Payment Integration** - Paynow payment gateway integration
+- ✅ **WhatsApp Shop** - Browse and purchase directly through WhatsApp flows
+
+### Integrations
+- ✅ **WhatsApp Business API** - Flow automation and messaging
+- ✅ **Zoho CRM** - Customer and lead synchronization
+- ✅ **Email (IMAP/SMTP)** - Automated email processing and sending
+- ✅ **Google Gemini AI** - Document parsing and data extraction
+- ✅ **Paynow** - Payment processing
 
 ## Services
 
