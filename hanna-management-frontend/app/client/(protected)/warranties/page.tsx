@@ -56,13 +56,13 @@ export default function ClientWarrantiesPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
       const response = await fetch(`${apiUrl}/crm-api/client/warranties/`, {
         headers: {
-          'Authorization': `******
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch warranties. Status: ${response.status}`);
+        throw new Error('Failed to fetch warranties. Status: ' + response.status);
       }
 
       const result = await response.json();

@@ -31,13 +31,13 @@ export default function RetailerWarrantiesPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
       const response = await fetch(`${apiUrl}/api/users/retailer/warranties/?status=${filter}`, {
         headers: {
-          'Authorization': `******
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch warranties. Status: ${response.status}`);
+        throw new Error('Failed to fetch warranties. Status: ' + response.status);
       }
 
       const result = await response.json();
@@ -64,7 +64,7 @@ export default function RetailerWarrantiesPage() {
       const response = await fetch(`${apiUrl}/api/users/retailer/warranties/${warrantyId}/activate/`, {
         method: 'POST',
         headers: {
-          'Authorization': `******
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       });

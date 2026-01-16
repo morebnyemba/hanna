@@ -35,13 +35,13 @@ export default function AdminInstallationPipelinePage() {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
         const response = await fetch(`${apiUrl}/api/admin/installation-pipeline/`, {
           headers: {
-            'Authorization': `******
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch installation pipeline. Status: ${response.status}`);
+          throw new Error('Failed to fetch installation pipeline. Status: ' + response.status);
         }
 
         const result = await response.json();
