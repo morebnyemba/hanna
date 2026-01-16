@@ -69,12 +69,21 @@ export default function DashboardLayout() {
     { to: '/media-library', label: 'Media Library', icon: <FiImage className="h-5 w-5" /> },
     { to: '/admin', label: 'Admin Panel', icon: <FiSettings className="h-5 w-5" />, requiresStaff: true },
     { to: '/api-settings', label: 'API Settings', icon: <FiSettings className="h-5 w-5" /> },
+    // Retailer Portal Links
+    { to: '/retailer/solar-packages', label: 'Solar Packages', icon: <FiActivity className="h-5 w-5" />, requiresRetailer: true },
+    { to: '/retailer/orders', label: 'My Orders', icon: <FiCreditCard className="h-5 w-5" />, requiresRetailer: true },
+    { to: '/retailer/installations', label: 'Installations', icon: <FiActivity className="h-5 w-5" />, requiresRetailer: true },
+    { to: '/retailer/warranties', label: 'Warranties', icon: <FiActivity className="h-5 w-5" />, requiresRetailer: true },
   ];
 
   // Filter navigation links based on user permissions
   const navigationLinks = allNavigationLinks.filter(link => {
     if (link.requiresStaff) {
       return user?.is_staff === true;
+    }
+    if (link.requiresRetailer) {
+      // Show retailer links if user role is 'retailer' or 'retailer_branch'
+      return user?.role === 'retailer' || user?.role === 'retailer_branch';
     }
     return true;
   });
