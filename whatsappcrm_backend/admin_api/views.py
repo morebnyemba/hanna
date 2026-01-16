@@ -18,7 +18,7 @@ from notifications.models import Notification, NotificationTemplate
 from ai_integration.models import AIProvider
 from email_integration.models import SMTPConfig, EmailAccount, EmailAttachment, ParsedInvoice, AdminEmailRecipient
 from users.models import Retailer, RetailerBranch
-from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim
+from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim, WarrantyRule, SLAThreshold, SLAStatus
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
 from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
@@ -34,6 +34,7 @@ from .serializers import (
     EmailAttachmentSerializer, ParsedInvoiceSerializer, AdminEmailRecipientSerializer,
     RetailerSerializer, RetailerBranchSerializer,
     ManufacturerSerializer, TechnicianSerializer, WarrantySerializer, WarrantyClaimSerializer,
+    WarrantyRuleSerializer, SLAThresholdSerializer, SLAStatusSerializer,
     DailyStatSerializer, CartSerializer, CartItemSerializer,
     UserSerializer, InstallationRequestSerializer, SiteAssessmentRequestSerializer, LoanApplicationSerializer,
     InstallationSystemRecordSerializer,
@@ -210,7 +211,13 @@ class AdminTechnicianViewSet(viewsets.ModelViewSet):
 
 class AdminWarrantyViewSet(viewsets.ModelViewSet):
     """Admin API for Warranties"""
-    queryset = Warranty.objects.all()
+    queryset = Warranty.objects.select_related(
+        'serialized_item__product__category',
+        'manufacturer',
+        'customer__contact'
+    ).prefetch_related(
+        'serialized_item__product__warranty_rules'
+    ).all()
     serializer_class = WarrantySerializer
     permission_classes = [IsAdminUser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -267,6 +274,49 @@ class AdminWarrantyClaimViewSet(viewsets.ModelViewSet):
     search_fields = ['claim_id', 'warranty__serialized_item__serial_number']
     ordering_fields = ['created_at', 'status']
     ordering = ['-created_at']
+
+
+class AdminWarrantyRuleViewSet(viewsets.ModelViewSet):
+    """Admin API for Warranty Rules"""
+    queryset = WarrantyRule.objects.select_related('product', 'product_category').all()
+    serializer_class = WarrantyRuleSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['is_active', 'product', 'product_category']
+    search_fields = ['name', 'product__name', 'product_category__name']
+    ordering_fields = ['priority', 'created_at', 'warranty_duration_days']
+    ordering = ['-priority', '-created_at']
+
+
+class AdminSLAThresholdViewSet(viewsets.ModelViewSet):
+    """Admin API for SLA Thresholds"""
+    queryset = SLAThreshold.objects.all()
+    serializer_class = SLAThresholdSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['is_active', 'request_type']
+    search_fields = ['name']
+    ordering_fields = ['request_type', 'response_time_hours', 'resolution_time_hours']
+    ordering = ['request_type', 'name']
+
+
+class AdminSLAStatusViewSet(viewsets.ReadOnlyModelViewSet):
+    """Admin API for SLA Status (read-only)"""
+    queryset = SLAStatus.objects.select_related('sla_threshold', 'content_type').all()
+    serializer_class = SLAStatusSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['response_status', 'resolution_status', 'sla_threshold__request_type']
+    ordering_fields = ['request_created_at', 'response_time_deadline', 'resolution_time_deadline']
+    ordering = ['-request_created_at']
+    
+    @action(detail=False, methods=['get'])
+    def compliance_metrics(self, request):
+        """Get SLA compliance metrics for dashboard widget"""
+        from warranty.services import SLAService
+        
+        metrics = SLAService.get_sla_compliance_metrics()
+        return Response(metrics)
 
 
 # Stats

@@ -67,3 +67,146 @@ The Hanna Installations Team
     except Exception as e:
         logger.error(f"{log_prefix} An unexpected error occurred: {e}", exc_info=True)
         raise self.retry(exc=e)
+
+
+@shared_task(queue='celery')
+def monitor_sla_compliance():
+    """
+    Periodic task to monitor SLA compliance and send alerts.
+    Should be run every hour via Celery Beat.
+    """
+    from .models import SLAStatus
+    from notifications.services import NotificationService
+    from django.utils import timezone
+    
+    logger.info("Starting SLA compliance monitoring task")
+    
+    try:
+        # Get all active SLA statuses (not yet completed)
+        active_statuses = SLAStatus.objects.filter(
+            resolution_completed_at__isnull=True
+        )
+        
+        notifications_sent = 0
+        
+        for sla_status in active_statuses:
+            # Update status to reflect current time
+            sla_status.update_status()
+            
+            # Check if notification should be sent
+            if sla_status.should_send_notification():
+                try:
+                    # Get the request object
+                    request_object = sla_status.content_object
+                    
+                    # Prepare notification context
+                    context = {
+                        'request_type': sla_status.sla_threshold.get_request_type_display(),
+                        'request_id': str(request_object.pk),
+                        'response_status': sla_status.get_response_status_display(),
+                        'resolution_status': sla_status.get_resolution_status_display(),
+                        'response_deadline': sla_status.response_time_deadline,
+                        'resolution_deadline': sla_status.resolution_time_deadline,
+                    }
+                    
+                    # Determine recipients based on request type
+                    recipients = _get_sla_notification_recipients(request_object)
+                    
+                    # Send notification to each recipient
+                    for recipient_email in recipients:
+                        NotificationService.send_notification(
+                            recipient_email=recipient_email,
+                            template_name='sla_alert',
+                            context=context,
+                            channel='email'
+                        )
+                    
+                    # Update last notification time
+                    sla_status.last_notification_sent = timezone.now()
+                    sla_status.save()
+                    
+                    notifications_sent += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error sending SLA notification for {sla_status}: {str(e)}")
+        
+        logger.info(f"SLA monitoring completed. Sent {notifications_sent} notifications.")
+        
+    except Exception as e:
+        logger.error(f"Error in SLA monitoring task: {str(e)}")
+        raise
+
+
+def _get_sla_notification_recipients(request_object):
+    """
+    Helper function to extract notification recipients from a request object.
+    
+    Args:
+        request_object: The request object (InstallationRequest, WarrantyClaim, etc.)
+        
+    Returns:
+        list: List of email addresses
+    """
+    recipients = []
+    
+    # Try to get customer email
+    try:
+        if hasattr(request_object, 'customer'):
+            customer = request_object.customer
+            if customer is not None:
+                email = getattr(customer, 'email', None)
+                if email:
+                    recipients.append(email)
+    except Exception:
+        # Silently handle any errors
+        pass
+    
+    return recipients
+
+
+@shared_task(queue='celery')
+def create_sla_status_for_request(request_type, request_id, request_model_name):
+    """
+    Create SLA status for a new request.
+    
+    Args:
+        request_type: Type of request (matches SLAThreshold.RequestType)
+        request_id: ID of the request object
+        request_model_name: Name of the model (e.g., 'InstallationRequest', 'WarrantyClaim')
+    """
+    from django.apps import apps
+    from .services import SLAService
+    
+    try:
+        # Get the model class
+        if request_model_name == 'WarrantyClaim':
+            model_class = apps.get_model('warranty', 'WarrantyClaim')
+        elif request_model_name == 'InstallationRequest':
+            model_class = apps.get_model('customer_data', 'InstallationRequest')
+        elif request_model_name == 'SiteAssessmentRequest':
+            model_class = apps.get_model('customer_data', 'SiteAssessmentRequest')
+        else:
+            logger.error(f"Unknown request model: {request_model_name}")
+            return
+        
+        # Get the request object
+        request_object = model_class.objects.get(pk=request_id)
+        
+        # Get created_at timestamp, defaulting to now if not available
+        created_at = getattr(request_object, 'created_at', None) or timezone.now()
+        
+        # Create SLA status
+        sla_status = SLAService.create_sla_status(
+            request_object=request_object,
+            request_type=request_type,
+            created_at=created_at
+        )
+        
+        if sla_status:
+            logger.info(f"Created SLA status for {request_model_name} {request_id}")
+        else:
+            logger.warning(f"No SLA threshold configured for request type: {request_type}")
+            
+    except Exception as e:
+        logger.error(f"Error creating SLA status for {request_model_name} {request_id}: {str(e)}")
+        raise
