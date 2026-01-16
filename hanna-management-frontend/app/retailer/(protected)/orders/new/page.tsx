@@ -58,7 +58,7 @@ export default function NewOrderPage() {
 
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/api/users/retailer/solar-packages/${packageId}/`, {
+        const response = await fetch(`${apiUrl}/crm-api/users/retailer/solar-packages/${packageId}/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ export default function NewOrderPage() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/users/retailer/orders/`, {
+      const response = await fetch(`${apiUrl}/crm-api/users/retailer/orders/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

@@ -32,7 +32,7 @@ export default function AdminPayoutsPage() {
   const fetchPayouts = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/admin/technician-payouts/?status=${filter}`, {
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/technician-payouts/?status=${filter}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ export default function AdminPayoutsPage() {
     setProcessingId(payoutId);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/admin/technician-payouts/${payoutId}/approve/`, {
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/technician-payouts/${payoutId}/approve/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -92,7 +92,7 @@ export default function AdminPayoutsPage() {
     setProcessingId(payoutId);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/admin/technician-payouts/${payoutId}/reject/`, {
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/technician-payouts/${payoutId}/reject/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

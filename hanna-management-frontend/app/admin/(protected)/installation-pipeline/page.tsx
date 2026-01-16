@@ -33,7 +33,7 @@ export default function AdminInstallationPipelinePage() {
     const fetchPipeline = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/api/admin/installation-pipeline/`, {
+        const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-pipeline/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',

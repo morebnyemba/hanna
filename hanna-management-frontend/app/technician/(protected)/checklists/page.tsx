@@ -37,7 +37,7 @@ export default function TechnicianChecklistsPage() {
   const fetchChecklists = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/admin/checklist-entries/?technician_assigned=true`, {
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/checklist-entries/?technician_assigned=true`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ export default function TechnicianChecklistsPage() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/admin/checklist-entries/${selectedChecklist.id}/update_item/`, {
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/checklist-entries/${selectedChecklist.id}/update_item/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -104,7 +104,7 @@ export default function TechnicianChecklistsPage() {
       formData.append('photo', file);
       formData.append('item_id', itemId);
 
-      const response = await fetch(`${apiUrl}/api/installation-photos/`, {
+      const response = await fetch(`${apiUrl}/crm-api/installation-photos/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

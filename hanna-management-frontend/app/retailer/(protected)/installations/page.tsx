@@ -29,7 +29,7 @@ export default function RetailerInstallationsPage() {
     const fetchInstallations = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/api/users/retailer/installations/`, {
+        const response = await fetch(`${apiUrl}/crm-api/users/retailer/installations/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',

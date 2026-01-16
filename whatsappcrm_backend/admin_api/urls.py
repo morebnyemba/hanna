@@ -69,6 +69,23 @@ router.register(r'checklist-entries', views.InstallationChecklistEntryViewSet, b
 router.register(r'payout-configurations', views.AdminPayoutConfigurationViewSet, basename='payout-configuration')
 router.register(r'installer-payouts', views.AdminInstallerPayoutViewSet, basename='installer-payout')
 
+# Installation Pipeline
+router.register(r'installation-pipeline', views.AdminInstallationPipelineViewSet, basename='installation-pipeline')
+
+# Analytics
+router.register(r'fault-analytics', views.AdminFaultAnalyticsViewSet, basename='fault-analytics')
+router.register(r'device-monitoring', views.AdminDeviceMonitoringViewSet, basename='device-monitoring')
+
 urlpatterns = [
     path('', include(router.urls)),
+    # Alias for technician payouts (backward compatibility)
+    path('technician-payouts/', views.AdminInstallerPayoutViewSet.as_view({'get': 'list'}), name='technician-payouts-list'),
+    path('technician-payouts/<str:pk>/', views.AdminInstallerPayoutViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy'
+    }), name='technician-payouts-detail'),
+    path('technician-payouts/<str:pk>/approve/', views.AdminInstallerPayoutViewSet.as_view({'post': 'approve'}), name='technician-payouts-approve'),
+    path('technician-payouts/<str:pk>/reject/', views.AdminInstallerPayoutViewSet.as_view({'post': 'reject'}), name='technician-payouts-reject'),
 ]

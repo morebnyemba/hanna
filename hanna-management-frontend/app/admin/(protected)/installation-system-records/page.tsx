@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FiTool } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import ActionButtons from '@/app/components/shared/ActionButtons';
@@ -59,6 +60,7 @@ export default function InstallationSystemRecordsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { accessToken } = useAuthStore();
+  const router = useRouter();
 
   const fetchRecords = async () => {
     try {
@@ -147,7 +149,7 @@ export default function InstallationSystemRecordsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="sm:flex sm:items-center mb-6">
+      <div className="sm:flex sm:items-center sm:justify-between mb-6">
         <div className="sm:flex-auto">
           <div className="flex items-center">
             <FiTool className="h-8 w-8 text-gray-700 mr-3" />
@@ -156,6 +158,15 @@ export default function InstallationSystemRecordsPage() {
           <p className="mt-2 text-sm text-gray-700">
             A comprehensive list of all system installation records with commissioning details.
           </p>
+        </div>
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+          <button
+            type="button"
+            onClick={() => router.push('/admin/installation-system-records/create')}
+            className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
+          >
+            Create New Record
+          </button>
         </div>
       </div>
 
@@ -258,7 +269,8 @@ export default function InstallationSystemRecordsPage() {
                           <ActionButtons
                             entityId={record.id}
                             showView={false}
-                            showEdit={false}
+                            showEdit={true}
+                            editLink={`/admin/installation-system-records/${record.id}/edit`}
                             onDelete={() => handleDeleteClick(record)}
                           />
                         </td>

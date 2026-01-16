@@ -28,7 +28,7 @@ export default function RetailerOrdersPage() {
     const fetchOrders = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/api/users/retailer/orders/`, {
+        const response = await fetch(`${apiUrl}/crm-api/users/retailer/orders/`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',

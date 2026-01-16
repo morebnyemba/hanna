@@ -29,7 +29,7 @@ export default function RetailerWarrantiesPage() {
   const fetchWarranties = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/users/retailer/warranties/?status=${filter}`, {
+      const response = await fetch(`${apiUrl}/crm-api/users/retailer/warranties/?status=${filter}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ export default function RetailerWarrantiesPage() {
     setActivating(warrantyId);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/api/users/retailer/warranties/${warrantyId}/activate/`, {
+      const response = await fetch(`${apiUrl}/crm-api/users/retailer/warranties/${warrantyId}/activate/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

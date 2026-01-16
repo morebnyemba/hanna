@@ -77,28 +77,48 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
         <nav className="space-y-2 flex-1 overflow-y-auto pr-1">
           <SidebarLink href="/admin/dashboard" icon={FiHome}>Dashboard</SidebarLink>
-          <SidebarLink href="/admin/analytics" icon={FiBarChart2}>Analytics</SidebarLink>
+          
+          {/* Analytics Section */}
+          <SidebarDropdown title="Analytics" icon={FiBarChart2}>
+            <SidebarLink href="/admin/analytics" icon={FiBarChart2}>Overview</SidebarLink>
+            <SidebarLink href="/admin/analytics-fault-rate" icon={FiAlertTriangle}>Fault Analytics</SidebarLink>
+          </SidebarDropdown>
+          
+          {/* Customer Management */}
           <SidebarLink href="/admin/customers" icon={FiUsers}>Customers</SidebarLink>
           <SidebarLink href="/admin/users" icon={FiUsers}>Users</SidebarLink>
+          
+          {/* Orders & Sales */}
           <SidebarLink href="/admin/orders" icon={FiShoppingCart}>Order Tracking</SidebarLink>
-          <SidebarLink href="/admin/installations" icon={FiTool}>Installations</SidebarLink>
-          <SidebarLink href="/admin/installation-pipeline" icon={FiTrello}>Pipeline View</SidebarLink>
-          <SidebarLink href="/admin/installation-system-records" icon={FiDatabase}>System Records</SidebarLink>
-          <SidebarLink href="/admin/monitoring" icon={FiWifi}>Monitoring</SidebarLink>
+          
+          {/* Installation Management */}
+          <SidebarDropdown title="Installations" icon={FiTool}>
+            <SidebarLink href="/admin/installations" icon={FiTool}>All Installations</SidebarLink>
+            <SidebarLink href="/admin/installation-pipeline" icon={FiTrello}>Pipeline View</SidebarLink>
+            <SidebarLink href="/admin/installation-system-records" icon={FiDatabase}>System Records</SidebarLink>
+          </SidebarDropdown>
+          
+          {/* Device Management */}
+          <SidebarLink href="/admin/monitoring" icon={FiWifi}>Device Monitoring</SidebarLink>
           <SidebarLink href="/admin/check-in-out" icon={FiArchive}>Check-In/Out</SidebarLink>
+          
+          {/* Products Section */}
           <SidebarDropdown title="Products" icon={FiPackage}>
             <SidebarLink href="/admin/products" icon={FiBox}>Products</SidebarLink>
             <SidebarLink href="/admin/product-categories" icon={FiList}>Categories</SidebarLink>
             <SidebarLink href="/admin/serialized-items" icon={FiArchive}>Serialized Items</SidebarLink>
           </SidebarDropdown>
-          <SidebarDropdown title="Warranty" icon={FiShield}>
+          
+          {/* Service Management */}
+          <SidebarDropdown title="Service & Warranty" icon={FiShield}>
             <SidebarLink href="/admin/warranty-claims" icon={FiShield}>Warranty Claims</SidebarLink>
-          </SidebarDropdown>
-          <SidebarDropdown title="Service" icon={FiTool}>
             <SidebarLink href="/admin/service-requests" icon={FiTool}>Service Requests</SidebarLink>
           </SidebarDropdown>
-          <SidebarLink href="/admin/analytics-fault-rate" icon={FiAlertTriangle}>Fault Analytics</SidebarLink>
+          
+          {/* Financial Management */}
           <SidebarLink href="/admin/payouts" icon={FiDollarSign}>Payouts</SidebarLink>
+          
+          {/* System Management */}
           <SidebarLink href="/admin/flows" icon={FiGitMerge}>Flows</SidebarLink>
           <SidebarLink href="/admin/settings" icon={FiSettings}>Settings</SidebarLink>
         </nav>
