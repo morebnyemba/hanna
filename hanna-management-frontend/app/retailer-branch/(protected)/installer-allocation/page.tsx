@@ -1,33 +1,59 @@
-// src/pages/retailer/BranchInstallerAllocationPage.jsx
-import React, { useState, useEffect } from 'react';
-import { toast } from 'sonner';
-import {
-  Users,
-  Calendar,
-  Plus,
-  Search,
-  Filter,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  User,
-  MapPin,
-  Wrench,
-  Eye,
-  X
-} from 'lucide-react';
+'use client';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { useEffect, useState } from 'react';
+import { FiUsers, FiSearch, FiFilter, FiPlus, FiX, FiCheckCircle, FiClock, FiAlertCircle, FiUser, FiMapPin, FiTool, FiCalendar } from 'react-icons/fi';
+import apiClient from '@/lib/apiClient';
 
-const BranchInstallerAllocationPage = () => {
-  const [installations, setInstallations] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [installers, setInstallers] = useState([]);
+interface Installation {
+  id: string;
+  short_id: string;
+  customer_name: string;
+  installation_type: string;
+  installation_type_display: string;
+  installation_status: string;
+  status_display: string;
+  installation_address: string;
+  system_size: string;
+  capacity_unit: string;
+}
+
+interface Installer {
+  id: number;
+  name: string;
+  specialization: string;
+  contact_phone: string;
+  technician_type: string;
+}
+
+interface Assignment {
+  id: string;
+  installation_details: {
+    customer_name: string;
+    installation_type_display: string;
+    installation_address: string;
+  };
+  installer_details: {
+    name: string;
+    specialization: string;
+  };
+  scheduled_date: string;
+  scheduled_start_time: string;
+  scheduled_end_time: string;
+  status: string;
+  status_display: string;
+  is_overdue: boolean;
+  customer_satisfaction_rating: number | null;
+}
+
+export default function InstallerAllocationPage() {
+  const [installations, setInstallations] = useState<Installation[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [installers, setInstallers] = useState<Installer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedInstallation, setSelectedInstallation] = useState(null);
+  const [selectedInstallation, setSelectedInstallation] = useState<Installation | null>(null);
   const [selectedInstaller, setSelectedInstaller] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledStartTime, setScheduledStartTime] = useState('');
@@ -42,50 +68,30 @@ const BranchInstallerAllocationPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
 
       // Load assignments
-      const assignmentsRes = await fetch(
-        `${API_BASE}/crm-api/branch/installer-assignments/${statusFilter ? `?status=${statusFilter}` : ''}`,
-        { headers }
+      const assignmentsRes = await apiClient.get(
+        `/crm-api/branch/installer-assignments/${statusFilter ? `?status=${statusFilter}` : ''}`
       );
-      if (assignmentsRes.ok) {
-        const assignmentsData = await assignmentsRes.json();
-        setAssignments(assignmentsData.results || assignmentsData);
-      }
+      setAssignments(assignmentsRes.data.results || assignmentsRes.data);
 
-      // Load installations
-      const installationsRes = await fetch(
-        `${API_BASE}/crm-api/retailer/installations/?installation_status=pending,in_progress`,
-        { headers }
+      // Load pending installations
+      const installationsRes = await apiClient.get(
+        `/crm-api/retailer/installations/?installation_status=pending,in_progress`
       );
-      if (installationsRes.ok) {
-        const installationsData = await installationsRes.json();
-        setInstallations(installationsData.results || installationsData);
-      }
+      setInstallations(installationsRes.data.results || installationsRes.data);
 
       // Load installers
-      const installersRes = await fetch(
-        `${API_BASE}/crm-api/branch/installers/`,
-        { headers }
-      );
-      if (installersRes.ok) {
-        const installersData = await installersRes.json();
-        setInstallers(installersData.results || installersData);
-      }
-    } catch (err) {
+      const installersRes = await apiClient.get(`/crm-api/branch/installers/`);
+      setInstallers(installersRes.data.results || installersRes.data);
+    } catch (err: any) {
       console.error('Error loading data:', err);
-      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
-  const openAssignModal = (installation) => {
+  const openAssignModal = (installation: Installation) => {
     setSelectedInstallation(installation);
     setShowAssignModal(true);
     setSelectedInstaller('');
@@ -101,47 +107,30 @@ const BranchInstallerAllocationPage = () => {
     setSelectedInstallation(null);
   };
 
-  const handleAssignInstaller = async (e) => {
+  const handleAssignInstaller = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedInstaller || !scheduledDate) {
-      toast.error('Please select installer and date');
+      alert('Please select installer and date');
       return;
     }
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${API_BASE}/crm-api/branch/installer-assignments/`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            installation_record: selectedInstallation.id,
-            installer: selectedInstaller,
-            scheduled_date: scheduledDate,
-            scheduled_start_time: scheduledStartTime || null,
-            scheduled_end_time: scheduledEndTime || null,
-            estimated_duration_hours: estimatedDuration || null,
-            notes: notes,
-          }),
-        }
-      );
+      await apiClient.post('/crm-api/branch/installer-assignments/', {
+        installation_record: selectedInstallation?.id,
+        installer: selectedInstaller,
+        scheduled_date: scheduledDate,
+        scheduled_start_time: scheduledStartTime || null,
+        scheduled_end_time: scheduledEndTime || null,
+        estimated_duration_hours: estimatedDuration || null,
+        notes: notes,
+      });
 
-      if (response.ok) {
-        toast.success('Installer assigned successfully');
-        closeAssignModal();
-        loadData();
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to assign installer');
-      }
-    } catch (err) {
+      closeAssignModal();
+      loadData();
+    } catch (err: any) {
       console.error('Error assigning installer:', err);
-      toast.error('Failed to assign installer');
+      alert('Failed to assign installer');
     }
   };
 
@@ -154,8 +143,8 @@ const BranchInstallerAllocationPage = () => {
     );
   });
 
-  const getStatusColor = (status) => {
-    const colors = {
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       confirmed: 'bg-blue-100 text-blue-800',
       in_progress: 'bg-purple-100 text-purple-800',
@@ -165,38 +154,38 @@ const BranchInstallerAllocationPage = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="w-4 h-4" />;
+        return <FiCheckCircle className="w-4 h-4" />;
       case 'in_progress':
-        return <Clock className="w-4 h-4" />;
+        return <FiClock className="w-4 h-4" />;
       case 'cancelled':
-        return <X className="w-4 h-4" />;
+        return <FiX className="w-4 h-4" />;
       default:
-        return <AlertCircle className="w-4 h-4" />;
+        return <FiAlertCircle className="w-4 h-4" />;
     }
   };
 
   if (loading) {
     return (
-      <div className="p-6">
+      <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
             <p className="mt-2 text-gray-600">Loading assignments...</p>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="p-6">
+    <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Users className="w-8 h-8 text-blue-600" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <FiUsers className="w-8 h-8 text-emerald-600" />
           Installer Allocation
         </h1>
         <p className="text-gray-600 mt-1">
@@ -205,25 +194,25 @@ const BranchInstallerAllocationPage = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
               placeholder="Search assignments..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
           </div>
           
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
             >
               <option value="">All Status</option>
               <option value="pending">Pending</option>
@@ -238,9 +227,9 @@ const BranchInstallerAllocationPage = () => {
 
       {/* Pending Installations */}
       {installations.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-orange-500" />
+            <FiAlertCircle className="w-5 h-5 text-orange-500" />
             Pending Installations ({installations.length})
           </h2>
           <div className="space-y-3">
@@ -251,7 +240,7 @@ const BranchInstallerAllocationPage = () => {
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <Wrench className="w-5 h-5 text-gray-400" />
+                    <FiTool className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="font-medium text-gray-900">
                         {installation.customer_name}
@@ -260,7 +249,7 @@ const BranchInstallerAllocationPage = () => {
                         {installation.installation_type_display} - {installation.short_id}
                       </p>
                       <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                        <MapPin className="w-4 h-4" />
+                        <FiMapPin className="w-4 h-4" />
                         {installation.installation_address}
                       </p>
                     </div>
@@ -268,9 +257,9 @@ const BranchInstallerAllocationPage = () => {
                 </div>
                 <button
                   onClick={() => openAssignModal(installation)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                 >
-                  <Plus className="w-4 h-4" />
+                  <FiPlus className="w-4 h-4" />
                   Assign Installer
                 </button>
               </div>
@@ -280,14 +269,14 @@ const BranchInstallerAllocationPage = () => {
       )}
 
       {/* Current Assignments */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Current Assignments ({filteredAssignments.length})
         </h2>
         
         {filteredAssignments.length === 0 ? (
           <div className="text-center py-12">
-            <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <FiUsers className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500">No assignments found</p>
           </div>
         ) : (
@@ -295,7 +284,7 @@ const BranchInstallerAllocationPage = () => {
             {filteredAssignments.map((assignment) => (
               <div
                 key={assignment.id}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                className="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -306,7 +295,7 @@ const BranchInstallerAllocationPage = () => {
                       </span>
                       {assignment.is_overdue && (
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          <AlertCircle className="w-3 h-3" />
+                          <FiAlertCircle className="w-3 h-3" />
                           Overdue
                         </span>
                       )}
@@ -322,7 +311,7 @@ const BranchInstallerAllocationPage = () => {
                           {assignment.installation_details?.installation_type_display}
                         </p>
                         <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                          <MapPin className="w-4 h-4" />
+                          <FiMapPin className="w-4 h-4" />
                           {assignment.installation_details?.installation_address}
                         </p>
                       </div>
@@ -330,7 +319,7 @@ const BranchInstallerAllocationPage = () => {
                       <div>
                         <p className="text-sm text-gray-500 mb-1">Installer</p>
                         <p className="font-medium text-gray-900 flex items-center gap-2">
-                          <User className="w-4 h-4 text-gray-400" />
+                          <FiUser className="w-4 h-4 text-gray-400" />
                           {assignment.installer_details?.name}
                         </p>
                         <p className="text-sm text-gray-600">
@@ -341,7 +330,7 @@ const BranchInstallerAllocationPage = () => {
                       <div>
                         <p className="text-sm text-gray-500 mb-1">Schedule</p>
                         <p className="font-medium text-gray-900 flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <FiCalendar className="w-4 h-4 text-gray-400" />
                           {new Date(assignment.scheduled_date).toLocaleDateString()}
                         </p>
                         {assignment.scheduled_start_time && (
@@ -359,7 +348,7 @@ const BranchInstallerAllocationPage = () => {
                               <span
                                 key={i}
                                 className={`text-lg ${
-                                  i < assignment.customer_satisfaction_rating
+                                  i < assignment.customer_satisfaction_rating!
                                     ? 'text-yellow-400'
                                     : 'text-gray-300'
                                 }`}
@@ -395,7 +384,7 @@ const BranchInstallerAllocationPage = () => {
                   onClick={closeAssignModal}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <X className="w-6 h-6" />
+                  <FiX className="w-6 h-6" />
                 </button>
               </div>
 
@@ -423,7 +412,7 @@ const BranchInstallerAllocationPage = () => {
                     value={selectedInstaller}
                     onChange={(e) => setSelectedInstaller(e.target.value)}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   >
                     <option value="">-- Choose Installer --</option>
                     {installers.map((installer) => (
@@ -444,7 +433,7 @@ const BranchInstallerAllocationPage = () => {
                     onChange={(e) => setScheduledDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
 
@@ -457,7 +446,7 @@ const BranchInstallerAllocationPage = () => {
                       type="time"
                       value={scheduledStartTime}
                       onChange={(e) => setScheduledStartTime(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
 
@@ -469,7 +458,7 @@ const BranchInstallerAllocationPage = () => {
                       type="time"
                       value={scheduledEndTime}
                       onChange={(e) => setScheduledEndTime(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -485,7 +474,7 @@ const BranchInstallerAllocationPage = () => {
                     value={estimatedDuration}
                     onChange={(e) => setEstimatedDuration(e.target.value)}
                     placeholder="e.g., 4.5"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
 
@@ -498,7 +487,7 @@ const BranchInstallerAllocationPage = () => {
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
                     placeholder="Any additional notes or instructions..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
 
@@ -512,7 +501,7 @@ const BranchInstallerAllocationPage = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                   >
                     Assign Installer
                   </button>
@@ -522,8 +511,6 @@ const BranchInstallerAllocationPage = () => {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
-};
-
-export default BranchInstallerAllocationPage;
+}

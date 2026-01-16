@@ -1,25 +1,45 @@
-// src/pages/retailer/BranchPerformanceMetricsPage.jsx
-import React, { useState, useEffect } from 'react';
-import { toast } from 'sonner';
-import {
-  BarChart3,
-  TrendingUp,
-  Download,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  DollarSign,
-  Users,
-  Award,
-  Target
-} from 'lucide-react';
+'use client';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { useEffect, useState } from 'react';
+import { FiBarChart2, FiTrendingUp, FiDownload, FiCalendar, FiCheckCircle, FiClock, FiAlertCircle, FiDollarSign, FiUsers, FiAward, FiTarget } from 'react-icons/fi';
+import apiClient from '@/lib/apiClient';
 
-const BranchPerformanceMetricsPage = () => {
-  const [metrics, setMetrics] = useState(null);
-  const [installerPerformance, setInstallerPerformance] = useState([]);
+interface Metrics {
+  kpis: {
+    installations_this_month: number;
+    pending_installations: number;
+    completed_installations: number;
+    customer_complaints: number;
+  };
+  performance: {
+    completion_rate: number;
+    average_completion_time_days: number;
+    average_satisfaction_rating: number;
+  };
+  revenue: {
+    total_revenue: number;
+    installation_count: number;
+    average_order_value: number;
+  };
+  period: {
+    start_date: string;
+    end_date: string;
+  };
+}
+
+interface InstallerPerformance {
+  installer_id: number;
+  installer_name: string;
+  total_assignments: number;
+  completed_assignments: number;
+  completion_rate: number;
+  average_rating: number | null;
+  average_duration_hours: number | null;
+}
+
+export default function PerformanceMetricsPage() {
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [installerPerformance, setInstallerPerformance] = useState<InstallerPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -44,11 +64,6 @@ const BranchPerformanceMetricsPage = () => {
   const loadMetrics = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
 
       const params = new URLSearchParams({
         start_date: startDate,
@@ -56,27 +71,14 @@ const BranchPerformanceMetricsPage = () => {
       });
 
       // Load overall metrics
-      const metricsRes = await fetch(
-        `${API_BASE}/crm-api/branch/metrics/?${params}`,
-        { headers }
-      );
-      if (metricsRes.ok) {
-        const data = await metricsRes.json();
-        setMetrics(data);
-      }
+      const metricsRes = await apiClient.get(`/crm-api/branch/metrics/?${params}`);
+      setMetrics(metricsRes.data);
 
       // Load installer performance
-      const performanceRes = await fetch(
-        `${API_BASE}/crm-api/branch/metrics/installers/?${params}`,
-        { headers }
-      );
-      if (performanceRes.ok) {
-        const data = await performanceRes.json();
-        setInstallerPerformance(data.installers || []);
-      }
-    } catch (err) {
+      const performanceRes = await apiClient.get(`/crm-api/branch/metrics/installers/?${params}`);
+      setInstallerPerformance(performanceRes.data.installers || []);
+    } catch (err: any) {
       console.error('Error loading metrics:', err);
-      toast.error('Failed to load metrics');
     } finally {
       setLoading(false);
     }
@@ -85,39 +87,28 @@ const BranchPerformanceMetricsPage = () => {
   const handleExport = async () => {
     try {
       setExporting(true);
-      const token = localStorage.getItem('access_token');
-      
+
       const params = new URLSearchParams({
         start_date: startDate,
         end_date: endDate,
       });
 
-      const response = await fetch(
-        `${API_BASE}/crm-api/branch/metrics/export/?${params}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await apiClient.get(`/crm-api/branch/metrics/export/?${params}`, {
+        responseType: 'blob',
+      });
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `branch_metrics_${startDate}_${endDate}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success('Metrics exported successfully');
-      } else {
-        toast.error('Failed to export metrics');
-      }
-    } catch (err) {
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `branch_metrics_${startDate}_${endDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
       console.error('Error exporting metrics:', err);
-      toast.error('Failed to export metrics');
+      alert('Failed to export metrics');
     } finally {
       setExporting(false);
     }
@@ -125,23 +116,23 @@ const BranchPerformanceMetricsPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
             <p className="mt-2 text-gray-600">Loading metrics...</p>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="p-6">
+    <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-8 h-8 text-blue-600" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <FiBarChart2 className="w-8 h-8 text-emerald-600" />
           Performance Metrics
         </h1>
         <p className="text-gray-600 mt-1">
@@ -150,23 +141,23 @@ const BranchPerformanceMetricsPage = () => {
       </div>
 
       {/* Date Range Filter */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 mb-6">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
           <div className="flex items-center gap-2 flex-1">
-            <Calendar className="w-5 h-5 text-gray-400" />
+            <FiCalendar className="w-5 h-5 text-gray-400" />
             <div className="flex items-center gap-2 flex-1">
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
               <span className="text-gray-500">to</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -175,7 +166,7 @@ const BranchPerformanceMetricsPage = () => {
             disabled={exporting}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400"
           >
-            <Download className="w-4 h-4" />
+            <FiDownload className="w-4 h-4" />
             {exporting ? 'Exporting...' : 'Export CSV'}
           </button>
         </div>
@@ -185,40 +176,40 @@ const BranchPerformanceMetricsPage = () => {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">Installations This Month</p>
-                <Calendar className="w-5 h-5 text-blue-500" />
+                <FiCalendar className="w-5 h-5 text-emerald-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">
                 {metrics.kpis?.installations_this_month || 0}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">Pending Installations</p>
-                <Clock className="w-5 h-5 text-yellow-500" />
+                <FiClock className="w-5 h-5 text-yellow-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">
                 {metrics.kpis?.pending_installations || 0}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">Completed Installations</p>
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <FiCheckCircle className="w-5 h-5 text-green-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">
                 {metrics.kpis?.completed_installations || 0}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">Customer Complaints</p>
-                <AlertCircle className="w-5 h-5 text-red-500" />
+                <FiAlertCircle className="w-5 h-5 text-red-500" />
               </div>
               <p className="text-3xl font-bold text-gray-900">
                 {metrics.kpis?.customer_complaints || 0}
@@ -228,15 +219,15 @@ const BranchPerformanceMetricsPage = () => {
 
           {/* Performance Metrics */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Target className="w-5 h-5 text-blue-500" />
+                <FiTarget className="w-5 h-5 text-emerald-500" />
                 <h3 className="text-lg font-semibold text-gray-900">
                   Completion Rate
                 </h3>
               </div>
               <div className="text-center">
-                <p className="text-4xl font-bold text-blue-600">
+                <p className="text-4xl font-bold text-emerald-600">
                   {metrics.performance?.completion_rate || 0}%
                 </p>
                 <p className="text-sm text-gray-600 mt-2">
@@ -245,9 +236,9 @@ const BranchPerformanceMetricsPage = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Clock className="w-5 h-5 text-purple-500" />
+                <FiClock className="w-5 h-5 text-purple-500" />
                 <h3 className="text-lg font-semibold text-gray-900">
                   Avg Completion Time
                 </h3>
@@ -262,9 +253,9 @@ const BranchPerformanceMetricsPage = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Award className="w-5 h-5 text-yellow-500" />
+                <FiAward className="w-5 h-5 text-yellow-500" />
                 <h3 className="text-lg font-semibold text-gray-900">
                   Customer Satisfaction
                 </h3>
@@ -282,9 +273,9 @@ const BranchPerformanceMetricsPage = () => {
 
           {/* Revenue Metrics */}
           {metrics.revenue && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
               <div className="flex items-center gap-2 mb-4">
-                <DollarSign className="w-6 h-6 text-green-500" />
+                <FiDollarSign className="w-6 h-6 text-green-500" />
                 <h3 className="text-lg font-semibold text-gray-900">
                   Revenue Summary
                 </h3>
@@ -315,9 +306,9 @@ const BranchPerformanceMetricsPage = () => {
       )}
 
       {/* Top Performing Installers */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-6 h-6 text-blue-500" />
+          <FiUsers className="w-6 h-6 text-emerald-500" />
           <h3 className="text-lg font-semibold text-gray-900">
             Installer Performance
           </h3>
@@ -325,7 +316,7 @@ const BranchPerformanceMetricsPage = () => {
 
         {installerPerformance.length === 0 ? (
           <div className="text-center py-12">
-            <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <FiUsers className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500">No installer data available</p>
           </div>
         ) : (
@@ -358,13 +349,13 @@ const BranchPerformanceMetricsPage = () => {
                   <tr
                     key={installer.installer_id}
                     className={`border-b border-gray-100 ${
-                      index < 3 ? 'bg-blue-50' : ''
+                      index < 3 ? 'bg-emerald-50' : ''
                     }`}
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         {index < 3 && (
-                          <Award className="w-4 h-4 text-yellow-500" />
+                          <FiAward className="w-4 h-4 text-yellow-500" />
                         )}
                         <span className="font-medium text-gray-900">
                           {installer.installer_name}
@@ -412,8 +403,6 @@ const BranchPerformanceMetricsPage = () => {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
-};
-
-export default BranchPerformanceMetricsPage;
+}
