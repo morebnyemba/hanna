@@ -383,18 +383,18 @@ class InstallerAvailabilityAdmin(admin.ModelAdmin):
     """
     Admin interface for the InstallerAvailability model.
     """
-    list_display = ('installer', 'date', 'is_available', 'max_assignments', 'current_assignments', 'branch')
-    list_filter = ('is_available', 'date', 'branch')
-    search_fields = ('installer__user__username', 'installer__user__first_name', 'installer__user__last_name')
-    autocomplete_fields = ('installer', 'branch')
+    list_display = ('installer', 'date', 'availability_type', 'start_time', 'end_time')
+    list_filter = ('availability_type', 'date')
+    search_fields = ('installer__user__username', 'installer__user__first_name', 'installer__user__last_name', 'notes')
+    autocomplete_fields = ('installer',)
     date_hierarchy = 'date'
     
     fieldsets = (
         ('Availability Details', {
-            'fields': ('installer', 'date', 'branch')
+            'fields': ('installer', 'date', 'availability_type')
         }),
-        ('Capacity', {
-            'fields': ('is_available', 'max_assignments', 'unavailability_reason')
+        ('Time Block', {
+            'fields': ('start_time', 'end_time')
         }),
         ('Notes', {
             'fields': ('notes',),

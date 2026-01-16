@@ -539,13 +539,13 @@ class SolarPackageProductAdmin(admin.ModelAdmin):
     """
     Admin interface for the SolarPackageProduct model.
     """
-    list_display = ('package', 'product', 'quantity')
-    list_filter = ('package', 'product__category')
-    search_fields = ('package__name', 'product__name')
-    autocomplete_fields = ('package', 'product')
+    list_display = ('solar_package', 'product', 'quantity')
+    list_filter = ('solar_package', 'product__category')
+    search_fields = ('solar_package__name', 'product__name')
+    autocomplete_fields = ('solar_package', 'product')
     
     fieldsets = (
         (None, {
-            'fields': ('package', 'product', 'quantity')
+            'fields': ('solar_package', 'product', 'quantity')
         }),
     )
