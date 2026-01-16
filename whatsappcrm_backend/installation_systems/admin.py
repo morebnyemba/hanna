@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry, InstallationPhoto
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry, InstallationPhoto, PayoutConfiguration, InstallerPayout
+from .branch_models import InstallerAssignment, InstallerAvailability
 
 
 @admin.register(InstallationSystemRecord)
@@ -265,3 +266,142 @@ class InstallationPhotoAdmin(admin.ModelAdmin):
         return "No preview available"
     media_preview.short_description = "Preview"
     media_preview.allow_tags = True
+
+
+@admin.register(PayoutConfiguration)
+class PayoutConfigurationAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the PayoutConfiguration model.
+    """
+    list_display = ('name', 'installation_type', 'rate_type', 'rate_amount', 'min_system_size', 'max_system_size', 'capacity_unit', 'is_active', 'priority')
+    list_filter = ('installation_type', 'rate_type', 'capacity_unit', 'is_active')
+    search_fields = ('name',)
+    readonly_fields = ('id', 'created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Configuration Details', {
+            'fields': ('id', 'name', 'installation_type', 'is_active', 'priority')
+        }),
+        ('Size Tiers', {
+            'fields': ('min_system_size', 'max_system_size', 'capacity_unit')
+        }),
+        ('Payout Rates', {
+            'fields': ('rate_type', 'rate_amount')
+        }),
+        ('Quality Bonuses', {
+            'fields': ('quality_bonus_enabled', 'quality_bonus_amount'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(InstallerPayout)
+class InstallerPayoutAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the InstallerPayout model.
+    """
+    list_display = ('short_id', 'technician', 'payout_amount', 'status', 'created_at', 'approved_at', 'paid_at')
+    list_filter = ('status', 'created_at', 'approved_at', 'paid_at')
+    search_fields = ('id', 'technician__user__username', 'technician__user__first_name', 'technician__user__last_name')
+    autocomplete_fields = ('technician', 'configuration', 'approved_by')
+    readonly_fields = ('id', 'calculation_breakdown', 'created_at', 'updated_at')
+    filter_horizontal = ('installations',)
+    date_hierarchy = 'created_at'
+    list_editable = ('status',)
+    
+    fieldsets = (
+        ('Payout Information', {
+            'fields': ('id', 'technician', 'installations', 'configuration')
+        }),
+        ('Amount & Calculation', {
+            'fields': ('payout_amount', 'calculation_method', 'calculation_breakdown')
+        }),
+        ('Status & Approval', {
+            'fields': ('status', 'approved_by', 'approved_at', 'paid_at', 'rejection_reason')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def short_id(self, obj):
+        """Display shortened UUID for readability"""
+        return f"{str(obj.id)[:8]}"
+    short_id.short_description = "Payout ID"
+    short_id.admin_order_field = 'id'
+
+
+@admin.register(InstallerAssignment)
+class InstallerAssignmentAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the InstallerAssignment model.
+    """
+    list_display = ('short_id', 'installation_record_short', 'installer', 'branch', 'scheduled_date', 'status', 'assigned_by')
+    list_filter = ('status', 'scheduled_date', 'branch')
+    search_fields = ('id', 'installer__user__username', 'installer__user__first_name', 'installer__user__last_name', 'installation_record__customer__first_name')
+    autocomplete_fields = ('installation_record', 'installer', 'branch', 'assigned_by')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+    date_hierarchy = 'scheduled_date'
+    list_editable = ('status',)
+    
+    fieldsets = (
+        ('Assignment Details', {
+            'fields': ('id', 'installation_record', 'installer', 'branch', 'assigned_by')
+        }),
+        ('Scheduling', {
+            'fields': ('scheduled_date', 'scheduled_start_time', 'scheduled_end_time', 'estimated_duration_hours')
+        }),
+        ('Status & Tracking', {
+            'fields': ('status', 'actual_start_time', 'actual_end_time')
+        }),
+        ('Additional Information', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def short_id(self, obj):
+        """Display shortened UUID for readability"""
+        return f"{str(obj.id)[:8]}"
+    short_id.short_description = "Assignment ID"
+    short_id.admin_order_field = 'id'
+    
+    def installation_record_short(self, obj):
+        """Display shortened installation record ID"""
+        return f"ISR-{str(obj.installation_record.id)[:8]}"
+    installation_record_short.short_description = "Installation"
+    installation_record_short.admin_order_field = 'installation_record'
+
+
+@admin.register(InstallerAvailability)
+class InstallerAvailabilityAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the InstallerAvailability model.
+    """
+    list_display = ('installer', 'date', 'availability_type', 'start_time', 'end_time')
+    list_filter = ('availability_type', 'date')
+    search_fields = ('installer__user__username', 'installer__user__first_name', 'installer__user__last_name', 'notes')
+    autocomplete_fields = ('installer',)
+    date_hierarchy = 'date'
+    
+    fieldsets = (
+        ('Availability Details', {
+            'fields': ('installer', 'date', 'availability_type')
+        }),
+        ('Time Block', {
+            'fields': ('start_time', 'end_time')
+        }),
+        ('Notes', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        }),
+    )

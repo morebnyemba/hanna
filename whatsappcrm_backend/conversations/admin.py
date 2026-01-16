@@ -112,3 +112,23 @@ class BroadcastAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('created_by')
+
+
+@admin.register(BroadcastRecipient)
+class BroadcastRecipientAdmin(admin.ModelAdmin):
+    list_display = ('broadcast', 'contact', 'status', 'status_timestamp', 'message_short')
+    list_filter = ('status', 'status_timestamp', 'broadcast')
+    search_fields = ('contact__whatsapp_id', 'contact__name', 'broadcast__name')
+    readonly_fields = ('broadcast', 'contact', 'status', 'status_timestamp', 'message')
+    autocomplete_fields = ('broadcast', 'contact', 'message')
+    date_hierarchy = 'status_timestamp'
+    
+    def message_short(self, obj):
+        if obj.message:
+            return f"Message ID: {obj.message.id}"
+        return "No message"
+    message_short.short_description = 'Message'
+    
+    def has_add_permission(self, request):
+        # BroadcastRecipients are created automatically when a broadcast is created
+        return False

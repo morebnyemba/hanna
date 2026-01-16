@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, JobCard, LoanApplication
+from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, JobCard, LoanApplication, Payment
 from warranty.admin import TechnicianCommentInline
 
 class InteractionInline(admin.TabularInline):
@@ -163,3 +163,38 @@ class JobCardAdmin(admin.ModelAdmin):
     list_editable = ('status',)
     inlines = [TechnicianCommentInline,]
     date_hierarchy = 'creation_date'
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the Payment model.
+    """
+    list_display = ('short_id', 'customer', 'order', 'amount', 'currency', 'status', 'payment_method', 'created_at')
+    list_filter = ('status', 'payment_method', 'currency', 'created_at')
+    search_fields = ('id', 'customer__first_name', 'customer__last_name', 'provider_transaction_id', 'order__order_number')
+    autocomplete_fields = ('customer', 'order')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'provider_response')
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('Payment Information', {
+            'fields': ('id', 'customer', 'order')
+        }),
+        ('Amount & Method', {
+            'fields': ('amount', 'currency', 'payment_method', 'status')
+        }),
+        ('Provider Details', {
+            'fields': ('provider_transaction_id', 'poll_url', 'provider_response'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def short_id(self, obj):
+        """Display shortened UUID for readability"""
+        return f"{str(obj.id)[:8]}"
+    short_id.short_description = "Payment ID"
+    short_id.admin_order_field = 'id'
