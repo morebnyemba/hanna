@@ -35,13 +35,13 @@ export default function AdminFaultRateAnalyticsPage() {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
         const response = await fetch(`${apiUrl}/api/admin/fault-analytics/?sort_by=${sortBy}`, {
           headers: {
-            'Authorization': `******
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch fault analytics. Status: ${response.status}`);
+          throw new Error('Failed to fetch fault analytics. Status: ' + response.status);
         }
 
         const result = await response.json();
