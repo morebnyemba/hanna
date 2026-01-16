@@ -4,9 +4,17 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
+from django.utils import timezone
+import logging
+
 from warranty.models import Technician
 from products_and_services.models import SerializedItem
-from .models import InstallationSystemRecord, InstallationPhoto
+from .models import (
+    InstallationSystemRecord, 
+    InstallationPhoto,
+    PayoutConfiguration,
+    InstallerPayout
+)
 from .serializers import (
     InstallationSystemRecordListSerializer,
     InstallationSystemRecordDetailSerializer,
@@ -15,7 +23,16 @@ from .serializers import (
     InstallationPhotoDetailSerializer,
     InstallationPhotoCreateSerializer,
     InstallationPhotoUpdateSerializer,
+    PayoutConfigurationSerializer,
+    InstallerPayoutListSerializer,
+    InstallerPayoutDetailSerializer,
+    InstallerPayoutCreateSerializer,
+    InstallerPayoutUpdateSerializer,
+    InstallerPayoutApprovalSerializer,
+    InstallerPayoutPaymentSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class InstallationSystemRecordPermission(permissions.BasePermission):
@@ -572,3 +589,290 @@ class InstallationPhotoViewSet(viewsets.ModelViewSet):
             return installation.customer == user.customer_profile
         
         return False
+
+
+class PayoutConfigurationViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing payout configurations.
+    Admin-only access.
+    """
+    queryset = PayoutConfiguration.objects.all()
+    serializer_class = PayoutConfigurationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['installation_type', 'is_active', 'rate_type', 'capacity_unit']
+    search_fields = ['name']
+    ordering_fields = ['priority', 'name', 'created_at']
+    ordering = ['-priority', 'installation_type', 'min_system_size']
+    
+    def get_permissions(self):
+        """Only admins can manage payout configurations"""
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+    
+    @action(detail=False, methods=['get'])
+    def active(self, request):
+        """Get only active payout configurations"""
+        active_configs = self.get_queryset().filter(is_active=True)
+        serializer = self.get_serializer(active_configs, many=True)
+        return Response(serializer.data)
+
+
+class InstallerPayoutViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing installer payouts.
+    Supports filtering, approval workflow, and payment tracking.
+    """
+    queryset = InstallerPayout.objects.select_related(
+        'technician__user',
+        'configuration',
+        'approved_by'
+    ).prefetch_related('installations').all()
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['technician', 'status', 'approved_by']
+    search_fields = ['technician__user__first_name', 'technician__user__last_name', 'payment_reference', 'notes']
+    ordering_fields = ['created_at', 'payout_amount', 'approved_at', 'paid_at']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action"""
+        if self.action == 'list':
+            return InstallerPayoutListSerializer
+        elif self.action == 'create':
+            return InstallerPayoutCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return InstallerPayoutUpdateSerializer
+        elif self.action == 'approve':
+            return InstallerPayoutApprovalSerializer
+        elif self.action == 'mark_paid':
+            return InstallerPayoutPaymentSerializer
+        return InstallerPayoutDetailSerializer
+    
+    def get_queryset(self):
+        """Filter queryset based on user role"""
+        user = self.request.user
+        queryset = super().get_queryset()
+        
+        # Admins see all payouts
+        if user.is_staff or user.is_superuser:
+            return queryset
+        
+        # Technicians see only their own payouts
+        if hasattr(user, 'technician_profile'):
+            return queryset.filter(technician=user.technician_profile)
+        
+        # Other users see no payouts
+        return queryset.none()
+    
+    def get_permissions(self):
+        """Control access based on action"""
+        if self.action in ['create', 'approve', 'mark_paid', 'sync_to_zoho']:
+            return [permissions.IsAdminUser()]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+    
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """
+        Approve or reject a payout.
+        
+        POST /api/installer-payouts/{id}/approve/
+        Body: {
+            "action": "approve" | "reject",
+            "rejection_reason": "..." (required if action is reject),
+            "admin_notes": "..." (optional)
+        }
+        """
+        payout = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        action = serializer.validated_data['action']
+        rejection_reason = serializer.validated_data.get('rejection_reason', '')
+        admin_notes = serializer.validated_data.get('admin_notes', '')
+        
+        # Check if payout can be approved/rejected
+        if payout.status != InstallerPayout.PayoutStatus.PENDING:
+            return Response(
+                {'error': f'Cannot {action} payout with status {payout.get_status_display()}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if action == 'approve':
+            payout.status = InstallerPayout.PayoutStatus.APPROVED
+            payout.approved_by = request.user
+            payout.approved_at = timezone.now()
+            if admin_notes:
+                payout.admin_notes = admin_notes
+            payout.save()
+            
+            # Trigger Zoho sync
+            try:
+                from .tasks import sync_payout_to_zoho
+                sync_payout_to_zoho.delay(str(payout.id))
+            except Exception as e:
+                logger.warning(f"Failed to queue Zoho sync task: {e}")
+            
+            # Send notification to technician
+            try:
+                from .tasks import send_payout_approval_email
+                send_payout_approval_email.delay(str(payout.id))
+            except Exception as e:
+                logger.warning(f"Failed to queue email notification: {e}")
+            
+            message = 'Payout approved successfully'
+        else:  # reject
+            payout.status = InstallerPayout.PayoutStatus.REJECTED
+            payout.rejection_reason = rejection_reason
+            if admin_notes:
+                payout.admin_notes = admin_notes
+            payout.save()
+            
+            # Send rejection notification to technician
+            try:
+                from .tasks import send_payout_rejection_email
+                send_payout_rejection_email.delay(str(payout.id))
+            except Exception as e:
+                logger.warning(f"Failed to queue email notification: {e}")
+            
+            message = 'Payout rejected'
+        
+        return Response({
+            'message': message,
+            'payout': InstallerPayoutDetailSerializer(payout, context={'request': request}).data
+        })
+    
+    @action(detail=True, methods=['post'])
+    def mark_paid(self, request, pk=None):
+        """
+        Mark a payout as paid.
+        
+        POST /api/installer-payouts/{id}/mark_paid/
+        Body: {
+            "payment_reference": "...",
+            "payment_date": "2024-01-15T10:30:00Z" (optional),
+            "notes": "..." (optional)
+        }
+        """
+        payout = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Check if payout can be marked as paid
+        if payout.status != InstallerPayout.PayoutStatus.APPROVED:
+            return Response(
+                {'error': 'Only approved payouts can be marked as paid'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        payment_reference = serializer.validated_data['payment_reference']
+        payment_date = serializer.validated_data.get('payment_date', timezone.now())
+        notes = serializer.validated_data.get('notes', '')
+        
+        payout.status = InstallerPayout.PayoutStatus.PAID
+        payout.payment_reference = payment_reference
+        payout.paid_at = payment_date
+        if notes:
+            if payout.admin_notes:
+                payout.admin_notes += f"\n\nPayment notes: {notes}"
+            else:
+                payout.admin_notes = f"Payment notes: {notes}"
+        payout.save()
+        
+        # Send payment confirmation to technician
+        try:
+            from .tasks import send_payout_payment_email
+            send_payout_payment_email.delay(str(payout.id))
+        except Exception as e:
+            logger.warning(f"Failed to queue email notification: {e}")
+        
+        return Response({
+            'message': 'Payout marked as paid successfully',
+            'payout': InstallerPayoutDetailSerializer(payout, context={'request': request}).data
+        })
+    
+    @action(detail=True, methods=['post'])
+    def sync_to_zoho(self, request, pk=None):
+        """
+        Manually trigger Zoho sync for a payout.
+        
+        POST /api/installer-payouts/{id}/sync_to_zoho/
+        """
+        payout = self.get_object()
+        
+        if payout.status not in [InstallerPayout.PayoutStatus.APPROVED, InstallerPayout.PayoutStatus.PAID]:
+            return Response(
+                {'error': 'Only approved or paid payouts can be synced to Zoho'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from .tasks import sync_payout_to_zoho
+            task = sync_payout_to_zoho.delay(str(payout.id))
+            
+            return Response({
+                'message': 'Zoho sync queued successfully',
+                'task_id': task.id
+            })
+        except Exception as e:
+            logger.error(f"Failed to queue Zoho sync: {e}")
+            return Response(
+                {'error': f'Failed to queue Zoho sync: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['get'])
+    def pending(self, request):
+        """Get all pending payouts"""
+        pending_payouts = self.get_queryset().filter(status=InstallerPayout.PayoutStatus.PENDING)
+        page = self.paginate_queryset(pending_payouts)
+        if page is not None:
+            serializer = InstallerPayoutListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = InstallerPayoutListSerializer(pending_payouts, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def history(self, request):
+        """Get payout history (approved, rejected, paid)"""
+        history_payouts = self.get_queryset().exclude(status=InstallerPayout.PayoutStatus.PENDING)
+        page = self.paginate_queryset(history_payouts)
+        if page is not None:
+            serializer = InstallerPayoutListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = InstallerPayoutListSerializer(history_payouts, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def by_technician(self, request):
+        """
+        Get payouts grouped by technician with totals.
+        
+        GET /api/installer-payouts/by_technician/?status=approved
+        """
+        from django.db.models import Sum, Count
+        
+        queryset = self.get_queryset()
+        
+        # Filter by status if provided
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        # Group by technician
+        technician_stats = queryset.values(
+            'technician',
+            'technician__user__first_name',
+            'technician__user__last_name',
+            'technician__user__email'
+        ).annotate(
+            total_payouts=Count('id'),
+            total_amount=Sum('payout_amount')
+        ).order_by('-total_amount')
+        
+        return Response(technician_stats)

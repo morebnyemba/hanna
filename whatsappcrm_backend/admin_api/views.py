@@ -22,7 +22,13 @@ from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim, W
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
 from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
-from installation_systems.models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
+from installation_systems.models import (
+    InstallationSystemRecord, 
+    CommissioningChecklistTemplate, 
+    InstallationChecklistEntry,
+    PayoutConfiguration,
+    InstallerPayout
+)
 
 # Import PDF generators
 from warranty.pdf_utils import WarrantyCertificateGenerator, InstallationReportGenerator
@@ -41,6 +47,9 @@ from .serializers import (
     CommissioningChecklistTemplateSerializer,
     InstallationChecklistEntrySerializer,
     InstallationChecklistEntryCreateSerializer,
+    PayoutConfigurationSerializer,
+    InstallerPayoutListSerializer,
+    InstallerPayoutDetailSerializer,
 )
 
 
@@ -778,3 +787,38 @@ class InstallationChecklistEntryViewSet(viewsets.ModelViewSet):
         entries = self.get_queryset().filter(installation_record_id=installation_id)
         serializer = self.get_serializer(entries, many=True)
         return Response(serializer.data)
+
+
+# Payout Configuration Management
+class AdminPayoutConfigurationViewSet(viewsets.ModelViewSet):
+    """Admin API for Payout Configuration management"""
+    queryset = PayoutConfiguration.objects.all()
+    serializer_class = PayoutConfigurationSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['installation_type', 'is_active', 'rate_type', 'capacity_unit']
+    search_fields = ['name']
+    ordering_fields = ['priority', 'name', 'created_at']
+    ordering = ['-priority', 'installation_type', 'min_system_size']
+
+
+# Installer Payout Management
+class AdminInstallerPayoutViewSet(viewsets.ModelViewSet):
+    """Admin API for Installer Payout management"""
+    queryset = InstallerPayout.objects.select_related(
+        'technician__user',
+        'configuration',
+        'approved_by'
+    ).prefetch_related('installations').all()
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['technician', 'status', 'approved_by']
+    search_fields = ['technician__user__first_name', 'technician__user__last_name', 'payment_reference', 'notes']
+    ordering_fields = ['created_at', 'payout_amount', 'approved_at', 'paid_at']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action"""
+        if self.action == 'list':
+            return InstallerPayoutListSerializer
+        return InstallerPayoutDetailSerializer

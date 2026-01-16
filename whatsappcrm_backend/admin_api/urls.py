@@ -65,6 +65,10 @@ router.register(r'loan-applications', views.AdminLoanApplicationViewSet, basenam
 router.register(r'checklist-templates', views.CommissioningChecklistTemplateViewSet, basename='checklist-template')
 router.register(r'checklist-entries', views.InstallationChecklistEntryViewSet, basename='checklist-entry')
 
+# Payout Management
+router.register(r'payout-configurations', views.AdminPayoutConfigurationViewSet, basename='payout-configuration')
+router.register(r'installer-payouts', views.AdminInstallerPayoutViewSet, basename='installer-payout')
+
 urlpatterns = [
     path('', include(router.urls)),
 ]

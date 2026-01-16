@@ -1104,3 +1104,223 @@ class InstallationPhotoModelTest(TestCase):
         self.isr.save()  # Should not raise exception
         
         self.assertEqual(self.isr.installation_status, 'commissioned')
+
+
+# ============================================================================
+# PAYOUT TESTS
+# ============================================================================
+
+class PayoutCalculationServiceTests(TestCase):
+    """Tests for PayoutCalculationService"""
+    
+    def setUp(self):
+        """Set up test data"""
+        from installation_systems.services import PayoutCalculationService
+        
+        # Create a user and technician
+        self.user = User.objects.create_user(
+            username='testtech',
+            email='tech@test.com',
+            first_name='Test',
+            last_name='Technician'
+        )
+        self.technician = Technician.objects.create(
+            user=self.user,
+            technician_type=Technician.TechnicianType.INSTALLER,
+            specialization='Solar',
+            contact_phone='+263771234567'
+        )
+        
+        # Create a customer
+        contact = Contact.objects.create(
+            whatsapp_id='+263777654321',
+            name='Test Customer'
+        )
+        self.customer = CustomerProfile.objects.create(
+            contact=contact,
+            first_name='Test',
+            last_name='Customer',
+            email='customer@test.com'
+        )
+        
+        # Create payout configurations
+        from installation_systems.models import PayoutConfiguration
+        self.flat_rate_config = PayoutConfiguration.objects.create(
+            name='Solar Flat Rate',
+            installation_type='solar',
+            capacity_unit='kW',
+            rate_type='flat',
+            rate_amount=Decimal('100.00'),
+            is_active=True,
+            priority=1
+        )
+        
+        self.per_unit_config = PayoutConfiguration.objects.create(
+            name='Solar Per kW',
+            installation_type='solar',
+            capacity_unit='kW',
+            min_system_size=Decimal('5.0'),
+            rate_type='per_unit',
+            rate_amount=Decimal('50.00'),
+            is_active=True,
+            priority=2
+        )
+        
+        # Create a completed installation
+        self.installation = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+            system_size=Decimal('5.0'),
+            capacity_unit='kW',
+            system_classification='residential',
+            installation_status=InstallationSystemRecord.InstallationStatus.COMMISSIONED,
+            installation_date=timezone.now().date(),
+            commissioning_date=timezone.now().date()
+        )
+        self.installation.technicians.add(self.technician)
+    
+    def test_find_matching_configuration_per_unit(self):
+        """Test finding matching configuration for per-unit rate"""
+        from installation_systems.services import PayoutCalculationService
+        
+        config = PayoutCalculationService.find_matching_configuration(self.installation)
+        
+        self.assertIsNotNone(config)
+        # Should match per_unit_config due to higher priority and size range match
+        self.assertEqual(config.name, 'Solar Per kW')
+        self.assertEqual(config.rate_type, 'per_unit')
+    
+    def test_calculate_payout_amount_flat_rate(self):
+        """Test calculating payout with flat rate"""
+        from installation_systems.services import PayoutCalculationService
+        
+        amount, method, breakdown = PayoutCalculationService.calculate_payout_amount(
+            self.installation,
+            self.flat_rate_config
+        )
+        
+        self.assertEqual(amount, Decimal('100.00'))
+        self.assertIn('Flat rate', method)
+        self.assertEqual(breakdown['calculation'], 'flat_rate')
+    
+    def test_calculate_payout_amount_per_unit(self):
+        """Test calculating payout with per-unit rate"""
+        from installation_systems.services import PayoutCalculationService
+        
+        amount, method, breakdown = PayoutCalculationService.calculate_payout_amount(
+            self.installation,
+            self.per_unit_config
+        )
+        
+        # 5 kW * $50/kW = $250
+        self.assertEqual(amount, Decimal('250.00'))
+        self.assertIn('Per unit rate', method)
+        self.assertEqual(breakdown['calculation'], 'per_unit')
+        self.assertEqual(breakdown['units'], '5.0')
+    
+    def test_create_payout_for_installations(self):
+        """Test creating payout record"""
+        from installation_systems.services import PayoutCalculationService
+        from installation_systems.models import InstallerPayout
+        
+        payout = PayoutCalculationService.create_payout_for_installations(
+            technician=self.technician,
+            installations=[self.installation],
+            notes='Test payout'
+        )
+        
+        self.assertIsNotNone(payout)
+        self.assertEqual(payout.technician, self.technician)
+        self.assertEqual(payout.installations.count(), 1)
+        self.assertEqual(payout.status, InstallerPayout.PayoutStatus.PENDING)
+        self.assertEqual(payout.payout_amount, Decimal('250.00'))
+        self.assertIn('Test payout', payout.notes)
+
+
+class InstallerPayoutModelTests(TestCase):
+    """Tests for InstallerPayout model"""
+    
+    def setUp(self):
+        """Set up test data"""
+        # Create user and technician
+        self.user = User.objects.create_user(
+            username='testtech',
+            email='tech@test.com'
+        )
+        self.technician = Technician.objects.create(
+            user=self.user,
+            technician_type=Technician.TechnicianType.INSTALLER
+        )
+        
+        # Create customer
+        contact = Contact.objects.create(
+            whatsapp_id='+263777654321',
+            name='Test Customer'
+        )
+        self.customer = CustomerProfile.objects.create(
+            contact=contact,
+            first_name='Test',
+            last_name='Customer'
+        )
+        
+        # Create installation
+        self.installation = InstallationSystemRecord.objects.create(
+            customer=self.customer,
+            installation_type='solar',
+            system_size=Decimal('5.0'),
+            capacity_unit='kW',
+            system_classification='residential',
+            installation_status=InstallationSystemRecord.InstallationStatus.COMMISSIONED
+        )
+        self.installation.technicians.add(self.technician)
+    
+    def test_create_installer_payout(self):
+        """Test creating an installer payout"""
+        from installation_systems.models import InstallerPayout
+        
+        payout = InstallerPayout.objects.create(
+            technician=self.technician,
+            payout_amount=Decimal('250.00'),
+            calculation_method='Test calculation',
+            status=InstallerPayout.PayoutStatus.PENDING
+        )
+        payout.installations.add(self.installation)
+        
+        self.assertIsNotNone(payout.id)
+        self.assertEqual(payout.technician, self.technician)
+        self.assertEqual(payout.payout_amount, Decimal('250.00'))
+        self.assertEqual(payout.status, InstallerPayout.PayoutStatus.PENDING)
+        self.assertTrue(payout.short_id.startswith('PAY-'))
+    
+    def test_payout_status_transitions(self):
+        """Test payout status transitions"""
+        from installation_systems.models import InstallerPayout
+        
+        admin_user = User.objects.create_user(
+            username='admin',
+            email='admin@test.com',
+            is_staff=True
+        )
+        
+        payout = InstallerPayout.objects.create(
+            technician=self.technician,
+            payout_amount=Decimal('250.00'),
+            status=InstallerPayout.PayoutStatus.PENDING
+        )
+        
+        # Approve payout
+        payout.status = InstallerPayout.PayoutStatus.APPROVED
+        payout.approved_by = admin_user
+        payout.approved_at = timezone.now()
+        payout.save()
+        
+        self.assertEqual(payout.status, InstallerPayout.PayoutStatus.APPROVED)
+        
+        # Mark as paid
+        payout.status = InstallerPayout.PayoutStatus.PAID
+        payout.payment_reference = 'PAY-123456'
+        payout.paid_at = timezone.now()
+        payout.save()
+        
+        self.assertEqual(payout.status, InstallerPayout.PayoutStatus.PAID)
+        self.assertEqual(payout.payment_reference, 'PAY-123456')

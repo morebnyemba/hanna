@@ -672,3 +672,283 @@ class InstallationPhoto(models.Model):
             models.Index(fields=['photo_type', 'is_required']),
             models.Index(fields=['uploaded_by', 'uploaded_at']),
         ]
+
+
+class PayoutConfiguration(models.Model):
+    """
+    Configuration for installer payout rates.
+    Defines how technicians are paid based on system size and installation type.
+    """
+    
+    # Primary key
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Configuration details
+    name = models.CharField(
+        _("Configuration Name"),
+        max_length=255,
+        help_text=_("Descriptive name for this payout configuration")
+    )
+    installation_type = models.CharField(
+        _("Installation Type"),
+        max_length=50,
+        choices=InstallationSystemRecord.InstallationType.choices,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=_("Installation type this rate applies to (leave blank for all types)")
+    )
+    
+    # Size-based rate tiers
+    min_system_size = models.DecimalField(
+        _("Minimum System Size"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Minimum system size for this rate tier (null means no minimum)")
+    )
+    max_system_size = models.DecimalField(
+        _("Maximum System Size"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Maximum system size for this rate tier (null means no maximum)")
+    )
+    capacity_unit = models.CharField(
+        _("Capacity Unit"),
+        max_length=10,
+        choices=InstallationSystemRecord.CapacityUnit.choices,
+        default=InstallationSystemRecord.CapacityUnit.UNITS,
+        help_text=_("Unit of measurement for system capacity")
+    )
+    
+    # Payout rates
+    rate_type = models.CharField(
+        _("Rate Type"),
+        max_length=20,
+        choices=[
+            ('flat', _('Flat Rate')),
+            ('per_unit', _('Per Unit Rate')),
+            ('percentage', _('Percentage of Order Value')),
+        ],
+        default='flat',
+        help_text=_("How the payout amount is calculated")
+    )
+    rate_amount = models.DecimalField(
+        _("Rate Amount"),
+        max_digits=10,
+        decimal_places=2,
+        help_text=_("Amount for flat rate, per unit rate, or percentage")
+    )
+    
+    # Quality metrics (future enhancement)
+    quality_bonus_enabled = models.BooleanField(
+        _("Quality Bonus Enabled"),
+        default=False,
+        help_text=_("Enable quality-based bonuses for this configuration")
+    )
+    quality_bonus_amount = models.DecimalField(
+        _("Quality Bonus Amount"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Bonus amount for meeting quality metrics")
+    )
+    
+    # Configuration status
+    is_active = models.BooleanField(
+        _("Is Active"),
+        default=True,
+        help_text=_("Whether this configuration is active and should be used")
+    )
+    priority = models.IntegerField(
+        _("Priority"),
+        default=0,
+        help_text=_("Higher priority configurations are applied first (0 is lowest)")
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        """Returns string representation"""
+        size_range = ""
+        if self.min_system_size or self.max_system_size:
+            min_val = f"{self.min_system_size}" if self.min_system_size else "0"
+            max_val = f"{self.max_system_size}" if self.max_system_size else "∞"
+            size_range = f" ({min_val}-{max_val}{self.capacity_unit})"
+        return f"{self.name}{size_range} - ${self.rate_amount} ({self.rate_type})"
+    
+    class Meta:
+        verbose_name = _("Payout Configuration")
+        verbose_name_plural = _("Payout Configurations")
+        ordering = ['-priority', 'installation_type', 'min_system_size']
+        indexes = [
+            models.Index(fields=['installation_type', 'is_active']),
+            models.Index(fields=['is_active', 'priority']),
+        ]
+
+
+class InstallerPayout(models.Model):
+    """
+    Represents a payout to a technician for completed installations.
+    Tracks the approval workflow and payment status.
+    """
+    
+    class PayoutStatus(models.TextChoices):
+        PENDING = 'pending', _('Pending')
+        APPROVED = 'approved', _('Approved')
+        REJECTED = 'rejected', _('Rejected')
+        PAID = 'paid', _('Paid')
+    
+    # Primary key
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relationships
+    technician = models.ForeignKey(
+        'warranty.Technician',
+        on_delete=models.PROTECT,
+        related_name='payouts',
+        help_text=_("The technician receiving this payout")
+    )
+    installations = models.ManyToManyField(
+        InstallationSystemRecord,
+        related_name='payouts',
+        help_text=_("Installation system records included in this payout")
+    )
+    configuration = models.ForeignKey(
+        PayoutConfiguration,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payouts',
+        help_text=_("The payout configuration used for calculation")
+    )
+    
+    # Payout details
+    payout_amount = models.DecimalField(
+        _("Payout Amount"),
+        max_digits=10,
+        decimal_places=2,
+        help_text=_("Total amount to be paid to the technician")
+    )
+    calculation_method = models.TextField(
+        _("Calculation Method"),
+        blank=True,
+        help_text=_("Description of how the payout amount was calculated")
+    )
+    calculation_breakdown = models.JSONField(
+        _("Calculation Breakdown"),
+        default=dict,
+        blank=True,
+        help_text=_("Detailed breakdown of payout calculation")
+    )
+    
+    # Status tracking
+    status = models.CharField(
+        _("Status"),
+        max_length=20,
+        choices=PayoutStatus.choices,
+        default=PayoutStatus.PENDING,
+        db_index=True,
+        help_text=_("Current status of the payout")
+    )
+    
+    # Notes and comments
+    notes = models.TextField(
+        _("Notes"),
+        blank=True,
+        help_text=_("Additional notes or comments about this payout")
+    )
+    admin_notes = models.TextField(
+        _("Admin Notes"),
+        blank=True,
+        help_text=_("Internal notes for admins (not visible to technician)")
+    )
+    rejection_reason = models.TextField(
+        _("Rejection Reason"),
+        blank=True,
+        help_text=_("Reason for rejection if status is REJECTED")
+    )
+    
+    # Approval workflow
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_payouts',
+        help_text=_("Admin user who approved this payout")
+    )
+    approved_at = models.DateTimeField(
+        _("Approved At"),
+        null=True,
+        blank=True,
+        help_text=_("When the payout was approved")
+    )
+    
+    # Payment tracking
+    paid_at = models.DateTimeField(
+        _("Paid At"),
+        null=True,
+        blank=True,
+        help_text=_("When the payment was made")
+    )
+    payment_reference = models.CharField(
+        _("Payment Reference"),
+        max_length=255,
+        blank=True,
+        help_text=_("Payment reference number or transaction ID")
+    )
+    
+    # Zoho integration
+    zoho_bill_id = models.CharField(
+        _("Zoho Bill ID"),
+        max_length=255,
+        blank=True,
+        help_text=_("ID of the bill/expense created in Zoho")
+    )
+    zoho_sync_status = models.CharField(
+        _("Zoho Sync Status"),
+        max_length=50,
+        blank=True,
+        help_text=_("Status of synchronization with Zoho")
+    )
+    zoho_sync_error = models.TextField(
+        _("Zoho Sync Error"),
+        blank=True,
+        help_text=_("Error message if Zoho sync failed")
+    )
+    zoho_synced_at = models.DateTimeField(
+        _("Zoho Synced At"),
+        null=True,
+        blank=True,
+        help_text=_("When the payout was synced to Zoho")
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    @property
+    def short_id(self):
+        """Get shortened UUID for display (PAY-xxxxxxxx)"""
+        return f"PAY-{str(self.id)[:8]}"
+    
+    def __str__(self):
+        """Returns string representation"""
+        return f"{self.short_id} - {self.technician} - ${self.payout_amount} ({self.get_status_display()})"
+    
+    class Meta:
+        verbose_name = _("Installer Payout")
+        verbose_name_plural = _("Installer Payouts")
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['technician', 'status']),
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['approved_by', 'approved_at']),
+        ]
