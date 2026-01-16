@@ -256,7 +256,9 @@ export default function InstallationSystemRecordsPage() {
                         </td>
                         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                           <ActionButtons
-                            onEdit={() => {/* TODO: Implement edit */}}
+                            entityId={record.id}
+                            showView={false}
+                            showEdit={false}
                             onDelete={() => handleDeleteClick(record)}
                           />
                         </td>
@@ -275,7 +277,8 @@ export default function InstallationSystemRecordsPage() {
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
-        itemName={`Installation System Record ${recordToDelete?.id?.slice(0, 8)}`}
+        title="Delete Installation Record"
+        message={`Are you sure you want to delete Installation System Record ${recordToDelete?.id?.slice(0, 8)}? This action cannot be undone.`}
       />
     </div>
   );
