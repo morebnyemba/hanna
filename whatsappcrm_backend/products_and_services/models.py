@@ -561,3 +561,67 @@ class SolarPackageProduct(models.Model):
         verbose_name = _("Solar Package Product")
         verbose_name_plural = _("Solar Package Products")
         unique_together = ['solar_package', 'product']
+
+
+class CompatibilityRule(models.Model):
+    """
+    Defines compatibility rules between products.
+    Used to validate system configurations (e.g., battery ↔ inverter compatibility).
+    """
+    class RuleType(models.TextChoices):
+        REQUIRES = 'requires', _('Requires')
+        COMPATIBLE = 'compatible', _('Compatible With')
+        INCOMPATIBLE = 'incompatible', _('Incompatible With')
+    
+    name = models.CharField(
+        _("Rule Name"),
+        max_length=255,
+        help_text=_("Descriptive name for this compatibility rule")
+    )
+    product_a = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='compatibility_rules_as_a',
+        help_text=_("The primary product in this compatibility relationship")
+    )
+    product_b = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='compatibility_rules_as_b',
+        help_text=_("The secondary product in this compatibility relationship")
+    )
+    rule_type = models.CharField(
+        _("Rule Type"),
+        max_length=20,
+        choices=RuleType.choices,
+        default=RuleType.COMPATIBLE,
+        help_text=_("Type of compatibility relationship")
+    )
+    description = models.TextField(
+        _("Description"),
+        blank=True,
+        null=True,
+        help_text=_("Additional details about this compatibility rule")
+    )
+    is_active = models.BooleanField(
+        _("Is Active"),
+        default=True,
+        help_text=_("Whether this rule is currently active and should be enforced")
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.name}: {self.product_a.name} {self.get_rule_type_display()} {self.product_b.name}"
+    
+    class Meta:
+        verbose_name = _("Compatibility Rule")
+        verbose_name_plural = _("Compatibility Rules")
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['product_a', 'product_b', 'rule_type']),
+            models.Index(fields=['is_active']),
+        ]
+        unique_together = ['product_a', 'product_b', 'rule_type']

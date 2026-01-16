@@ -514,3 +514,70 @@ def track_order_item_delivery(sender, instance, created, **kwargs):
                     notes=f"Order {instance.order_number} delivered",
                     related_order=instance
                 )
+
+
+@receiver(post_save, sender=Order)
+def auto_create_ssr_for_solar_orders(sender, instance, created, **kwargs):
+    """
+    Automatically create SSR (Installation System Record) when a solar package order
+    is marked as paid and closed won.
+    
+    This signal ensures that every sale of a solar package results in an SSR being created instantly.
+    """
+    from products_and_services.services import SolarOrderAutomationService
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    # Only process orders that are closed won and paid
+    if instance.stage != Order.Stage.CLOSED_WON or instance.payment_status != Order.PaymentStatus.PAID:
+        return
+    
+    # Check if we're in a signal handler already to prevent recursion
+    if getattr(instance, '_processing_ssr_creation', False):
+        return
+    
+    try:
+        # Mark that we're processing this order to prevent recursion
+        instance._processing_ssr_creation = True
+        
+        # Create SSR and related records
+        result = SolarOrderAutomationService.create_ssr_from_order(instance)
+        
+        if result['success']:
+            ssr = result['ssr']
+            
+            # Grant customer portal access
+            if instance.customer:
+                user = SolarOrderAutomationService.grant_customer_portal_access(instance.customer)
+                if user:
+                    logger.info(f"Granted portal access to customer {instance.customer.id}")
+            
+            # Send confirmation email
+            if instance.customer and instance.customer.email:
+                SolarOrderAutomationService.send_order_confirmation(
+                    instance, 
+                    ssr, 
+                    instance.customer.email
+                )
+            
+            # Notify admin for scheduling
+            SolarOrderAutomationService.notify_admin_for_scheduling(instance, ssr)
+            
+            logger.info(
+                f"Successfully auto-created SSR {ssr.short_id} for order {instance.order_number or instance.id}"
+            )
+        elif result['errors'] and 'already exists' not in result['errors'][0]:
+            # Log errors unless it's just a duplicate SSR check
+            logger.warning(
+                f"SSR auto-creation skipped for order {instance.id}: {', '.join(result['errors'])}"
+            )
+    except Exception as e:
+        logger.error(
+            f"Error in auto SSR creation for order {instance.id}: {str(e)}",
+            exc_info=True
+        )
+    finally:
+        # Clear the processing flag
+        if hasattr(instance, '_processing_ssr_creation'):
+            delattr(instance, '_processing_ssr_creation')

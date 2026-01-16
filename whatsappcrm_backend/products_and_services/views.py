@@ -2547,3 +2547,89 @@ def trigger_sync_view(request: HttpRequest) -> HttpResponse:
     
     # Redirect back to the product list in admin
     return redirect('admin:products_and_services_product_changelist')
+
+
+# Compatibility Checking Views
+
+class CompatibilityViewSet(viewsets.ViewSet):
+    """
+    ViewSet for checking product compatibility.
+    Provides endpoints to validate compatibility rules for solar packages.
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    @action(detail=False, methods=['post'], url_path='check-products')
+    def check_products(self, request):
+        """
+        Check compatibility between two products.
+        
+        POST /crm-api/products/compatibility/check-products/
+        {
+            "product_a_id": 1,
+            "product_b_id": 2
+        }
+        """
+        from .serializers import CompatibilityCheckSerializer
+        from .services import CompatibilityValidationService
+        
+        serializer = CompatibilityCheckSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        product_a = serializer.validated_data['product_a']
+        product_b = serializer.validated_data['product_b']
+        
+        result = CompatibilityValidationService.check_product_compatibility(
+            product_a, product_b
+        )
+        
+        return Response({
+            'product_a': {
+                'id': product_a.id,
+                'name': product_a.name,
+                'sku': product_a.sku
+            },
+            'product_b': {
+                'id': product_b.id,
+                'name': product_b.name,
+                'sku': product_b.sku
+            },
+            'compatible': result['compatible'],
+            'reason': result['reason'],
+            'has_rule': result['rule'] is not None,
+            'warning': result.get('warning', False)
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'], url_path='validate-package')
+    def validate_package(self, request):
+        """
+        Validate all compatibility rules for a solar package.
+        
+        POST /crm-api/products/compatibility/validate-package/
+        {
+            "package_id": 1
+        }
+        """
+        from .serializers import PackageValidationSerializer
+        from .services import CompatibilityValidationService
+        
+        serializer = PackageValidationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        solar_package = serializer.validated_data['package_id']
+        
+        # Validate compatibility
+        compatibility_result = CompatibilityValidationService.validate_solar_package(solar_package)
+        
+        # Validate system size
+        size_result = CompatibilityValidationService.validate_package_system_size(solar_package)
+        
+        return Response({
+            'package': {
+                'id': solar_package.id,
+                'name': solar_package.name,
+                'system_size': str(solar_package.system_size)
+            },
+            'compatibility': compatibility_result,
+            'system_size': size_result,
+            'overall_valid': compatibility_result['valid'] and size_result['valid']
+        }, status=status.HTTP_200_OK)

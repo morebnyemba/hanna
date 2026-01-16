@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.contrib import messages
-from .models import Product, ProductCategory, ProductImage, SerializedItem, Cart, CartItem, SolarPackage, SolarPackageProduct
+from .models import (
+    Product, ProductCategory, ProductImage, SerializedItem, 
+    Cart, CartItem, SolarPackage, SolarPackageProduct, CompatibilityRule
+)
 
 @admin.register(ProductCategory)
 class ProductCategoryAdmin(admin.ModelAdmin):
@@ -440,3 +443,30 @@ class SolarPackageAdmin(admin.ModelAdmin):
                 f'Failed to sync {error_count} product(s).',
                 messages.ERROR
             )
+
+
+@admin.register(CompatibilityRule)
+class CompatibilityRuleAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the CompatibilityRule model.
+    """
+    list_display = ('name', 'product_a', 'rule_type', 'product_b', 'is_active', 'created_at')
+    search_fields = ('name', 'product_a__name', 'product_b__name', 'description')
+    list_filter = ('rule_type', 'is_active', 'created_at')
+    autocomplete_fields = ('product_a', 'product_b')
+    ordering = ['name']
+    
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'product_a', 'rule_type', 'product_b')
+        }),
+        ('Details', {
+            'fields': ('description', 'is_active')
+        }),
+        ('Timestamps', {
+            'classes': ('collapse',),
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    readonly_fields = ('created_at', 'updated_at')
