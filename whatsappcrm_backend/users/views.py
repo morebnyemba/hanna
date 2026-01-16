@@ -5,6 +5,8 @@ from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from customer_data.models import Order
+from customer_data.serializers import OrderSerializer, RetailerOrderCreationSerializer
 from .models import Retailer, RetailerBranch
 from .permissions import IsAdminUser, IsRetailer, IsRetailerOrAdmin, IsRetailerBranch
 from .serializers import (
@@ -286,9 +288,6 @@ class RetailerOrderViewSet(viewsets.ModelViewSet):
     - GET: List all orders created by the retailer
     - GET /<id>: View order details
     """
-    from customer_data.models import Order
-    from customer_data.serializers import OrderSerializer, RetailerOrderCreationSerializer
-    
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated, IsRetailerOrAdmin]
     
