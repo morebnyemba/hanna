@@ -3,7 +3,8 @@ from django.utils.html import format_html
 from django.contrib import messages
 from .models import (
     Product, ProductCategory, ProductImage, SerializedItem, 
-    Cart, CartItem, SolarPackage, SolarPackageProduct, CompatibilityRule
+    Cart, CartItem, SolarPackage, SolarPackageProduct, CompatibilityRule,
+    ItemLocationHistory
 )
 
 @admin.register(ProductCategory)
@@ -470,3 +471,81 @@ class CompatibilityRuleAdmin(admin.ModelAdmin):
     )
     
     readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(ProductImage)
+class ProductImageAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the ProductImage model.
+    """
+    list_display = ('product', 'alt_text', 'image_preview', 'created_at')
+    search_fields = ('product__name', 'alt_text')
+    list_filter = ('created_at', 'product__category')
+    autocomplete_fields = ('product',)
+    readonly_fields = ('created_at', 'image_preview')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('product', 'image', 'alt_text')
+        }),
+        ('Preview', {
+            'fields': ('image_preview',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def image_preview(self, obj):
+        """Display image preview"""
+        if obj.image:
+            return format_html('<img src="{}" style="max-width: 300px; max-height: 300px;" />', obj.image.url)
+        return "No image"
+    image_preview.short_description = 'Preview'
+
+
+@admin.register(ItemLocationHistory)
+class ItemLocationHistoryAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the ItemLocationHistory model.
+    """
+    list_display = ('serialized_item', 'from_location', 'to_location', 'transfer_reason', 'timestamp', 'transferred_by')
+    list_filter = ('to_location', 'from_location', 'transfer_reason', 'timestamp')
+    search_fields = ('serialized_item__serial_number', 'serialized_item__product__name', 'notes')
+    autocomplete_fields = ('serialized_item', 'from_holder', 'to_holder', 'transferred_by', 'related_order', 'related_warranty_claim', 'related_job_card')
+    readonly_fields = ('timestamp',)
+    date_hierarchy = 'timestamp'
+    
+    fieldsets = (
+        ('Item Transfer', {
+            'fields': ('serialized_item', 'from_location', 'to_location', 'transfer_reason')
+        }),
+        ('Parties Involved', {
+            'fields': ('from_holder', 'to_holder', 'transferred_by')
+        }),
+        ('Related Records', {
+            'fields': ('related_order', 'related_warranty_claim', 'related_job_card'),
+            'classes': ('collapse',)
+        }),
+        ('Details', {
+            'fields': ('notes', 'timestamp')
+        }),
+    )
+
+
+@admin.register(SolarPackageProduct)
+class SolarPackageProductAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the SolarPackageProduct model.
+    """
+    list_display = ('package', 'product', 'quantity')
+    list_filter = ('package', 'product__category')
+    search_fields = ('package__name', 'product__name')
+    autocomplete_fields = ('package', 'product')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('package', 'product', 'quantity')
+        }),
+    )

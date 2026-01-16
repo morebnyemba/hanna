@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from .models import (
     Warranty, WarrantyClaim, TechnicianComment, Manufacturer, Technician,
-    WarrantyRule, SLAThreshold, SLAStatus
+    WarrantyRule, SLAThreshold, SLAStatus, Installer, CalendarEvent
 )
 
 
@@ -60,9 +60,45 @@ class ManufacturerAdmin(admin.ModelAdmin):
 
 @admin.register(Technician)
 class TechnicianAdmin(admin.ModelAdmin):
-    list_display = ('user', 'specialization', 'contact_phone')
+    list_display = ('user', 'technician_type', 'manufacturer', 'specialization', 'contact_phone')
+    list_filter = ('technician_type', 'manufacturer')
     search_fields = ('user__username', 'user__first_name', 'user__last_name', 'specialization')
-    autocomplete_fields = ('user',)
+    autocomplete_fields = ('user', 'manufacturer')
+
+
+@admin.register(Installer)
+class InstallerAdmin(admin.ModelAdmin):
+    list_display = ('technician', 'get_technician_user', 'get_specialization')
+    search_fields = ('technician__user__username', 'technician__user__first_name', 'technician__user__last_name')
+    autocomplete_fields = ('technician',)
+    
+    def get_technician_user(self, obj):
+        return obj.technician.user.get_full_name() or obj.technician.user.username
+    get_technician_user.short_description = 'User'
+    get_technician_user.admin_order_field = 'technician__user__username'
+    
+    def get_specialization(self, obj):
+        return obj.technician.specialization or 'N/A'
+    get_specialization.short_description = 'Specialization'
+    get_specialization.admin_order_field = 'technician__specialization'
+
+
+@admin.register(CalendarEvent)
+class CalendarEventAdmin(admin.ModelAdmin):
+    list_display = ('title', 'technician', 'start', 'end')
+    list_filter = ('technician', 'start', 'end')
+    search_fields = ('title', 'technician__user__username', 'technician__user__first_name', 'technician__user__last_name')
+    autocomplete_fields = ('technician',)
+    date_hierarchy = 'start'
+    
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'technician')
+        }),
+        ('Schedule', {
+            'fields': ('start', 'end')
+        }),
+    )
 
 
 @admin.register(WarrantyRule)
