@@ -589,3 +589,43 @@ class SolarPackageSerializer(serializers.ModelSerializer):
     def get_total_products(self, obj):
         """Calculate total number of products in the package"""
         return sum(pp.quantity for pp in obj.package_products.all())
+
+
+class CompatibilityCheckSerializer(serializers.Serializer):
+    """
+    Serializer for checking compatibility between two products.
+    """
+    product_a_id = serializers.IntegerField(required=True, help_text="ID of the first product")
+    product_b_id = serializers.IntegerField(required=True, help_text="ID of the second product")
+    
+    def validate(self, data):
+        """Validate that both products exist"""
+        from .models import Product
+        
+        try:
+            data['product_a'] = Product.objects.get(id=data['product_a_id'])
+        except Product.DoesNotExist:
+            raise serializers.ValidationError({'product_a_id': 'Product not found'})
+        
+        try:
+            data['product_b'] = Product.objects.get(id=data['product_b_id'])
+        except Product.DoesNotExist:
+            raise serializers.ValidationError({'product_b_id': 'Product not found'})
+        
+        return data
+
+
+class PackageValidationSerializer(serializers.Serializer):
+    """
+    Serializer for validating a solar package.
+    """
+    package_id = serializers.IntegerField(required=True, help_text="ID of the solar package to validate")
+    
+    def validate_package_id(self, value):
+        """Validate that the package exists"""
+        from .models import SolarPackage
+        
+        try:
+            return SolarPackage.objects.get(id=value)
+        except SolarPackage.DoesNotExist:
+            raise serializers.ValidationError('Solar package not found')

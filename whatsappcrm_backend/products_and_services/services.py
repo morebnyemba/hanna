@@ -1,7 +1,7 @@
 """
 Service layer for product and item tracking operations.
 """
-from django.db import transaction
+from django.db import transaction, models
 from django.utils import timezone
 from typing import Optional, Dict, Any
 from django.contrib.auth import get_user_model
@@ -673,3 +673,497 @@ def sync_zoho_products_to_db() -> Dict[str, Any]:
         raise
     
     return stats
+
+
+class CompatibilityValidationService:
+    """
+    Service for validating product compatibility in solar packages.
+    Checks compatibility rules to ensure battery-inverter compatibility,
+    system size matches, and other configuration requirements.
+    """
+    
+    @staticmethod
+    def check_product_compatibility(product_a: Product, product_b: Product) -> Dict[str, Any]:
+        """
+        Check if two products are compatible with each other.
+        
+        Args:
+            product_a: First product
+            product_b: Second product
+            
+        Returns:
+            Dict with 'compatible' boolean and 'reason' string
+        """
+        from .models import CompatibilityRule
+        
+        # Check for incompatibility rules first
+        incompatible = CompatibilityRule.objects.filter(
+            is_active=True,
+            rule_type=CompatibilityRule.RuleType.INCOMPATIBLE
+        ).filter(
+            models.Q(product_a=product_a, product_b=product_b) |
+            models.Q(product_a=product_b, product_b=product_a)
+        ).first()
+        
+        if incompatible:
+            return {
+                'compatible': False,
+                'reason': f"Incompatible: {incompatible.description or incompatible.name}",
+                'rule': incompatible
+            }
+        
+        # Check for explicit compatibility rules
+        compatible = CompatibilityRule.objects.filter(
+            is_active=True,
+            rule_type__in=[CompatibilityRule.RuleType.COMPATIBLE, CompatibilityRule.RuleType.REQUIRES]
+        ).filter(
+            models.Q(product_a=product_a, product_b=product_b) |
+            models.Q(product_a=product_b, product_b=product_a)
+        ).first()
+        
+        if compatible:
+            return {
+                'compatible': True,
+                'reason': f"Compatible: {compatible.description or compatible.name}",
+                'rule': compatible
+            }
+        
+        # No explicit rules found - assume compatible with warning
+        return {
+            'compatible': True,
+            'reason': "No compatibility rules defined - assumed compatible",
+            'rule': None,
+            'warning': True
+        }
+    
+    @staticmethod
+    def validate_solar_package(solar_package) -> Dict[str, Any]:
+        """
+        Validate all products in a solar package for compatibility.
+        
+        Args:
+            solar_package: SolarPackage instance
+            
+        Returns:
+            Dict with validation results
+        """
+        from django.db import models
+        
+        results = {
+            'valid': True,
+            'errors': [],
+            'warnings': [],
+            'compatibility_checks': []
+        }
+        
+        products = list(solar_package.package_products.select_related('product').all())
+        
+        # Check each pair of products
+        for i, package_product_a in enumerate(products):
+            for package_product_b in products[i+1:]:
+                product_a = package_product_a.product
+                product_b = package_product_b.product
+                
+                check_result = CompatibilityValidationService.check_product_compatibility(
+                    product_a, product_b
+                )
+                
+                results['compatibility_checks'].append({
+                    'product_a': product_a.name,
+                    'product_b': product_b.name,
+                    'compatible': check_result['compatible'],
+                    'reason': check_result['reason']
+                })
+                
+                if not check_result['compatible']:
+                    results['valid'] = False
+                    results['errors'].append(
+                        f"{product_a.name} is incompatible with {product_b.name}: {check_result['reason']}"
+                    )
+                elif check_result.get('warning'):
+                    results['warnings'].append(
+                        f"No explicit compatibility rule between {product_a.name} and {product_b.name}"
+                    )
+        
+        return results
+    
+    @staticmethod
+    def validate_package_system_size(solar_package) -> Dict[str, Any]:
+        """
+        Validate that the solar package system size matches the included components.
+        
+        Args:
+            solar_package: SolarPackage instance
+            
+        Returns:
+            Dict with validation results
+        """
+        results = {
+            'valid': True,
+            'warnings': [],
+            'calculated_size': Decimal('0'),
+            'declared_size': solar_package.system_size
+        }
+        
+        # This is a simplified validation - you may want to implement more sophisticated logic
+        # based on actual inverter/panel specifications
+        
+        # For now, just flag if there are no products in the package
+        if solar_package.package_products.count() == 0:
+            results['valid'] = False
+            results['warnings'].append("Package has no products defined")
+        
+        return results
+
+
+class SolarOrderAutomationService:
+    """
+    Service for automating SSR (Installation System Record) creation 
+    when a solar package is purchased.
+    """
+    
+    @staticmethod
+    @transaction.atomic
+    def create_ssr_from_order(order, created_by: Optional[User] = None) -> Dict[str, Any]:
+        """
+        Automatically create SSR and related records from a solar package order.
+        
+        Args:
+            order: Order instance containing solar package items
+            created_by: User who initiated the order (for logging)
+            
+        Returns:
+            Dict with created records and status
+        """
+        from installation_systems.models import InstallationSystemRecord
+        from customer_data.models import InstallationRequest
+        from warranty.models import Warranty
+        from .models import SolarPackageProduct
+        from datetime import date
+        from dateutil.relativedelta import relativedelta
+        
+        result = {
+            'success': False,
+            'ssr': None,
+            'installation_request': None,
+            'warranties': [],
+            'errors': [],
+            'actions_log': []
+        }
+        
+        try:
+            # Check if SSR already exists for this order
+            existing_ssr = InstallationSystemRecord.objects.filter(order=order).first()
+            if existing_ssr:
+                result['errors'].append("SSR already exists for this order")
+                result['ssr'] = existing_ssr
+                logger.warning(f"Duplicate SSR creation attempted for order {order.id}")
+                return result
+            
+            result['actions_log'].append(f"Processing order {order.order_number or order.id}")
+            
+            # Detect if this is a solar order
+            solar_products = []
+            solar_package = None
+            
+            for order_item in order.items.select_related('product').all():
+                product = order_item.product
+                if not product:
+                    continue
+                
+                # Check if product is part of a solar package
+                package_memberships = SolarPackageProduct.objects.filter(
+                    product=product
+                ).select_related('solar_package').first()
+                
+                if package_memberships:
+                    solar_package = package_memberships.solar_package
+                    solar_products.append(order_item)
+            
+            if not solar_products:
+                result['errors'].append("No solar products found in order")
+                logger.info(f"Order {order.id} does not contain solar products - skipping SSR creation")
+                return result
+            
+            result['actions_log'].append(f"Found {len(solar_products)} solar products in order")
+            
+            # Validate compatibility if we have a solar package
+            if solar_package:
+                validation = CompatibilityValidationService.validate_solar_package(solar_package)
+                if not validation['valid']:
+                    result['errors'].extend(validation['errors'])
+                    result['errors'].append("Package compatibility validation failed - SSR creation aborted")
+                    logger.error(f"Compatibility validation failed for order {order.id}: {validation['errors']}")
+                    # Flag the order for manual review
+                    order.notes = (order.notes or '') + f"\n[AUTO] Compatibility validation failed: {', '.join(validation['errors'])}"
+                    order.save(update_fields=['notes'])
+                    return result
+                
+                if validation['warnings']:
+                    result['actions_log'].extend(validation['warnings'])
+            
+            # Get or create installation request
+            installation_request = InstallationRequest.objects.filter(
+                associated_order=order
+            ).first()
+            
+            if not installation_request:
+                # Create installation request
+                customer = order.customer
+                installation_request = InstallationRequest.objects.create(
+                    customer=customer,
+                    associated_order=order,
+                    status='pending',
+                    installation_type='solar',
+                    order_number=order.order_number or str(order.id),
+                    full_name=customer.get_full_name() or customer.contact.name or customer.contact.whatsapp_id,
+                    address=f"{customer.address_line_1 or ''}\n{customer.address_line_2 or ''}\n{customer.city or ''}, {customer.country or ''}".strip(),
+                    contact_phone=customer.contact.whatsapp_id,
+                    preferred_datetime="To be scheduled",
+                    notes=f"Auto-created from order {order.order_number or order.id}"
+                )
+                result['actions_log'].append(f"Created installation request {installation_request.id}")
+            else:
+                result['actions_log'].append(f"Using existing installation request {installation_request.id}")
+            
+            result['installation_request'] = installation_request
+            
+            # Create SSR (Installation System Record)
+            ssr = InstallationSystemRecord.objects.create(
+                installation_request=installation_request,
+                customer=order.customer,
+                order=order,
+                installation_type=InstallationSystemRecord.InstallationType.SOLAR,
+                system_size=solar_package.system_size if solar_package else None,
+                capacity_unit=InstallationSystemRecord.CapacityUnit.KW,
+                system_classification=InstallationSystemRecord.SystemClassification.RESIDENTIAL,
+                installation_status=InstallationSystemRecord.InstallationStatus.PENDING,
+                installation_address=installation_request.address
+            )
+            result['ssr'] = ssr
+            result['actions_log'].append(f"Created SSR {ssr.short_id}")
+            logger.info(f"Created SSR {ssr.id} for order {order.id}")
+            
+            # Create warranties for serialized items
+            # Note: This assumes SerializedItems have been assigned to order items
+            for order_item in solar_products:
+                product = order_item.product
+                
+                # Get assigned serialized items
+                assigned_items = order_item.assigned_items.all()
+                
+                for serialized_item in assigned_items:
+                    # Check if warranty already exists
+                    if hasattr(serialized_item, 'warranty'):
+                        result['actions_log'].append(
+                            f"Warranty already exists for {serialized_item.serial_number}"
+                        )
+                        continue
+                    
+                    # Get warranty duration from product or use default
+                    warranty_duration_days = 365  # Default 1 year
+                    
+                    # Check for warranty rules
+                    from warranty.models import WarrantyRule
+                    warranty_rule = WarrantyRule.objects.filter(
+                        is_active=True
+                    ).filter(
+                        models.Q(product=product) | models.Q(product_category=product.category)
+                    ).order_by('-priority').first()
+                    
+                    if warranty_rule:
+                        warranty_duration_days = warranty_rule.warranty_duration_days
+                    
+                    start_date = date.today()
+                    end_date = start_date + relativedelta(days=warranty_duration_days)
+                    
+                    warranty = Warranty.objects.create(
+                        manufacturer=product.manufacturer,
+                        serialized_item=serialized_item,
+                        customer=order.customer,
+                        associated_order=order,
+                        start_date=start_date,
+                        end_date=end_date,
+                        status=Warranty.WarrantyStatus.ACTIVE
+                    )
+                    
+                    # Link warranty to SSR
+                    ssr.warranties.add(warranty)
+                    
+                    result['warranties'].append(warranty)
+                    result['actions_log'].append(
+                        f"Created warranty for {serialized_item.serial_number} ({warranty_duration_days} days)"
+                    )
+                    logger.info(f"Created warranty {warranty.id} for serialized item {serialized_item.id}")
+            
+            # Link serialized items to SSR if any
+            for order_item in solar_products:
+                assigned_items = order_item.assigned_items.all()
+                for serialized_item in assigned_items:
+                    ssr.installed_components.add(serialized_item)
+            
+            result['success'] = True
+            result['actions_log'].append("SSR creation completed successfully")
+            logger.info(f"Successfully completed SSR creation for order {order.id}")
+            
+        except Exception as e:
+            result['errors'].append(f"Error creating SSR: {str(e)}")
+            logger.error(f"Error creating SSR for order {order.id}: {str(e)}", exc_info=True)
+            raise
+        
+        return result
+    
+    @staticmethod
+    def send_order_confirmation(order, ssr=None, customer_email: Optional[str] = None):
+        """
+        Send order confirmation email to customer with SSR ID if available.
+        
+        Args:
+            order: Order instance
+            ssr: InstallationSystemRecord instance (optional)
+            customer_email: Customer email (optional, will use order.customer.email if not provided)
+        """
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        if not customer_email and order.customer:
+            customer_email = order.customer.email
+        
+        if not customer_email:
+            logger.warning(f"No email address for order {order.id} - cannot send confirmation")
+            return False
+        
+        subject = f"Order Confirmation - {order.order_number or order.id}"
+        
+        message = f"""
+Dear {order.customer.get_full_name() or 'Customer'},
+
+Thank you for your order!
+
+Order Number: {order.order_number or order.id}
+Order Total: {order.currency} {order.amount}
+"""
+        
+        if ssr:
+            message += f"""
+Installation System Record: {ssr.short_id}
+
+Your installation has been scheduled. Our team will contact you shortly to arrange the installation.
+"""
+        
+        message += """
+You can track your order and installation progress through your customer portal.
+
+If you have any questions, please don't hesitate to contact us.
+
+Best regards,
+The HANNA Team
+"""
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [customer_email],
+                fail_silently=False,
+            )
+            logger.info(f"Sent order confirmation email for order {order.id} to {customer_email}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send order confirmation email for order {order.id}: {str(e)}")
+            return False
+    
+    @staticmethod
+    def notify_admin_for_scheduling(order, ssr):
+        """
+        Notify admin/branch team about new solar installation for scheduling.
+        
+        Args:
+            order: Order instance
+            ssr: InstallationSystemRecord instance
+        """
+        from notifications.models import Notification
+        from django.contrib.auth import get_user_model
+        
+        User = get_user_model()
+        
+        # Get admin users or branch managers
+        admin_users = User.objects.filter(
+            models.Q(is_staff=True) | models.Q(is_superuser=True)
+        )
+        
+        for admin in admin_users:
+            try:
+                Notification.objects.create(
+                    recipient=admin,
+                    channel='whatsapp',
+                    status='pending',
+                    content=f"""New solar installation requires scheduling:
+
+SSR ID: {ssr.short_id}
+Customer: {order.customer.get_full_name() or order.customer.contact.whatsapp_id}
+System Size: {ssr.system_size}kW
+Order: {order.order_number or order.id}
+
+Please assign a technician and schedule the installation.""",
+                    related_contact=order.customer.contact if order.customer else None
+                )
+                logger.info(f"Created notification for admin {admin.username} about SSR {ssr.id}")
+            except Exception as e:
+                logger.error(f"Failed to create notification for admin {admin.username}: {str(e)}")
+    
+    @staticmethod
+    def grant_customer_portal_access(customer):
+        """
+        Grant customer portal access by creating a User account if needed.
+        
+        Args:
+            customer: CustomerProfile instance
+            
+        Returns:
+            User instance or None
+        """
+        from django.contrib.auth import get_user_model
+        from django.utils.crypto import get_random_string
+        
+        User = get_user_model()
+        
+        if customer.user:
+            logger.info(f"Customer {customer.id} already has portal access")
+            return customer.user
+        
+        # Create user account
+        try:
+            username = customer.contact.whatsapp_id.replace('+', '').replace(' ', '')
+            email = customer.email or f"{username}@customer.hanna.local"
+            
+            # Check if user already exists with this email/username
+            existing_user = User.objects.filter(
+                models.Q(username=username) | models.Q(email=email)
+            ).first()
+            
+            if existing_user:
+                customer.user = existing_user
+                customer.save(update_fields=['user'])
+                logger.info(f"Linked existing user {existing_user.id} to customer {customer.id}")
+                return existing_user
+            
+            # Create new user
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=get_random_string(32),  # Random password - customer will reset via email
+                first_name=customer.first_name or '',
+                last_name=customer.last_name or ''
+            )
+            
+            customer.user = user
+            customer.save(update_fields=['user'])
+            
+            logger.info(f"Created portal user {user.id} for customer {customer.id}")
+            return user
+            
+        except Exception as e:
+            logger.error(f"Failed to create portal user for customer {customer.id}: {str(e)}")
+            return None
