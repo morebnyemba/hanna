@@ -273,20 +273,24 @@ class PayoutConfigurationAdmin(admin.ModelAdmin):
     """
     Admin interface for the PayoutConfiguration model.
     """
-    list_display = ('name', 'installation_type', 'rate_type', 'min_system_size', 'max_system_size', 'capacity_unit', 'is_active')
+    list_display = ('name', 'installation_type', 'rate_type', 'rate_amount', 'min_system_size', 'max_system_size', 'capacity_unit', 'is_active', 'priority')
     list_filter = ('installation_type', 'rate_type', 'capacity_unit', 'is_active')
-    search_fields = ('name', 'description')
+    search_fields = ('name',)
     readonly_fields = ('id', 'created_at', 'updated_at')
     
     fieldsets = (
         ('Configuration Details', {
-            'fields': ('id', 'name', 'description', 'installation_type', 'is_active')
+            'fields': ('id', 'name', 'installation_type', 'is_active', 'priority')
         }),
         ('Size Tiers', {
             'fields': ('min_system_size', 'max_system_size', 'capacity_unit')
         }),
         ('Payout Rates', {
-            'fields': ('rate_type', 'flat_rate', 'rate_per_unit', 'rate_per_kw')
+            'fields': ('rate_type', 'rate_amount')
+        }),
+        ('Quality Bonuses', {
+            'fields': ('quality_bonus_enabled', 'quality_bonus_amount'),
+            'classes': ('collapse',)
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
