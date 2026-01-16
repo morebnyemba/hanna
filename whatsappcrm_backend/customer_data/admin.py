@@ -163,6 +163,7 @@ class JobCardAdmin(admin.ModelAdmin):
     list_editable = ('status',)
     inlines = [TechnicianCommentInline,]
     date_hierarchy = 'creation_date'
+
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     """
