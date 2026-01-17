@@ -1,6 +1,6 @@
-# HANNA - Solar Lifecycle Operating System
+# HANNA - Installation Lifecycle Operating System
 
-A comprehensive solar energy CRM and lifecycle management system with WhatsApp integration, Django backend, React dashboard, and Next.js multi-portal frontend. HANNA manages the complete solar installation lifecycle from sales through installation, warranty, monitoring, and ongoing service.
+A comprehensive CRM and lifecycle management system with WhatsApp integration, Django backend, React dashboard, and Next.js multi-portal frontend. HANNA manages the complete installation lifecycle for **Solar (SSI)**, **Starlink (SLI)**, **Custom Furniture (CFI)**, and **Hybrid** installations from sales through installation, warranty, monitoring, and ongoing service.
 
 ## Quick Start
 
@@ -127,15 +127,47 @@ WhatsApp + Email Notifications
 - ✅ **Barcode Scanning** - Product check-in/out during warranty service
 - ✅ **Installation Photos** - Photo upload and gallery for installations
 
-### Solar-Specific Features (In Progress)
-The following features are part of the HANNA Core Scope roadmap:
+### Installation Lifecycle Management
+HANNA implements a comprehensive Installation System Record (ISR) model that tracks installations across **all types**: Solar (SSI), Starlink (SLI), Custom Furniture (CFI), and Hybrid (SSI).
 
-- 🚧 **Solar System Record (SSR)** - Unified digital file per installation
-- 🚧 **Digital Commissioning Checklist** - Step-by-step installation validation
+**Core ISR Features ✅ IMPLEMENTED:**
+- ✅ **Installation System Record (ISR)** - Master object tracking every installation throughout its lifecycle
+  - Supports all installation types: Solar, Starlink, Custom Furniture, Hybrid
+  - Unified digital file per installation with GPS coordinates, system size, classification
+  - Status workflow: pending → in_progress → commissioned → active → decommissioned
+  - Links to customer, order, technicians, components, warranties, and job cards
+- ✅ **Digital Commissioning Checklist** - Type-specific step-by-step installation validation
+  - Template system for pre-installation, installation, and commissioning phases
+  - Progress tracking with completion percentages
+  - Required photo upload and notes validation
+  - **Hard validation**: Cannot commission installation without 100% checklist completion
+- ✅ **Installation Photos** - Photo evidence tracking with type-specific requirements
+  - Photo types: before, during, after, serial_number, test_result, site, equipment
+  - Required photos vary by installation type (solar, starlink, furniture, hybrid)
+- ✅ **Automated ISR Creation** - Automatic ISR record creation from InstallationRequest
+  - Signal-based workflow orchestration
+  - Status synchronization between InstallationRequest and ISR
+- ✅ **Installer Payout System** - Complete payout workflow and configuration
+  - Tiered payout rates by system size
+  - Status tracking: pending → approved → paid
+  - Quality bonus support
+  - Zoho Books integration (API ready)
+- ✅ **Branch Assignment System** - Installer scheduling and availability management
+  - Assignment status workflow with time tracking
+  - Availability calendar with leave/sick/training support
+  - Performance metrics and KPI tracking
+
+**Partially Implemented 🚧:**
+- 🚧 **System Package Bundles** - Pre-configured system packages with compatibility logic
+  - ✅ Solar packages implemented (SolarPackage model)
+  - ❌ Generalized SystemBundle for Starlink/Furniture/Hybrid not yet implemented
+
+**Roadmap Features (Not Yet Implemented):**
 - 🚧 **Remote Monitoring Integration** - Inverter and battery monitoring APIs
 - 🚧 **Automated Fault Detection** - Proactive issue identification and ticketing
-- 🚧 **Solar Package Bundles** - Pre-configured system packages with compatibility logic
-- 🚧 **Automated Workflow Orchestration** - Sale → Installation → Warranty → Monitoring pipeline
+- 🚧 **Frontend Dashboards** - Admin/Technician/Client portal pages for ISR management
+
+**Complete API Documentation:** See [whatsappcrm_backend/installation_systems/README.md](whatsappcrm_backend/installation_systems/README.md)
 
 **For detailed analysis and roadmap, see:** [docs/improvements/APP_IMPROVEMENT_ANALYSIS.md](docs/improvements/APP_IMPROVEMENT_ANALYSIS.md)
 
