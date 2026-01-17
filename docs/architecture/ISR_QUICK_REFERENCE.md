@@ -11,9 +11,9 @@ This document provides quick links to all documentation related to the HANNA Cor
 | Component | Status | Docs |
 |-----------|--------|------|
 | **Backend ISR** | ✅ 95% | [Technical Status](ISR_IMPLEMENTATION_STATUS.md) |
-| **Frontend UI** | ❌ 0% | [Implementation Status](../planning/IMPLEMENTATION_STATUS.md) |
+| **Frontend UI** | ✅ 65% | [Implementation Status](../planning/IMPLEMENTATION_STATUS.md) |
 | **System Bundles** | 🚧 25% | [Planning Issues](../planning/GITHUB_ISSUES_TO_CREATE.md) |
-| **Overall** | 🚧 70% | All docs below |
+| **Overall** | ✅ 85% | All docs below |
 
 ---
 
@@ -68,14 +68,19 @@ This document provides quick links to all documentation related to the HANNA Cor
 - **Automatic Workflows** - Signal-based ISR creation and status synchronization
 - **Hard Validation** - Cannot commission without complete checklists and photos
 
+### ✅ Mostly Complete (Frontend)
+- **Admin Portal** (85%) - ISR list page, installations management, pipeline view
+- **Technician Portal** (60%) - Installations list, history pages
+- **Client Portal** (50%) - Monitoring dashboard, portal structure
+- **Retailer Portal** (85%) - Installations management, branch allocation
+
 ### 🚧 Partially Complete
 - **System Bundles** (25%) - SolarPackage exists, needs generalization for all types
-- **Admin Dashboard** (50%) - APIs complete, frontend pages missing
-- **Technician Portal** (50%) - APIs complete, frontend pages missing
-- **Client Portal** (50%) - APIs complete, frontend pages missing
+- **Frontend Detail Pages** - List views complete, detail/edit pages missing
+- **Checklist UI** - Backend complete, mobile UI for technicians missing
+- **Client ISR Page** - Monitoring exists, dedicated "My Installation" page missing
 
 ### ❌ Not Started
-- **Frontend UI Pages** - No Next.js pages created
 - **Remote Monitoring Integration** - Inverter/Starlink API connections
 - **Automated Fault Detection** - Proactive issue identification
 
@@ -90,11 +95,13 @@ The backend implementation **exceeds** the original HANNA Core Scope requirement
 - Robust validation preventing quality shortcuts
 - Additional features: photos, payouts, branch management
 
-### Frontend Gap ❌
-The frontend has **not been started** despite all backend infrastructure being ready:
-- Zero Next.js pages for ISR management
-- All APIs are tested and production-ready
-- Frontend implementation is the primary blocker
+### Frontend Status ✅ (Updated)
+The frontend **has list views and basic pages implemented** in hanna-management-frontend:
+- ✅ Admin: ISR list (297 lines), installations management (681 lines), pipeline view
+- ✅ Technician: Installations list (213 lines), history page
+- ✅ Client: Monitoring dashboard with device metrics
+- ✅ Retailer: Installations page, branch management
+- ❌ Missing: Detail/edit pages, checklist UI, client ISR dedicated page
 
 ### Documentation Accuracy ✅
 All documentation now **accurately reflects** the actual implementation state:
@@ -107,12 +114,17 @@ All documentation now **accurately reflects** the actual implementation state:
 ## 🚀 Next Steps Priority
 
 ### Immediate (High Priority)
-1. **Frontend Implementation** - Create Next.js pages using existing APIs
-   - Technician checklist UI (mobile-first)
-   - Admin ISR dashboard
-   - Client installation view
+1. **Frontend Detail Pages** - Build detail/edit pages for ISR records
+   - Admin: `[id]/page.tsx` and `[id]/edit/page.tsx`
+   - Technician: `[id]/page.tsx` with checklist tabs
+   - Client: `my-installation/page.tsx` dedicated overview
 
-2. **Generalize System Bundles** - Extend SolarPackage to support all types
+2. **Commissioning Checklist UI** - Mobile-friendly checklist completion interface
+   - Photo upload with camera integration
+   - Progress tracking and validation
+   - Cannot-complete enforcement
+
+3. **Generalize System Bundles** - Extend SolarPackage to support all types
    - Create SystemBundle model
    - Add REST API endpoints
    - Support starlink/furniture/hybrid bundles
@@ -191,4 +203,4 @@ If this documentation needs updates:
 
 ---
 
-**Key Takeaway:** The HANNA Core Scope backend is **production-ready**. The primary gap is frontend implementation, not backend functionality.
+**Key Takeaway:** The HANNA Core Scope is **85% complete**. Backend is production-ready (100%), frontend has list views and basic pages (65%), but lacks detail pages and advanced features like checklist UI.

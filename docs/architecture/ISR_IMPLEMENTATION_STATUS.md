@@ -19,7 +19,7 @@ This document provides a comprehensive view of the current implementation status
 | **API Endpoints** | ✅ Complete | 100% |
 | **Automatic Workflows** | ✅ Complete | 95% |
 | **System Bundles** | 🚧 Partial | 25% |
-| **Frontend Dashboards** | ❌ Not Started | 0% |
+| **Frontend Dashboards** | 🚧 Partial | 65% |
 
 ---
 
@@ -525,39 +525,57 @@ python manage.py seed_checklist_templates
 
 ---
 
-## ❌ Not Implemented Features
+## 🚧 Partially Implemented Features
 
 ### Frontend Dashboards
-**Status:** ❌ 0% Complete
+**Status:** 🚧 65% Complete
 
-The Next.js management frontend (`hanna-management-frontend/`) exists but does not contain ISR-specific pages.
+The Next.js management frontend (`hanna-management-frontend/`) has ISR pages implemented.
 
-**Missing Pages:**
-1. **Admin Portal** - Installation Systems Management Dashboard
-   - List view with filtering (type, status, classification, dates)
-   - Detail view for individual ISR
-   - Status update interface
-   - Technician assignment interface
-   - Report generation
+**Implemented Pages:**
+1. **Admin Portal** ✅
+   - `app/admin/(protected)/installation-system-records/page.tsx` (297 lines)
+     - List view with ISR table showing ID, customer, type, status, size, dates
+     - Delete functionality with confirmation modal
+     - Download installation report button
+   - `app/admin/(protected)/installations/page.tsx` (681 lines)
+     - Comprehensive InstallationRequest management with filters, search
+     - Status badges, technician assignment modal
+     - Create/Edit/Delete operations, PDF export
+   - `app/admin/(protected)/installation-pipeline/page.tsx`
+     - Kanban-style pipeline visualization
 
-2. **Technician Portal** - Commissioning Checklist Mobile UI
-   - Installation list (assigned to technician)
-   - Checklist view with progress
-   - Photo upload interface
-   - Item completion tracking
-   - Cannot complete without all required items
+2. **Technician Portal** 🚧 (Partial)
+   - `app/technician/(protected)/installations/page.tsx` (213 lines) ✅
+     - List of assigned InstallationSystemRecords
+     - Table view with customer, type, status, size, dates
+     - Download installation report button
+   - `app/technician/(protected)/installation-history/page.tsx` ✅
+   - ❌ Missing: Detail page, checklist completion UI, photo upload interface
 
-3. **Client Portal** - My Installation System Dashboard
-   - View own installation details
-   - Installation photos gallery
-   - Download reports (installation report, warranty certificate)
-   - Service history
-   - Report issue button
-   - Monitoring dashboard link (for solar/starlink)
+3. **Client Portal** 🚧 (Partial)
+   - `app/client/(protected)/monitoring/page.tsx` ✅
+     - Device monitoring dashboard with real-time metrics
+     - Status indicators for inverters, routers, batteries
+   - Client portal structure exists with dashboard, service requests, warranties, orders, shop
+   - ❌ Missing: Dedicated `my-installation/` page for ISR details, photos gallery, service history timeline
 
-**Recommendation:** Implement frontend pages based on existing API endpoints. All backend functionality is ready.
+4. **Retailer Portal** ✅
+   - `app/retailer/(protected)/installations/page.tsx` ✅
+   - Retailer branch installer allocation and calendar pages
+
+**Missing Features:**
+- ❌ ISR detail/edit pages (`[id]/page.tsx`, `[id]/edit/page.tsx`)
+- ❌ Mobile-optimized commissioning checklist UI for technicians
+- ❌ Client "My Installation" dedicated overview page
+- ❌ Installation photos gallery component
+- ❌ Service history timeline component
+
+**Summary:** List views and basic portal pages are implemented across all user types. Advanced features like detail pages, checklist UI, and dedicated client ISR page are pending.
 
 ---
+
+## ❌ Not Implemented Features
 
 ### Remote Monitoring Integration
 **Status:** ❌ 0% Complete
@@ -746,7 +764,7 @@ python manage.py test installation_systems.tests.TestChecklistValidation
 
 ## Conclusion
 
-The **Installation System Record (ISR)** backend is **fully implemented** and production-ready with:
+The **Installation System Record (ISR)** system is **mostly implemented** with:
 - ✅ Complete data models for all installation types
 - ✅ Comprehensive API endpoints with filtering, search, and custom actions
 - ✅ Automatic ISR creation from installation requests
@@ -755,13 +773,15 @@ The **Installation System Record (ISR)** backend is **fully implemented** and pr
 - ✅ Installer payout system with approval workflow
 - ✅ Branch assignment and availability management
 - ✅ Performance metrics and KPI tracking
+- ✅ **Frontend portal pages implemented** (list views, basic dashboards)
 
 **Primary Gaps:**
 - 🚧 System Bundles need generalization (currently solar-only)
-- ❌ Frontend dashboards not implemented (all APIs ready)
+- 🚧 Frontend detail/edit pages not implemented (list views complete)
+- 🚧 Commissioning checklist UI for technicians not implemented
 - ❌ Remote monitoring integration not started
 
-**Overall Assessment:** Backend is **production-ready**. Frontend implementation is the main blocker for end-user features.
+**Overall Assessment:** Backend is **production-ready (100%)**. Frontend has **list views and basic pages (65%)** but lacks detail pages and advanced features like checklist UI.
 
 ---
 

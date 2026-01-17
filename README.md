@@ -157,15 +157,26 @@ HANNA implements a comprehensive Installation System Record (ISR) model that tra
   - Availability calendar with leave/sick/training support
   - Performance metrics and KPI tracking
 
+- ✅ **Frontend Portal Pages** - Multi-portal Next.js dashboards for ISR management
+  - Admin Portal: Installation System Records list, Installation Pipeline Kanban view
+  - Technician Portal: Assigned installations list, installation history
+  - Retailer Portal: Installation management for retailers
+  - Client Portal: Monitoring dashboard (device status, metrics)
+  - Built with Next.js, Tailwind CSS, and shadcn/ui components
+
 **Partially Implemented 🚧:**
 - 🚧 **System Package Bundles** - Pre-configured system packages with compatibility logic
   - ✅ Solar packages implemented (SolarPackage model)
   - ❌ Generalized SystemBundle for Starlink/Furniture/Hybrid not yet implemented
+- 🚧 **Frontend Features** - Some advanced features pending
+  - ✅ List views, filters, search implemented for all portals
+  - ❌ Detail/edit pages for ISR records not yet implemented
+  - ❌ Client "My Installation" dedicated page not yet implemented
+  - ❌ Commissioning checklist UI for technicians not yet implemented
 
 **Roadmap Features (Not Yet Implemented):**
 - 🚧 **Remote Monitoring Integration** - Inverter and battery monitoring APIs
 - 🚧 **Automated Fault Detection** - Proactive issue identification and ticketing
-- 🚧 **Frontend Dashboards** - Admin/Technician/Client portal pages for ISR management
 
 **Complete API Documentation:** See [whatsappcrm_backend/installation_systems/README.md](whatsappcrm_backend/installation_systems/README.md)
 

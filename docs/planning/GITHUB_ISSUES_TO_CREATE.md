@@ -120,15 +120,20 @@ Create an admin dashboard to view and manage all Installation System Records. **
 - ✅ All endpoints: List, detail, update, statistics, report generation
 - ✅ Filtering by type, status, classification, customer, order
 - ✅ Search functionality ready
-- ❌ Next.js pages NOT created
-- ❌ Table view UI NOT created
-- ❌ Filters UI NOT created
-- ❌ Detail view page NOT created
+- ✅ **Next.js pages CREATED:**
+  - `app/admin/(protected)/installation-system-records/page.tsx` (297 lines)
+  - `app/admin/(protected)/installations/page.tsx` (681 lines)
+  - `app/admin/(protected)/installation-pipeline/page.tsx`
+- ✅ Table view with ISR list showing ID, customer, type, status, dates
+- ✅ Delete functionality with confirmation modal
+- ✅ Download installation report button
+- ❌ Detail/edit pages NOT created (`[id]/page.tsx`, `[id]/edit/page.tsx`)
+- ❌ Advanced filters UI NOT added to ISR list page
 
 **Remaining Work:**
-- Create Next.js pages in `hanna-management-frontend/app/admin/(protected)/installation-systems/`
-- Build table view component with filtering
-- Build detail view page with status updates
+- Create detail/edit pages in `hanna-management-frontend/app/admin/(protected)/installation-system-records/`
+- Add advanced filtering UI to list page
+- Build inline status update and technician assignment
 
 **Reference:** See `IMPLEMENTABLE_ISSUES_WEEK1.md` Issue 5 for full details.
 
@@ -138,7 +143,7 @@ Create an admin dashboard to view and manage all Installation System Records. **
 **Labels:** `frontend`, `high-priority`, `technician-portal`, `nextjs`, `mobile`, `multi-type`  
 **Assignees:** Frontend team  
 **Estimated:** 3-4 days  
-**Status:** 🚧 **PARTIAL** (50% - Backend only)
+**Status:** 🚧 **PARTIAL** (60% - Backend complete, list pages implemented)
 
 **Description:**
 Create a mobile-friendly commissioning checklist interface for technicians. **Supports all installation types** with type-specific checklists. This addresses the "Execution Layer" requirements: "Step-by-step digital checklists: pre-install, installation, commissioning."
@@ -149,16 +154,20 @@ Create a mobile-friendly commissioning checklist interface for technicians. **Su
 - ✅ Checklist entry endpoints with item update
 - ✅ Photo upload API with multipart support
 - ✅ Required photos status validation
-- ❌ Next.js pages NOT created
-- ❌ Installation list UI NOT created
+- ✅ **Next.js pages CREATED:**
+  - `app/technician/(protected)/installations/page.tsx` (213 lines)
+  - `app/technician/(protected)/installation-history/page.tsx`
+- ✅ Installation list with table view
+- ✅ Download installation report button
+- ❌ Installation detail page NOT created (`[id]/page.tsx`)
 - ❌ Checklist completion UI NOT created
 - ❌ Photo upload interface NOT created
-- ❌ Mobile optimization NOT done
+- ❌ Mobile optimization for checklist NOT done
 
 **Remaining Work:**
-- Create Next.js pages in `hanna-management-frontend/app/technician/(protected)/installations/`
-- Build mobile-first checklist completion interface
-- Implement camera integration for photo upload
+- Create `[id]/page.tsx` for installation detail with tabs
+- Create `[id]/checklist/page.tsx` for checklist completion
+- Build mobile-first photo upload interface with camera integration
 
 **Reference:** See `IMPLEMENTABLE_ISSUES_WEEK1.md` Issue 6 for full details.
 

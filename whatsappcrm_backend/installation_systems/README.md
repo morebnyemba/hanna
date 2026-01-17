@@ -531,16 +531,16 @@ Test coverage includes:
   - Missing: Generic SystemBundle model for starlink/furniture/hybrid
   - Missing: REST API endpoints for bundle management
 - **Zoho Payout Sync** - Stub exists in tasks.py but not fully implemented
-
-### ❌ Not Implemented (Frontend)
-- **Admin Dashboard** - ISR management UI (APIs ready, pages missing)
-- **Technician Portal** - Mobile checklist UI (APIs ready, pages missing)
-- **Client Portal** - My Installation view (APIs ready, pages missing)
+- **Frontend Detail Pages** - List views implemented, detail/edit pages missing
+  - ✅ Admin: ISR list (297 lines), installations (681 lines), pipeline
+  - ✅ Technician: Installations list (213 lines), history
+  - ✅ Client: Monitoring dashboard
+  - ❌ Missing: Detail/edit pages, checklist UI, client ISR page
 
 ### 📊 Overall Status
 - **Backend:** 95% Complete ✅
-- **Frontend:** 0% Complete ❌
-- **Overall:** 70% Complete 🚧
+- **Frontend:** 65% Complete ✅ (List views implemented)
+- **Overall:** 85% Complete ✅
 
 **For detailed implementation status, see:** 
 - [docs/architecture/ISR_IMPLEMENTATION_STATUS.md](../../docs/architecture/ISR_IMPLEMENTATION_STATUS.md)
