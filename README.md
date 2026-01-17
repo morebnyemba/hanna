@@ -59,16 +59,9 @@ The application uses Let's Encrypt for free SSL certificates. The setup is fully
 | Browser shows certificate warnings | Run `./fix-certificate-directory.sh` |
 | Nginx using wrong certificate directory | Run `./fix-certificate-directory.sh` |
 | Certificate expired or self-signed | Run `./setup-ssl-certificates.sh --email your@email.com` |
-| Staging certificate in production | See [CERTIFICATE_DIRECTORY_PATH_FIX.md](CERTIFICATE_DIRECTORY_PATH_FIX.md) |
+| Staging certificate in production | See [SSL Configuration](docs/configuration/README_SSL.md) |
 
-For detailed SSL setup and troubleshooting, see:
-- **[CERTIFICATE_DIRECTORY_PATH_FIX.md](CERTIFICATE_DIRECTORY_PATH_FIX.md)** - 🆕 Fix for numbered certificate directories
-- **[QUICK_CERTIFICATE_FIX.md](QUICK_CERTIFICATE_FIX.md)** - 🚀 Quick fixes for browser warnings
-- **[CERTIFICATE_DIRECTORY_FIX.md](CERTIFICATE_DIRECTORY_FIX.md)** - Certificate path diagnostics
-- **[README_SSL.md](README_SSL.md)** - Quick SSL reference and troubleshooting
-- **[SSL_BROWSER_WARNING_FIX.md](SSL_BROWSER_WARNING_FIX.md)** - ⚠️ Browser warning fixes
-- **[SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md)** - Complete SSL setup guide
-- **[SSL_BOOTSTRAP_FIX.md](SSL_BOOTSTRAP_FIX.md)** - Bootstrap script technical details
+For detailed SSL setup and troubleshooting, see [docs/configuration/README_SSL.md](docs/configuration/README_SSL.md)
 
 ## Architecture
 
@@ -144,7 +137,7 @@ The following features are part of the HANNA Core Scope roadmap:
 - 🚧 **Solar Package Bundles** - Pre-configured system packages with compatibility logic
 - 🚧 **Automated Workflow Orchestration** - Sale → Installation → Warranty → Monitoring pipeline
 
-**For detailed gap analysis and roadmap, see:** [HANNA_CORE_SCOPE_GAP_ANALYSIS.md](HANNA_CORE_SCOPE_GAP_ANALYSIS.md)
+**For detailed analysis and roadmap, see:** [docs/improvements/APP_IMPROVEMENT_ANALYSIS.md](docs/improvements/APP_IMPROVEMENT_ANALYSIS.md)
 
 ### E-Commerce & Payment
 - ✅ **Product Catalog** - Comprehensive product and category management
@@ -197,10 +190,9 @@ npm run dev
 
 ## Deployment
 
-See detailed deployment guides:
-- **[DEPLOYMENT_INSTRUCTIONS.md](DEPLOYMENT_INSTRUCTIONS.md)** - General deployment
-- **[SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md)** - SSL certificate setup
-- **[CUSTOM_NGINX_MIGRATION_GUIDE.md](CUSTOM_NGINX_MIGRATION_GUIDE.md)** - Nginx configuration
+See detailed deployment guides in the [docs/configuration/](docs/configuration/) folder:
+- **[Docker Configuration](docs/configuration/DOCKER.md)** - Docker setup
+- **[SSL Certificate Setup](docs/configuration/README_SSL.md)** - SSL certificate configuration
 
 ## Troubleshooting
 
@@ -223,7 +215,7 @@ docker-compose logs nginx
 docker-compose logs certbot
 ```
 
-**See [QUICK_CERTIFICATE_FIX.md](QUICK_CERTIFICATE_FIX.md) for step-by-step fixes.**
+**See [docs/troubleshooting/](docs/troubleshooting/) for common issues and fixes.**
 
 ### Migration Conflicts
 
@@ -286,31 +278,26 @@ docker-compose restart
 3. Check nginx: `docker-compose logs nginx`
 4. Run diagnostics: `./diagnose-ssl.sh`
 
-## Documentation
+## 📚 Documentation
 
-### General
-- **[QUICK_START.md](QUICK_START.md)** - Quick start guide
-- **[QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)** - Detailed quick start
+Comprehensive documentation is available in the **[docs/](docs/)** folder:
 
-### SSL & Security
-- **[SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md)** - SSL certificate setup
-- **[README_SSL.md](README_SSL.md)** - SSL quick reference
-- **[DOMAIN_SSL_FIX_SUMMARY.md](DOMAIN_SSL_FIX_SUMMARY.md)** - SSL fix details
+### Quick Links
+- **[📖 Documentation Home](docs/)** - Complete documentation index
+- **[🔌 API Documentation](docs/api/)** - RESTful API reference
+- **[🏗️ Architecture](docs/architecture/)** - System diagrams and flows
+- **[⚙️ Configuration](docs/configuration/)** - Setup and configuration guides
+- **[✨ Features](docs/features/)** - Feature implementation docs
+- **[📖 Integration Guides](docs/guides/)** - How-to integrate with external systems
+- **[📈 Improvements](docs/improvements/)** - Enhancement roadmap and analysis
+- **[🔒 Security](docs/security/)** - Security best practices
+- **[🔧 Troubleshooting](docs/troubleshooting/)** - Common issues and solutions
 
-### Deployment
-- **[DEPLOYMENT_INSTRUCTIONS.md](DEPLOYMENT_INSTRUCTIONS.md)** - Deployment guide
-- **[CUSTOM_NGINX_MIGRATION_GUIDE.md](CUSTOM_NGINX_MIGRATION_GUIDE.md)** - Nginx setup
-
-### Features
-- **[FLOW_DIAGRAMS.md](FLOW_DIAGRAMS.md)** - System flow diagrams
-- **[FLOW_INTEGRATION_GUIDE.md](FLOW_INTEGRATION_GUIDE.md)** - Integration guide
-- **[ECOMMERCE_IMPLEMENTATION.md](ECOMMERCE_IMPLEMENTATION.md)** - E-commerce features
-- **[PRODUCT_SYNC_VISUAL_GUIDE.md](PRODUCT_SYNC_VISUAL_GUIDE.md)** - Product sync
-- **[META_SYNC_VERSION_SUFFIX.md](META_SYNC_VERSION_SUFFIX.md)** - Version suffixes for Meta sync
-
-### Media & Configuration
-- **[MEDIA_FIX_SUMMARY.md](MEDIA_FIX_SUMMARY.md)** - Media file handling
-- **[NPM_MEDIA_FIX_GUIDE.md](NPM_MEDIA_FIX_GUIDE.md)** - Media configuration
+### Key Documents
+- **[Flow Integration Guide](docs/guides/FLOW_INTEGRATION_GUIDE.md)** - WhatsApp flows integration
+- **[E-commerce Implementation](docs/features/ECOMMERCE_IMPLEMENTATION.md)** - Shopping features
+- **[SSL Configuration](docs/configuration/README_SSL.md)** - SSL certificate setup
+- **[App Improvement Analysis](docs/improvements/APP_IMPROVEMENT_ANALYSIS.md)** - Comprehensive improvement roadmap
 
 ## Security Features
 
@@ -324,21 +311,21 @@ docker-compose restart
 
 ## Improvement Roadmap
 
-Looking to improve the application? Check out our comprehensive improvement analysis:
+Looking to improve the application? Check out our comprehensive improvement analysis in **[docs/improvements/](docs/improvements/)**:
 
-- **[APP_IMPROVEMENT_ANALYSIS.md](APP_IMPROVEMENT_ANALYSIS.md)** - 📊 Complete analysis with 76 identified improvements
-- **[SUGGESTED_GITHUB_ISSUES.md](SUGGESTED_GITHUB_ISSUES.md)** - 📝 Ready-to-create GitHub issues
-- **[IMPROVEMENT_QUICK_START.md](IMPROVEMENT_QUICK_START.md)** - 🚀 Quick start guide for implementing improvements
+- **[App Improvement Analysis](docs/improvements/APP_IMPROVEMENT_ANALYSIS.md)** - 📊 Complete analysis with identified improvements
+- **[Planning Documents](docs/planning/)** - 📝 Ready-to-create GitHub issues and sprint plans
 
 These documents cover testing, security, monitoring, performance, documentation, and feature enhancements.
 
 ## Support
 
 For issues or questions:
-1. Check relevant documentation in the root directory
-2. Run diagnostic tools (`./diagnose-ssl.sh`)
+1. Check the **[documentation](docs/)** for guides and troubleshooting
+2. Run diagnostic tools (`./diagnose-ssl.sh`, `./check-certificate-paths.sh`)
 3. Review service logs (`docker-compose logs <service>`)
-4. Open an issue on GitHub
+4. Check **[troubleshooting docs](docs/troubleshooting/)** for common issues
+5. Open an issue on GitHub
 
 ## License
 
@@ -347,10 +334,10 @@ For issues or questions:
 ## Contributing
 
 We welcome contributions! To get started:
-1. Review [IMPROVEMENT_QUICK_START.md](IMPROVEMENT_QUICK_START.md) for improvement opportunities
-2. Check [SUGGESTED_GITHUB_ISSUES.md](SUGGESTED_GITHUB_ISSUES.md) for specific tasks
+1. Review **[docs/improvements/](docs/improvements/)** for improvement opportunities
+2. Check **[docs/planning/](docs/planning/)** for specific tasks and sprint plans
 3. Fork the repository and create a feature branch
 4. Make your changes with tests
 5. Submit a pull request
 
-For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md) (coming soon).
+For detailed contribution guidelines and documentation standards, see the **[docs/](docs/)** folder.
