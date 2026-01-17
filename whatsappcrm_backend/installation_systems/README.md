@@ -514,6 +514,40 @@ Test coverage includes:
 - All changes are logged with timestamps and user IDs
 - Photos stored securely with UUID references
 
+## Implementation Status vs HANNA Core Scope
+
+### ✅ Fully Implemented (Backend)
+- **InstallationSystemRecord Model** - Master object for all installation types
+- **CommissioningChecklistTemplate & Entry** - Digital checklists with validation
+- **InstallationPhoto** - Photo evidence with type-specific requirements
+- **PayoutConfiguration & InstallerPayout** - Complete payout workflow
+- **Branch Models** - InstallerAssignment & InstallerAvailability
+- **Comprehensive APIs** - Full REST API with permissions
+- **Automatic Workflows** - Signal-based ISR creation, status sync
+- **Hard Validation** - Cannot commission without complete checklists & photos
+
+### 🚧 Partially Implemented
+- **System Bundles** - SolarPackage exists but not generalized for all types
+  - Missing: Generic SystemBundle model for starlink/furniture/hybrid
+  - Missing: REST API endpoints for bundle management
+- **Zoho Payout Sync** - Stub exists in tasks.py but not fully implemented
+
+### ❌ Not Implemented (Frontend)
+- **Admin Dashboard** - ISR management UI (APIs ready, pages missing)
+- **Technician Portal** - Mobile checklist UI (APIs ready, pages missing)
+- **Client Portal** - My Installation view (APIs ready, pages missing)
+
+### 📊 Overall Status
+- **Backend:** 95% Complete ✅
+- **Frontend:** 0% Complete ❌
+- **Overall:** 70% Complete 🚧
+
+**For detailed implementation status, see:** 
+- [docs/architecture/ISR_IMPLEMENTATION_STATUS.md](../../docs/architecture/ISR_IMPLEMENTATION_STATUS.md)
+- [docs/planning/IMPLEMENTATION_STATUS.md](../../docs/planning/IMPLEMENTATION_STATUS.md)
+
+---
+
 ## Future Enhancements for Checklist System
 
 1. **Offline Support**: PWA with local storage for field work
@@ -524,3 +558,19 @@ Test coverage includes:
 6. **Reporting**: Generate PDF completion reports
 7. **Notifications**: Alert admins of checklist completion
 8. **Templates per Customer**: Custom checklists for VIP customers
+
+## Next Steps
+
+### High Priority
+1. **Frontend Implementation** - Build Admin/Technician/Client dashboards using existing APIs
+2. **Generalize System Bundles** - Create SystemBundle model supporting all installation types
+3. **Complete Zoho Integration** - Implement payout sync with Zoho Books
+
+### Medium Priority
+4. **Remote Monitoring Integration** - Connect to inverter/Starlink APIs
+5. **Automated Fault Detection** - Proactive issue identification from monitoring data
+
+### Low Priority
+6. **Mobile App** - Native app alternative for technicians
+7. **AI Photo Validation** - Automated photo quality checks
+8. **GPS Verification** - Ensure on-site presence
