@@ -1,8 +1,38 @@
 # HANNA Documentation
 
-Welcome to the HANNA documentation! This folder contains all essential documentation for the HANNA Solar Lifecycle Operating System.
+Welcome to the HANNA documentation! This folder contains all essential documentation for the HANNA Installation Lifecycle Operating System.
+
+## 🎯 Quick Start - Core Implementation Status
+
+**New to HANNA Core Scope?** Start here:
+- **[ISR Quick Reference](./architecture/ISR_QUICK_REFERENCE.md)** - 📊 Quick overview of implementation status
+- **[ISR Implementation Status](./architecture/ISR_IMPLEMENTATION_STATUS.md)** - 📖 Comprehensive technical documentation
+- **[Implementation Status](./planning/IMPLEMENTATION_STATUS.md)** - ✅ Per-issue tracking and completion status
+
+**Key Finding:** Backend is 95% complete ✅ | Frontend is 0% complete ❌ | Overall 70% complete 🚧
+
+---
 
 ## 📁 Documentation Structure
+
+### 🏗️ [Architecture](./architecture/)
+System architecture diagrams, flow documentation, and **implementation status**:
+- **[ISR Quick Reference](./architecture/ISR_QUICK_REFERENCE.md)** - Quick overview of Installation System Record implementation
+- **[ISR Implementation Status](./architecture/ISR_IMPLEMENTATION_STATUS.md)** - Comprehensive technical status document
+- [Flow Diagrams](./architecture/FLOW_DIAGRAMS.md) - WhatsApp flow diagrams
+- [Flow Transition Diagram](./architecture/FLOW_TRANSITION_DIAGRAM.md) - State transitions in flows
+- [Shop Now Flow Diagram](./architecture/SHOP_NOW_FLOW_DIAGRAM.md) - E-commerce flow visualization
+- [Zoho Architecture Diagram](./architecture/ZOHO_ARCHITECTURE_DIAGRAM.md) - Zoho CRM integration architecture
+
+### 📋 [Planning](./planning/)
+Project planning, issue tracking, and **implementation status**:
+- **[Implementation Status](./planning/IMPLEMENTATION_STATUS.md)** - Week 1 Sprint tracking with per-issue status
+- **[GitHub Issues to Create](./planning/GITHUB_ISSUES_TO_CREATE.md)** - Original issues with completion markers
+- [Implementable Issues Week 1](./planning/IMPLEMENTABLE_ISSUES_WEEK1.md) - First week sprint plan with acceptance criteria
+- [Implementable Issues List](./planning/IMPLEMENTABLE_ISSUES_LIST.md) - Prioritized implementation list
+- [GitHub Issues Ready to Create](./planning/GITHUB_ISSUES_READY_TO_CREATE.md) - Prepared GitHub issues
+- [Solar Focused GitHub Issues](./planning/SOLAR_FOCUSED_GITHUB_ISSUES.md) - Solar-specific features
+- [Suggested GitHub Issues (Old)](./planning/SUGGESTED_GITHUB_ISSUES_OLD.md) - Historical issue suggestions
 
 ### 🔌 [API Documentation](./api/)
 RESTful API endpoint documentation and specifications:
@@ -10,14 +40,7 @@ RESTful API endpoint documentation and specifications:
 - [Installation Photo API](./api/INSTALLATION_PHOTO_API.md) - Installation photo upload and management
 - [Warranty Certificate API](./api/WARRANTY_CERTIFICATE_AND_INSTALLATION_REPORT_API.md) - Warranty and installation report generation
 
-### 🏗️ [Architecture](./architecture/)
-System architecture diagrams and flow documentation:
-- [Flow Diagrams](./architecture/FLOW_DIAGRAMS.md) - WhatsApp flow diagrams
-- [Flow Transition Diagram](./architecture/FLOW_TRANSITION_DIAGRAM.md) - State transitions in flows
-- [Shop Now Flow Diagram](./architecture/SHOP_NOW_FLOW_DIAGRAM.md) - E-commerce flow visualization
-- [Zoho Architecture Diagram](./architecture/ZOHO_ARCHITECTURE_DIAGRAM.md) - Zoho CRM integration architecture
-
-### ⚙️ [Configuration](./configuration/)
+**Note:** Complete ISR API documentation is in [Installation Systems README](../whatsappcrm_backend/installation_systems/README.md)
 System configuration guides and setup instructions:
 - [Database SMTP Configuration](./configuration/DATABASE_SMTP_CONFIGURATION.md) - Email configuration
 - [Django Media Serving](./configuration/DJANGO_MEDIA_SERVING.md) - Media file serving setup
@@ -78,12 +101,26 @@ Common issues and their solutions:
 
 ## 🚀 Getting Started
 
-1. **New to HANNA?** Start with the main [README](../README.md) in the root directory
-2. **Setting up SSL?** Check [SSL Configuration](./configuration/README_SSL.md)
-3. **Deploying?** Review [Docker Configuration](./configuration/DOCKER.md)
-4. **Integrating?** See [Guides](./guides/) for integration documentation
-5. **Building features?** Check [Features](./features/) for implementation details
-6. **API Development?** Browse [API Documentation](./api/)
+### New to HANNA?
+1. **Start with the main [README](../README.md)** in the root directory for system overview
+2. **Core Scope Status:** Read [ISR Quick Reference](./architecture/ISR_QUICK_REFERENCE.md) to understand implementation state
+3. **Technical Deep-Dive:** Review [ISR Implementation Status](./architecture/ISR_IMPLEMENTATION_STATUS.md)
+
+### Setting Up?
+1. **SSL Configuration:** [SSL Setup Guide](./configuration/README_SSL.md)
+2. **Docker Deployment:** [Docker Configuration](./configuration/DOCKER.md)
+3. **Media Files:** [Media Configuration Guide](./configuration/MEDIA_FILES_CONFIGURATION.md)
+
+### Developing?
+1. **Backend ISR APIs:** [Installation Systems README](../whatsappcrm_backend/installation_systems/README.md)
+2. **API Reference:** [Admin API Endpoints](./api/ADMIN_API_ENDPOINTS.md)
+3. **Integration:** [Guides](./guides/) for external system integrations
+4. **Features:** [Features](./features/) for implementation details
+
+### Planning Work?
+1. **Implementation Status:** [Planning Status](./planning/IMPLEMENTATION_STATUS.md)
+2. **Issues & Roadmap:** [GitHub Issues to Create](./planning/GITHUB_ISSUES_TO_CREATE.md)
+3. **Improvement Ideas:** [App Improvement Analysis](./improvements/APP_IMPROVEMENT_ANALYSIS.md)
 
 ## 📝 Documentation Guidelines
 
