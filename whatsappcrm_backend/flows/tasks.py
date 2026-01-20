@@ -36,6 +36,9 @@ def process_flow_for_message_task(message_id: int):
     This task asynchronously runs the entire flow engine for an incoming message.
     """
     try:
+        # Collect tasks to dispatch after the transaction commits
+        tasks_to_dispatch = []
+        
         with transaction.atomic():
             incoming_message = Message.objects.select_related('contact', 'app_config').get(pk=message_id)
             contact = incoming_message.contact
@@ -71,8 +74,13 @@ def process_flow_for_message_task(message_id: int):
                         message_type=action.get('message_type'), content_payload=action.get('data'),
                         status='pending_dispatch', related_incoming_message=incoming_message
                     )
-                    send_whatsapp_message_task.apply_async(args=[outgoing_msg.id, config_to_use.id], countdown=dispatch_countdown)
+                    # Queue the task for dispatch after transaction commits
+                    tasks_to_dispatch.append((outgoing_msg.id, config_to_use.id, dispatch_countdown))
                     dispatch_countdown += 2
+        
+        # Dispatch Celery tasks after transaction is committed successfully
+        for msg_id, config_id, countdown in tasks_to_dispatch:
+            send_whatsapp_message_task.apply_async(args=[msg_id, config_id], countdown=countdown)
 
     except Message.DoesNotExist:
         logger.error(f"process_flow_for_message_task: Message with ID {message_id} not found.")
@@ -809,7 +817,12 @@ def cleanup_idle_conversations_task():
     # Send one notification to each unique contact that was timed out.
     if timed_out_contacts:
         logger.info(f"{log_prefix} Sending timeout notifications to {len(timed_out_contacts)} contacts.")
-        config_to_use = MetaAppConfig.objects.get_active_config()
+        try:
+            config_to_use = MetaAppConfig.objects.get_active_config()
+        except MetaAppConfig.DoesNotExist:
+            logger.error(f"{log_prefix} No active Meta App Config found. Cannot send timeout notifications.")
+            return
+        
         notification_text = "Your session has expired due to inactivity. Please send 'menu' to start over."
         for contact in timed_out_contacts:
             outgoing_msg = Message.objects.create(contact=contact, app_config=config_to_use, direction='out', message_type='text', content_payload={'body': notification_text}, status='pending_dispatch')

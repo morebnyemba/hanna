@@ -123,7 +123,7 @@ def monitor_sla_compliance():
                     
                     # Update last notification time
                     sla_status.last_notification_sent = timezone.now()
-                    sla_status.save()
+                    sla_status.save(update_fields=['last_notification_sent'])
                     
                     notifications_sent += 1
                     

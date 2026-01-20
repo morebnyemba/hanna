@@ -14,7 +14,7 @@ from customer_data.models import JobCard, CustomerProfile
 from customer_data.serializers import JobCardSerializer, JobCardDetailSerializer
 from products_and_services.models import Product
 from products_and_services.serializers import ProductSerializer
-from .permissions import IsManufacturer
+from .permissions import IsManufacturer, IsTechnician
 from .serializers import WarrantyClaimListSerializer, WarrantyClaimCreateSerializer, ManufacturerSerializer, WarrantySerializer
 from .pdf_utils import WarrantyCertificateGenerator, InstallationReportGenerator
 from installation_systems.models import InstallationSystemRecord
@@ -76,7 +76,7 @@ class ManufacturerWarrantyClaimListView(generics.ListAPIView):
         return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
 
 class TechnicianDashboardStatsAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsTechnician]
 
     def get(self, request, *args, **kwargs):
         technician = request.user.technician_profile

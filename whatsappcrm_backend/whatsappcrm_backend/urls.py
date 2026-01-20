@@ -55,6 +55,9 @@ path('crm-api/customer-data/', include('customer_data.urls', namespace='customer
     
     # Branch API - Installer allocation and performance metrics for retailer branches
     path('crm-api/branch/', include('installation_systems.branch_urls', namespace='branch_api')),
+    
+    # Solar Integration API - Deye inverter monitoring and other solar systems
+    path('crm-api/solar/', include('solar_integration.urls', namespace='solar_integration_api')),
 
 
     # JWT Token Endpoints for authentication from your React Vite frontend
