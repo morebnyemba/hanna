@@ -264,7 +264,17 @@ CORS_ALLOW_HEADERS = [
 
 # --- Celery Configuration ---
 # Ensure your Redis server is running and accessible at this URL.
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+# Use Redis password from environment variable for security
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', 'kayden')
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+
+# Build Celery broker URL with password
+if REDIS_PASSWORD:
+    CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', f'redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0')
+else:
+    CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', f'redis://{REDIS_HOST}:{REDIS_PORT}/0')
+
 CELERY_RESULT_BACKEND = 'django-db' # Use a different DB for results
 CELERY_ACCEPT_CONTENT = ['json'] # Content types to accept
 CELERY_TASK_SERIALIZER = 'json'  # How tasks are serialized
@@ -308,7 +318,11 @@ CHANNEL_LAYERS = {
             # In a Docker environment, 'localhost' refers to the container itself.
             # You must use the service name of the Redis container (e.g., 'redis') and password
             # as defined in your docker-compose.yml file.
-            "hosts": [os.getenv('REDIS_URL', 'redis://redis:6379/1')],
+            # Build Redis URL with password from environment variable
+            "hosts": [
+                os.getenv('REDIS_URL', f'redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/1') if REDIS_PASSWORD
+                else f'redis://{REDIS_HOST}:{REDIS_PORT}/1'
+            ],
         },
         # Use in-memory for local development if you don't have Redis running
         # "BACKEND": "channels.layers.InMemoryChannelLayer"
