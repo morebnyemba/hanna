@@ -265,14 +265,19 @@ CORS_ALLOW_HEADERS = [
 # --- Celery Configuration ---
 # Ensure your Redis server is running and accessible at this URL.
 # Use Redis password from environment variable for security
-REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', 'kayden')
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', '')
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+
+# Security Warning: Ensure REDIS_PASSWORD is set in production!
+if not REDIS_PASSWORD and not DEBUG:
+    raise ValueError("REDIS_PASSWORD environment variable must be set in production!")
 
 # Build Celery broker URL with password
 if REDIS_PASSWORD:
     CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', f'redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0')
 else:
+    # Development mode only - no password
     CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', f'redis://{REDIS_HOST}:{REDIS_PORT}/0')
 
 CELERY_RESULT_BACKEND = 'django-db' # Use a different DB for results

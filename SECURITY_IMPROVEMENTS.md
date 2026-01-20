@@ -41,7 +41,7 @@ Fixed vulnerability:
   - Impact: Server could be overwhelmed with large payloads
   - Advisory: [GHSA-4hjh-wcwx-xvwj](https://github.com/advisories/GHSA-4hjh-wcwx-xvwj)
 
-#### **React Router DOM 7.6.0 → 7.12.2** ✅
+#### **React Router DOM 7.6.0 → 7.12.0** ✅
 **Severity: HIGH (CVSS 8.2)**
 
 Fixed vulnerabilities:
@@ -50,7 +50,7 @@ Fixed vulnerabilities:
 - **SSR XSS in ScrollRestoration** (CVSS 8.2)
 - **Unexpected external redirect via untrusted paths** (CVSS 6.5)
 
-#### **Vite 6.3.5 → 6.4.1** ✅
+#### **Vite 6.3.5 → 7.3.1** ✅
 **Severity: MODERATE**
 
 Fixed vulnerabilities:
@@ -266,9 +266,9 @@ Consider adding a security scan workflow (`.github/workflows/security.yml`)
 | Next.js | 16.0.1 | 16.1.4 | ✅ Secure |
 | React (Next.js) | 19.2.0 | 19.2.0 | ✅ Secure |
 | React (Vite) | 19.1.0 | 19.1.0 | ✅ Secure |
-| Axios (Vite) | 1.9.0 | 1.13.1 | ✅ Secure |
-| React Router | 7.6.0 | 7.12.2 | ✅ Secure |
-| Vite | 6.3.5 | 6.4.1 | ✅ Secure |
+| Axios (Vite) | 1.9.0 | 1.13.2 | ✅ Secure |
+| React Router | 7.6.0 | 7.12.0 | ✅ Secure |
+| Vite | 6.3.5 | 7.3.1 | ✅ Secure |
 | Redis | 7-alpine | 7-alpine | ✅ Hardened |
 
 ---
