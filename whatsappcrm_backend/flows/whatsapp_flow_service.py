@@ -150,7 +150,7 @@ class WhatsAppFlowService:
                 try:
                     error_details = e.response.json()
                     error_msg += f" - Details: {error_details}"
-                except:
+                except (ValueError, json.JSONDecodeError):
                     error_msg += f" - Response: {e.response.text}"
             
             logger.error(error_msg)
@@ -316,7 +316,7 @@ class WhatsAppFlowService:
                 try:
                     error_details = e.response.json()
                     error_msg += f" - Details: {error_details}"
-                except:
+                except (ValueError, json.JSONDecodeError):
                     error_msg += f" - Response: {e.response.text}"
             
             logger.error(error_msg)
@@ -402,7 +402,7 @@ class WhatsAppFlowService:
                 try:
                     error_details = e.response.json()
                     logger.error(f"Error details: {error_details}")
-                except:
+                except (ValueError, json.JSONDecodeError):
                     logger.error(f"Response: {e.response.text}")
             return None
         except Exception as e:
@@ -556,7 +556,7 @@ class WhatsAppFlowService:
                 try:
                     error_details = e.response.json()
                     error_msg += f" - Details: {error_details}"
-                except:
+                except (ValueError, json.JSONDecodeError):
                     error_msg += f" - Response: {e.response.text}"
             logger.error(error_msg)
             return False

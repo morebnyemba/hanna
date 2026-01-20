@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'email_integration.apps.EmailIntegrationConfig',
     'warranty.apps.WarrantyConfig',
     'installation_systems.apps.InstallationSystemsConfig',
+    'solar_integration.apps.SolarIntegrationConfig',  # Solar system monitoring (Deye, etc.)
 ]
 
 MIDDLEWARE = [
@@ -353,6 +354,32 @@ CELERY_BEAT_SCHEDULE = {
         # Runs every hour at the top of the hour to check SLA status.
         'schedule': crontab(minute=0, hour='*'),
     },
+    # Solar Integration Tasks
+    'solar-sync-all-credentials': {
+        'task': 'solar_integration.sync_all_credentials',
+        # Sync solar inverter data every 10 minutes
+        'schedule': crontab(minute='*/10'),
+    },
+    'solar-check-alerts': {
+        'task': 'solar_integration.check_alerts',
+        # Check for alert conditions every 5 minutes
+        'schedule': crontab(minute='*/5'),
+    },
+    'solar-aggregate-daily-stats': {
+        'task': 'solar_integration.aggregate_daily_stats',
+        # Aggregate daily stats at 1 AM every day
+        'schedule': crontab(minute=0, hour=1),
+    },
+    'solar-send-alert-notifications': {
+        'task': 'solar_integration.send_alert_notifications',
+        # Send alert notifications every minute
+        'schedule': crontab(minute='*'),
+    },
+    'solar-cleanup-old-data-points': {
+        'task': 'solar_integration.cleanup_old_data_points',
+        # Clean up old data points weekly on Sunday at 3 AM
+        'schedule': crontab(minute=0, hour=3, day_of_week=0),
+    },
     # 'fetch-mailu-attachments-periodically': {
     #     'task': 'email_integration.fetch_email_attachments_task',
     #     'schedule': 5.0,  # This is now replaced by the idle_email_fetcher service
@@ -427,6 +454,12 @@ JAZZMIN_SETTINGS = {
         "customer_data.Order": "fas fa-shopping-cart", "customer_data.OrderItem": "fas fa-box-open",
         "customer_data.InstallationRequest": "fas fa-tools", "customer_data.SiteAssessmentRequest": "fas fa-clipboard-list",
         "customer_data.Payment": "fas fa-credit-card",
+        "solar_integration": "fas fa-solar-panel",
+        "solar_integration.SolarInverterBrand": "fas fa-building",
+        "solar_integration.SolarAPICredential": "fas fa-key",
+        "solar_integration.SolarStation": "fas fa-industry",
+        "solar_integration.SolarInverter": "fas fa-bolt",
+        "solar_integration.SolarAlert": "fas fa-exclamation-triangle",
     },
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",
