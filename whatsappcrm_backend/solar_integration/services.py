@@ -159,11 +159,11 @@ class BaseSolarAPIService(ABC):
         # Get and save real-time data
         realtime_data = self.get_inverter_realtime_data(str(external_id))
         if realtime_data:
-            self._update_inverter_realtime(inverter, realtime_data)
+            self.update_inverter_realtime(inverter, realtime_data)
         
         return inverter
     
-    def _update_inverter_realtime(self, inverter: SolarInverter, data: Dict[str, Any]):
+    def update_inverter_realtime(self, inverter: SolarInverter, data: Dict[str, Any]):
         """Update inverter with real-time data."""
         inverter.current_power_w = data.get('power_w') or data.get('pac')
         inverter.today_energy_kwh = data.get('today_energy_kwh') or data.get('e_today')

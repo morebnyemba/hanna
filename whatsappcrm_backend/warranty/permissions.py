@@ -7,3 +7,12 @@ class IsManufacturer(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated and hasattr(request.user, 'manufacturer_profile')
+
+
+class IsTechnician(permissions.BasePermission):
+    """
+    Custom permission to only allow technicians to access a view.
+    """
+
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and hasattr(request.user, 'technician_profile')

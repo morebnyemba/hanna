@@ -227,7 +227,7 @@ class SolarInverterViewSet(viewsets.ModelViewSet):
         try:
             data = service.get_inverter_realtime_data(inverter.external_id)
             if data:
-                service._update_inverter_realtime(inverter, data)
+                service.update_inverter_realtime(inverter, data)
                 inverter.refresh_from_db()
                 return Response(SolarInverterDetailSerializer(inverter).data)
             else:

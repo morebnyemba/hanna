@@ -357,13 +357,13 @@ CELERY_BEAT_SCHEDULE = {
     # Solar Integration Tasks
     'solar-sync-all-credentials': {
         'task': 'solar_integration.sync_all_credentials',
-        # Sync solar inverter data every 10 minutes
-        'schedule': crontab(minute='*/10'),
+        # Sync solar inverter data every 5 minutes for near real-time data
+        'schedule': crontab(minute='*/5'),
     },
     'solar-check-alerts': {
         'task': 'solar_integration.check_alerts',
-        # Check for alert conditions every 5 minutes
-        'schedule': crontab(minute='*/5'),
+        # Check for alert conditions every 10 minutes (after sync)
+        'schedule': crontab(minute='*/10'),
     },
     'solar-aggregate-daily-stats': {
         'task': 'solar_integration.aggregate_daily_stats',
