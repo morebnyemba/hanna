@@ -217,7 +217,7 @@ export default function MyInstallationPage() {
           <FiTool className="mx-auto h-16 w-16 text-gray-300" />
           <h3 className="mt-4 text-lg font-semibold text-gray-900">No Installation Found</h3>
           <p className="mt-2 text-gray-500">
-            You don&apos;t have any active installations yet.
+            You don&#39;t have any active installations yet.
           </p>
           <Link
             href="/client/shop"
@@ -549,7 +549,7 @@ export default function MyInstallationPage() {
                       job.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
                       'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {job.status?.replace('_', ' ')}
+                      {job.status?.replace(/_/g, ' ')}
                     </span>
                     {job.is_under_warranty && (
                       <span className="text-xs text-green-600">Warranty Covered</span>

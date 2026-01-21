@@ -585,7 +585,7 @@ export default function InstallationSystemRecordDetailPage() {
             <div className="mt-2 flex flex-wrap gap-2">
               {record.photos_status.missing_photo_types.map((type) => (
                 <span key={type} className="text-sm bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                  {type.replace('_', ' ')}
+                  {type.replace(/_/g, ' ')}
                 </span>
               ))}
             </div>
