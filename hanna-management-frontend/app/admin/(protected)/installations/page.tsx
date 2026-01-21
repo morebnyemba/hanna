@@ -272,7 +272,7 @@ export default function AdminInstallationsPage() {
 
   // Client-side filtering + pagination
   useEffect(() => {
-    let filtered = installations.filter((installation) => {
+    const filtered = installations.filter((installation) => {
       const matchesSearch =
         installation.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         installation.address.toLowerCase().includes(searchTerm.toLowerCase()) ||

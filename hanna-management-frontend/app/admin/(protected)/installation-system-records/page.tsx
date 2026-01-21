@@ -268,7 +268,8 @@ export default function InstallationSystemRecordsPage() {
                         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                           <ActionButtons
                             entityId={record.id}
-                            showView={false}
+                            showView={true}
+                            viewPath={`/admin/installation-system-records/${record.id}`}
                             showEdit={true}
                             editPath={`/admin/installation-system-records/${record.id}/edit`}
                             onDelete={() => handleDeleteClick(record)}

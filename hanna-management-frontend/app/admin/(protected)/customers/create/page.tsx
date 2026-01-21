@@ -52,7 +52,7 @@ export default function CreateCustomerPage() {
   const router = useRouter();
 
   const validate = () => {
-    let tempErrors: any = { contact: {} };
+    const tempErrors: any = { contact: {} };
     if (!formData.contact.name) tempErrors.contact.name = "Contact name is required.";
     if (!formData.contact.whatsapp_id) tempErrors.contact.whatsapp_id = "WhatsApp ID is required.";
     if (!formData.first_name) tempErrors.first_name = "First name is required.";
