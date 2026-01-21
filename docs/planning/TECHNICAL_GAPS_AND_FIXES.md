@@ -98,33 +98,61 @@ hanna-management-frontend/app/technician/(protected)/
 // CameraCapture.tsx
 import { useRef, useState } from 'react';
 
-export function CameraCapture({ onCapture }) {
+interface CameraCaptureProps {
+  onCapture: (dataUrl: string) => void;
+  onError?: (error: Error) => void;
+}
+
+export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const startCamera = async () => {
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' } // Use back camera
-    });
-    if (videoRef.current) {
-      videoRef.current.srcObject = mediaStream;
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' } // Use back camera
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setStream(mediaStream);
+      setError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Camera access denied';
+      setError(errorMessage);
+      onError?.(err instanceof Error ? err : new Error(errorMessage));
     }
-    setStream(mediaStream);
   };
 
   const capturePhoto = () => {
+    if (!videoRef.current) {
+      setError('Video element not ready');
+      return;
+    }
+    
     const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current!.videoWidth;
-    canvas.height = videoRef.current!.videoHeight;
-    canvas.getContext('2d')!.drawImage(videoRef.current!, 0, 0);
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setError('Could not create canvas context');
+      return;
+    }
+    
+    ctx.drawImage(videoRef.current, 0, 0);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
     onCapture(dataUrl);
   };
 
   return (
     <div>
+      {error && <div className="text-red-500">{error}</div>}
       <video ref={videoRef} autoPlay />
       <button onClick={capturePhoto}>Capture</button>
+      {/* Fallback file input for devices without camera */}
+      <input type="file" accept="image/*" capture="environment" />
     </div>
   );
 }
@@ -272,13 +300,15 @@ class ChecklistValidationTests(TestCase):
 
 ## Implementation Order
 
-| Week | Task | Effort | Impact |
-|------|------|--------|--------|
-| 1 | Technician Checklist UI | 3-5 days | Critical |
-| 1 | Mobile Photo Upload | 2-3 days | High |
-| 2 | ISR Detail/Edit Pages | 3-4 days | High |
-| 2 | Client My Installation | 2-3 days | Medium |
-| 3 | Test Coverage | 5-7 days | Risk Reduction |
+| Week | Task | Effort | Impact | Notes |
+|------|------|--------|--------|-------|
+| 1-2 | Technician Checklist UI | 3-5 days | Critical | Can start immediately |
+| 1-2 | Mobile Photo Upload | 2-3 days | High | Can parallelize with different dev |
+| 2-3 | ISR Detail/Edit Pages | 3-4 days | High | After checklist UI |
+| 2-3 | Client My Installation | 2-3 days | Medium | Can parallelize |
+| 3-4 | Test Coverage | 5-7 days | Risk Reduction | Ongoing effort |
+
+**Note:** With 2 developers, Week 1-2 tasks can be done in parallel. Week 2-3 tasks can overlap.
 
 ---
 

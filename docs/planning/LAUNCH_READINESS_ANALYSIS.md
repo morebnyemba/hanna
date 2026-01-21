@@ -47,9 +47,9 @@ HANNA is a comprehensive WhatsApp CRM and Installation Lifecycle Operating Syste
 
 #### Backend Statistics
 - **Total Python Lines:** ~64,000+
-- **Model Lines:** ~5,113
-- **View Lines:** ~8,893
-- **Test Lines:** ~10,860
+- **Model Lines:** ~5,100
+- **View Lines:** ~8,900
+- **Test Lines:** ~10,900
 - **Apps with Tests:** 13 (coverage varies)
 
 #### API Endpoints - All Ready
