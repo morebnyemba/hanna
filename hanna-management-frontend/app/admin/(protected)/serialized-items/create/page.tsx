@@ -82,7 +82,7 @@ export default function CreateSerializedItemPage() {
   }, [accessToken]);
 
   const validate = () => {
-    let tempErrors: any = {};
+    const tempErrors: any = {};
     if (!formData.serial_number) tempErrors.serial_number = "Serial number is required.";
     if (!formData.product) tempErrors.product = "Product is required.";
     setErrors(tempErrors);

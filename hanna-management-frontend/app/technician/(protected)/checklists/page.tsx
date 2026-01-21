@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiCheckSquare, FiSquare, FiCamera, FiAlertCircle, FiUpload } from 'react-icons/fi';
+import { FiCheckSquare, FiSquare, FiCamera, FiAlertCircle, FiUpload, FiEdit2, FiSave, FiX } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 
 interface ChecklistItem {
@@ -32,6 +32,9 @@ export default function TechnicianChecklistsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState<string>('');
+  const [savingNote, setSavingNote] = useState(false);
   const { accessToken } = useAuthStore();
 
   const fetchChecklists = async () => {
@@ -92,6 +95,43 @@ export default function TechnicianChecklistsPage() {
     } catch (err: any) {
       alert(`Error: ${err.message}`);
     }
+  };
+
+  const handleSaveNote = async (itemId: string) => {
+    if (!selectedChecklist) return;
+
+    setSavingNote(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/checklist-entries/${selectedChecklist.id}/update_item/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          item_id: itemId,
+          notes: noteText,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save note');
+      }
+
+      setEditingNote(null);
+      setNoteText('');
+      await fetchChecklists();
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const startEditingNote = (itemId: string, currentNote: string = '') => {
+    setEditingNote(itemId);
+    setNoteText(currentNote);
   };
 
   const handlePhotoUpload = async (itemId: string, file: File) => {
@@ -331,11 +371,52 @@ export default function TechnicianChecklistsPage() {
                                 Completed: {new Date(item.completed_at).toLocaleString()}
                               </p>
                             )}
-                            {item.notes && (
-                              <p className="text-sm text-gray-600 mt-2 italic">
-                                Note: {item.notes}
-                              </p>
-                            )}
+                            
+                            {/* Notes Section */}
+                            <div className="mt-3">
+                              {editingNote === item.id ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                    placeholder="Add notes for this item..."
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    rows={2}
+                                  />
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleSaveNote(item.id)}
+                                      disabled={savingNote}
+                                      className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                      <FiSave className="mr-1" />
+                                      {savingNote ? 'Saving...' : 'Save'}
+                                    </button>
+                                    <button
+                                      onClick={() => { setEditingNote(null); setNoteText(''); }}
+                                      className="inline-flex items-center px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50"
+                                    >
+                                      <FiX className="mr-1" /> Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-start justify-between">
+                                  {item.notes ? (
+                                    <p className="text-sm text-gray-600 italic flex-1">
+                                      Note: {item.notes}
+                                    </p>
+                                  ) : null}
+                                  <button
+                                    onClick={() => startEditingNote(item.id, item.notes || '')}
+                                    className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                                  >
+                                    <FiEdit2 className="mr-1" />
+                                    {item.notes ? 'Edit' : 'Add note'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>

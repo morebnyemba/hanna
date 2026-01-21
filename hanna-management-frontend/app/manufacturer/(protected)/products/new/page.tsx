@@ -22,7 +22,7 @@ export default function NewProductPage() {
   const [errors, setErrors] = useState<any>({});
 
   const validate = () => {
-    let tempErrors: any = {};
+    const tempErrors: any = {};
     if (!formData.name) tempErrors.name = "Product name is required.";
     if (!formData.sku) tempErrors.sku = "SKU is required.";
     if (!formData.price) {

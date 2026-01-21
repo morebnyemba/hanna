@@ -49,7 +49,7 @@ export default function CreateProductCategoryPage() {
   }, [accessToken]);
 
   const validate = () => {
-    let tempErrors: any = {};
+    const tempErrors: any = {};
     if (!formData.name) tempErrors.name = "Category name is required.";
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;

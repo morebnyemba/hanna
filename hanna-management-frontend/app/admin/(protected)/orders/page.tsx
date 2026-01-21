@@ -126,7 +126,7 @@ export default function AdminOrdersPage() {
   }, []);
 
   useEffect(() => {
-    let filtered = orders.filter(order => {
+    const filtered = orders.filter(order => {
       const matchesSearch = 
         order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
