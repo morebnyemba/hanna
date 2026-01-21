@@ -11,3 +11,4 @@ class ProductsAndServicesConfig(AppConfig):
         This ensures signals are connected when Django starts.
         """
         import products_and_services.signals  # noqa: F401
+        import products_and_services.solar_automation  # noqa: F401 - Solar package purchase automation
