@@ -95,18 +95,27 @@ def solar_package_purchase_automation(sender, instance: Order, created, **kwargs
         logger.info(f"Order {instance.order_number} has no solar products, skipping automation.")
         return
     
-    # Calculate total system size from products
-    system_size = sum(
-        float(item.product.price or 0) / 1000  # Rough estimate based on price
-        for item in solar_items
-        if item.product.price
-    )
-    # Default to 3kW if we can't determine
+    # Calculate total system size from solar package products
+    # Use the first solar package's system_size if available, otherwise estimate from product count
+    system_size = 0.0
+    for item in solar_items:
+        product = item.product
+        # Check if product belongs to a solar package with defined system size
+        solar_package = product.solar_packages.first() if product else None
+        if solar_package and solar_package.system_size:
+            system_size = float(solar_package.system_size)
+            break
+    
+    # Fallback: estimate based on number of panels/components (rough estimate)
     if system_size <= 0:
-        system_size = 3.0
+        # Assume ~0.5kW per solar product item as rough estimate
+        system_size = len(solar_items) * 0.5
+        # Minimum 3kW system
+        if system_size < 3.0:
+            system_size = 3.0
     
     log_prefix = f"[Solar Package Automation - Order {instance.order_number}]"
-    logger.info(f"{log_prefix} Processing paid order with {len(solar_items)} solar items.")
+    logger.info(f"{log_prefix} Processing paid order with {len(solar_items)} solar items. System size: {system_size}kW")
     
     customer = instance.customer
     if not customer:
@@ -146,10 +155,10 @@ def solar_package_purchase_automation(sender, instance: Order, created, **kwargs
             logger.info(f"{log_prefix} Created ISR: {isr.id}")
             
             # ============================================================
-            # 3. CREATE WARRANTIES FOR ALL PRODUCTS
+            # 3. CREATE WARRANTIES FOR SOLAR PRODUCTS
             # ============================================================
             warranties_created = []
-            for item in order_items:
+            for item in solar_items:  # Use solar_items, not order_items
                 product = item.product
                 if not product or product.product_type != 'hardware':
                     continue
