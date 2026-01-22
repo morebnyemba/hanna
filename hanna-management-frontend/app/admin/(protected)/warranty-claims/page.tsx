@@ -175,8 +175,8 @@ export default function WarrantyClaimsPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <ActionButtons
                             entityId={claim.id || claim.claim_id}
-                            onView={() => window.location.href = `/admin/warranty-claims/${claim.id}`}
-                            onEdit={() => window.location.href = `/admin/warranty-claims/${claim.id}`}
+                            viewPath={`/admin/warranty-claims/${claim.id}`}
+                            editPath={`/admin/warranty-claims/${claim.id}`}
                             onDelete={() => handleDeleteClick(claim)}
                           />
                         </td>
