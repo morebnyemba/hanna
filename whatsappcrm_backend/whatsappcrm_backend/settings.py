@@ -274,6 +274,18 @@ REDIS_PORT = os.getenv('REDIS_PORT', '6379')
 if not REDIS_PASSWORD and not DEBUG:
     raise ValueError("REDIS_PASSWORD environment variable must be set in production!")
 
+# Validate REDIS_PORT is a valid integer
+try:
+    int(REDIS_PORT)
+except ValueError:
+    raise ValueError(f"REDIS_PORT must be a valid integer, got: {REDIS_PORT}")
+
+# Validate REDIS_PASSWORD doesn't contain special URL chars that could break URL parsing
+if REDIS_PASSWORD and ('@' in REDIS_PASSWORD or ':' in REDIS_PASSWORD or '/' in REDIS_PASSWORD):
+    import urllib.parse
+    REDIS_PASSWORD = urllib.parse.quote(REDIS_PASSWORD, safe='')
+    print(f"Warning: REDIS_PASSWORD contains special characters, URL-encoding for Redis URL")
+
 # Build Celery broker URL with password
 if REDIS_PASSWORD:
     CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', f'redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0')
