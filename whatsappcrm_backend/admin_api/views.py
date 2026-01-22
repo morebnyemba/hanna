@@ -943,12 +943,12 @@ class AdminFaultAnalyticsViewSet(viewsets.ViewSet):
         # Optimize with annotations to avoid N+1 queries
         products = Product.objects.annotate(
             installations_count=Count(
-                'orderitem__order__installation_requests',
-                filter=Q(orderitem__order__installation_requests__status='completed'),
+                'order_items__order__installation_requests',
+                filter=Q(order_items__order__installation_requests__status='completed'),
                 distinct=True
             ),
             fault_count=Count(
-                'warranty__warrantyclaim',
+                'serialized_items__warranty__claims',
                 distinct=True
             )
         ).filter(installations_count__gt=0)
