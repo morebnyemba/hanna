@@ -176,8 +176,8 @@ export default function FlowsPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <ActionButtons
                             entityId={flow.id}
-                            onView={() => window.location.href = `/admin/flows/${flow.id}`}
-                            onEdit={() => window.location.href = `/admin/flows/${flow.id}`}
+                            viewPath={`/admin/flows/${flow.id}`}
+                            editPath={`/admin/flows/${flow.id}`}
                             onDelete={() => handleDeleteClick(flow)}
                             showEdit={false}
                           />
