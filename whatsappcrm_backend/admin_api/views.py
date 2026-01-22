@@ -977,8 +977,8 @@ class AdminFaultAnalyticsViewSet(viewsets.ViewSet):
                 # Get common fault types
                 common_faults = list(
                     WarrantyClaim.objects.filter(
-                        warranty__product=product
-                    ).values_list('issue_description', flat=True)
+                        warranty__serialized_item__product=product
+                    ).values_list('description_of_fault', flat=True)
                     .distinct()[:3]
                 )
                 
