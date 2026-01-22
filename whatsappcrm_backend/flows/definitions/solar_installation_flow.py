@@ -86,7 +86,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "name": "flow",
                         "parameters": {
                             "flow_message_version": "3",
-                            "flow_token": "{{ contact.id }}-solar-install-{{ 'now'|date:'U' }}",
+                            "flow_token": "{{ contact.id }}-solar-install-{{ now().timestamp()|int }}",
                             "flow_id": "{{ solar_installation_whatsapp_flow.0.flow_id }}",
                             "flow_cta": "Start Request",
                             "flow_action": "navigate",
@@ -135,7 +135,43 @@ SOLAR_INSTALLATION_FLOW = {
                 ]
             },
             "transitions": [
-                {"to_step": "ask_location_pin", "condition_config": {"type": "always_true"}}
+                {"to_step": "verify_whatsapp_order", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "verify_whatsapp_order",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "customer_data",
+                    "model_name": "Order",
+                    "variable_name": "found_order",
+                    "filters_template": {
+                        "order_number__iexact": "{{ order_number }}"
+                    },
+                    "fields_to_return": ["id", "stage", "name", "payment_status"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "ask_location_pin", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "found_order.0"}},
+                {"to_step": "order_not_found_from_whatsapp", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "order_not_found_from_whatsapp",
+            "type": "send_message",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "❌ *Order Verification Failed*\n\nThe order number '{{ order_number }}' could not be found in our system.\n\nPlease verify:\n• The order number is correct\n• Payment has been processed\n• The order exists in our records\n\nType 'menu' to start over or contact our support team for assistance."
+                    }
+                }
+            },
+            "transitions": [
+                {"to_step": "end_flow_cancelled", "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -799,7 +835,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "model_name": "InstallationRequest",
                         "fields_template": {
                             "customer": "current",
-                            "associated_order_id": "{{ found_order.0.id }}",
+                            "associated_order_id": "{% if found_order and found_order.0 %}{{ found_order.0.id }}{% endif %}",
                             "installation_type": "{{ installation_type }}",
                             "order_number": "{{ order_number }}",
                             "assessment_number": "{{ assessment_number }}",
