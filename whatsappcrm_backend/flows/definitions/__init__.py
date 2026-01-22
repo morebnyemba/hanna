@@ -1,2 +1,3 @@
 # whatsappcrm_backend/flows/definitions/__init__.py
 from .payment_whatsapp_flow import PAYMENT_WHATSAPP_FLOW, PAYMENT_FLOW_METADATA
+from .warranty_claim_flow import WARRANTY_CLAIM_FLOW

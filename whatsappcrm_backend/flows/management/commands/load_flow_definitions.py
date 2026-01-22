@@ -17,6 +17,7 @@ from flows.definitions.simple_add_order_flow import SIMPLE_ADD_ORDER_FLOW # type
 from flows.definitions.starlink_installation_flow import STARLINK_INSTALLATION_FLOW
 from flows.definitions.solar_cleaning_flow import SOLAR_CLEANING_FLOW
 from flows.definitions.admin_update_order_status_flow import ADMIN_UPDATE_ORDER_STATUS_FLOW
+from flows.definitions.warranty_claim_flow import WARRANTY_CLAIM_FLOW
 # The import for LEAD_GENERATION_FLOW was already here, but the file was missing.
 # Now that we've created lead_gen_flow.py, this will work correctly.
 from flows.definitions.lead_gen_flow import LEAD_GENERATION_FLOW
@@ -42,6 +43,7 @@ class Command(BaseCommand):
             SOLAR_CLEANING_FLOW,
             SIMPLE_ADD_ORDER_FLOW,
             ADMIN_UPDATE_ORDER_STATUS_FLOW,
+            WARRANTY_CLAIM_FLOW,
         ]
 
         for flow_def in flow_definitions:

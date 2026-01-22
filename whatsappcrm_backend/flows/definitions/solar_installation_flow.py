@@ -750,7 +750,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "type": "button",
                         "body": {"text": "Please review your details and confirm to submit your installation request.\n\n"
                             "Thank you. Please review your details and confirm to submit your installation request.\n\n"
-                            "{% if order_number %}*Order #*: {{ order_number }} ({{ found_order.0.name }})\n\n{% endif %}"
+                            "{% if order_number %}*Order #*: {{ order_number }}{% if found_order and found_order.0 %} ({{ found_order.0.name }}){% endif %}\n\n{% endif %}"
                             "Branch: {{ install_branch }}\n"
                             "Sales Person: {{ install_sales_person }}\n"
                             "Client Name: {{ install_full_name }}\n"
