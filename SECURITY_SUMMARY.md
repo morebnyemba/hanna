@@ -304,3 +304,38 @@ npm update
 
 *Security updates completed on: January 20, 2026*  
 *Next security review: February 20, 2026*
+
+---
+
+## Update: Celery Worker Error Fixed (January 22, 2026)
+
+### Issue Resolved ✅
+**Error:** `ValueError: Port could not be cast to integer value`
+
+This error prevented Celery workers from starting, causing background task processing failures.
+
+### Root Cause
+The `redis.conf` file contained `requirepass ${REDIS_PASSWORD}` which Redis interpreted as a literal string instead of expanding the environment variable. This caused authentication failures and malformed broker URLs.
+
+### Fix Applied
+1. **redis.conf**: Password is now passed via command-line argument in docker-compose.yml
+2. **docker-compose.yml**: Modified Redis startup command to properly expand environment variables
+3. **Network binding**: Updated to allow Docker container connections while maintaining security
+
+### Security Impact
+✅ No vulnerabilities introduced  
+✅ All existing security measures maintained  
+✅ Password protection still enforced  
+✅ Dangerous commands remain disabled  
+✅ Protected mode still enabled  
+
+### Verification
+✓ URL parsing works correctly  
+✓ Celery broker URL properly constructed  
+✓ Port parsed as integer (no more parsing errors)  
+✓ Security checks passed (CodeQL)  
+
+### Documentation
+📄 **docs/REDIS_CONFIGURATION_FIX.md** - Complete fix documentation and migration guide
+
+**Status:** Production-ready ✅
