@@ -713,7 +713,7 @@ class MetaWebhookAPIView(View):
                     payment_reference = f"PAY-{order.order_number}-{uuid.uuid4().hex[:8].upper()}"
                     
                     # Initialize Paynow service
-                    paynow_service = PaynowService(ipn_callback_url='/api/paynow/ipn/')
+                    paynow_service = PaynowService(ipn_callback_url='/crm-api/paynow/ipn/')
                     
                     # Create Payment record
                     payment = Payment.objects.create(

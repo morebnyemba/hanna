@@ -22,7 +22,7 @@ from customer_data.receipts import generate_order_receipt_pdf
 logger = logging.getLogger(__name__)
 
 # URL path constant for IPN callback - used in initiate_whatsapp_payment and paynow_ipn_handler
-PAYNOW_IPN_URL_PATH = '/api/paynow/ipn/'
+PAYNOW_IPN_URL_PATH = '/crm-api/paynow/ipn/'
 
 
 class PaynowConfigViewSet(viewsets.ModelViewSet):

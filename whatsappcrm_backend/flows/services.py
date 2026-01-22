@@ -140,7 +140,23 @@ def strftime_filter(value, format_string='%b %d, %Y'):
         # If it's not a string, datetime, or date, return as is
         return value
     
+    # Special-case Django-style 'U' (Unix timestamp)
+    if format_string == 'U' and dt_obj:
+        try:
+            return str(int(dt_obj.timestamp()))
+        except Exception:
+            return ''
     return dt_obj.strftime(format_string) if dt_obj else value
+
+def django_date_filter(value, format_string='Y-m-d'):
+    """
+    Django-style 'date' filter compatible with common format strings.
+    Supports 'U' for Unix timestamp and treats the string 'now' as current time.
+    """
+    # Treat literal 'now' specially
+    if isinstance(value, str) and value.strip().lower() == 'now':
+        value = timezone.now()
+    return strftime_filter(value, format_string)
 
 def truncatewords_filter(value, length=25, end_text='...'):
     """
@@ -191,6 +207,7 @@ jinja_env = Environment(
     enable_async=False
 )
 jinja_env.filters['strftime'] = strftime_filter # Add the custom filter
+jinja_env.filters['date'] = django_date_filter   # Add Django-style 'date' filter
 jinja_env.filters['truncatewords'] = truncatewords_filter # Add the filter
 jinja_env.filters['to_interactive_rows'] = to_interactive_rows_filter # Add the new filter
 jinja_env.globals['now'] = timezone.now # Make 'now' globally available for date comparisons
