@@ -42,6 +42,8 @@ interface Flow {
   is_active: boolean;
   trigger_keywords: string[];
   entry_point_step_id: number | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export default function EditFlowPage({ 
@@ -439,11 +441,11 @@ export default function EditFlowPage({
               </div>
               <div>
                 <Label className="text-gray-500">Created</Label>
-                <p className="text-sm">{new Date(flow.created_at).toLocaleDateString()}</p>
+                <p className="text-sm">{flow.created_at ? new Date(flow.created_at).toLocaleDateString() : '-'}</p>
               </div>
               <div>
                 <Label className="text-gray-500">Last Updated</Label>
-                <p className="text-sm">{new Date(flow.updated_at).toLocaleDateString()}</p>
+                <p className="text-sm">{flow.updated_at ? new Date(flow.updated_at).toLocaleDateString() : '-'}</p>
               </div>
 
               <div className="pt-4 border-t">
