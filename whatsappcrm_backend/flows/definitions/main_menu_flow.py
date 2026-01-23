@@ -299,7 +299,7 @@ MAIN_MENU_FLOW = {
             "name": "switch_to_warranty_claim_flow",
             "type": "switch_flow",
             "config": {
-                "target_flow_name": "warranty_claim_flow",
+                "target_flow_name": "warranty_claim_request",
                 "initial_context_template": {"source_flow": "main_menu"}
             },
             "transitions": []
