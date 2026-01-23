@@ -220,6 +220,7 @@ WARRANTY_CLAIM_WHATSAPP_FLOW = {
         {
             "id": "REVIEW",
             "title": "Review Claim",
+            "terminal": True,
             "data": {
                 "product_serial": {
                     "type": "string",
