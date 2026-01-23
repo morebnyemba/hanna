@@ -78,18 +78,9 @@ WARRANTY_CLAIM_FLOW = {
         },
         {
             "name": "wait_for_warranty_whatsapp_response",
-            "type": "question",
+            "type": "action",
             "config": {
-                "reply_config": {
-                    "expected_type": "whatsapp_flow_response",
-                    "save_to_variable": "warranty_flow_response"
-                },
-                "message_config": {
-                    "message_type": "text",
-                    "text": {
-                        "body": "Please complete the warranty claim form. We will continue once your submission is received."
-                    }
-                }
+                "actions_to_run": []
             },
             "transitions": [
                 {"to_step": "map_warranty_whatsapp_response_to_context", "priority": 1, "condition_config": {"type": "whatsapp_flow_response_received"}},
@@ -118,7 +109,7 @@ WARRANTY_CLAIM_FLOW = {
             "config": {
                 "message_type": "text",
                 "text": {
-                    "body": "✅ *Warranty Claim Received*\n\n*Product Serial:* {{ product_serial_number }}\n*Issue:* {{ issue_description }}\n*Date Started:* {{ issue_date }}\n*Troubleshooting Done:* {{ troubleshooting_attempted }}\n*Photos:* {{ has_photos }}\n\nYour warranty claim has been submitted successfully. Our technical team will review it and contact you within 24-48 hours.\n\nClaim Reference: WC-{{ contact.id }}-{{ 'now'|date:'ymd' }}"
+                    "body": "✅ *Warranty Claim Received*\n\n*Product Serial:* {{ product_serial_number }}\n*Issue:* {{ issue_description }}\n*Date Started:* {{ issue_date }}\n*Troubleshooting Done:* {{ troubleshooting_attempted }}\n*Photos:* {{ has_photos }}\n\nYour warranty claim has been submitted successfully. Our technical team will review it and contact you within 24-48 hours.\n\nClaim Reference: WC-{{ contact.id }}-{{ now().strftime('%y%m%d') }}"
                 }
             },
             "transitions": [
@@ -334,10 +325,9 @@ WARRANTY_CLAIM_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [{
-                    "action_type": "create_warranty_claim",
-                    "warranty_id_template": "{{ selected_warranty.id if selected_warranty else 'manual' }}",
-                    "description_template": "{{ issue_description }}",
-                    "extra_context": {
+                    "action_type": "log_message",
+                    "message_template": "Warranty Claim: Serial={{ product_serial_number or selected_warranty.product_serial_number or manual_serial_number }}, Issue={{ issue_description }}, Date={{ issue_date or issue_when_started }}, Photos={{ has_photos }}, Troubleshooting={{ troubleshooting_attempted or troubleshooting_steps }}",
+                    "extra_context_unused": {
                         "issue_when_started": "{{ issue_when_started }}",
                         "troubleshooting_steps": "{{ troubleshooting_steps }}",
                         "has_photos": "{{ has_photos }}"
