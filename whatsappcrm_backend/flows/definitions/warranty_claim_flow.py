@@ -105,7 +105,20 @@ WARRANTY_CLAIM_FLOW = {
                 ]
             },
             "transitions": [
-                {"to_step": "review_claim_summary", "condition_config": {"type": "always_true"}}
+                {"to_step": "confirm_warranty_claim_from_whatsapp", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "confirm_warranty_claim_from_whatsapp",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {
+                    "body": "✅ *Warranty Claim Received*\n\n*Product Serial:* {{ product_serial_number }}\n*Issue:* {{ issue_description }}\n*Date Started:* {{ issue_date }}\n*Troubleshooting Done:* {{ troubleshooting_attempted }}\n*Photos:* {{ has_photos }}\n\nYour warranty claim has been submitted successfully. Our technical team will review it and contact you within 24-48 hours.\n\nClaim Reference: WC-{{ contact.id }}-{{ 'now'|date:'ymd' }}"
+                }
+            },
+            "transitions": [
+                {"to_step": "submit_warranty_claim", "condition_config": {"type": "always_true"}}
             ]
         },
         {

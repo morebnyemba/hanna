@@ -510,3 +510,30 @@ class WhatsAppFlowResponseProcessor:
         except Exception as e:
             logger.error(f"[StarlinkInstallation] Error: {e}", exc_info=True)
             return False, str(e)
+
+    @staticmethod
+    def _handle_warranty_claim_whatsapp(flow_response, contact, response_data):
+        """Process Warranty Claim WhatsApp flow response - no special processing needed, just log it."""
+        try:
+            data = response_data.get('data', response_data)
+            
+            # Validate required fields
+            required_fields = ['product_serial', 'issue_description', 'issue_date', 'has_photos']
+            for field in required_fields:
+                if not data.get(field):
+                    logger.warning(f"[WarrantyClaim] Missing required field: {field}")
+                    return False, f"Missing required field: {field}"
+            
+            logger.info(
+                f"[WarrantyClaim] Processed warranty claim for contact {contact.id}. "
+                f"Serial: {data.get('product_serial')}, Issue: {data.get('issue_description')[:50]}..."
+            )
+            
+            # The conversational flow will handle the confirmation and submission
+            # No need to create warranty claim here - that's done in submit_warranty_claim step
+            feedback = f"Thank you! Your warranty claim for product {data.get('product_serial')} has been received."
+            return True, feedback
+            
+        except Exception as e:
+            logger.error(f"[WarrantyClaim] Error: {e}", exc_info=True)
+            return False, str(e)
