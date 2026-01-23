@@ -78,9 +78,12 @@ WARRANTY_CLAIM_FLOW = {
         },
         {
             "name": "wait_for_warranty_whatsapp_response",
-            "type": "action",
+            "type": "question",
             "config": {
-                "actions_to_run": [],
+                "reply_config": {
+                    "expected_type": "whatsapp_flow_response",
+                    "save_to_variable": "warranty_flow_response"
+                },
                 "message_config": {
                     "message_type": "text",
                     "text": {
