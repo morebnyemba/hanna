@@ -159,7 +159,7 @@ WARRANTY_CLAIM_FLOW = {
                     "model_name": "Warranty",
                     "variable_name": "customer_warranties",
                     "filters_template": {
-                        "customer_id": "{{ customer_profile.id }}",
+                        "customer_id": "{% if customer_profile and customer_profile.id %}{{ customer_profile.id }}{% else %}0{% endif %}",
                         "status__in": ["active", "expired"]
                     },
                     "fields_to_return": ["id", "product_serial_number", "product__name", "status", "end_date"],
