@@ -255,7 +255,7 @@ WARRANTY_CLAIM_WHATSAPP_FLOW = {
                     },
                     {
                         "type": "TextBody",
-                        "text": "*Serial Number:* ${data.product_serial}\n\n*Issue:* ${data.issue_description}\n\n*Started:* ${data.issue_date}\n\n*Troubleshooting:* ${data.troubleshooting_done or 'None reported'}\n\n*Photos:* ${data.has_photos == 'yes' ? 'Available' : 'Not available'}"
+                        "text": "*Serial Number:* ${data.product_serial}\n\n*Issue:* ${data.issue_description}\n\n*Started:* ${data.issue_date}\n\n*Troubleshooting:* ${data.troubleshooting_done}\n\n*Photos Available:* ${data.has_photos}"
                     },
                     {
                         "type": "Footer",
