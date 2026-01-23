@@ -42,6 +42,10 @@ from flows.definitions.payment_whatsapp_flow import (
     PAYMENT_WHATSAPP_FLOW,
     PAYMENT_FLOW_METADATA
 )
+from flows.definitions.warranty_claim_whatsapp_flow import (
+    WARRANTY_CLAIM_WHATSAPP_FLOW,
+    WARRANTY_CLAIM_WHATSAPP_FLOW_METADATA
+)
 
 
 class Command(BaseCommand):
@@ -51,7 +55,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--flow',
             type=str,
-            choices=['starlink', 'solar_cleaning', 'solar_installation', 'site_inspection', 'loan_application', 'hybrid', 'custom_furniture', 'payment', 'all'],
+            choices=['starlink', 'solar_cleaning', 'solar_installation', 'site_inspection', 'loan_application', 'hybrid', 'custom_furniture', 'payment', 'warranty_claim', 'all'],
             default='all',
             help='Which flow to sync (default: all)'
         )
@@ -133,6 +137,12 @@ class Command(BaseCommand):
             flows_to_sync.append({
                 'json': PAYMENT_WHATSAPP_FLOW,
                 'metadata': PAYMENT_FLOW_METADATA
+            })
+
+        if flow_choice in ['warranty_claim', 'all']:
+            flows_to_sync.append({
+                'json': WARRANTY_CLAIM_WHATSAPP_FLOW,
+                'metadata': WARRANTY_CLAIM_WHATSAPP_FLOW_METADATA
             })
 
         # Sync each flow

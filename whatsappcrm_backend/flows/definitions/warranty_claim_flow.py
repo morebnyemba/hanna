@@ -18,7 +18,107 @@ WARRANTY_CLAIM_FLOW = {
                 }]
             },
             "transitions": [
-                {"to_step": "welcome_warranty_claim", "condition_config": {"type": "always_true"}}
+                {"to_step": "query_warranty_whatsapp_flow", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "query_warranty_whatsapp_flow",
+            "type": "action",
+            "config": {
+                "actions_to_run": [{
+                    "action_type": "query_model",
+                    "app_label": "flows",
+                    "model_name": "WhatsAppFlow",
+                    "variable_name": "warranty_claim_whatsapp_flow",
+                    "filters_template": {
+                        "name": "warranty_claim_whatsapp",
+                        "sync_status": "published"
+                    },
+                    "fields_to_return": ["flow_id", "friendly_name"],
+                    "limit": 1
+                }]
+            },
+            "transitions": [
+                {"to_step": "send_warranty_whatsapp_flow", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "warranty_claim_whatsapp_flow.0"}},
+                {"to_step": "fallback_to_legacy_warranty_claim", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "send_warranty_whatsapp_flow",
+            "type": "send_message",
+            "config": {
+                "message_type": "interactive",
+                "interactive": {
+                    "type": "flow",
+                    "header": {
+                        "type": "text",
+                        "text": "Warranty Claim"
+                    },
+                    "body": {
+                        "text": "Great! Please complete our warranty claim form to submit your request."
+                    },
+                    "action": {
+                        "name": "flow",
+                        "parameters": {
+                            "flow_message_version": "3",
+                            "flow_token": "{{ contact.id }}-warranty-claim-{{ now().timestamp()|int }}",
+                            "flow_id": "{{ warranty_claim_whatsapp_flow.0.flow_id }}",
+                            "flow_cta": "Submit Claim",
+                            "flow_action": "navigate",
+                            "flow_action_payload": {
+                                "screen": "WELCOME"
+                            }
+                        }
+                    }
+                }
+            },
+            "transitions": [
+                {"to_step": "wait_for_warranty_whatsapp_response", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "wait_for_warranty_whatsapp_response",
+            "type": "action",
+            "config": {
+                "actions_to_run": [],
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "Please complete the warranty claim form. We will continue once your submission is received."
+                    }
+                }
+            },
+            "transitions": [
+                {"to_step": "map_warranty_whatsapp_response_to_context", "condition_config": {"type": "whatsapp_flow_response_received"}}
+            ]
+        },
+        {
+            "name": "map_warranty_whatsapp_response_to_context",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {"action_type": "set_context_variable", "variable_name": "product_serial_number", "value_template": "{{ whatsapp_flow_data.product_serial }}"},
+                    {"action_type": "set_context_variable", "variable_name": "issue_description", "value_template": "{{ whatsapp_flow_data.issue_description }}"},
+                    {"action_type": "set_context_variable", "variable_name": "issue_date", "value_template": "{{ whatsapp_flow_data.issue_date }}"},
+                    {"action_type": "set_context_variable", "variable_name": "troubleshooting_attempted", "value_template": "{{ whatsapp_flow_data.troubleshooting_done }}"},
+                    {"action_type": "set_context_variable", "variable_name": "has_photos", "value_template": "{{ whatsapp_flow_data.has_photos }}"}
+                ]
+            },
+            "transitions": [
+                {"to_step": "review_claim_summary_final", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "fallback_to_legacy_warranty_claim",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {
+                    "body": "{% if customer_profile.first_name %}Hi {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %}\n\n🛠️ I'm here to help you submit a warranty claim for your product.\n\nLet's get started by identifying the product you're having issues with."
+                }
+            },
+            "transitions": [
+                {"to_step": "query_customer_warranties", "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -28,6 +128,7 @@ WARRANTY_CLAIM_FLOW = {
                 "message_type": "text",
                 "text": {
                     "body": "{% if customer_profile.first_name %}Hi {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %}\n\n🛠️ I'm here to help you submit a warranty claim for your product.\n\nLet's get started by identifying the product you're having issues with."
+
                 }
             },
             "transitions": [
