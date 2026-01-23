@@ -105,7 +105,7 @@ WARRANTY_CLAIM_FLOW = {
                 ]
             },
             "transitions": [
-                {"to_step": "review_claim_summary_final", "condition_config": {"type": "always_true"}}
+                {"to_step": "review_claim_summary", "condition_config": {"type": "always_true"}}
             ]
         },
         {
