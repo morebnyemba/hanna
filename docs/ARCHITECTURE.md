@@ -238,12 +238,41 @@ Manages conversational flows and automation.
 - `human_handover` - Transfer to human agent
 - `switch_flow` - Jump to another flow
 
+**Pre-defined Flow Definitions:**
+
+| Flow Category | Flow Name | Purpose |
+|---------------|-----------|---------|
+| **Main Menu** | `main_menu_flow.py` | Customer main menu with options |
+| **Admin Flows** | `admin_main_menu_flow.py` | Admin actions menu |
+| | `admin_add_order_flow.py` | Create orders via WhatsApp |
+| | `admin_update_order_status_flow.py` | Update order payment status |
+| | `admin_update_assessment_status_flow.py` | Update site assessment status |
+| | `admin_update_warranty_claim_flow.py` | Update warranty claim status |
+| **Installation Flows** | `solar_installation_flow.py` | Solar installation request |
+| | `solar_installation_whatsapp_flow.py` | Meta WhatsApp flow version |
+| | `starlink_installation_flow.py` | Starlink installation request |
+| | `starlink_installation_whatsapp_flow.py` | Meta WhatsApp flow version |
+| | `hybrid_installation_flow.py` | Hybrid (Solar+Starlink) install |
+| | `custom_furniture_installation_flow.py` | Furniture installation request |
+| **Service Flows** | `solar_cleaning_flow.py` | Solar panel cleaning request |
+| | `site_inspection_flow.py` | Site assessment booking |
+| | `warranty_claim_flow.py` | Submit warranty claims |
+| **Finance Flows** | `loan_application_flow.py` | Loan/finance application |
+| | `payment_whatsapp_flow.py` | Payment processing flow |
+| **Lead Generation** | `lead_gen_flow.py` | Capture leads and interests |
+
 **Services:**
 The `flows/services.py` (~125KB) contains the core flow execution engine that:
 - Processes incoming messages
 - Executes flow steps
 - Handles transitions and conditions
 - Triggers actions (order creation, notifications, etc.)
+
+**Loading Flows:**
+```bash
+# Load flow definitions into database
+python manage.py create_flows
+```
 
 ---
 
@@ -359,12 +388,62 @@ queue_notifications_to_users()
                                                     Send via Meta API
 ```
 
-**Common Notification Templates:**
-- `human_handover_required` - Alert admins when user needs help
-- `order_created` - New order notification
-- `installation_scheduled` - Installation appointment confirmation
-- `warranty_claim_submitted` - New warranty claim alert
-- `hanna_message_send_failure` - Message delivery failure alert
+**WhatsApp Notification Templates:**
+
+The system includes pre-defined notification templates loaded via `python manage.py load_notification_templates`:
+
+| Template Name | Purpose | Recipients |
+|---------------|---------|------------|
+| `hanna_new_order_created` | Notify admins when a new order is created | Admins |
+| `hanna_new_online_order_placed` | Notify admins when customer places order via WhatsApp | Admins |
+| `hanna_order_payment_status_updated` | Notify customer when payment status changes | Customer |
+| `hanna_new_installation_request` | Notify admins of new solar installation request | Admins |
+| `hanna_new_starlink_installation_request` | Notify admins of new Starlink installation request | Admins |
+| `hanna_new_solar_cleaning_request` | Notify admins of new solar panel cleaning request | Admins |
+| `hanna_new_custom_furniture_installation_request` | Notify admins of furniture installation request | Admins |
+| `hanna_admin_order_and_install_created` | Notify admins when another admin creates order | Admins |
+| `hanna_new_site_assessment_request` | Notify admins of new site assessment booking | Admins |
+| `hanna_assessment_status_updated` | Notify customer of assessment status change | Customer |
+| `hanna_job_card_created_successfully` | Notify admins when job card created from email | Admins |
+| `hanna_human_handover_flow` | Alert admins when user needs human assistance | Admins |
+| `hanna_new_placeholder_order_created` | Notify admins of placeholder order creation | Admins |
+| `hanna_message_send_failure` | Alert admins when WhatsApp message fails | Admins |
+| `hanna_admin_24h_window_reminder` | Remind admin to keep 24h window open | Admin User |
+| `hanna_invoice_processed_successfully` | Notify admins when email invoice processed | Admins |
+| `hanna_customer_invoice_confirmation` | Confirm to customer their invoice was processed | Customer |
+| `hanna_new_loan_application` | Notify finance team of new loan application | Finance Team |
+| `hanna_new_warranty_claim_submitted` | Notify admins of new warranty claim | Admins |
+| `hanna_warranty_claim_status_updated` | Notify customer of warranty claim status change | Customer |
+| `hanna_solar_package_purchased` | Notify admins when solar package purchased | Admins |
+| `hanna_installation_request_new` | Notify admins of new installation request | Admins |
+| `hanna_portal_access_granted` | Notify customer when portal access is granted | Customer |
+| `hanna_installation_complete` | Notify when installation is completed | Customer/Admins |
+| `solar_alert_notification` | Alert for solar monitoring events | Admins |
+| `sla_alert` | SLA breach warning notifications | Admins |
+
+**Template Context Variables:**
+
+Templates use Jinja2-style variables with automatic flattening of nested objects:
+
+```python
+# Common context variables available in templates:
+{{ contact_name }}           # Contact display name
+{{ customer_name }}          # Customer profile name
+{{ order_number }}           # Order reference number
+{{ order_amount }}           # Order total amount
+{{ related_contact_name }}   # Related contact for notifications
+{{ recipient_name }}         # Notification recipient name
+{{ new_status }}             # Status update value (with title case filter)
+```
+
+**Loading Templates:**
+```bash
+# Load/update all notification templates from definitions
+python manage.py load_notification_templates
+
+# Sync templates with Meta WhatsApp API
+python manage.py sync_meta_templates
+```
 
 ---
 
@@ -424,17 +503,37 @@ PENDING → IN_PROGRESS → COMMISSIONED → ACTIVE → DECOMMISSIONED
 Manages warranties, claims, and service technicians.
 
 **Models:**
-- `Manufacturer` - Product manufacturers
-- `Technician` - Service technicians (installer, factory, callout)
-- `Installer` - Specialized installer profile
-- `Warranty` - Product warranty records
-- `WarrantyClaim` - Warranty claim submissions
-- `CalendarEvent` - Technician scheduling
+- `Manufacturer` - Product manufacturers with portal access
+- `Technician` - Service technicians with types:
+  - `installer` - Field installation technicians
+  - `factory` - Factory service technicians
+  - `callout` - On-call service technicians
+- `Installer` - Specialized installer profile linked to Technician
+- `Warranty` - Product warranty records with status tracking
+- `WarrantyClaim` - Warranty claim submissions and resolution
+- `CalendarEvent` - Technician scheduling and availability
+
+**Warranty Status:**
+```
+ACTIVE → EXPIRED or VOID
+```
 
 **Warranty Claim Flow:**
 ```
 SUBMITTED → UNDER_REVIEW → APPROVED/REJECTED → RESOLVED
 ```
+
+**SLA Monitoring:**
+The system includes SLA tracking via `warranty/tasks.py`:
+- Automated SLA breach detection
+- `sla_alert` notifications sent to admins when claims exceed response time
+- Configurable SLA thresholds per warranty type
+
+**Technician Portal Features:**
+- Job card assignment and tracking
+- Calendar event management
+- Check-in/check-out for service calls
+- Barcode scanning for product identification
 
 ---
 
@@ -443,16 +542,41 @@ SUBMITTED → UNDER_REVIEW → APPROVED/REJECTED → RESOLVED
 Manages products, categories, and inventory.
 
 **Models:**
-- `Category` - Product categories
-- `Product` - Product definitions
-- `SerializedItem` - Individual tracked items with serial numbers
-- `SolarPackage` - Pre-configured solar system bundles
+- `Category` - Product categories (hierarchical)
+- `Product` - Product definitions with:
+  - Name, description, price
+  - WhatsApp catalog sync status
+  - Category assignment
+  - Active/inactive status
+- `SerializedItem` - Individual tracked items with:
+  - Unique serial numbers
+  - Link to Product
+  - Status tracking (available, sold, installed, returned)
+  - Warranty association
+- `SolarPackage` - Pre-configured solar system bundles:
+  - Inverter, battery, panels configuration
+  - System capacity (kW)
+  - Package pricing
+
+**Solar Automation (`solar_automation.py`):**
+Automated workflows triggered by solar package purchases:
+- Automatic order creation
+- Installation request generation
+- Customer notification via `hanna_solar_package_purchased`
+- Portal access provisioning via `hanna_portal_access_granted`
+- Installation completion notification via `hanna_installation_complete`
+
+**Meta Catalog Integration:**
+```bash
+# Sync products with WhatsApp catalog
+python manage.py sync_catalog
+```
 
 **Features:**
 - WhatsApp catalog sync with Meta
-- Serial number tracking
+- Serial number tracking throughout lifecycle
 - Inventory management
-- Product bundling
+- Product bundling for solar packages
 
 ---
 
@@ -465,13 +589,39 @@ Handles email integration for document processing and notifications.
 - `smtp_utils.py` - SMTP connection management
 - `tasks.py` - IMAP idle fetcher for incoming emails
 
-**Email Templates:**
-- `order_confirmation` - Order confirmation emails
-- `installation_scheduled` - Installation appointment
-- `installation_complete` - Installation completion
-- `warranty_registered` - Warranty registration
-- `portal_access` - Portal login credentials
-- `technician_payout` - Payout notifications
+**Email Templates (HTML + Plain Text):**
+
+| Template Name | Purpose | Sent To |
+|---------------|---------|---------|
+| `order_confirmation` | Confirm new order with details and next steps | Customer |
+| `installation_scheduled` | Notify of scheduled installation date/time | Customer |
+| `installation_complete` | Congratulate on completed installation | Customer |
+| `warranty_registered` | Confirm warranty registration with certificate link | Customer |
+| `portal_access` | Provide portal login credentials | Customer |
+| `technician_payout` | Notify technician of payout status | Technician |
+
+**Email Template Features:**
+- HTML emails with responsive design
+- Plain text fallback for all emails
+- Jinja2 template variable rendering
+- HANNA branding with color scheme (#f7931e)
+- Call-to-action buttons linking to portal
+
+**Sending Emails:**
+```python
+from email_integration.email_notifications import send_email_notification
+
+send_email_notification(
+    template_name='order_confirmation',
+    recipient_email='customer@example.com',
+    context={
+        'customer_name': 'John Doe',
+        'order_number': 'ORD-001',
+        'order_amount': '1500.00',
+        'payment_status': 'Pending'
+    }
+)
+```
 
 **Email Processing Pipeline:**
 ```
