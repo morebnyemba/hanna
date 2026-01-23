@@ -2,7 +2,7 @@
 
 ## Overview
 
-**HANNA** (Help AI Navigate Now, Always) is a comprehensive WhatsApp CRM and Installation Lifecycle Operating System. It manages the complete installation lifecycle for **Solar (SSI)**, **Starlink (SLI)**, **Custom Furniture (CFI)**, and **Hybrid** installations—from sales through installation, warranty, monitoring, and ongoing service.
+**HANNA** is a comprehensive WhatsApp CRM and Installation Lifecycle Operating System. It manages the complete installation lifecycle for **Solar (SSI)**, **Starlink (SLI)**, **Custom Furniture (CFI)**, and **Hybrid** installations—from sales through installation, warranty, monitoring, and ongoing service.
 
 This document provides a detailed architectural overview of the entire HANNA system.
 
