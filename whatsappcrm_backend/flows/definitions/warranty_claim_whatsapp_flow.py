@@ -111,8 +111,7 @@ WARRANTY_CLAIM_WHATSAPP_FLOW = {
                         "label": "Describe the Issue",
                         "required": True,
                         "input-type": "text",
-                        "helper-text": "What's wrong? E.g., 'Inverter not turning on', 'Battery not charging'",
-                        "max-length": 500
+                        "helper-text": "What's wrong? E.g., 'Inverter not turning on', 'Battery not charging'"
                     },
                     {
                         "type": "Footer",
@@ -170,10 +169,10 @@ WARRANTY_CLAIM_WHATSAPP_FLOW = {
                     {
                         "type": "TextInput",
                         "name": "issue_date",
-                        "label": "When did the issue start?",
+                        "label": "When did the issue start? (YYYY-MM-DD)",
                         "required": True,
-                        "input-type": "date",
-                        "helper-text": "Select the date you first noticed the problem"
+                        "input-type": "text",
+                        "helper-text": "Format: 2026-01-20"
                     },
                     {
                         "type": "TextInput",
@@ -181,8 +180,7 @@ WARRANTY_CLAIM_WHATSAPP_FLOW = {
                         "label": "What troubleshooting have you tried?",
                         "required": False,
                         "input-type": "text",
-                        "helper-text": "E.g., checked power, reset system, etc. (optional)",
-                        "max-length": 300
+                        "helper-text": "E.g., checked power, reset system, etc. (optional)"
                     },
                     {
                         "type": "TextBody",
