@@ -163,11 +163,9 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "order_not_found_from_whatsapp",
             "type": "send_message",
             "config": {
-                "message_config": {
-                    "message_type": "text",
-                    "text": {
-                        "body": "❌ *Order Verification Failed*\n\nThe order number '{{ order_number }}' could not be found in our system.\n\nPlease verify:\n• The order number is correct\n• Payment has been processed\n• The order exists in our records\n\nType 'menu' to start over or contact our support team for assistance."
-                    }
+                "message_type": "text",
+                "text": {
+                    "body": "❌ *Order Verification Failed*\n\nThe order number '{{ order_number }}' could not be found in our system.\n\nPlease verify:\n• The order number is correct\n• Payment has been processed\n• The order exists in our records\n\nType 'menu' to start over or contact our support team for assistance."
                 }
             },
             "transitions": [
