@@ -321,6 +321,7 @@ export default function InstallationSystemRecordsPage() {
                             value={record.installation_status || ''}
                             onChange={(e) => handleStatusChange(record.id, e.target.value)}
                             disabled={updatingStatusId === record.id}
+                            aria-label={`Change status for installation ${record.id?.slice(0, 8)}`}
                             className={`text-xs font-semibold rounded-full px-2 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${getStatusBadgeClass(record.installation_status)} ${updatingStatusId === record.id ? 'opacity-50 cursor-wait' : ''}`}
                           >
                             {INSTALLATION_STATUSES.map(status => (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiLoader, FiTool, FiSearch } from 'react-icons/fi';
@@ -131,38 +131,41 @@ export default function CreateInstallationSystemRecordPage() {
     fetchTechnicians();
   }, [accessToken]);
 
-  // Search customers when search term changes
+  // Customer search function with useCallback for memoization
+  const searchCustomers = useCallback(async (searchTerm: string) => {
+    if (!accessToken || searchTerm.length < 2) {
+      setCustomers([]);
+      return;
+    }
+
+    setLoadingCustomers(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/?search=${encodeURIComponent(searchTerm)}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCustomers(data.results || data);
+      }
+    } catch (err) {
+      console.error('Failed to search customers:', err);
+    } finally {
+      setLoadingCustomers(false);
+    }
+  }, [accessToken]);
+
+  // Debounced customer search effect
   useEffect(() => {
-    const searchCustomers = async () => {
-      if (!accessToken || customerSearch.length < 2) {
-        setCustomers([]);
-        return;
-      }
-
-      setLoadingCustomers(true);
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/?search=${encodeURIComponent(customerSearch)}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setCustomers(data.results || data);
-        }
-      } catch (err) {
-        console.error('Failed to search customers:', err);
-      } finally {
-        setLoadingCustomers(false);
-      }
-    };
-
-    const debounceTimer = setTimeout(searchCustomers, 300);
+    const debounceTimer = setTimeout(() => {
+      searchCustomers(customerSearch);
+    }, 300);
     return () => clearTimeout(debounceTimer);
-  }, [customerSearch, accessToken]);
+  }, [customerSearch, searchCustomers]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
