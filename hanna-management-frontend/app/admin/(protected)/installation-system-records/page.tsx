@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiTool } from 'react-icons/fi';
+import { FiTool, FiFilter } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import ActionButtons from '@/app/components/shared/ActionButtons';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
@@ -20,6 +20,14 @@ interface InstallationSystemRecord {
   installation_address?: string;
   created_at?: string;
 }
+
+const INSTALLATION_STATUSES = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'commissioned', label: 'Commissioned' },
+  { value: 'active', label: 'Active' },
+  { value: 'decommissioned', label: 'Decommissioned' },
+];
 
 const SkeletonRow = () => (
   <tr className="animate-pulse">
@@ -59,13 +67,16 @@ export default function InstallationSystemRecordsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const { accessToken } = useAuthStore();
   const router = useRouter();
 
-  const fetchRecords = async () => {
+  const fetchRecords = async (statusFilterValue?: string) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/`, {
+      const filterParam = statusFilterValue ? `?installation_status=${statusFilterValue}` : '';
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${filterParam}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -87,9 +98,42 @@ export default function InstallationSystemRecordsPage() {
 
   useEffect(() => {
     if (accessToken) {
-      fetchRecords();
+      fetchRecords(statusFilter);
     }
-  }, [accessToken]);
+  }, [accessToken, statusFilter]);
+  
+  const handleStatusChange = async (recordId: string, newStatus: string) => {
+    setUpdatingStatusId(recordId);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${recordId}/update_status/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      // Update local state
+      setRecords(prev => 
+        prev.map(record => 
+          record.id === recordId 
+            ? { ...record, installation_status: newStatus }
+            : record
+        )
+      );
+      handleSuccess('Status updated successfully');
+    } catch (err: any) {
+      handleError(err.message || 'Failed to update status');
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
 
   const handleDeleteClick = (record: InstallationSystemRecord) => {
     setRecordToDelete(record);
@@ -113,7 +157,7 @@ export default function InstallationSystemRecordsPage() {
 
       setDeleteModalOpen(false);
       setRecordToDelete(null);
-      fetchRecords();
+      fetchRecords(statusFilter);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -186,6 +230,34 @@ export default function InstallationSystemRecordsPage() {
         </div>
       )}
 
+      {/* Status Filter */}
+      <div className="mb-4 flex items-center gap-2">
+        <FiFilter className="text-gray-500" />
+        <label htmlFor="statusFilter" className="text-sm font-medium text-gray-700">
+          Filter by Status:
+        </label>
+        <select
+          id="statusFilter"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">All Statuses</option>
+          {INSTALLATION_STATUSES.map(status => (
+            <option key={status.value} value={status.value}>{status.label}</option>
+          ))}
+        </select>
+        {statusFilter && (
+          <button
+            type="button"
+            onClick={() => setStatusFilter('')}
+            className="text-sm text-gray-500 hover:text-gray-700 underline"
+          >
+            Clear filter
+          </button>
+        )}
+      </div>
+
       <div className="mt-4 flow-root">
         <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
@@ -245,9 +317,17 @@ export default function InstallationSystemRecordsPage() {
                           {record.installation_type?.replace('_', ' ').toUpperCase() || 'N/A'}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(record.installation_status)}`}>
-                            {record.installation_status?.replace('_', ' ') || 'N/A'}
-                          </span>
+                          <select
+                            value={record.installation_status || ''}
+                            onChange={(e) => handleStatusChange(record.id, e.target.value)}
+                            disabled={updatingStatusId === record.id}
+                            aria-label={`Change status for installation ${record.id?.slice(0, 8)}`}
+                            className={`text-xs font-semibold rounded-full px-2 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${getStatusBadgeClass(record.installation_status)} ${updatingStatusId === record.id ? 'opacity-50 cursor-wait' : ''}`}
+                          >
+                            {INSTALLATION_STATUSES.map(status => (
+                              <option key={status.value} value={status.value}>{status.label}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                           {record.system_size ? `${record.system_size} ${record.capacity_unit || ''}` : 'N/A'}
