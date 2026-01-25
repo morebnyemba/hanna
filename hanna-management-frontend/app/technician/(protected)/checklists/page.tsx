@@ -40,7 +40,7 @@ export default function TechnicianChecklistsPage() {
   const fetchChecklists = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/checklist-entries/?technician_assigned=true`, {
+      const response = await fetch(`${apiUrl}/crm-api/technician/checklists/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ export default function TechnicianChecklistsPage() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/checklist-entries/${selectedChecklist.id}/update_item/`, {
+      const response = await fetch(`${apiUrl}/crm-api/technician/checklists/${selectedChecklist.id}/update_item/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -103,7 +103,7 @@ export default function TechnicianChecklistsPage() {
     setSavingNote(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/checklist-entries/${selectedChecklist.id}/update_item/`, {
+      const response = await fetch(`${apiUrl}/crm-api/technician/checklists/${selectedChecklist.id}/update_item/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
