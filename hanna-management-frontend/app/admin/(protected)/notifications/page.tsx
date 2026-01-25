@@ -79,13 +79,19 @@ export default function AdminNotificationsPage() {
   const [activeTab, setActiveTab] = useState<'notifications' | 'templates'>('notifications');
   const itemsPerPage = 10;
 
+  // Helper function to extract data from API response
+  const extractData = <T,>(data: { results?: T[] } | T[]): T[] => {
+    return Array.isArray(data) ? data : (data.results || []);
+  };
+
   const fetchNotifications = async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await apiClient.get('/crm-api/admin-panel/notifications/');
-      setNotifications(response.data.results || response.data);
-      setFilteredNotifications(response.data.results || response.data);
+      const data = extractData<Notification>(response.data);
+      setNotifications(data);
+      setFilteredNotifications(data);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch notifications.';
       setError(errorMessage);
@@ -97,7 +103,7 @@ export default function AdminNotificationsPage() {
   const fetchTemplates = async () => {
     try {
       const response = await apiClient.get('/crm-api/admin-panel/notification-templates/');
-      setTemplates(response.data.results || response.data);
+      setTemplates(extractData<NotificationTemplate>(response.data));
     } catch (err: unknown) {
       console.error('Failed to fetch templates:', err);
     }
@@ -106,6 +112,7 @@ export default function AdminNotificationsPage() {
   useEffect(() => {
     fetchNotifications();
     fetchTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filter notifications based on search and status
@@ -115,11 +122,12 @@ export default function AdminNotificationsPage() {
     if (searchTerm.trim() !== '') {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(notification => {
-        const recipientName = `${notification.recipient?.first_name || ''} ${notification.recipient?.last_name || ''}`.toLowerCase();
-        const recipientEmail = notification.recipient?.email?.toLowerCase() || '';
-        const content = notification.content?.toLowerCase() || '';
-        const templateName = notification.template_name?.toLowerCase() || '';
-        return recipientName.includes(search) || recipientEmail.includes(search) || content.includes(search) || templateName.includes(search);
+        const recipientName = `${notification.recipient?.first_name || ''} ${notification.recipient?.last_name || ''}`;
+        const recipientEmail = notification.recipient?.email || '';
+        const content = notification.content || '';
+        const templateName = notification.template_name || '';
+        const searchableText = `${recipientName} ${recipientEmail} ${content} ${templateName}`.toLowerCase();
+        return searchableText.includes(search);
       });
     }
 
