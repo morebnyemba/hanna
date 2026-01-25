@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { 
   FiTool, FiMapPin, FiCalendar, FiPackage, 
   FiShield, FiCamera, FiAlertCircle, FiFileText, FiRefreshCw,
@@ -9,6 +10,11 @@ import {
 } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import { DownloadInstallationReportButton, DownloadWarrantyCertificateButton } from '@/app/components/shared/DownloadButtons';
+
+// Dynamically import type-specific components
+const EnergyProductionChart = dynamic(() => import('../components/EnergyProductionChart'), { ssr: false });
+const SpeedTest = dynamic(() => import('../components/SpeedTest'), { ssr: false });
+const MaintenanceTips = dynamic(() => import('../components/MaintenanceTips'), { ssr: false });
 
 interface CustomerDetails {
   id: string;
@@ -594,6 +600,53 @@ export default function MyInstallationPage() {
           </div>
         </div>
       )}
+
+      {/* Type-Specific Features Section */}
+      <div className="mt-6">
+        {installation.installation_type === 'solar' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <FiZap className="mr-2 text-yellow-500" /> Solar Energy Insights
+            </h3>
+            <EnergyProductionChart />
+          </div>
+        )}
+
+        {installation.installation_type === 'starlink' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <FiWifi className="mr-2 text-purple-500" /> Starlink Connectivity
+            </h3>
+            <SpeedTest />
+          </div>
+        )}
+
+        {installation.installation_type === 'custom_furniture' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <FiTool className="mr-2 text-amber-600" /> Furniture Care
+            </h3>
+            <MaintenanceTips />
+          </div>
+        )}
+
+        {installation.installation_type === 'hybrid' && (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <FiZap className="mr-2 text-yellow-500" /> Solar Energy Insights
+              </h3>
+              <EnergyProductionChart />
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <FiWifi className="mr-2 text-purple-500" /> Starlink Connectivity
+              </h3>
+              <SpeedTest />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
