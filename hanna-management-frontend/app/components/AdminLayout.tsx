@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiHome, FiUsers, FiShield, FiGitMerge, FiSettings, FiLogOut, FiMenu, FiX, FiPackage, FiBox, FiList, FiArchive, FiBarChart2, FiTool, FiWifi, FiShoppingCart, FiAlertTriangle, FiTrello, FiDollarSign, FiDatabase } from 'react-icons/fi';
+import { FiHome, FiUsers, FiShield, FiGitMerge, FiSettings, FiLogOut, FiMenu, FiX, FiPackage, FiBox, FiList, FiArchive, FiBarChart2, FiTool, FiWifi, FiShoppingCart, FiAlertTriangle, FiTrello, FiDollarSign, FiDatabase, FiBell } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
@@ -119,6 +119,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarLink href="/admin/payouts" icon={FiDollarSign}>Payouts</SidebarLink>
           
           {/* System Management */}
+          <SidebarLink href="/admin/notifications" icon={FiBell}>Notifications</SidebarLink>
           <SidebarLink href="/admin/flows" icon={FiGitMerge}>Flows</SidebarLink>
           <SidebarLink href="/admin/settings" icon={FiSettings}>Settings</SidebarLink>
         </nav>
