@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions, generics, viewsets
 from rest_framework.permissions import IsAdminUser
+from rest_framework.decorators import action
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -477,3 +478,92 @@ class InstallationReportPDFView(APIView):
                 {'error': f'Failed to generate installation report: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class TechnicianChecklistViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for technicians to view and update their assigned checklists.
+    Shows checklists for installations where the technician is assigned.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsTechnician]
+    
+    def get_serializer_class(self):
+        """Use serializer from installation_systems"""
+        from installation_systems.serializers import InstallationChecklistEntrySerializer
+        return InstallationChecklistEntrySerializer
+    
+    def get_queryset(self):
+        """
+        Get checklists for installations assigned to this technician.
+        Includes checklists where:
+        - The technician is directly assigned to the checklist, OR
+        - The technician is assigned to the installation
+        """
+        from installation_systems.models import InstallationChecklistEntry, InstallationSystemRecord
+        from django.db.models import Q
+        
+        if not hasattr(self.request.user, 'technician_profile'):
+            return InstallationChecklistEntry.objects.none()
+        
+        technician = self.request.user.technician_profile
+        
+        # Get installation IDs where this technician is assigned
+        assigned_installations = InstallationSystemRecord.objects.filter(
+            installation_request__technicians=technician
+        ).values_list('id', flat=True)
+        
+        return InstallationChecklistEntry.objects.filter(
+            Q(technician=technician) | Q(installation_record_id__in=assigned_installations)
+        ).select_related(
+            'installation_record', 
+            'template', 
+            'technician', 
+            'technician__user'
+        ).order_by('-created_at')
+    
+    def perform_create(self, serializer):
+        """Automatically assign the technician on create"""
+        if hasattr(self.request.user, 'technician_profile'):
+            serializer.save(technician=self.request.user.technician_profile)
+        else:
+            serializer.save()
+    
+    @action(detail=True, methods=['post'])
+    def update_item(self, request, pk=None):
+        """
+        Custom action to update a single checklist item.
+        Expects: item_id, completed (bool), notes (optional), photos (optional)
+        """
+        entry = self.get_object()
+        item_id = request.data.get('item_id')
+        completed = request.data.get('completed', False)
+        notes = request.data.get('notes', '')
+        photos = request.data.get('photos', [])
+
+        if not item_id:
+            return Response(
+                {'error': 'item_id required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update completed_items
+        if item_id not in entry.completed_items:
+            entry.completed_items[item_id] = {}
+
+        entry.completed_items[item_id].update({
+            'completed': completed,
+            'completed_at': timezone.now().isoformat() if completed else None,
+            'notes': notes,
+            'photos': photos,
+            'completed_by': str(request.user.id) if request.user.is_authenticated else None,
+        })
+
+        # Recalculate completion status
+        entry.update_completion_status()
+        entry.save()
+
+        serializer = self.get_serializer(entry)
+        return Response({
+            'message': f'Checklist item {item_id} updated successfully.',
+            'data': serializer.data
+        })
