@@ -129,13 +129,19 @@ def create_checklists_for_installation(isr):
     """
     Helper function to create checklist entries for an InstallationSystemRecord.
     Creates checklists based on applicable templates for the installation type.
+    
+    Template matching logic:
+    - Templates with installation_type matching the ISR's type are applied
+    - Templates with installation_type=NULL are treated as universal templates 
+      that apply to all installation types
     """
     try:
         # Find applicable checklist templates
+        # Templates with null installation_type are universal and apply to all types
         templates = CommissioningChecklistTemplate.objects.filter(
             is_active=True
         ).filter(
-            # Match templates for this installation type OR templates with no specific type
+            # Match templates for this installation type OR universal templates (null type)
             models.Q(installation_type=isr.installation_type) | 
             models.Q(installation_type__isnull=True)
         )

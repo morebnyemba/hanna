@@ -227,6 +227,11 @@ class TechnicianChecklistSerializer(serializers.ModelSerializer):
         """
         Transform template items and completion data into the expected format.
         Returns items with: id, text, required_photo, completed, photo_uploaded, completed_at, notes
+        
+        Note: Template items may use different field names due to historical inconsistencies:
+        - 'title' or 'text' for item description
+        - 'requires_photo' or 'required_photo' for photo requirement flag
+        Both variants are supported for backwards compatibility.
         """
         items = []
         template_items = obj.template.items if obj.template and obj.template.items else []
@@ -236,10 +241,14 @@ class TechnicianChecklistSerializer(serializers.ModelSerializer):
             item_id = template_item.get('id', '')
             completion_data = completed_items.get(item_id, {})
             
+            # Handle field name variations for backwards compatibility
+            item_text = template_item.get('title') or template_item.get('text', '')
+            requires_photo = template_item.get('requires_photo') or template_item.get('required_photo', False)
+            
             items.append({
                 'id': item_id,
-                'text': template_item.get('title', template_item.get('text', '')),
-                'required_photo': template_item.get('requires_photo', template_item.get('required_photo', False)),
+                'text': item_text,
+                'required_photo': requires_photo,
                 'completed': completion_data.get('completed', False),
                 'photo_uploaded': bool(completion_data.get('photos', [])),
                 'completed_at': completion_data.get('completed_at'),
