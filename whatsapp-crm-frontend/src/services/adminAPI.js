@@ -179,6 +179,31 @@ export const adminAPI = {
     update: (id, data) => axios.patch(`${ADMIN_API_URL}/installation-system-records/${id}/`, data, getAuthHeaders()),
     delete: (id) => axios.delete(`${ADMIN_API_URL}/installation-system-records/${id}/`, getAuthHeaders()),
   },
+
+  // Installation Requests
+  installationRequests: {
+    list: (params) => axios.get(`${ADMIN_API_URL}/installation-requests/`, { ...getAuthHeaders(), params }),
+    get: (id) => axios.get(`${ADMIN_API_URL}/installation-requests/${id}/`, getAuthHeaders()),
+    create: (data) => axios.post(`${ADMIN_API_URL}/installation-requests/`, data, getAuthHeaders()),
+    update: (id, data) => axios.patch(`${ADMIN_API_URL}/installation-requests/${id}/`, data, getAuthHeaders()),
+    delete: (id) => axios.delete(`${ADMIN_API_URL}/installation-requests/${id}/`, getAuthHeaders()),
+    startInstallation: (id) => axios.post(`${ADMIN_API_URL}/installation-requests/${id}/start_installation/`, {}, getAuthHeaders()),
+  },
+
+  // Checklist Templates
+  checklistTemplates: {
+    list: (params) => axios.get(`${ADMIN_API_URL}/checklist-templates/`, { ...getAuthHeaders(), params }),
+    get: (id) => axios.get(`${ADMIN_API_URL}/checklist-templates/${id}/`, getAuthHeaders()),
+  },
+
+  // Checklist Entries
+  checklistEntries: {
+    list: (params) => axios.get(`${ADMIN_API_URL}/checklist-entries/`, { ...getAuthHeaders(), params }),
+    get: (id) => axios.get(`${ADMIN_API_URL}/checklist-entries/${id}/`, getAuthHeaders()),
+    create: (data) => axios.post(`${ADMIN_API_URL}/checklist-entries/`, data, getAuthHeaders()),
+    update: (id, data) => axios.patch(`${ADMIN_API_URL}/checklist-entries/${id}/`, data, getAuthHeaders()),
+    updateItem: (id, data) => axios.post(`${ADMIN_API_URL}/checklist-entries/${id}/update_item/`, data, getAuthHeaders()),
+  },
 };
 
 export default adminAPI;
