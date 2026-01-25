@@ -161,6 +161,103 @@ class InstallationChecklistEntryCreateSerializer(serializers.ModelSerializer):
         return instance
 
 
+class TechnicianChecklistSerializer(serializers.ModelSerializer):
+    """
+    Serializer for technician checklist view.
+    Returns data in the format expected by the technician dashboard frontend:
+    - installation_id: string
+    - installation_customer_name: string
+    - checklist_template_name: string
+    - checklist_type: string
+    - completion_percentage: number
+    - is_complete: boolean
+    - items: array of ChecklistItem objects
+    - created_at: string
+    """
+    installation_id = serializers.SerializerMethodField()
+    installation_customer_name = serializers.SerializerMethodField()
+    checklist_template_name = serializers.SerializerMethodField()
+    checklist_type = serializers.SerializerMethodField()
+    is_complete = serializers.SerializerMethodField()
+    items = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = InstallationChecklistEntry
+        fields = [
+            'id',
+            'installation_id',
+            'installation_customer_name',
+            'checklist_template_name',
+            'checklist_type',
+            'completion_percentage',
+            'is_complete',
+            'items',
+            'created_at',
+        ]
+    
+    def get_installation_id(self, obj):
+        """Get installation record ID as string"""
+        return str(obj.installation_record.id)
+    
+    def get_installation_customer_name(self, obj):
+        """Get customer name from installation record"""
+        try:
+            if obj.installation_record.customer:
+                customer = obj.installation_record.customer
+                if hasattr(customer, 'contact') and customer.contact:
+                    return customer.contact.get_full_name() or customer.contact.username
+                return f"Customer #{customer.id}"
+            return "Unknown Customer"
+        except Exception:
+            return "Unknown Customer"
+    
+    def get_checklist_template_name(self, obj):
+        """Get template name"""
+        return obj.template.name if obj.template else "Unknown Template"
+    
+    def get_checklist_type(self, obj):
+        """Get checklist type (pre-install, installation, commissioning)"""
+        return obj.template.checklist_type if obj.template else "unknown"
+    
+    def get_is_complete(self, obj):
+        """Check if checklist is fully completed"""
+        return obj.completion_status == 'completed'
+    
+    def get_items(self, obj):
+        """
+        Transform template items and completion data into the expected format.
+        Returns items with: id, text, required_photo, completed, photo_uploaded, completed_at, notes
+        
+        Note: Template items may use different field names due to historical inconsistencies:
+        - 'title' or 'text' for item description
+        - 'requires_photo' or 'required_photo' for photo requirement flag
+        Both variants are supported for backwards compatibility.
+        """
+        items = []
+        template_items = obj.template.items if obj.template and obj.template.items else []
+        completed_items = obj.completed_items or {}
+        
+        for template_item in template_items:
+            item_id = template_item.get('id', '')
+            completion_data = completed_items.get(item_id, {})
+            
+            # Handle field name variations for backwards compatibility
+            item_text = template_item.get('title') or template_item.get('text', '')
+            requires_photo = template_item.get('requires_photo') or template_item.get('required_photo', False)
+            
+            items.append({
+                'id': item_id,
+                'text': item_text,
+                'required_photo': requires_photo,
+                'completed': completion_data.get('completed', False),
+                'photo_uploaded': bool(completion_data.get('photos', [])),
+                'completed_at': completion_data.get('completed_at'),
+                'notes': completion_data.get('notes', ''),
+            })
+        
+        return items
+
+
 class InstallationSystemRecordListSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for listing installation system records.

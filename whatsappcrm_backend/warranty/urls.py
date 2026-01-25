@@ -20,6 +20,9 @@ from .views import (
     TechnicianInstallationDetailView,
     WarrantyCertificatePDFView,
     InstallationReportPDFView,
+    ClientWarrantyListView,
+    ClientInstallationListView,
+    ClientServiceRequestListView,
 )
 
 app_name = 'warranty_api'
@@ -46,9 +49,17 @@ technician_patterns = [
     path('installation-history/<int:pk>/', TechnicianInstallationDetailView.as_view(), name='technician_installation_detail'),
 ]
 
+# Client API patterns - for authenticated client users
+client_patterns = [
+    path('warranties/', ClientWarrantyListView.as_view(), name='client_warranties'),
+    path('installations/', ClientInstallationListView.as_view(), name='client_installations'),
+    path('service-requests/', ClientServiceRequestListView.as_view(), name='client_service_requests'),
+]
+
 urlpatterns = [
     path('manufacturer/', include(manufacturer_patterns)),
     path('technician/', include(technician_patterns)),
+    path('client/', include(client_patterns)),
     path('dashboards/technician/', TechnicianDashboardStatsAPIView.as_view(), name='technician_dashboard_stats'),
     path('claims/', AdminWarrantyClaimListView.as_view(), name='admin_warranty_claims_list'),
     path('claims/create/', AdminWarrantyClaimCreateView.as_view(), name='admin_warranty_claim_create'),

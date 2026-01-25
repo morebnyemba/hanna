@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, useEffect } from 'react';
-import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiBarChart2, FiChevronLeft, FiChevronRight, FiArchive, FiList, FiCheckSquare, FiCamera } from 'react-icons/fi';
+import { FiGrid, FiLogOut, FiTool, FiMenu, FiX, FiBarChart2, FiChevronLeft, FiChevronRight, FiArchive, FiList, FiCheckSquare, FiCamera, FiClock } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
@@ -82,11 +82,12 @@ export default function TechnicianLayout({ children }: { children: ReactNode }) 
         <nav className="space-y-2">
           <SidebarLink href="/technician/dashboard" icon={FiGrid} isCollapsed={isSidebarCollapsed}>Dashboard</SidebarLink>
           <SidebarLink href="/technician/analytics" icon={FiBarChart2} isCollapsed={isSidebarCollapsed}>Analytics</SidebarLink>
-          <SidebarLink href="/technician/job-cards" icon={FiTool} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
+          <SidebarLink href="/technician/installations" icon={FiTool} isCollapsed={isSidebarCollapsed}>Installations</SidebarLink>
           <SidebarLink href="/technician/checklists" icon={FiCheckSquare} isCollapsed={isSidebarCollapsed}>Checklists</SidebarLink>
+          <SidebarLink href="/technician/job-cards" icon={FiArchive} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
           <SidebarLink href="/technician/photos" icon={FiCamera} isCollapsed={isSidebarCollapsed}>Photos</SidebarLink>
-          <SidebarLink href="/technician/check-in-out" icon={FiArchive} isCollapsed={isSidebarCollapsed}>Check-In/Out</SidebarLink>
-          <SidebarLink href="/technician/installation-history" icon={FiList} isCollapsed={isSidebarCollapsed}>Installation History</SidebarLink>
+          <SidebarLink href="/technician/check-in-out" icon={FiList} isCollapsed={isSidebarCollapsed}>Check-In/Out</SidebarLink>
+          <SidebarLink href="/technician/installation-history" icon={FiClock} isCollapsed={isSidebarCollapsed}>Installation History</SidebarLink>
         </nav>
         <div className="absolute bottom-0 w-full left-0 px-2 pb-4">
            <button onClick={handleLogout} className={`flex items-center w-full px-4 py-3 text-sm font-medium text-gray-300 rounded-md hover:bg-green-700 hover:text-white ${isSidebarCollapsed ? 'md:justify-center' : ''}`}>

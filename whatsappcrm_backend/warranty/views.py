@@ -488,9 +488,9 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsTechnician]
     
     def get_serializer_class(self):
-        """Use serializer from installation_systems"""
-        from installation_systems.serializers import InstallationChecklistEntrySerializer
-        return InstallationChecklistEntrySerializer
+        """Use TechnicianChecklistSerializer from installation_systems for the correct format"""
+        from installation_systems.serializers import TechnicianChecklistSerializer
+        return TechnicianChecklistSerializer
     
     def get_queryset(self):
         """
@@ -567,3 +567,113 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
             'message': f'Checklist item {item_id} updated successfully.',
             'data': serializer.data
         })
+
+
+# ============================================================================
+# Client API Views - For authenticated client users to access their data
+# ============================================================================
+
+class ClientWarrantyListView(generics.ListAPIView):
+    """
+    API endpoint for clients to view their warranties.
+    Returns all warranties associated with the logged-in client's customer profile.
+    """
+    serializer_class = WarrantySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'customer_profile'):
+            return Warranty.objects.filter(
+                customer=user.customer_profile
+            ).select_related(
+                'serialized_item',
+                'serialized_item__product',
+                'manufacturer'
+            ).order_by('-created_at')
+        return Warranty.objects.none()
+
+
+class ClientInstallationListView(APIView):
+    """
+    API endpoint for clients to view their installations.
+    Returns installations associated with the logged-in client's customer profile.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        if not hasattr(user, 'customer_profile'):
+            return Response([])
+        
+        installations = InstallationSystemRecord.objects.filter(
+            customer=user.customer_profile
+        ).select_related(
+            'customer',
+            'customer__contact',
+            'order',
+            'installation_request',
+        ).prefetch_related(
+            'technicians',
+            'installed_components',
+        ).order_by('-created_at')
+        
+        data = []
+        for installation in installations:
+            data.append({
+                'id': str(installation.id),
+                'installation_type': installation.installation_type,
+                'installation_type_display': installation.get_installation_type_display(),
+                'system_size': float(installation.system_size) if installation.system_size else 0,
+                'capacity_unit': installation.capacity_unit,
+                'installation_status': installation.installation_status,
+                'installation_status_display': installation.get_installation_status_display(),
+                'installation_address': installation.installation_address or '',
+                'created_at': installation.created_at.isoformat() if installation.created_at else None,
+            })
+        return Response(data)
+
+
+class ClientServiceRequestListView(APIView):
+    """
+    API endpoint for clients to view and create service requests.
+    Clients can only see their own service requests.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        if not hasattr(user, 'customer_profile'):
+            return Response([])
+        
+        customer = user.customer_profile
+        # Get job cards related to installations belonging to this customer
+        job_cards = JobCard.objects.filter(
+            serialized_item__warranty__customer=customer
+        ).select_related(
+            'serialized_item',
+            'serialized_item__product',
+            'technician',
+        ).order_by('-creation_date')
+        
+        data = []
+        for job_card in job_cards:
+            data.append({
+                'id': str(job_card.id),
+                'job_card_number': job_card.job_card_number,
+                'request_type': 'service',
+                'priority': job_card.priority if hasattr(job_card, 'priority') else 'medium',
+                'status': job_card.status,
+                'description': job_card.reported_fault or '',
+                'installation_address': '',
+                'created_at': job_card.creation_date.isoformat() if job_card.creation_date else None,
+                'estimated_response_time': None,
+            })
+        return Response(data)
+
+    def post(self, request, *args, **kwargs):
+        # For now, return an error - this would need proper implementation
+        return Response(
+            {'error': 'Service request creation is not available through this endpoint yet'},
+            status=status.HTTP_501_NOT_IMPLEMENTED
+        )

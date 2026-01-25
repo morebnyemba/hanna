@@ -106,7 +106,7 @@ export default function ClientOrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get('/crm-api/orders/my/');
+      const res = await apiClient.get('/crm-api/customer-data/orders/my/');
       setOrders(res.data);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } } };
@@ -120,7 +120,7 @@ export default function ClientOrdersPage() {
     setDetailLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get(`/crm-api/orders/${orderId}/fulfillment-status/`);
+      const res = await apiClient.get(`/crm-api/customer-data/orders/${orderId}/fulfillment-status/`);
       setSelectedOrderDetail(res.data);
       setDetailDialog(true);
     } catch (e: unknown) {
