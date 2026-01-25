@@ -219,3 +219,54 @@ def auto_create_checklists_on_technician_assigned(sender, instance, action, **kw
                     installation_record=instance,
                     technician__isnull=True
                 ).update(technician=technician)
+
+
+@receiver(m2m_changed, sender=InstallationRequest.technicians.through)
+def sync_technicians_to_isr_and_create_checklists(sender, instance, action, pk_set, **kwargs):
+    """
+    Signal handler to sync technician assignments from InstallationRequest to ISR.
+    Also ensures checklists are created when technicians are assigned.
+    
+    This handles the case where technicians are assigned via InstallationRequest
+    rather than directly on the InstallationSystemRecord.
+    """
+    if action in ['post_add']:
+        # Check if this InstallationRequest has an associated ISR
+        if hasattr(instance, 'installation_system_record'):
+            isr = instance.installation_system_record
+            
+            # Sync technicians to ISR
+            for tech_id in pk_set:
+                from warranty.models import Technician
+                try:
+                    technician = Technician.objects.get(pk=tech_id)
+                    if not isr.technicians.filter(pk=tech_id).exists():
+                        isr.technicians.add(technician)
+                        logger.info(
+                            f"Synced technician {technician} to ISR {isr.id} from InstallationRequest"
+                        )
+                except Technician.DoesNotExist:
+                    pass
+            
+            # Check if checklists exist, create if not
+            existing_checklists = InstallationChecklistEntry.objects.filter(
+                installation_record=isr
+            ).count()
+            
+            if existing_checklists == 0:
+                create_checklists_for_installation(isr)
+                logger.info(
+                    f"Created checklists for ISR {isr.id} after technician assigned via InstallationRequest"
+                )
+            else:
+                # Update technician assignment on existing checklists if not set
+                technician = isr.technicians.first() if isr.technicians.exists() else None
+                if technician:
+                    updated = InstallationChecklistEntry.objects.filter(
+                        installation_record=isr,
+                        technician__isnull=True
+                    ).update(technician=technician)
+                    if updated:
+                        logger.info(
+                            f"Assigned technician {technician} to {updated} existing checklists for ISR {isr.id}"
+                        )
