@@ -18,6 +18,7 @@ from .views import (
     TechnicianChecklistViewSet,
     TechnicianInstallationHistoryView,
     TechnicianInstallationDetailView,
+    TechnicianPendingInstallationsView,
     WarrantyCertificatePDFView,
     InstallationReportPDFView,
     ClientWarrantyListView,
@@ -45,6 +46,7 @@ manufacturer_patterns = [
 ]
 
 technician_patterns = [
+    path('installations/', TechnicianPendingInstallationsView.as_view(), name='technician_installations'),
     path('installation-history/', TechnicianInstallationHistoryView.as_view(), name='technician_installation_history'),
     path('installation-history/<int:pk>/', TechnicianInstallationDetailView.as_view(), name='technician_installation_detail'),
 ]

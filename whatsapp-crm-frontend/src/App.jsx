@@ -19,7 +19,6 @@ import LoginPage from './pages/LoginPage';
 
 
 import InstallationRequestsPage from './pages/InstallationRequestsPage';
-import InstallationChecklistPage from './pages/InstallationChecklistPage';
 import OrdersPage from './pages/OrdersPage';
 import SiteAssessmentsPage from './pages/SiteAssessmentsPage';
 import SermonsPage from './pages/SermonsPage';
@@ -95,7 +94,6 @@ const router = createBrowserRouter([
   { path: 'analytics', element: <AnalyticsPage />},
   { path: 'barcode-scanner', element: <BarcodeScannerPage /> },
   { path: 'installation-requests', element: <InstallationRequestsPage /> },
-  { path: 'installation-checklist/:id', element: <InstallationChecklistPage /> },
   { path: 'orders', element: <OrdersPage /> },
   { path: 'site-assessments', element: <SiteAssessmentsPage /> },
 

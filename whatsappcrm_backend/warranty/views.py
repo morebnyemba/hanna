@@ -324,6 +324,64 @@ class TechnicianInstallationDetailView(generics.RetrieveAPIView):
         return Response(data)
 
 
+class TechnicianPendingInstallationsView(generics.ListAPIView):
+    """
+    Get pending/scheduled installations assigned to the logged-in technician.
+    These are installations that need to be started.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsTechnician]
+
+    def get_queryset(self):
+        from installation_systems.models import InstallationSystemRecord
+        from django.db.models import Count, Avg, Case, When, IntegerField
+        
+        technician = self.request.user.technician_profile
+        
+        # Get installation records with checklist aggregations in a single query
+        return InstallationSystemRecord.objects.filter(
+            technicians=technician,
+            installation_status__in=['pending', 'in_progress']
+        ).select_related('customer', 'order').annotate(
+            total_checklists=Count('checklist_entries'),
+            completed_checklists=Count(
+                Case(
+                    When(checklist_entries__completion_status='completed', then=1),
+                    output_field=IntegerField()
+                )
+            ),
+            avg_completion=Avg('checklist_entries__completion_percentage')
+        ).order_by('installation_date', 'created_at')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = []
+        
+        for record in queryset:
+            overall_completion = float(record.avg_completion or 0)
+            
+            data.append({
+                'id': str(record.id),
+                'customer_name': record.customer_name,
+                'installation_type': record.installation_type,
+                'installation_type_display': record.get_installation_type_display(),
+                'installation_status': record.installation_status,
+                'installation_status_display': record.get_installation_status_display(),
+                'system_size': record.system_size,
+                'capacity_unit': record.capacity_unit,
+                'installation_date': record.installation_date.isoformat() if record.installation_date else None,
+                'installation_address': record.installation_address,
+                'created_at': record.created_at.isoformat(),
+                'has_checklists': record.total_checklists > 0,
+                'checklist_progress': {
+                    'total': record.total_checklists,
+                    'completed': record.completed_checklists,
+                    'overall_completion': round(overall_completion, 2)
+                }
+            })
+        
+        return Response(data)
+
+
 class WarrantyCertificatePDFView(APIView):
     """
     Generate and download warranty certificate PDF.

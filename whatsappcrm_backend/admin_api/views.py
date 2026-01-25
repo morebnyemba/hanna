@@ -12,7 +12,6 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.http import HttpResponse
 from django.core.cache import cache
-from django.db import models
 
 # Import models
 from notifications.models import Notification, NotificationTemplate
@@ -413,94 +412,6 @@ class AdminInstallationRequestViewSet(viewsets.ModelViewSet):
         return Response({
             'message': f'Successfully assigned {technicians.count()} technician(s).',
             'data': serializer.data
-        })
-
-    @action(detail=True, methods=['post'])
-    def start_installation(self, request, pk=None):
-        """
-        Start an installation: creates an InstallationSystemRecord from the InstallationRequest,
-        updates the request status to 'in_progress', and creates checklist entries.
-        Returns the created InstallationSystemRecord ID so the user can navigate to the checklist UI.
-        """
-        installation_request = self.get_object()
-        
-        # Check if already started
-        if installation_request.status == 'in_progress':
-            # Check if there's already an InstallationSystemRecord linked
-            existing_ssr = InstallationSystemRecord.objects.filter(
-                customer=installation_request.customer,
-                order=installation_request.associated_order
-            ).first()
-            if existing_ssr:
-                return Response({
-                    'message': 'Installation already in progress.',
-                    'installation_system_record_id': str(existing_ssr.id),
-                    'installation_request_id': installation_request.id
-                })
-        
-        if installation_request.status == 'completed':
-            return Response(
-                {'error': 'Installation request is already completed.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        if installation_request.status == 'cancelled':
-            return Response(
-                {'error': 'Cannot start a cancelled installation request.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Map installation type from InstallationRequest to InstallationSystemRecord
-        type_mapping = {
-            'solar': 'solar',
-            'starlink': 'starlink',
-            'hybrid': 'hybrid',
-            'custom_furniture': 'custom_furniture',
-            'residential': 'solar',  # Legacy type mapped to solar
-            'commercial': 'solar',   # Legacy type mapped to solar
-        }
-        installation_type = type_mapping.get(installation_request.installation_type, 'solar')
-        
-        # Create InstallationSystemRecord
-        ssr = InstallationSystemRecord.objects.create(
-            customer=installation_request.customer,
-            order=installation_request.associated_order,
-            installation_type=installation_type,
-            installation_status='in_progress',
-            installation_address=installation_request.address or '',
-            gps_latitude=installation_request.location_latitude,
-            gps_longitude=installation_request.location_longitude,
-            system_classification='residential',  # Default classification
-            installation_date=timezone.now().date(),
-        )
-        
-        # Create checklist entries from active templates for this installation type
-        templates = CommissioningChecklistTemplate.objects.filter(
-            is_active=True
-        ).filter(
-            models.Q(installation_type=installation_type) | models.Q(installation_type__isnull=True)
-        )
-        
-        checklist_entries = []
-        for template in templates:
-            entry = InstallationChecklistEntry.objects.create(
-                installation_record=ssr,
-                template=template,
-                completion_status='not_started',
-                completed_items={},  # Initialize empty completed items
-                completion_percentage=0.0
-            )
-            checklist_entries.append(entry)
-        
-        # Update installation request status
-        installation_request.status = 'in_progress'
-        installation_request.save()
-        
-        return Response({
-            'message': 'Installation started successfully.',
-            'installation_system_record_id': str(ssr.id),
-            'installation_request_id': installation_request.id,
-            'checklists_created': len(checklist_entries)
         })
 
 
