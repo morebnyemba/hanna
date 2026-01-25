@@ -488,9 +488,9 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsTechnician]
     
     def get_serializer_class(self):
-        """Use serializer from installation_systems"""
-        from installation_systems.serializers import InstallationChecklistEntrySerializer
-        return InstallationChecklistEntrySerializer
+        """Use TechnicianChecklistSerializer from installation_systems for the correct format"""
+        from installation_systems.serializers import TechnicianChecklistSerializer
+        return TechnicianChecklistSerializer
     
     def get_queryset(self):
         """

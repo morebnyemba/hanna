@@ -5,7 +5,7 @@ declare const process: any;
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX, FiMessageCircle, FiZap, FiCopy, FiExternalLink } from 'react-icons/fi';
+import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX, FiMessageCircle, FiZap, FiCopy, FiExternalLink, FiMenu, FiFilter } from 'react-icons/fi';
 import apiClient from '@/app/lib/apiClient';
 import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
@@ -60,20 +60,23 @@ export default function ShopPage() {
   const [assistantCopyStatus, setAssistantCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const assistantRef = useRef<HTMLDivElement | null>(null);
   const whatsappNumber = (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_WHATSAPP_NUMBER) || '';
-    // Checkout state
-    const [checkoutStep, setCheckoutStep] = useState<number>(1); // 1: Cart, 2: Details, 3: Confirmation
-    const [deliveryDetails, setDeliveryDetails] = useState({
-      fullName: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      notes: ''
-    });
-    const [paymentInfo, setPaymentInfo] = useState<{instructions?: string; paynow_reference?: string; poll_url?: string} | null>(null);
-    const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'omari' | 'innbucks' | 'telecash'>('ecocash');
+  // Mobile responsive state
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  // Checkout state
+  const [checkoutStep, setCheckoutStep] = useState<number>(1); // 1: Cart, 2: Details, 3: Confirmation
+  const [deliveryDetails, setDeliveryDetails] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    notes: ''
+  });
+  const [paymentInfo, setPaymentInfo] = useState<{instructions?: string; paynow_reference?: string; poll_url?: string} | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'omari' | 'innbucks' | 'telecash'>('ecocash');
 
-    const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
       const target = e.target as HTMLInputElement & HTMLTextAreaElement;
       setDeliveryDetails({
         ...deliveryDetails,
@@ -376,19 +379,23 @@ export default function ShopPage() {
     <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+            {/* Logo and Title - Responsive */}
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Link href="/client/dashboard" className="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
                 <FiHome className="w-5 h-5" />
-                <span className="font-medium">Home</span>
+                <span className="font-medium hidden sm:inline">Dashboard</span>
               </Link>
-              <span className="text-gray-300">|</span>
-              <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Hanna Digital Shop
+              <span className="text-gray-300 hidden sm:inline">|</span>
+              <h1 className="text-lg sm:text-2xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <span className="hidden sm:inline">Hanna Digital Shop</span>
+                <span className="sm:hidden">Shop</span>
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            
+            {/* Desktop Actions */}
+            <div className="hidden md:flex items-center gap-2">
               <button
                 onClick={() => setShowAssistant((prev: boolean) => !prev)}
                 className="relative flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -409,12 +416,51 @@ export default function ShopPage() {
                 )}
               </button>
             </div>
+
+            {/* Mobile Actions */}
+            <div className="flex md:hidden items-center gap-2">
+              <button
+                onClick={() => setShowCart(!showCart)}
+                className="relative p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                aria-label="Cart"
+              >
+                <FiShoppingCart className="w-5 h-5" />
+                {cart && cart.total_items > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {cart.total_items}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                aria-label="Menu"
+              >
+                <FiMenu className="w-5 h-5" />
+              </button>
+            </div>
           </div>
+
+          {/* Mobile Menu Dropdown */}
+          {showMobileMenu && (
+            <div className="md:hidden mt-3 pt-3 border-t border-gray-200 space-y-2">
+              <button
+                onClick={() => {
+                  setShowAssistant((v) => !v);
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <FiZap className="w-5 h-5" />
+                <span className="font-medium">AI Shopping Assistant</span>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* AI Shopping Assistant */}
         {showAssistant && (
         <section className="mb-10 relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-600 to-white shadow-xl">
@@ -491,83 +537,93 @@ export default function ShopPage() {
         )}
 
         {/* Search and Filter Controls */}
-        <div className="mb-8 space-y-4">
-          {/* Search Bar */}
+        <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
+          {/* Search Bar and Filter Toggle */}
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Search products by name or description..."
+              placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="hidden sm:block px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Clear
               </button>
             )}
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="md:hidden p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              aria-label="Toggle Filters"
+            >
+              <FiFilter className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Availability and Category Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Availability Toggle */}
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showAvailableOnly}
-                onChange={(e) => setShowAvailableOnly(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">In Stock Only</span>
-            </label>
+          {/* Filters - Always visible on desktop, toggleable on mobile */}
+          <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block space-y-3 sm:space-y-4`}>
+            {/* Availability and Category Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              {/* Availability Toggle */}
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAvailableOnly}
+                  onChange={(e) => setShowAvailableOnly(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">In Stock Only</span>
+              </label>
 
-            {/* Active Filter Indicators */}
-            {(searchQuery || showAvailableOnly) && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Filters active:</span>
-                {searchQuery && (
-                  <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
-                    Search: "{searchQuery}"
-                  </span>
-                )}
-                {showAvailableOnly && (
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                    In Stock
-                  </span>
-                )}
+              {/* Active Filter Indicators */}
+              {(searchQuery || showAvailableOnly) && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-gray-600">Filters:</span>
+                  {searchQuery && (
+                    <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
+                      "{searchQuery.length > 20 ? searchQuery.substring(0, 20) + '...' : searchQuery}"
+                    </span>
+                  )}
+                  {showAvailableOnly && (
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                      In Stock
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Category Filter */}
+            <div className="pt-2">
+              <p className="text-sm font-medium text-gray-700 mb-2">Categories:</p>
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                      selectedCategory === category
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {category === 'all' ? '✓ All' : category}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
-
-          {/* Category Filter */}
-          <div className="pt-2">
-            <p className="text-sm font-medium text-gray-700 mb-2">Filter by Category:</p>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    selectedCategory === category
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                  }`}
-                >
-                  {category === 'all' ? '✓ All Products' : category}
-                </button>
-              ))}
             </div>
           </div>
         </div>
 
         {/* Results Counter */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold text-gray-900">{filteredProducts.length}</span> of{' '}
-            <span className="font-semibold text-gray-900">{products.length}</span> products
+        <div className="mb-4 sm:mb-6 flex items-center justify-between">
+          <p className="text-xs sm:text-sm text-gray-600">
+            <span className="font-semibold text-gray-900">{filteredProducts.length}</span>
+            <span className="hidden sm:inline"> of {products.length}</span> products
           </p>
         </div>
 
@@ -603,15 +659,15 @@ export default function ShopPage() {
               }, {});
               
               return Object.entries(groupedByCategory).map(([categoryName, categoryProducts]) => (
-                <div key={categoryName} className="mb-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">{categoryName}</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div key={categoryName} className="mb-8 sm:mb-12">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">{categoryName}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {categoryProducts.map((product) => (
                       <div
                         key={product.id}
                         className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
                       >
-                        <div className="h-48 bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
+                        <div className="h-40 sm:h-48 bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
                           {product.images && product.images.length > 0 ? (
                             <img
                               src={product.images[0].image}
@@ -619,7 +675,7 @@ export default function ShopPage() {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <FiPackage className="w-16 h-16 text-indigo-400" />
+                            <FiPackage className="w-12 sm:w-16 h-12 sm:h-16 text-indigo-400" />
                           )}
                         </div>
                         <div className="p-4">
@@ -660,43 +716,44 @@ export default function ShopPage() {
       {showCart && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => { setShowCart(false); setCheckoutStep(1); }}></div>
-          <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl">
+          <div className="absolute right-0 top-0 bottom-0 w-full sm:max-w-md bg-white shadow-xl">
             <div className="flex flex-col h-full">
               {/* Header with Steps */}
-              <div className="p-6 border-b">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    {checkoutStep === 1 && 'Shopping Cart'}
-                    {checkoutStep === 2 && 'Delivery Details'}
-                    {checkoutStep === 3 && 'Order Confirmation'}
+              <div className="p-4 sm:p-6 border-b">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    {checkoutStep === 1 && 'Cart'}
+                    {checkoutStep === 2 && 'Details'}
+                    {checkoutStep === 3 && 'Confirm'}
                   </h2>
                   <button
                     onClick={() => { setShowCart(false); setCheckoutStep(1); }}
                     className="text-gray-400 hover:text-gray-600"
                   >
-                    <FiX className="w-6 h-6" />
+                    <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                 </div>
+                {/* Step Indicators */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>1</div>
-                    <span className="ml-2 text-sm font-medium text-gray-700">Cart</span>
+                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-base ${checkoutStep >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>1</div>
+                    <span className="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Cart</span>
                   </div>
-                  <div className={`flex-1 h-1 mx-2 ${checkoutStep >= 2 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+                  <div className={`flex-1 h-1 mx-1 sm:mx-2 ${checkoutStep >= 2 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
                   <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>2</div>
-                    <span className="ml-2 text-sm font-medium text-gray-700">Details</span>
+                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-base ${checkoutStep >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>2</div>
+                    <span className="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Details</span>
                   </div>
-                  <div className={`flex-1 h-1 mx-2 ${checkoutStep >= 3 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+                  <div className={`flex-1 h-1 mx-1 sm:mx-2 ${checkoutStep >= 3 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
                   <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>3</div>
-                    <span className="ml-2 text-sm font-medium text-gray-700">Confirm</span>
+                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-base ${checkoutStep >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>3</div>
+                    <span className="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Confirm</span>
                   </div>
                 </div>
               </div>
 
               {/* Step Content */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                 {checkoutStep === 1 && (
                   <>
                     {!cart || cart.items.length === 0 ? (
@@ -707,9 +764,9 @@ export default function ShopPage() {
                     ) : (
                       <div className="space-y-4">
                         {cart.items.map((item) => (
-                          <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                            <div className="w-16 h-16 bg-linear-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center shrink-0">
-                              <FiPackage className="w-8 h-8 text-indigo-400" />
+                          <div key={item.id} className="flex items-start space-x-3 sm:space-x-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-linear-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center shrink-0">
+                              <FiPackage className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-400" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <h3 className="font-medium text-gray-900 mb-1">{item.product.name}</h3>

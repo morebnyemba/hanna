@@ -2,13 +2,15 @@
 Signal handlers for installation_systems app.
 
 Automatically creates InstallationSystemRecord when InstallationRequest is saved.
+Also auto-creates checklist entries when technicians are assigned to installations.
 """
 
 import logging
-from django.db.models.signals import post_save
+from django.db import models
+from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
 from customer_data.models import InstallationRequest
-from .models import InstallationSystemRecord
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
@@ -121,3 +123,93 @@ def update_installation_system_record_status(sender, instance, created, **kwargs
                 f"Failed to update InstallationSystemRecord status for InstallationRequest {instance.id}: {e}",
                 exc_info=True
             )
+
+
+def create_checklists_for_installation(isr):
+    """
+    Helper function to create checklist entries for an InstallationSystemRecord.
+    Creates checklists based on applicable templates for the installation type.
+    """
+    try:
+        # Find applicable checklist templates
+        templates = CommissioningChecklistTemplate.objects.filter(
+            is_active=True
+        ).filter(
+            # Match templates for this installation type OR templates with no specific type
+            models.Q(installation_type=isr.installation_type) | 
+            models.Q(installation_type__isnull=True)
+        )
+        
+        if not templates.exists():
+            logger.warning(
+                f"No active checklist templates found for installation type: {isr.installation_type}"
+            )
+            return []
+        
+        created_entries = []
+        for template in templates:
+            # Check if checklist entry already exists for this template
+            existing = InstallationChecklistEntry.objects.filter(
+                installation_record=isr,
+                template=template
+            ).exists()
+            
+            if not existing:
+                # Get technician from the ISR if available
+                technician = isr.technicians.first() if isr.technicians.exists() else None
+                
+                entry = InstallationChecklistEntry.objects.create(
+                    installation_record=isr,
+                    template=template,
+                    technician=technician,
+                    completed_items={},
+                    completion_status='not_started',
+                    completion_percentage=0,
+                )
+                created_entries.append(entry)
+                logger.info(
+                    f"Created checklist entry {entry.id} for ISR {isr.id} "
+                    f"using template '{template.name}' (type: {template.checklist_type})"
+                )
+        
+        return created_entries
+        
+    except Exception as e:
+        logger.error(
+            f"Failed to create checklists for ISR {isr.id}: {e}",
+            exc_info=True
+        )
+        return []
+
+
+@receiver(post_save, sender=InstallationSystemRecord)
+def auto_create_checklists_on_isr_create(sender, instance, created, **kwargs):
+    """
+    Signal handler to auto-create checklist entries when InstallationSystemRecord is created.
+    """
+    if created:
+        create_checklists_for_installation(instance)
+
+
+@receiver(m2m_changed, sender=InstallationSystemRecord.technicians.through)
+def auto_create_checklists_on_technician_assigned(sender, instance, action, **kwargs):
+    """
+    Signal handler to create checklists when technicians are assigned to an installation.
+    This ensures checklists are created even if they weren't created during initial ISR creation.
+    """
+    if action in ['post_add']:
+        # Check if checklists already exist
+        existing_checklists = InstallationChecklistEntry.objects.filter(
+            installation_record=instance
+        ).count()
+        
+        if existing_checklists == 0:
+            create_checklists_for_installation(instance)
+        else:
+            # Update technician assignment on existing checklists if not set
+            technician = instance.technicians.first() if instance.technicians.exists() else None
+            if technician:
+                InstallationChecklistEntry.objects.filter(
+                    installation_record=instance,
+                    technician__isnull=True
+                ).update(technician=technician)
