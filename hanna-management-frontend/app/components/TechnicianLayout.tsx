@@ -82,10 +82,11 @@ export default function TechnicianLayout({ children }: { children: ReactNode }) 
         <nav className="space-y-2">
           <SidebarLink href="/technician/dashboard" icon={FiGrid} isCollapsed={isSidebarCollapsed}>Dashboard</SidebarLink>
           <SidebarLink href="/technician/analytics" icon={FiBarChart2} isCollapsed={isSidebarCollapsed}>Analytics</SidebarLink>
-          <SidebarLink href="/technician/job-cards" icon={FiTool} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
+          <SidebarLink href="/technician/installations" icon={FiTool} isCollapsed={isSidebarCollapsed}>Installations</SidebarLink>
           <SidebarLink href="/technician/checklists" icon={FiCheckSquare} isCollapsed={isSidebarCollapsed}>Checklists</SidebarLink>
+          <SidebarLink href="/technician/job-cards" icon={FiArchive} isCollapsed={isSidebarCollapsed}>Job Cards</SidebarLink>
           <SidebarLink href="/technician/photos" icon={FiCamera} isCollapsed={isSidebarCollapsed}>Photos</SidebarLink>
-          <SidebarLink href="/technician/check-in-out" icon={FiArchive} isCollapsed={isSidebarCollapsed}>Check-In/Out</SidebarLink>
+          <SidebarLink href="/technician/check-in-out" icon={FiList} isCollapsed={isSidebarCollapsed}>Check-In/Out</SidebarLink>
           <SidebarLink href="/technician/installation-history" icon={FiList} isCollapsed={isSidebarCollapsed}>Installation History</SidebarLink>
         </nav>
         <div className="absolute bottom-0 w-full left-0 px-2 pb-4">
