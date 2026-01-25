@@ -362,7 +362,6 @@ export default function InstallationRequestsPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleStartInstallation(req.id)}
-                            disabled={startingInstallation === req.id}
                             className="inline-flex items-center gap-1"
                           >
                             <CheckCircle2 className="w-4 h-4" />

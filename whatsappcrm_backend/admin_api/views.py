@@ -487,7 +487,7 @@ class AdminInstallationRequestViewSet(viewsets.ModelViewSet):
                 installation_record=ssr,
                 template=template,
                 completion_status='not_started',
-                items_status={},  # Initialize empty item status
+                completed_items={},  # Initialize empty completed items
                 completion_percentage=0.0
             )
             checklist_entries.append(entry)

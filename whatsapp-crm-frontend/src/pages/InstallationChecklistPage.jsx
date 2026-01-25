@@ -345,7 +345,7 @@ export default function InstallationChecklistPage() {
                     {/* Items list */}
                     <div className="space-y-2">
                       {(checklist.template?.items || []).map((item, index) => {
-                        const isCompleted = checklist.items_status?.[item.id]?.completed || false;
+                        const isCompleted = checklist.completed_items?.[item.id]?.completed || false;
                         const isUpdating = updatingItem === `${checklist.id}-${item.id}`;
                         
                         return (
