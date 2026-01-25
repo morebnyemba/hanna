@@ -10,6 +10,7 @@ from django.db import models
 from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
 from customer_data.models import InstallationRequest
+from warranty.models import Technician
 from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
 from decimal import Decimal
 
@@ -237,7 +238,6 @@ def sync_technicians_to_isr_and_create_checklists(sender, instance, action, pk_s
             
             # Sync technicians to ISR
             for tech_id in pk_set:
-                from warranty.models import Technician
                 try:
                     technician = Technician.objects.get(pk=tech_id)
                     if not isr.technicians.filter(pk=tech_id).exists():

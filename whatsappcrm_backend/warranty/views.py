@@ -594,34 +594,32 @@ class ClientWarrantyListView(generics.ListAPIView):
         return Warranty.objects.none()
 
 
-class ClientInstallationListView(generics.ListAPIView):
+class ClientInstallationListView(APIView):
     """
     API endpoint for clients to view their installations.
     Returns installations associated with the logged-in client's customer profile.
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        from installation_systems.models import InstallationSystemRecord
-        user = self.request.user
-        if hasattr(user, 'customer_profile'):
-            return InstallationSystemRecord.objects.filter(
-                customer=user.customer_profile
-            ).select_related(
-                'customer',
-                'customer__contact',
-                'order',
-                'installation_request',
-            ).prefetch_related(
-                'technicians',
-                'installed_components',
-            ).order_by('-created_at')
-        return InstallationSystemRecord.objects.none()
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        if not hasattr(user, 'customer_profile'):
+            return Response([])
+        
+        installations = InstallationSystemRecord.objects.filter(
+            customer=user.customer_profile
+        ).select_related(
+            'customer',
+            'customer__contact',
+            'order',
+            'installation_request',
+        ).prefetch_related(
+            'technicians',
+            'installed_components',
+        ).order_by('-created_at')
+        
         data = []
-        for installation in queryset:
+        for installation in installations:
             data.append({
                 'id': str(installation.id),
                 'installation_type': installation.installation_type,
@@ -636,32 +634,30 @@ class ClientInstallationListView(generics.ListAPIView):
         return Response(data)
 
 
-class ClientServiceRequestListView(generics.ListCreateAPIView):
+class ClientServiceRequestListView(APIView):
     """
     API endpoint for clients to view and create service requests.
     Clients can only see their own service requests.
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        from customer_data.models import JobCard
-        user = self.request.user
-        if hasattr(user, 'customer_profile'):
-            customer = user.customer_profile
-            # Get job cards related to installations belonging to this customer
-            return JobCard.objects.filter(
-                serialized_item__warranty__customer=customer
-            ).select_related(
-                'serialized_item',
-                'serialized_item__product',
-                'technician',
-            ).order_by('-creation_date')
-        return JobCard.objects.none()
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        if not hasattr(user, 'customer_profile'):
+            return Response([])
+        
+        customer = user.customer_profile
+        # Get job cards related to installations belonging to this customer
+        job_cards = JobCard.objects.filter(
+            serialized_item__warranty__customer=customer
+        ).select_related(
+            'serialized_item',
+            'serialized_item__product',
+            'technician',
+        ).order_by('-creation_date')
+        
         data = []
-        for job_card in queryset:
+        for job_card in job_cards:
             data.append({
                 'id': str(job_card.id),
                 'job_card_number': job_card.job_card_number,
@@ -675,7 +671,7 @@ class ClientServiceRequestListView(generics.ListCreateAPIView):
             })
         return Response(data)
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         # For now, return an error - this would need proper implementation
         return Response(
             {'error': 'Service request creation is not available through this endpoint yet'},
