@@ -301,6 +301,18 @@ class InstallationSystemRecord(models.Model):
         """Get shortened UUID for display (ISR-xxxxxxxx)"""
         return f"ISR-{str(self.id)[:8]}"
     
+    @property
+    def customer_name(self):
+        """Get the customer's full name or WhatsApp ID as fallback."""
+        if self.customer:
+            full_name = self.customer.get_full_name()
+            if full_name:
+                return full_name
+            # Try to get WhatsApp ID as fallback
+            if self.customer.contact and self.customer.contact.whatsapp_id:
+                return str(self.customer.contact.whatsapp_id)
+        return "N/A"
+    
     def __str__(self):
         """
         Returns string representation: "ISR-{id} - {customer_name} - {installation_type} - {system_size}{unit}"
@@ -309,8 +321,6 @@ class InstallationSystemRecord(models.Model):
         - "ISR-456 - Jane Smith - starlink - 100Mbps"
         - "ISR-789 - Bob Jones - custom_furniture - 3units"
         """
-        customer_name = self.customer.get_full_name() or str(self.customer.contact.whatsapp_id)
-        
         # Format system size with unit
         if self.system_size:
             size_str = f"{self.system_size}{self.capacity_unit}"
@@ -320,7 +330,7 @@ class InstallationSystemRecord(models.Model):
         # Use first 8 characters of UUID for cleaner display
         short_id = str(self.id)[:8]
         
-        return f"ISR-{short_id} - {customer_name} - {self.installation_type} - {size_str}"
+        return f"ISR-{short_id} - {self.customer_name} - {self.installation_type} - {size_str}"
     
     class Meta:
         verbose_name = _("Installation System Record")
