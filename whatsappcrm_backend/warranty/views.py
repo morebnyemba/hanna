@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
+import uuid
 
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard, CustomerProfile
@@ -584,12 +585,11 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
         # Filter by installation ID if provided (validate UUID format)
         installation_id = self.request.query_params.get('installation')
         if installation_id:
-            import uuid as uuid_module
             try:
                 # Validate that it's a proper UUID
-                uuid_module.UUID(installation_id)
+                uuid.UUID(installation_id)
                 queryset = queryset.filter(installation_record_id=installation_id)
-            except (ValueError, AttributeError):
+            except ValueError:
                 # Invalid UUID format - return empty queryset
                 return queryset.none()
         
