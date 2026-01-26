@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiCheckSquare, FiSquare, FiCamera, FiAlertCircle, FiUpload, FiEdit2, FiSave, FiX } from 'react-icons/fi';
+import { useSearchParams } from 'next/navigation';
+import { FiCheckSquare, FiSquare, FiCamera, FiAlertCircle, FiUpload, FiEdit2, FiSave, FiX, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 
 interface ChecklistItem {
@@ -36,11 +37,18 @@ export default function TechnicianChecklistsPage() {
   const [noteText, setNoteText] = useState<string>('');
   const [savingNote, setSavingNote] = useState(false);
   const { accessToken } = useAuthStore();
+  const searchParams = useSearchParams();
+  const installationId = searchParams.get('installation');
 
   const fetchChecklists = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/technician/checklists/`, {
+      // Build URL with installation filter if provided
+      let url = `${apiUrl}/crm-api/technician/checklists/`;
+      if (installationId) {
+        url += `?installation=${installationId}`;
+      }
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -52,9 +60,10 @@ export default function TechnicianChecklistsPage() {
       }
 
       const result = await response.json();
-      setChecklists(result.results || result);
-      if (result.results && result.results.length > 0 && !selectedChecklist) {
-        setSelectedChecklist(result.results[0]);
+      const checklistData = result.results || result;
+      setChecklists(checklistData);
+      if (checklistData && checklistData.length > 0 && !selectedChecklist) {
+        setSelectedChecklist(checklistData[0]);
       }
     } catch (err: any) {
       setError(err.message);
@@ -67,7 +76,7 @@ export default function TechnicianChecklistsPage() {
     if (accessToken) {
       fetchChecklists();
     }
-  }, [accessToken]);
+  }, [accessToken, installationId]);
 
   const handleToggleItem = async (itemId: string, currentlyCompleted: boolean) => {
     if (!selectedChecklist) return;
@@ -204,6 +213,15 @@ export default function TechnicianChecklistsPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
+        {installationId && (
+          <a
+            href="/technician/installations"
+            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 mb-3"
+          >
+            <FiArrowLeft className="mr-1 h-4 w-4" />
+            Back to Installations
+          </a>
+        )}
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
           <FiCheckSquare className="mr-3 h-8 w-8" />
           Installation Checklists
@@ -216,8 +234,24 @@ export default function TechnicianChecklistsPage() {
       {checklists.length === 0 ? (
         <div className="bg-white p-8 rounded-lg shadow text-center">
           <FiCheckSquare className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">No checklists assigned</h3>
-          <p className="mt-1 text-sm text-gray-500">You don't have any active installation checklists.</p>
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
+            {installationId ? 'No checklists for this installation' : 'No checklists assigned'}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {installationId 
+              ? 'This installation does not have any checklists configured yet. Please contact your administrator.'
+              : "You don't have any active installation checklists."
+            }
+          </p>
+          {installationId && (
+            <a
+              href="/technician/installations"
+              className="inline-flex items-center mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <FiArrowLeft className="mr-2 h-4 w-4" />
+              Return to Installations
+            </a>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

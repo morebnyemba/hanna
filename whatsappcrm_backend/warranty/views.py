@@ -556,6 +556,8 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
         Includes checklists where:
         - The technician is directly assigned to the checklist, OR
         - The technician is assigned to the installation
+        
+        Supports filtering by installation ID via ?installation=<id> query param.
         """
         from installation_systems.models import InstallationChecklistEntry, InstallationSystemRecord
         from django.db.models import Q
@@ -570,7 +572,7 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
             installation_request__technicians=technician
         ).values_list('id', flat=True)
         
-        return InstallationChecklistEntry.objects.filter(
+        queryset = InstallationChecklistEntry.objects.filter(
             Q(technician=technician) | Q(installation_record_id__in=assigned_installations)
         ).select_related(
             'installation_record', 
@@ -578,6 +580,13 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
             'technician', 
             'technician__user'
         ).order_by('-created_at')
+        
+        # Filter by installation ID if provided
+        installation_id = self.request.query_params.get('installation')
+        if installation_id:
+            queryset = queryset.filter(installation_record_id=installation_id)
+        
+        return queryset
     
     def perform_create(self, serializer):
         """Automatically assign the technician on create"""
