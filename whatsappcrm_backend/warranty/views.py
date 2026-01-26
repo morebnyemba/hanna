@@ -581,10 +581,17 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
             'technician__user'
         ).order_by('-created_at')
         
-        # Filter by installation ID if provided
+        # Filter by installation ID if provided (validate UUID format)
         installation_id = self.request.query_params.get('installation')
         if installation_id:
-            queryset = queryset.filter(installation_record_id=installation_id)
+            import uuid as uuid_module
+            try:
+                # Validate that it's a proper UUID
+                uuid_module.UUID(installation_id)
+                queryset = queryset.filter(installation_record_id=installation_id)
+            except (ValueError, AttributeError):
+                # Invalid UUID format - return empty queryset
+                return queryset.none()
         
         return queryset
     

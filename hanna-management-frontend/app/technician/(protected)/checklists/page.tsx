@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { FiCheckSquare, FiSquare, FiCamera, FiAlertCircle, FiUpload, FiEdit2, FiSave, FiX, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 
@@ -214,13 +215,13 @@ export default function TechnicianChecklistsPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
         {installationId && (
-          <a
+          <Link
             href="/technician/installations"
             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 mb-3"
           >
             <FiArrowLeft className="mr-1 h-4 w-4" />
             Back to Installations
-          </a>
+          </Link>
         )}
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
           <FiCheckSquare className="mr-3 h-8 w-8" />
@@ -244,13 +245,13 @@ export default function TechnicianChecklistsPage() {
             }
           </p>
           {installationId && (
-            <a
+            <Link
               href="/technician/installations"
               className="inline-flex items-center mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <FiArrowLeft className="mr-2 h-4 w-4" />
               Return to Installations
-            </a>
+            </Link>
           )}
         </div>
       ) : (
