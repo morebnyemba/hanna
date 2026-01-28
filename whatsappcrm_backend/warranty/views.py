@@ -559,8 +559,10 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
         - The technician is assigned to the installation
         
         Supports filtering by installation ID via ?installation=<id> query param.
+        Auto-creates checklists if none exist for the specified installation.
         """
         from installation_systems.models import InstallationChecklistEntry, InstallationSystemRecord
+        from installation_systems.signals import create_checklists_for_installation
         from django.db.models import Q
         
         if not hasattr(self.request.user, 'technician_profile'):
@@ -568,19 +570,10 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
         
         technician = self.request.user.technician_profile
         
-        # Get installation IDs where this technician is assigned
+        # Get installations where this technician is assigned
         assigned_installations = InstallationSystemRecord.objects.filter(
             installation_request__technicians=technician
-        ).values_list('id', flat=True)
-        
-        queryset = InstallationChecklistEntry.objects.filter(
-            Q(technician=technician) | Q(installation_record_id__in=assigned_installations)
-        ).select_related(
-            'installation_record', 
-            'template', 
-            'technician', 
-            'technician__user'
-        ).order_by('-created_at')
+        )
         
         # Filter by installation ID if provided (validate UUID format)
         installation_id = self.request.query_params.get('installation')
@@ -588,10 +581,37 @@ class TechnicianChecklistViewSet(viewsets.ModelViewSet):
             try:
                 # Validate that it's a proper UUID
                 uuid.UUID(installation_id)
-                queryset = queryset.filter(installation_record_id=installation_id)
+                
+                # Check if this installation exists and technician has access
+                isr = assigned_installations.filter(id=installation_id).first()
+                if isr:
+                    # Check if checklists exist for this installation
+                    existing_checklists = InstallationChecklistEntry.objects.filter(
+                        installation_record=isr
+                    ).exists()
+                    
+                    # Auto-create checklists if none exist
+                    if not existing_checklists:
+                        create_checklists_for_installation(isr)
+                
             except ValueError:
                 # Invalid UUID format - return empty queryset
-                return queryset.none()
+                return InstallationChecklistEntry.objects.none()
+        
+        assigned_installation_ids = assigned_installations.values_list('id', flat=True)
+        
+        queryset = InstallationChecklistEntry.objects.filter(
+            Q(technician=technician) | Q(installation_record_id__in=assigned_installation_ids)
+        ).select_related(
+            'installation_record', 
+            'template', 
+            'technician', 
+            'technician__user'
+        ).order_by('-created_at')
+        
+        # Apply installation filter if provided
+        if installation_id:
+            queryset = queryset.filter(installation_record_id=installation_id)
         
         return queryset
     
