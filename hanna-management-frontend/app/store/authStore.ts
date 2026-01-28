@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import Cookies from 'js-cookie';
+import { resetAuthErrorFlag } from '@/app/lib/apiClient';
 
 interface User {
   username: string;
@@ -44,6 +45,8 @@ export const useAuthStore = create<AuthState>()(
         // The middleware cannot access localStorage, but it can access cookies.
         const cookieState = { state: { accessToken: tokens.access } };
         Cookies.set('auth-storage', JSON.stringify(cookieState), { expires: 7, path: '/' });
+        // Reset auth error flag on successful login
+        resetAuthErrorFlag();
       },
       logout: () => {
         set({
