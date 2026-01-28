@@ -30,6 +30,11 @@ let isRefreshing = false;
 let failedQueue: Array<{ resolve: (value?: any) => void; reject: (reason?: any) => void }> = [];
 let authErrorDispatched = false;
 
+// Function to reset auth error flag (can be called on login)
+export const resetAuthErrorFlag = () => {
+  authErrorDispatched = false;
+};
+
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach(prom => {
     if (error) {
@@ -155,6 +160,7 @@ apiClient.interceptors.response.use(
 
       try {
         const newAccessToken = await refreshToken();
+        apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
         processQueue(null, newAccessToken);
         // Reset auth error flag on successful refresh

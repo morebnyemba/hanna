@@ -15,6 +15,11 @@ let isRefreshing = false;
 let failedQueue = [];
 let authErrorDispatched = false;
 
+// Function to reset auth error flag (can be called on login)
+export const resetAuthErrorFlag = () => {
+  authErrorDispatched = false;
+};
+
 const processQueue = (error, token = null) => {
   failedQueue.forEach(prom => {
     if (error) {
