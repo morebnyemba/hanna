@@ -111,7 +111,7 @@ WARRANTY_CLAIM_WHATSAPP_FLOW = {
                         "label": "Describe the Issue",
                         "required": True,
                         "input-type": "text",
-                        "helper-text": "What's wrong? E.g., 'Inverter not turning on', 'Battery not charging'"
+g8b                        "helper-text": "What's wrong? E.g., 'Inverter not turning on', 'Battery not charging'"
                     },
                     {
                         "type": "Footer",
