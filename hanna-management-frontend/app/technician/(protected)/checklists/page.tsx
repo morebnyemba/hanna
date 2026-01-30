@@ -539,30 +539,30 @@ export default function TechnicianChecklistsPage() {
               <div className="bg-white rounded-lg shadow">
                 <div className="bg-gray-50 px-6 py-4 border-b">
                   <h2 className="text-xl font-bold text-gray-900">
-                    {selectedChecklist.installation_customer_name}
+                    {selectedChecklist.installation_record_short_id}
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    {selectedChecklist.checklist_template_name}
+                    {selectedChecklist.template_details?.name}
                   </p>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getChecklistTypeColor(selectedChecklist.checklist_type)}`}>
-                      {selectedChecklist.checklist_type}
+                    <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getChecklistTypeColor(selectedChecklist.template_details?.checklist_type_display)}`}>
+                      {selectedChecklist.template_details?.checklist_type_display}
                     </span>
-                    {selectedChecklist.is_complete ? (
+                    {selectedChecklist.completion_status === 'completed' ? (
                       <span className="flex items-center text-green-600 font-semibold">
                         <FiCheckSquare className="mr-2" />
                         Complete
                       </span>
                     ) : (
                       <span className="text-gray-600">
-                        {selectedChecklist.completion_percentage}% Complete
+                        {Math.round(selectedChecklist.completion_percentage)}% Complete
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div className="p-6">
-                  {!selectedChecklist.is_complete && (
+                  {selectedChecklist.completion_status !== 'completed' && (
                     <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start">
                       <FiAlertCircle className="h-5 w-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
                       <div>
@@ -577,120 +577,126 @@ export default function TechnicianChecklistsPage() {
                   )}
 
                   <div className="space-y-3">
-                    {selectedChecklist.items.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className={`p-4 border rounded-lg ${
-                          item.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-start">
-                          <button
-                            onClick={() => handleToggleItem(item.id, item.completed)}
-                            className="mt-1 flex-shrink-0"
-                          >
-                            {item.completed ? (
-                              <FiCheckSquare className="h-6 w-6 text-green-600" />
-                            ) : (
-                              <FiSquare className="h-6 w-6 text-gray-400" />
-                            )}
-                          </button>
-                          <div className="ml-3 flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className={`font-medium ${item.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>
-                                {index + 1}. {item.text}
-                              </p>
-                              {item.required_photo && (
-                                <div className="flex items-center ml-2">
-                                  {item.photo_uploaded ? (
-                                    <span className="flex items-center text-green-600 text-sm">
-                                      <FiCamera className="mr-1" />
-                                      <span className="hidden sm:inline">Photo uploaded</span>
-                                    </span>
-                                  ) : (
-                                    <label className="cursor-pointer flex items-center text-blue-600 hover:text-blue-800 text-sm">
-                                      {uploadingPhoto === item.id ? (
-                                        <span className="flex items-center">
-                                          <FiUpload className="mr-1 animate-pulse" />
-                                          Uploading...
-                                        </span>
-                                      ) : (
-                                        <>
-                                          <FiCamera className="mr-1" />
-                                          <span className="hidden sm:inline">Upload photo</span>
-                                          <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                              const file = e.target.files?.[0];
-                                              if (file) {
-                                                handlePhotoUpload(item.id, file);
-                                              }
-                                            }}
-                                          />
-                                        </>
-                                      )}
-                                    </label>
-                                  )}
-                                </div>
+                    {selectedChecklist.template_details?.items?.map((item, index) => {
+                      const itemStatus = getItemStatus(item);
+                      
+                      return (
+                        <div
+                          key={item.id}
+                          className={`p-4 border rounded-lg ${
+                            itemStatus.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-start">
+                            <button
+                              onClick={() => handleToggleItem(item, itemStatus.completed)}
+                              className="mt-1 flex-shrink-0"
+                            >
+                              {itemStatus.completed ? (
+                                <FiCheckSquare className="h-6 w-6 text-green-600" />
+                              ) : (
+                                <FiSquare className="h-6 w-6 text-gray-400" />
                               )}
-                            </div>
-                            {item.completed_at && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                Completed: {new Date(item.completed_at).toLocaleString()}
-                              </p>
-                            )}
-                            
-                            {/* Notes Section */}
-                            <div className="mt-3">
-                              {editingNote === item.id ? (
-                                <div className="space-y-2">
-                                  <textarea
-                                    value={noteText}
-                                    onChange={(e) => setNoteText(e.target.value)}
-                                    placeholder="Add notes for this item..."
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    rows={2}
-                                  />
-                                  <div className="flex gap-2">
+                            </button>
+                            <div className="ml-3 flex-1">
+                              <div className="flex items-center justify-between">
+                                <p className={`font-medium ${itemStatus.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>
+                                  {index + 1}. {item.title}
+                                </p>
+                                {item.requires_photo && (
+                                  <div className="flex items-center ml-2">
+                                    {itemStatus.photoCount > 0 ? (
+                                      <span className="flex items-center text-green-600 text-sm">
+                                        <FiCamera className="mr-1" />
+                                        <span className="hidden sm:inline">{itemStatus.photoCount} photo{itemStatus.photoCount > 1 ? 's' : ''}</span>
+                                      </span>
+                                    ) : (
+                                      <label className="cursor-pointer flex items-center text-blue-600 hover:text-blue-800 text-sm">
+                                        {uploadingPhoto === item.id ? (
+                                          <span className="flex items-center">
+                                            <FiUpload className="mr-1 animate-pulse" />
+                                            Uploading...
+                                          </span>
+                                        ) : (
+                                          <>
+                                            <FiCamera className="mr-1" />
+                                            <span className="hidden sm:inline">Upload photo</span>
+                                            <input
+                                              type="file"
+                                              accept="image/*"
+                                              capture="environment"
+                                              className="hidden"
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                  handlePhotoUpload(item, file);
+                                                }
+                                                e.target.value = '';
+                                              }}
+                                            />
+                                          </>
+                                        )}
+                                      </label>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {itemStatus.completedAt && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Completed: {new Date(itemStatus.completedAt).toLocaleString()}
+                                </p>
+                              )}
+                              
+                              {/* Notes Section */}
+                              <div className="mt-3">
+                                {editingNote === item.id ? (
+                                  <div className="space-y-2">
+                                    <textarea
+                                      value={noteText}
+                                      onChange={(e) => setNoteText(e.target.value)}
+                                      placeholder="Add notes for this item..."
+                                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      rows={2}
+                                    />
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleSaveNote(item.id)}
+                                        disabled={savingNote}
+                                        className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                                      >
+                                        <FiSave className="mr-1" />
+                                        {savingNote ? 'Saving...' : 'Save'}
+                                      </button>
+                                      <button
+                                        onClick={() => { setEditingNote(null); setNoteText(''); }}
+                                        className="inline-flex items-center px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50"
+                                      >
+                                        <FiX className="mr-1" /> Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start justify-between">
+                                    {itemStatus.notes ? (
+                                      <p className="text-sm text-gray-600 italic flex-1">
+                                        Note: {itemStatus.notes}
+                                      </p>
+                                    ) : null}
                                     <button
-                                      onClick={() => handleSaveNote(item.id)}
-                                      disabled={savingNote}
-                                      className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                                      onClick={() => startEditingNote(item.id, itemStatus.notes)}
+                                      className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
                                     >
-                                      <FiSave className="mr-1" />
-                                      {savingNote ? 'Saving...' : 'Save'}
-                                    </button>
-                                    <button
-                                      onClick={() => { setEditingNote(null); setNoteText(''); }}
-                                      className="inline-flex items-center px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50"
-                                    >
-                                      <FiX className="mr-1" /> Cancel
+                                      <FiEdit2 className="mr-1" />
+                                      {itemStatus.notes ? 'Edit' : 'Add note'}
                                     </button>
                                   </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-start justify-between">
-                                  {item.notes ? (
-                                    <p className="text-sm text-gray-600 italic flex-1">
-                                      Note: {item.notes}
-                                    </p>
-                                  ) : null}
-                                  <button
-                                    onClick={() => startEditingNote(item.id, item.notes || '')}
-                                    className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
-                                  >
-                                    <FiEdit2 className="mr-1" />
-                                    {item.notes ? 'Edit' : 'Add note'}
-                                  </button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
