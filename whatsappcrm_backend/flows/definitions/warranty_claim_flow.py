@@ -130,20 +130,6 @@ WARRANTY_CLAIM_FLOW = {
             ]
         },
         {
-            "name": "welcome_warranty_claim",
-            "type": "send_message",
-            "config": {
-                "message_type": "text",
-                "text": {
-                    "body": "{% if customer_profile.first_name %}Hi {{ customer_profile.first_name }}!{% else %}Welcome!{% endif %}\n\n🛠️ I'm here to help you submit a warranty claim for your product.\n\nLet's get started by identifying the product you're having issues with."
-
-                }
-            },
-            "transitions": [
-                {"to_step": "query_customer_warranties", "condition_config": {"type": "always_true"}}
-            ]
-        },
-        {
             "name": "query_customer_warranties",
             "type": "action",
             "config": {
@@ -326,12 +312,7 @@ WARRANTY_CLAIM_FLOW = {
             "config": {
                 "actions_to_run": [{
                     "action_type": "log_message",
-                    "message_template": "Warranty Claim: Serial={{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}, Issue={{ issue_description }}, Date={{ issue_date or issue_when_started }}, Photos={{ has_photos }}, Troubleshooting={{ troubleshooting_attempted or troubleshooting_steps }}",
-                    "extra_context_unused": {
-                        "issue_when_started": "{{ issue_when_started }}",
-                        "troubleshooting_steps": "{{ troubleshooting_steps }}",
-                        "has_photos": "{{ has_photos }}"
-                    }
+                    "message_template": "Warranty Claim: Serial={{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}, Issue={{ issue_description }}, Date={{ issue_date or issue_when_started }}, Photos={{ has_photos }}, Troubleshooting={{ troubleshooting_attempted or troubleshooting_steps }}"
                 }]
             },
             "transitions": [
