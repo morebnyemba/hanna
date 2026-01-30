@@ -114,9 +114,14 @@ export default function TechnicianChecklistsPage() {
 
       const result = await response.json();
       const checklistData = result.results || result;
+      console.log('[Checklists Debug] Fetched data:', checklistData);
+      
       setChecklists(Array.isArray(checklistData) ? checklistData : []);
 
       if (checklistData && checklistData.length > 0) {
+        console.log('[Checklists Debug] First checklist:', checklistData[0]);
+        console.log('[Checklists Debug] Installation record:', checklistData[0]?.installation_record);
+        
         if (selectedChecklist) {
           const updatedSelected = checklistData.find((c: ChecklistEntry) => c.id === selectedChecklist.id);
           if (updatedSelected) {
@@ -137,6 +142,11 @@ export default function TechnicianChecklistsPage() {
   };
 
   const fetchPhotosForChecklist = async (checklist: ChecklistEntry) => {
+    if (!checklist?.installation_record) {
+      console.warn('Cannot fetch photos: installation_record is undefined');
+      return;
+    }
+
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
       const response = await fetch(
@@ -251,7 +261,10 @@ export default function TechnicianChecklistsPage() {
   };
 
   const handlePhotoUpload = async (item: ChecklistTemplateItem, file: File) => {
-    if (!selectedChecklist) return;
+    if (!selectedChecklist?.installation_record) {
+      alert('Cannot upload photo: installation record is missing');
+      return;
+    }
 
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
@@ -331,7 +344,10 @@ export default function TechnicianChecklistsPage() {
   };
 
   const handleRequestCommissioning = async () => {
-    if (!selectedChecklist) return;
+    if (!selectedChecklist?.installation_record) {
+      alert('Cannot commission: installation record is missing');
+      return;
+    }
 
     setRequestingCommissioning(true);
     try {
@@ -513,7 +529,9 @@ export default function TechnicianChecklistsPage() {
                       key={checklist.id}
                       onClick={() => {
                         setSelectedChecklist(checklist);
-                        fetchPhotosForChecklist(checklist);
+                        if (checklist?.installation_record) {
+                          fetchPhotosForChecklist(checklist);
+                        }
                       }}
                       className={`w-full text-left p-4 hover:bg-gray-50 transition-all duration-200 ${
                         selectedChecklist?.id === checklist.id
