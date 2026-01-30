@@ -156,7 +156,7 @@ WARRANTY_CLAIM_FLOW = {
                         "customer_id": "{% if customer_profile and customer_profile.id %}{{ customer_profile.id }}{% else %}0{% endif %}",
                         "status__in": ["active", "expired"]
                     },
-                    "fields_to_return": ["id", "product_serial_number", "product__name", "status", "end_date"],
+                    "fields_to_return": ["id", "serialized_item__serial_number", "serialized_item__product__name", "status", "end_date"],
                     "order_by": ["-created_at"]
                 }]
             },
@@ -179,7 +179,7 @@ WARRANTY_CLAIM_FLOW = {
                             "button": "Choose Product",
                             "sections": [{
                                 "title": "Your Warranties",
-                                "rows": "{{ customer_warranties | to_interactive_rows(row_template={'id': '{{ item.id }}', 'title': '{{ item.product__name }}', 'description': 'S/N: {{ item.product_serial_number }}'}) }}"
+                                "rows": "{{ customer_warranties | to_interactive_rows(row_template={'id': '{{ item.id }}', 'title': '{{ item.serialized_item__product__name }}', 'description': 'S/N: {{ item.serialized_item__serial_number }}'}) }}"
                             }]
                         }
                     }
@@ -313,7 +313,7 @@ WARRANTY_CLAIM_FLOW = {
             "config": {
                 "message_type": "text",
                 "text": {
-                    "body": "✅ Perfect! Here's a summary of your warranty claim:\n\n📦 *Product*: {{ selected_warranty.product__name or 'Custom Product' }}\n🔢 *Serial*: {{ selected_warranty.product_serial_number or manual_serial_number }}\n\n🔴 *Issue*: {{ issue_description }}\n⏰ *When*: {{ issue_when_started }}\n🔧 *Actions Taken*: {{ troubleshooting_steps }}\n📸 *Photos*: {{ 'Provided' if has_photos == 'photos_yes' else 'Not provided' }}\n\n👤 *Your Contact*: {{ customer_profile.first_name or 'Customer' }} ({{ contact.whatsapp_id }})\n\nOur team will review your claim and contact you within 24 hours with an update."
+                    "body": "✅ Perfect! Here's a summary of your warranty claim:\n\n📦 *Product*: {{ selected_warranty.serialized_item__product__name or 'Custom Product' }}\n🔢 *Serial*: {{ selected_warranty.serialized_item__serial_number or manual_serial_number }}\n\n🔴 *Issue*: {{ issue_description }}\n⏰ *When*: {{ issue_when_started }}\n🔧 *Actions Taken*: {{ troubleshooting_steps }}\n📸 *Photos*: {{ 'Provided' if has_photos == 'photos_yes' else 'Not provided' }}\n\n👤 *Your Contact*: {{ customer_profile.first_name or 'Customer' }} ({{ contact.whatsapp_id }})\n\nOur team will review your claim and contact you within 24 hours with an update."
                 }
             },
             "transitions": [
@@ -326,7 +326,7 @@ WARRANTY_CLAIM_FLOW = {
             "config": {
                 "actions_to_run": [{
                     "action_type": "log_message",
-                    "message_template": "Warranty Claim: Serial={{ product_serial_number or selected_warranty.product_serial_number or manual_serial_number }}, Issue={{ issue_description }}, Date={{ issue_date or issue_when_started }}, Photos={{ has_photos }}, Troubleshooting={{ troubleshooting_attempted or troubleshooting_steps }}",
+                    "message_template": "Warranty Claim: Serial={{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}, Issue={{ issue_description }}, Date={{ issue_date or issue_when_started }}, Photos={{ has_photos }}, Troubleshooting={{ troubleshooting_attempted or troubleshooting_steps }}",
                     "extra_context_unused": {
                         "issue_when_started": "{{ issue_when_started }}",
                         "troubleshooting_steps": "{{ troubleshooting_steps }}",
