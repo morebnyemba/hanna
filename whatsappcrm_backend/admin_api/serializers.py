@@ -358,6 +358,7 @@ class LoanApplicationSerializer(serializers.ModelSerializer):
 class InstallationSystemRecordSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.first_name', read_only=True)
     customer_full_name = serializers.SerializerMethodField()
+    customer_details = serializers.SerializerMethodField()
     order_number = serializers.CharField(source='order.order_number', read_only=True, allow_null=True)
     installation_type_display = serializers.CharField(source='get_installation_type_display', read_only=True)
     system_classification_display = serializers.CharField(source='get_system_classification_display', read_only=True)
@@ -374,6 +375,28 @@ class InstallationSystemRecordSerializer(serializers.ModelSerializer):
         if obj.customer:
             return obj.customer.get_full_name() or obj.customer.contact.name or obj.customer.contact.whatsapp_id
         return None
+    
+    def get_customer_details(self, obj):
+        """Get customer profile details - using same pattern as list serializer"""
+        try:
+            return {
+                'id': str(obj.customer.contact_id),
+                'name': obj.customer.get_full_name() or str(obj.customer.contact.whatsapp_id),
+                'email': obj.customer.email,
+                'phone': obj.customer.contact.whatsapp_id,
+                'company': obj.customer.company,
+            }
+        except Exception as e:
+            print(f"ERROR in get_customer_details: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                'id': None,
+                'name': f'ERROR: {str(e)}',
+                'email': None,
+                'phone': None,
+                'company': None,
+            }
     
     def get_short_id(self, obj):
         return f"ISR-{str(obj.id)[:8]}"
