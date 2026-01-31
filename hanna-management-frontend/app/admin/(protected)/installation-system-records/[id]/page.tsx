@@ -244,6 +244,11 @@ export default function InstallationSystemRecordDetailPage() {
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
+  const handleError = (message: string) => {
+    setErrorMessage(message);
+    setTimeout(() => setErrorMessage(null), 5000);
+  };
+
   const getStatusColor = (status?: string) => {
     const statusMap: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
