@@ -515,6 +515,8 @@ class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
         """
         Custom action to update installation status.
         """
+        from django.core.exceptions import ValidationError
+        
         installation = self.get_object()
         new_status = request.data.get('status')
         
@@ -525,7 +527,14 @@ class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
             )
         
         installation.installation_status = new_status
-        installation.save(update_fields=['installation_status', 'updated_at'])
+        
+        try:
+            installation.save(update_fields=['installation_status', 'updated_at'])
+        except ValidationError as e:
+            return Response(
+                {'error': e.messages if hasattr(e, 'messages') else str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         serializer = self.get_serializer(installation)
         return Response({

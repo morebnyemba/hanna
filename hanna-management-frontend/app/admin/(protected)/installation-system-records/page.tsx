@@ -123,8 +123,16 @@ export default function InstallationSystemRecordsPage() {
         body: JSON.stringify({ status: newStatus }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to update status');
+        // Try to get error message from response
+        const errorMessage = 
+          data?.error || 
+          data?.detail || 
+          (Array.isArray(data?.error) ? data.error.join(', ') : null) ||
+          'Failed to update status';
+        throw new Error(errorMessage);
       }
 
       // Update local state
