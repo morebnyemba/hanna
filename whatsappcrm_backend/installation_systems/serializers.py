@@ -373,11 +373,25 @@ class InstallationSystemRecordDetailSerializer(serializers.ModelSerializer):
     def get_customer_details(self, obj):
         """Get customer profile details"""
         customer = obj.customer
+        if not customer:
+            return {
+                'id': None,
+                'name': 'N/A',
+                'email': None,
+                'phone': None,
+                'company': None,
+            }
+        
+        # Get phone from contact if available
+        phone = None
+        if customer.contact:
+            phone = customer.contact.whatsapp_id
+        
         return {
-            'id': customer.contact_id,
-            'name': customer.get_full_name(),
+            'id': str(customer.contact_id) if customer.contact_id else None,
+            'name': customer.get_full_name() or 'Unknown',
             'email': customer.email,
-            'phone': customer.contact.whatsapp_id,
+            'phone': phone,
             'company': customer.company,
         }
     
