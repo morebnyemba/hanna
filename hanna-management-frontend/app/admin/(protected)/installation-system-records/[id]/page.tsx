@@ -861,4 +861,3 @@ export default function InstallationSystemRecordDetailPage() {
         </div>
       )}
     </div>
-    </div>

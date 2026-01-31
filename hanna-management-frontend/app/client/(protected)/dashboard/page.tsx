@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/app/store/authStore';
 import { 
   Activity,
   Zap,
@@ -18,175 +19,64 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-interface Device {
+interface Installation {
   id: string;
-  name: string;
-  type: 'inverter' | 'starlink';
-  status: 'online' | 'offline' | 'warning' | 'critical';
-  last_seen: string;
-  metrics: {
-    battery_level?: number;
-    power_output?: number;
-    power_consumption?: number;
-    temperature?: number;
-    signal_strength?: number;
-    uptime_hours?: number;
-    data_usage_gb?: number;
-  };
-  installed_date: string;
-  serial_number: string;
+  installation_type: string;
+  system_size: number;
+  capacity_unit: string;
+  installation_address: string;
+  installation_status: string;
+  installation_date: string;
 }
 
-// Dummy data for client's devices
-const generateClientDevices = (): Device[] => {
-  return [
-    {
-      id: 'INV-001',
-      name: 'Main Inverter',
-      type: 'inverter',
-      status: 'online',
-      last_seen: new Date(Date.now() - 120000).toISOString(),
-      metrics: {
-        battery_level: 85,
-        power_output: 3500,
-        power_consumption: 2800,
-        temperature: 38,
-        uptime_hours: 720,
-      },
-      installed_date: '2024-01-15',
-      serial_number: 'INV-2024-001-A7X',
-    },
-    {
-      id: 'INV-002',
-      name: 'Backup Inverter',
-      type: 'inverter',
-      status: 'online',
-      last_seen: new Date(Date.now() - 300000).toISOString(),
-      metrics: {
-        battery_level: 92,
-        power_output: 1200,
-        power_consumption: 800,
-        temperature: 35,
-        uptime_hours: 680,
-      },
-      installed_date: '2024-02-10',
-      serial_number: 'INV-2024-002-B5K',
-    },
-    {
-      id: 'STL-001',
-      name: 'Starlink Router',
-      type: 'starlink',
-      status: 'online',
-      last_seen: new Date(Date.now() - 60000).toISOString(),
-      metrics: {
-        signal_strength: 78,
-        temperature: 42,
-        uptime_hours: 1440,
-        data_usage_gb: 245.7,
-      },
-      installed_date: '2023-11-20',
-      serial_number: 'STL-2023-001-C9M',
-    },
-    {
-      id: 'STL-002',
-      name: 'Starlink Backup',
-      type: 'starlink',
-      status: 'warning',
-      last_seen: new Date(Date.now() - 1800000).toISOString(),
-      metrics: {
-        signal_strength: 45,
-        temperature: 55,
-        uptime_hours: 120,
-        data_usage_gb: 89.3,
-      },
-      installed_date: '2024-03-05',
-      serial_number: 'STL-2024-002-D2P',
-    },
-  ];
-};
-
 export default function ClientDashboardPage() {
-  const [devices, setDevices] = useState<Device[]>([]);
+  const [installations, setInstallations] = useState<Installation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const { accessToken } = useAuthStore();
 
-  const loadDevices = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setDevices(generateClientDevices());
-      setLoading(false);
-      setRefreshing(false);
-    }, 800);
+  const fetchInstallations = async (showLoading = true) => {
+    if (showLoading) setRefreshing(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/client/installations/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch installations (${response.status})`);
+      }
+
+      const data = await response.json();
+      setInstallations(data.results || data || []);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load installations');
+      console.error('Installation fetch error:', err);
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
   };
 
   useEffect(() => {
-    loadDevices();
-
-    // Simulate real-time updates every 10 seconds
-    const interval = setInterval(() => {
-      setDevices(prev => prev.map(device => ({
-        ...device,
-        last_seen: new Date().toISOString(),
-        metrics: {
-          ...device.metrics,
-          battery_level: device.metrics.battery_level ? 
-            Math.max(0, Math.min(100, device.metrics.battery_level + (Math.random() - 0.5) * 3)) : undefined,
-          power_output: device.metrics.power_output ? 
-            Math.max(0, device.metrics.power_output + (Math.random() - 0.5) * 100) : undefined,
-          signal_strength: device.metrics.signal_strength ? 
-            Math.max(0, Math.min(100, device.metrics.signal_strength + (Math.random() - 0.5) * 5)) : undefined,
-          temperature: device.metrics.temperature ? 
-            Math.max(20, Math.min(70, device.metrics.temperature + (Math.random() - 0.5) * 2)) : undefined,
-        }
-      })));
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'online': return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case 'offline': return <XCircle className="w-5 h-5 text-gray-400" />;
-      case 'warning': return <AlertCircle className="w-5 h-5 text-yellow-600" />;
-      case 'critical': return <AlertCircle className="w-5 h-5 text-red-600" />;
-      default: return <Activity className="w-5 h-5" />;
+    if (accessToken) {
+      fetchInstallations();
     }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online': return 'bg-green-100 text-green-800 border-green-200';
-      case 'offline': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getDeviceIcon = (type: string) => {
-    switch (type) {
-      case 'inverter': return <Zap className="w-8 h-8 text-blue-600" />;
-      case 'starlink': return <Wifi className="w-8 h-8 text-purple-600" />;
-      default: return <Activity className="w-8 h-8" />;
-    }
-  };
-
-  const inverters = devices.filter(d => d.type === 'inverter');
-  const starlinks = devices.filter(d => d.type === 'starlink');
-
-  const totalPowerOutput = inverters.reduce((sum, inv) => sum + (inv.metrics.power_output || 0), 0);
-  const totalPowerConsumption = inverters.reduce((sum, inv) => sum + (inv.metrics.power_consumption || 0), 0);
-  const avgBatteryLevel = inverters.length > 0 
-    ? inverters.reduce((sum, inv) => sum + (inv.metrics.battery_level || 0), 0) / inverters.length 
-    : 0;
+  }, [accessToken]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your devices...</p>
+          <p className="mt-4 text-gray-600">Loading your installations...</p>
         </div>
       </div>
     );
@@ -199,12 +89,12 @@ export default function ClientDashboardPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <Activity className="w-8 h-8 text-blue-600" />
-            My Devices
+            Dashboard
           </h1>
-          <p className="text-gray-600 mt-1">Monitor your inverters and Starlink routers in real-time</p>
+          <p className="text-gray-600 mt-1">Overview of your installations</p>
         </div>
         <Button 
-          onClick={loadDevices} 
+          onClick={() => fetchInstallations(true)}
           disabled={refreshing}
           variant="outline"
           className="flex items-center gap-2"
@@ -212,6 +102,128 @@ export default function ClientDashboardPage() {
           <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-900 text-sm">Error Loading Data</h3>
+              <p className="text-red-700 text-sm mt-1">{error}</p>
+              <button
+                onClick={() => fetchInstallations(true)}
+                className="mt-2 inline-flex items-center gap-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition"
+              >
+                <RefreshCw className="h-4 w-4" /> Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Installations</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{installations.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {installations.filter(i => i.installation_status === 'active').length} active
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Installation Types</CardTitle>
+            <Zap className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {new Set(installations.map(i => i.installation_type)).size}
+            </div>
+            <p className="text-xs text-muted-foreground">Different system types</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Capacity</CardTitle>
+            <Battery className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {installations.reduce((sum, i) => sum + (i.system_size || 0), 0).toFixed(1)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {installations[0]?.capacity_unit || 'kW'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Installations List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Installations</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {installations.length === 0 ? (
+            <div className="text-center py-12">
+              <Activity className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No installations found</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {installations.map((installation) => (
+                <div key={installation.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">
+                        {installation.installation_type}
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {installation.installation_address}
+                      </p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <span className="text-xs text-gray-500">
+                          System: {installation.system_size} {installation.capacity_unit}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          Installed: {new Date(installation.installation_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge className={
+                      installation.installation_status === 'active' 
+                        ? 'bg-green-100 text-green-800'
+                        : installation.installation_status === 'commissioned'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }>
+                      {installation.installation_status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+          <div>
+            <h3 className="font-semibold text-blue-900 text-sm">Preview Mode - Demo Data</h3>
+            <p className="text-blue-700 text-sm mt-1">
+              This dashboard shows sample device data. Real-time monitoring will be available once your installation includes remote monitoring hardware.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Summary Cards */}

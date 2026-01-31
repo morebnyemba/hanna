@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiTool, FiAlertCircle, FiCheck, FiClock, FiMapPin } from 'react-icons/fi';
+import { FiTool, FiAlertCircle, FiCheck, FiClock, FiMapPin, FiX, FiRefreshCw } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 
 interface Installation {
@@ -30,6 +30,8 @@ export default function ClientServiceRequestsPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const { accessToken } = useAuthStore();
 
   const [formData, setFormData] = useState({
@@ -40,50 +42,90 @@ export default function ClientServiceRequestsPage() {
     preferred_date: '',
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        
-        // Fetch installations
-        const installationsResponse = await fetch(`${apiUrl}/crm-api/client/installations/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
+  const fetchData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      
+      // Fetch installations
+      const installationsResponse = await fetch(`${apiUrl}/crm-api/client/installations/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (installationsResponse.ok) {
-          const installationsData = await installationsResponse.json();
-          setInstallations(installationsData.results || installationsData);
-        }
-
-        // Fetch service requests
-        const requestsResponse = await fetch(`${apiUrl}/crm-api/client/service-requests/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (requestsResponse.ok) {
-          const requestsData = await requestsResponse.json();
-          setServiceRequests(requestsData.results || requestsData);
-        }
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (installationsResponse.ok) {
+        const installationsData = await installationsResponse.json();
+        setInstallations(installationsData.results || installationsData);
       }
-    };
 
+      // Fetch service requests
+      const requestsResponse = await fetch(`${apiUrl}/crm-api/client/service-requests/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (requestsResponse.ok) {
+        const requestsData = await requestsResponse.json();
+        setServiceRequests(requestsData.results || requestsData);
+      }
+      
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load data. Please try again.');
+      console.error('Fetch error:', err);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (accessToken) {
       fetchData();
     }
   }, [accessToken]);
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.installation_id) {
+      errors.installation_id = 'Please select an installation';
+    }
+
+    if (!formData.description || formData.description.trim().length < 10) {
+      errors.description = 'Description must be at least 10 characters';
+    }
+
+    if (formData.preferred_date && new Date(formData.preferred_date) < new Date()) {
+      errors.preferred_date = 'Please select a future date';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -100,10 +142,10 @@ export default function ClientServiceRequestsPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit service request');
+        throw new Error(errorData.message || errorData.detail || 'Failed to submit service request');
       }
 
-      alert('Service request submitted successfully!');
+      setSuccessMessage('Service request submitted successfully! We will contact you soon.');
       setShowForm(false);
       setFormData({
         installation_id: '',
@@ -114,19 +156,13 @@ export default function ClientServiceRequestsPage() {
       });
 
       // Refresh service requests
-      const requestsResponse = await fetch(`${apiUrl}/crm-api/client/service-requests/`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (requestsResponse.ok) {
-        const requestsData = await requestsResponse.json();
-        setServiceRequests(requestsData.results || requestsData);
-      }
+      await fetchData(false);
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Failed to submit service request. Please try again.');
+      console.error('Form submission error:', err);
     } finally {
       setSubmitting(false);
     }
@@ -171,12 +207,10 @@ export default function ClientServiceRequestsPage() {
   if (loading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-64 mb-6"></div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading service requests...</p>
           </div>
         </div>
       </div>
@@ -184,7 +218,8 @@ export default function ClientServiceRequestsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
+      {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
@@ -195,36 +230,83 @@ export default function ClientServiceRequestsPage() {
             Submit and track service requests for your solar installations.
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center transition-colors"
-        >
-          <FiTool className="mr-2" />
-          New Service Request
-        </button>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center transition-colors"
+          >
+            <FiTool className="mr-2" />
+            New Request
+          </button>
+        )}
       </div>
 
+      {/* Messages */}
+      {successMessage && (
+        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-start gap-3">
+          <FiCheck className="h-5 w-5 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Success!</p>
+            <p className="text-sm">{successMessage}</p>
+          </div>
+        </div>
+      )}
+
       {error && (
-        <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex items-center">
-          <FiAlertCircle className="mr-2" />
-          {error}
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <FiAlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Error</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => fetchData(false)}
+            className="text-red-600 hover:text-red-800"
+            title="Retry"
+          >
+            <FiRefreshCw className="h-5 w-5" />
+          </button>
         </div>
       )}
 
       {/* Service Request Form */}
       {showForm && (
-        <div className="mb-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Submit Service Request</h2>
+        <div className="mb-6 bg-white rounded-lg shadow p-6 border border-blue-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Submit Service Request</h2>
+            <button
+              onClick={() => setShowForm(false)}
+              className="text-gray-400 hover:text-gray-600"
+              title="Close form"
+            >
+              <FiX className="h-6 w-6" />
+            </button>
+          </div>
+
+          {installations.length === 0 && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                No installations found. Please complete your installation setup first.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Installation Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Installation *
+                Select Installation <span className="text-red-500">*</span>
               </label>
               <select
-                required
                 value={formData.installation_id}
-                onChange={(e) => setFormData({ ...formData, installation_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => handleInputChange('installation_id', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition ${
+                  formErrors.installation_id 
+                    ? 'border-red-400 focus:ring-red-500' 
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
               >
                 <option value="">Choose an installation...</option>
                 {installations.map((installation) => (
@@ -233,17 +315,20 @@ export default function ClientServiceRequestsPage() {
                   </option>
                 ))}
               </select>
+              {formErrors.installation_id && (
+                <p className="mt-1 text-sm text-red-600">{formErrors.installation_id}</p>
+              )}
             </div>
 
+            {/* Request Type and Priority */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Request Type *
+                  Request Type <span className="text-red-500">*</span>
                 </label>
                 <select
-                  required
                   value={formData.request_type}
-                  onChange={(e) => setFormData({ ...formData, request_type: e.target.value })}
+                  onChange={(e) => handleInputChange('request_type', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="service">Service Request</option>
@@ -256,8 +341,94 @@ export default function ClientServiceRequestsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Priority *
+                  Priority <span className="text-red-500">*</span>
                 </label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => handleInputChange('priority', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="low">Low - Non-urgent</option>
+                  <option value="medium">Medium - Standard</option>
+                  <option value="high">High - Urgent</option>
+                  <option value="urgent">Urgent - Critical</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                placeholder="Please describe the issue or service needed..."
+                rows={4}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition ${
+                  formErrors.description 
+                    ? 'border-red-400 focus:ring-red-500' 
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+              />
+              <div className="flex items-center justify-between mt-1">
+                <p className={`text-sm ${formData.description.length < 10 ? 'text-red-600' : 'text-gray-600'}`}>
+                  {formData.description.length} characters (minimum 10)
+                </p>
+              </div>
+              {formErrors.description && (
+                <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>
+              )}
+            </div>
+
+            {/* Preferred Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Preferred Service Date
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.preferred_date}
+                onChange={(e) => handleInputChange('preferred_date', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition ${
+                  formErrors.preferred_date 
+                    ? 'border-red-400 focus:ring-red-500' 
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+              />
+              {formErrors.preferred_date && (
+                <p className="mt-1 text-sm text-red-600">{formErrors.preferred_date}</p>
+              )}
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex gap-3 pt-4">
+              <button
+                type="submit"
+                disabled={submitting}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
+                  submitting
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {submitting ? 'Submitting...' : 'Submit Request'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setFormErrors({});
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
                 <select
                   required
                   value={formData.priority}
