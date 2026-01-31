@@ -406,13 +406,25 @@ class InstallationSystemRecordDetailSerializer(serializers.ModelSerializer):
     
     def get_customer_details(self, obj):
         """Get customer profile details - using same pattern as list serializer"""
-        return {
-            'id': str(obj.customer.contact_id),
-            'name': obj.customer.get_full_name() or str(obj.customer.contact.whatsapp_id),
-            'email': obj.customer.email,
-            'phone': obj.customer.contact.whatsapp_id,
-            'company': obj.customer.company,
-        }
+        try:
+            return {
+                'id': str(obj.customer.contact_id),
+                'name': obj.customer.get_full_name() or str(obj.customer.contact.whatsapp_id),
+                'email': obj.customer.email,
+                'phone': obj.customer.contact.whatsapp_id,
+                'company': obj.customer.company,
+            }
+        except Exception as e:
+            print(f"ERROR in get_customer_details: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                'id': None,
+                'name': f'ERROR: {str(e)}',
+                'email': None,
+                'phone': None,
+                'company': None,
+            }
     
     def get_order_details(self, obj):
         """Get order details"""
