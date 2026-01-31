@@ -317,15 +317,41 @@ export default function TechnicianChecklistsPage() {
         throw new Error(errorData.error || errorData.detail || 'Failed to upload photo');
       }
 
-      // Refresh both checklist and photos
-      if (selectedChecklist) {
-        await Promise.all([
-          fetchChecklists(),
-          fetchPhotosForChecklist(selectedChecklist)
-        ]);
+      // Refresh checklists first
+      await fetchChecklists();
+      
+      // Then fetch photos for the current checklist
+      if (selectedChecklist?.installation_record) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        const photoResponse = await fetch(
+          `${apiUrl}/crm-api/installation-photos/?installation_record=${selectedChecklist.installation_record}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (photoResponse.ok) {
+          const result = await photoResponse.json();
+          const photoData = result.results || result;
+
+          const photosByItem: Record<string, Photo[]> = {};
+          photoData.forEach((photo: Photo) => {
+            if (photo.checklist_item) {
+              if (!photosByItem[photo.checklist_item]) {
+                photosByItem[photo.checklist_item] = [];
+              }
+              photosByItem[photo.checklist_item].push(photo);
+            }
+          });
+
+          setPhotos(photosByItem);
+          console.log('Photos refreshed after upload:', photosByItem);
+        }
       }
       
-      // Success toast would be better, but alert for now
       alert('✓ Photo uploaded successfully!');
     } catch (err: any) {
       console.error('Error uploading photo:', err);
@@ -355,12 +381,19 @@ export default function TechnicianChecklistsPage() {
         throw new Error(errorData.error || errorData.detail || 'Failed to delete photo');
       }
 
-      // Refresh photos immediately
-      if (selectedChecklist) {
-        await fetchPhotosForChecklist(selectedChecklist);
-      }
+      // Remove photo from state immediately for better UX
+      setPhotos((prev) => {
+        const updated = { ...prev };
+        for (const itemId in updated) {
+          updated[itemId] = updated[itemId].filter((p) => p.id !== photoId);
+          if (updated[itemId].length === 0) {
+            delete updated[itemId];
+          }
+        }
+        return updated;
+      });
       
-      // Optional: Show success feedback
+      alert('✓ Photo deleted successfully');
       console.log('Photo deleted successfully');
     } catch (err: any) {
       console.error('Error deleting photo:', err);
