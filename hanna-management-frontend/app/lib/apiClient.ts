@@ -76,8 +76,21 @@ apiClient.interceptors.response.use(
       // Handle unauthorized errors, e.g., by logging out the user.
       // This prevents you from having to write this logic in every component.
       console.error("Unauthorized request, logging out.");
-      useAuthStore.getState().logout();
-      window.location.href = '/admin/login';
+      const { user, logout } = useAuthStore.getState();
+      logout();
+      
+      // Redirect to appropriate login page based on user role
+      if (user?.role === 'manufacturer') {
+        window.location.href = '/manufacturer/login';
+      } else if (user?.role === 'technician') {
+        window.location.href = '/technician/login';
+      } else if (user?.role === 'client') {
+        window.location.href = '/client/login';
+      } else if (user?.role === 'retailer' || user?.role === 'retailer_branch') {
+        window.location.href = '/retailer/login';
+      } else {
+        window.location.href = '/admin/login';
+      }
     }
     return Promise.reject(error);
   }

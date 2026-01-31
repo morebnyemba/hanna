@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { FiSettings } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
+import { Alert } from '@/app/components/Alert';
+import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
 
 interface ManufacturerProfile {
   name: string;
@@ -13,6 +15,8 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<ManufacturerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -22,7 +26,9 @@ export default function SettingsPage() {
         const response = await apiClient.get<ManufacturerProfile>('/crm-api/manufacturer/profile/');
         setProfile(response.data);
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch profile.');
+        const errorMsg = getErrorMessage(err);
+        setError(errorMsg);
+        console.error('Profile fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -40,11 +46,19 @@ export default function SettingsPage() {
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (profile) {
+      setIsSubmitting(true);
+      setError(null);
+      setSuccessMessage(null);
       try {
         await apiClient.put('/crm-api/manufacturer/profile/', profile);
-        alert('Profile updated successfully!');
+        setSuccessMessage('Profile updated successfully!');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err: any) {
-        setError(err.message || 'Failed to update profile.');
+        const errorMsg = getErrorMessage(err);
+        setError(errorMsg);
+        console.error('Profile update error:', err);
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -58,10 +72,36 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {error && (
+        <Alert 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+          className="mb-6"
+        />
+      )}
+
+      {successMessage && (
+        <Alert 
+          variant="success" 
+          message={successMessage} 
+          onClose={() => setSuccessMessage(null)} 
+          className="mb-6"
+        />
+      )}
+
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
-        {loading && <p className="text-center text-gray-500 py-4">Loading settings...</p>}
-        {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
-        {!loading && !error && profile && (
+        {loading ? (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <p className="ml-4 text-gray-500">Loading settings...</p>
+          </div>
+        ) : !profile ? (
+          <Alert 
+            variant="error" 
+            message="Failed to load profile settings. Please refresh the page." 
+          />
+        ) : (
           <form onSubmit={handleFormSubmit}>
             <div className="mb-4">
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
@@ -71,7 +111,8 @@ export default function SettingsPage() {
                 name="name"
                 value={profile.name}
                 onChange={handleInputChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                disabled={isSubmitting}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
             <div className="mb-4">
@@ -82,14 +123,16 @@ export default function SettingsPage() {
                 name="contact_email"
                 value={profile.contact_email}
                 onChange={handleInputChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                disabled={isSubmitting}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
             <button
               type="submit"
-              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isSubmitting}
+              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Save
+              {isSubmitting ? 'Saving...' : 'Save'}
             </button>
           </form>
         )}
