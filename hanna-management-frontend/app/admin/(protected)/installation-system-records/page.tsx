@@ -72,6 +72,14 @@ export default function InstallationSystemRecordsPage() {
   const { accessToken } = useAuthStore();
   const router = useRouter();
 
+  // Calculate stats from records
+  const stats = {
+    total: records.length,
+    commissioned: records.filter(r => r.installation_status === 'commissioned' || r.installation_status === 'active').length,
+    inProgress: records.filter(r => r.installation_status === 'in_progress').length,
+    pending: records.filter(r => r.installation_status === 'pending').length,
+  };
+
   const fetchRecords = async (statusFilterValue?: string) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
@@ -211,6 +219,26 @@ export default function InstallationSystemRecordsPage() {
           >
             Create New Record
           </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-gray-400">
+          <p className="text-gray-600 text-sm font-medium">Total Installations</p>
+          <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+          <p className="text-green-700 text-sm font-medium">Commissioned</p>
+          <p className="text-3xl font-bold text-green-600 mt-2">{stats.commissioned}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+          <p className="text-blue-700 text-sm font-medium">In Progress</p>
+          <p className="text-3xl font-bold text-blue-600 mt-2">{stats.inProgress}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
+          <p className="text-yellow-700 text-sm font-medium">Pending</p>
+          <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.pending}</p>
         </div>
       </div>
 

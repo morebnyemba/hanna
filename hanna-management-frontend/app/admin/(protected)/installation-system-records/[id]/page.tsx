@@ -283,6 +283,26 @@ export default function InstallationSystemRecordDetailPage() {
         </span>
       </div>
 
+      {/* Quick Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+          <p className="text-gray-600 text-sm font-medium">System Size</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{record.system_size} {record.capacity_unit}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+          <p className="text-gray-600 text-sm font-medium">Installation Date</p>
+          <p className="text-lg font-semibold text-gray-900 mt-1">
+            {record.installation_date ? new Date(record.installation_date).toLocaleDateString() : 'Pending'}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
+          <p className="text-gray-600 text-sm font-medium">Commissioning Date</p>
+          <p className="text-lg font-semibold text-gray-900 mt-1">
+            {record.commissioning_date ? new Date(record.commissioning_date).toLocaleDateString() : 'Pending'}
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customer Information */}
         <div className="bg-white rounded-lg shadow p-6">
