@@ -88,6 +88,23 @@ interface Photo {
   };
 }
 
+interface Toast {
+  id: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  message: string;
+  duration?: number;
+}
+
+interface Modal {
+  isOpen: boolean;
+  type: 'error' | 'warning' | 'success' | 'confirm';
+  title: string;
+  message: string;
+  action?: () => void;
+  actionLabel?: string;
+  cancelLabel?: string;
+}
+
 export default function TechnicianChecklistsPage() {
   const [checklists, setChecklists] = useState<ChecklistEntry[]>([]);
   const [selectedChecklist, setSelectedChecklist] = useState<ChecklistEntry | null>(null);
@@ -100,9 +117,53 @@ export default function TechnicianChecklistsPage() {
   const [savingNote, setSavingNote] = useState(false);
   const [deletingPhoto, setDeletingPhoto] = useState<string | null>(null);
   const [requestingCommissioning, setRequestingCommissioning] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [modal, setModal] = useState<Modal>({
+    isOpen: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
   const { accessToken } = useAuthStore();
   const searchParams = useSearchParams();
   const installationId = searchParams.get('installation');
+
+  // Toast notification handler
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', duration: number = 5000) => {
+    const id = Date.now().toString();
+    const newToast: Toast = { id, type, message, duration };
+    setToasts(prev => [...prev, newToast]);
+    
+    if (duration > 0) {
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, duration);
+    }
+  }, []);
+
+  // Modal handler
+  const showModal = useCallback((title: string, message: string, type: 'error' | 'warning' | 'success' | 'confirm' = 'error', action?: () => void, actionLabel?: string) => {
+    setModal({
+      isOpen: true,
+      type,
+      title,
+      message,
+      action,
+      actionLabel: actionLabel || 'OK',
+      cancelLabel: type === 'confirm' ? 'Cancel' : undefined,
+    });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModal(prev => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const handleModalAction = useCallback(() => {
+    if (modal.action) {
+      modal.action();
+    }
+    closeModal();
+  }, [modal, closeModal]);
 
   const fetchChecklists = useCallback(async () => {
     if (!accessToken) return;
@@ -154,12 +215,13 @@ export default function TechnicianChecklistsPage() {
         }
       }
     } catch (err: any) {
-      console.error('Error fetching checklists:', err);
-      setError(err.message || 'Failed to load checklists. Please check your connection and try again.');
+      const errorMsg = err.message || 'Failed to load checklists. Please check your connection and try again.';
+      setError(errorMsg);
+      showToast(errorMsg, 'error', 0);
     } finally {
       setLoading(false);
     }
-  }, [accessToken, installationId]);
+  }, [accessToken, installationId, showToast]);
 
   const fetchPhotosForChecklist = async (checklist: ChecklistEntry) => {
     if (!checklist?.installation_record) {
@@ -196,7 +258,8 @@ export default function TechnicianChecklistsPage() {
         setPhotos(photosByItem);
       }
     } catch (err) {
-      console.error('Error fetching photos:', err);
+      const errorMsg = typeof err === 'string' ? err : (err as any).message || 'Failed to load photos';
+      showToast(errorMsg, 'error');
     }
   };
 
@@ -231,8 +294,8 @@ export default function TechnicianChecklistsPage() {
 
       await fetchChecklists();
     } catch (err: any) {
-      console.error('Error toggling item:', err);
-      alert(`Error: ${err.message}`);
+      const errorMsg = err.message || 'Failed to update checklist item';
+      showModal('Update Failed', errorMsg, 'error');
     }
   };
 
@@ -265,9 +328,10 @@ export default function TechnicianChecklistsPage() {
       setEditingNote(null);
       setNoteText('');
       await fetchChecklists();
+      showToast('Note saved successfully', 'success');
     } catch (err: any) {
-      console.error('Error saving note:', err);
-      alert(`Error: ${err.message}`);
+      const errorMsg = err.message || 'Failed to save note';
+      showModal('Save Failed', errorMsg, 'error');
     } finally {
       setSavingNote(false);
     }
@@ -280,18 +344,18 @@ export default function TechnicianChecklistsPage() {
 
   const handlePhotoUpload = async (item: ChecklistTemplateItem, file: File) => {
     if (!selectedChecklist?.installation_record) {
-      alert('Cannot upload photo: installation record is missing');
+      showToast('Cannot upload photo: installation record is missing', 'warning');
       return;
     }
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      showToast('Please select an image file', 'warning');
       return;
     }
 
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      alert('File size must be less than 10MB');
+      showToast('File size must be less than 10MB', 'warning');
       return;
     }
 
@@ -356,29 +420,26 @@ export default function TechnicianChecklistsPage() {
         }
       }
       
-      alert('✓ Photo uploaded successfully!');
+      showToast('Photo uploaded successfully!', 'success');
     } catch (err: any) {
-      console.error('Error uploading photo:', err);
-      alert(`Upload failed: ${err.message}`);
+      const errorMsg = err.message || 'Error uploading photo';
+      showModal('Upload Failed', errorMsg, 'error');
     } finally {
       setUploadingPhoto(null);
     }
   };
 
   const handleDeletePhoto = async (photoId: string) => {
-    if (!confirm('Are you sure you want to delete this photo?')) {
-      return;
-    }
-
-    setDeletingPhoto(photoId);
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/installation-photos/${photoId}/`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+    const handleDelete = async () => {
+      setDeletingPhoto(photoId);
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        const response = await fetch(`${apiUrl}/crm-api/installation-photos/${photoId}/`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -397,66 +458,77 @@ export default function TechnicianChecklistsPage() {
         return updated;
       });
       
-      alert('✓ Photo deleted successfully');
-      console.log('Photo deleted successfully');
+      showToast('Photo deleted successfully', 'success');
+      setDeletingPhoto(null);
     } catch (err: any) {
-      console.error('Error deleting photo:', err);
-      alert(`Error: ${err.message}`);
-    } finally {
+      const errorMsg = err.message || 'Failed to delete photo';
+      showModal('Delete Failed', errorMsg, 'error');
       setDeletingPhoto(null);
     }
+    };
+
+    showModal(
+      'Delete Photo',
+      'Are you sure you want to delete this photo? This action cannot be undone.',
+      'confirm',
+      handleDelete,
+      'Delete'
+    );
   };
 
   const handleRequestCommissioning = async () => {
     if (!selectedChecklist?.installation_record) {
-      alert('⚠️ Cannot commission: installation record is missing');
+      showToast('Cannot commission: installation record is missing', 'warning');
       return;
     }
 
-    if (!confirm(
-      'Are you sure you want to mark this installation as commissioned?\n\n' +
-      'This will:\n' +
-      '• Mark the installation as complete\n' +
-      '• Lock the checklist from further edits\n' +
-      '• Notify the customer and admin team\n\n' +
-      'This action cannot be undone.'
-    )) {
-      return;
-    }
+    const handleCommission = async () => {
+      setRequestingCommissioning(true);
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        const commissioningDate = new Date().toISOString().slice(0, 10);
+        const response = await fetch(
+          `${apiUrl}/crm-api/installation-system-records/${selectedChecklist.installation_record}/`,
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              installation_status: 'commissioned',
+              commissioning_date: commissioningDate,
+            }),
+          }
+        );
 
-    setRequestingCommissioning(true);
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const commissioningDate = new Date().toISOString().slice(0, 10);
-      const response = await fetch(
-        `${apiUrl}/crm-api/installation-system-records/${selectedChecklist.installation_record}/`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            installation_status: 'commissioned',
-            commissioning_date: commissioningDate,
-          }),
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || errorData.detail || 'Commissioning request failed');
         }
-      );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.detail || 'Commissioning request failed');
+        showToast('Installation successfully commissioned!', 'success', 4000);
+        await fetchChecklists();
+      } catch (err: any) {
+        const errorMsg = err.message || 'Failed to commission installation';
+        showModal('Commissioning Failed', errorMsg, 'error');
+      } finally {
+        setRequestingCommissioning(false);
       }
+    };
 
-      // Show success and refresh
-      alert('✓ Installation successfully commissioned!');
-      await fetchChecklists();
-    } catch (err: any) {
-      console.error('Error requesting commissioning:', err);
-      alert(`Error: ${err.message}`);
-    } finally {
-      setRequestingCommissioning(false);
-    }
+    showModal(
+      'Confirm Commissioning',
+      'Mark this installation as commissioned?\\n\\n' +
+        'This will:\\n' +
+        '• Mark the installation as complete\\n' +
+        '• Lock the checklist from further edits\\n' +
+        '• Notify the customer and admin team\\n\\n' +
+        'This action cannot be undone.',
+      'confirm',
+      handleCommission,
+      'Commission Installation'
+    );
   };
 
   const getChecklistTypeColor = (type: string) => {
@@ -946,6 +1018,92 @@ export default function TechnicianChecklistsPage() {
           </div>
         )}
       </div>
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-md">
+        {toasts.map((toast) => {
+          const bgColor = {
+            success: 'bg-green-500',
+            error: 'bg-red-500',
+            warning: 'bg-yellow-500',
+            info: 'bg-blue-500',
+          }[toast.type];
+
+          const icon = {
+            success: '✓',
+            error: '✕',
+            warning: '⚠',
+            info: 'ℹ',
+          }[toast.type];
+
+          return (
+            <div
+              key={toast.id}
+              className={`${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-start gap-3 animate-in slide-in-from-right-5 duration-300`}
+            >
+              <span className="text-lg font-bold flex-shrink-0 pt-0.5">{icon}</span>
+              <span className="flex-1 text-sm">{toast.message}</span>
+              <button
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="text-white hover:opacity-80 flex-shrink-0"
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Modal Dialog */}
+      {modal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              {/* Header with icon */}
+              <div className="flex items-start gap-4">
+                <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white ${
+                  modal.type === 'error' ? 'bg-red-500' :
+                  modal.type === 'warning' ? 'bg-yellow-500' :
+                  modal.type === 'confirm' ? 'bg-blue-500' :
+                  'bg-green-500'
+                }`}>
+                  {modal.type === 'error' ? '✕' :
+                   modal.type === 'warning' ? '⚠' :
+                   modal.type === 'confirm' ? '?' :
+                   '✓'}
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold text-gray-900">{modal.title}</h2>
+                  <p className="mt-2 text-sm text-gray-600 whitespace-pre-line">{modal.message}</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 flex gap-3 justify-end">
+                {modal.cancelLabel && (
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    {modal.cancelLabel}
+                  </button>
+                )}
+                <button
+                  onClick={handleModalAction}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                    modal.type === 'error' ? 'bg-red-500 hover:bg-red-600' :
+                    modal.type === 'warning' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                    modal.type === 'confirm' ? 'bg-blue-500 hover:bg-blue-600' :
+                    'bg-green-500 hover:bg-green-600'
+                  }`}
+                >
+                  {modal.actionLabel || 'OK'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
