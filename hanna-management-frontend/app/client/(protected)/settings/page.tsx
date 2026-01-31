@@ -306,17 +306,6 @@ export default function ClientSettingsPage() {
       </div>
     </div>
     </main>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <FiAlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-amber-900 text-sm">Preview Mode - Sample Data</h3>
-              <p className="text-amber-700 text-sm mt-1">
-                This page shows sample profile data. Changes are not currently saved to your account. Full settings management will be available soon.
-              </p>
-            </div>
-          </div>
-        </div>
 
       {/* Profile Information */}
       <Card className="mb-4 md:mb-6">

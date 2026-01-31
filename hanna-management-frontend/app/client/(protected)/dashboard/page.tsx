@@ -217,17 +217,7 @@ export default function ClientDashboardPage() {
       </Card>
     </div>
   );
-          <div>
-            <h3 className="font-semibold text-blue-900 text-sm">Preview Mode - Demo Data</h3>
-            <p className="text-blue-700 text-sm mt-1">
-              This dashboard shows sample device data. Real-time monitoring will be available once your installation includes remote monitoring hardware.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
