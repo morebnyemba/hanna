@@ -295,7 +295,7 @@ export default function ClientSettingsPage() {
         >
           {saving ? (
             <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
+              <FiRefreshCw className="w-4 h-4 animate-spin" />
               Saving...
             </>
           ) : (
