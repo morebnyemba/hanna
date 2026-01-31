@@ -504,7 +504,19 @@ export default function TechnicianChecklistsPage() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || errorData.detail || 'Commissioning request failed');
+          // Extract error message from various possible response formats
+          let errorMsg = 'Commissioning request failed';
+          if (errorData.error) {
+            errorMsg = Array.isArray(errorData.error) ? errorData.error.join(', ') : errorData.error;
+          } else if (errorData.detail) {
+            errorMsg = errorData.detail;
+          } else if (errorData.installation_status) {
+            // Handle field-specific errors
+            errorMsg = Array.isArray(errorData.installation_status) 
+              ? errorData.installation_status.join(', ') 
+              : errorData.installation_status;
+          }
+          throw new Error(errorMsg);
         }
 
         showToast('Installation successfully commissioned!', 'success', 4000);
