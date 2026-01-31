@@ -586,11 +586,19 @@ class ClaimTokenValidationSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         """Return ISR details for the frontend."""
-        isr = instance.installation_system_record
+        # instance is a dict from validated_data with 'token' key
+        # The token value is the actual ClientClaimToken instance
+        claim_token = instance.get('token') if isinstance(instance, dict) else instance
+        
+        if isinstance(claim_token, dict):
+            # If it's still a dict, something went wrong
+            return claim_token
+        
+        isr = claim_token.installation_system_record
         customer = isr.customer
         
         return {
-            'token': instance.token,
+            'token': claim_token.token,
             'isr_id': isr.id,
             'address': isr.installation_address,
             'system_size': str(isr.system_capacity_kw),
