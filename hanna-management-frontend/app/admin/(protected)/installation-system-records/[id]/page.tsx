@@ -244,9 +244,7 @@ export default function InstallationSystemRecordDetailPage() {
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  useEffect(() => {
-    const fetchRecord = async () => {
-      if (!accessToken || !id) return;
+  const getStatusColor = (status?: string) => {
     const statusMap: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       in_progress: 'bg-blue-100 text-blue-800',
