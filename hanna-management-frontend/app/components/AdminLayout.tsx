@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
 import SidebarDropdown from '@/app/admin/(protected)/SidebarDropdown';
 import BarcodeScannerButton from './BarcodeScannerButton';
+import { useHydration } from '@/app/hooks/useHydration';
 
 const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React.ElementType; children: ReactNode }) => {
   const pathname = usePathname();
@@ -28,7 +29,7 @@ const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useHydration();
   const { user, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,11 +38,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     logout();
     router.push('/admin/login');
   };
-
-  // Only run client-side - wait for hydration then check auth
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   useEffect(() => {
     if (isHydrated && !user) {

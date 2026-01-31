@@ -69,12 +69,6 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage', // name of the item in storage (must be unique)
       storage: createJSONStorage(() => localStorage), // use localStorage
-      onRehydrateStorage: () => {
-        // Mark store as hydrated immediately so UI doesn't wait forever
-        return (state, error) => {
-          useAuthStore.setState({ hasHydrated: true });
-        };
-      },
     }
   )
 );

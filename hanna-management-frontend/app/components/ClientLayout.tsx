@@ -5,6 +5,7 @@ import { FiHome, FiBarChart2, FiBox, FiWifi, FiSettings, FiLogOut, FiMenu, FiX, 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
+import { useHydration } from '@/app/hooks/useHydration';
 
 const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React.ElementType; children: ReactNode }) => {
   const pathname = usePathname();
@@ -26,7 +27,7 @@ const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useHydration();
   const { user, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,10 +38,6 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   };
 
   // Only run client-side - wait for hydration then check auth
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
   useEffect(() => {
     if (isHydrated && !user) {
       router.push('/client/login');
