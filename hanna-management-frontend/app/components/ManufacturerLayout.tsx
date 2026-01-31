@@ -28,7 +28,7 @@ const SidebarLink = ({ href, icon: Icon, children, isCollapsed }: { href: string
 export default function ManufacturerLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasHydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -38,10 +38,11 @@ export default function ManufacturerLayout({ children }: { children: ReactNode }
   };
 
   useEffect(() => {
-    if (!user) {
+    // Only redirect after store has hydrated to prevent flash of unauthenticated content
+    if (hasHydrated && !user) {
       router.push('/manufacturer/login');
     }
-  }, [user, router]);
+  }, [user, router, hasHydrated]);
 
   useEffect(() => {
     // Close sidebar on navigation - intentional for UX
@@ -49,10 +50,26 @@ export default function ManufacturerLayout({ children }: { children: ReactNode }
     setSidebarOpen(false);
   }, [pathname]);
 
+  // Show loading state while hydrating to prevent flash
+  if (!hasHydrated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state if no user after hydration (will redirect)
   if (!user) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-100">
-        <p className="text-gray-500">Loading...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Redirecting to login...</p>
+        </div>
       </div>
     );
   }

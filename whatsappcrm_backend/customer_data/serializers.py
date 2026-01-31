@@ -586,6 +586,9 @@ class ClaimTokenValidationSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         """Return ISR details for the frontend."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # instance is a dict from validated_data with 'token' key
         # The token value is the actual ClientClaimToken instance
         if isinstance(instance, dict):
@@ -593,8 +596,12 @@ class ClaimTokenValidationSerializer(serializers.Serializer):
         else:
             claim_token = instance
         
-        # If claim_token is None or still a dict, return empty or error response
-        if not claim_token or isinstance(claim_token, dict):
+        # Import here to avoid circular imports
+        from .models import ClientClaimToken
+        
+        # If claim_token is None, a dict (shouldn't be), or not a ClientClaimToken instance
+        if not claim_token or not isinstance(claim_token, ClientClaimToken):
+            logger.warning(f"Invalid claim_token in to_representation: {type(claim_token)}")
             return {
                 'token': '',
                 'isr_id': None,
@@ -607,6 +614,11 @@ class ClaimTokenValidationSerializer(serializers.Serializer):
             }
         
         try:
+            # Ensure the claim_token has the installation_system_record relationship loaded
+            if not hasattr(claim_token, 'installation_system_record'):
+                logger.error(f"ClaimToken {claim_token.token} missing installation_system_record relationship")
+                raise AttributeError("installation_system_record not found on claim_token")
+            
             isr = claim_token.installation_system_record
             customer = isr.customer
             
@@ -620,11 +632,24 @@ class ClaimTokenValidationSerializer(serializers.Serializer):
                 'customer_email': customer.email if customer else '',
                 'customer_phone': customer.contact.whatsapp_id if customer and customer.contact else '',
             }
+        except AttributeError as e:
+            # Specific handling for missing installation_system_record
+            logger.error(f"AttributeError in ClaimTokenValidationSerializer.to_representation: {str(e)}")
+            logger.error(f"ClaimToken object: {claim_token.__dict__ if hasattr(claim_token, '__dict__') else claim_token}")
+            return {
+                'token': '',
+                'isr_id': None,
+                'address': '',
+                'system_size': '0',
+                'system_type': '',
+                'customer_name': 'Not specified',
+                'customer_email': '',
+                'customer_phone': '',
+            }
         except Exception as e:
             # If anything goes wrong, log it and return basic response
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Error in ClaimTokenValidationSerializer.to_representation: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
             return {
                 'token': '',
                 'isr_id': None,

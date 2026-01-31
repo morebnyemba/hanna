@@ -5,6 +5,8 @@ import { FiBox, FiPlus } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import { Product } from '@/app/types';
 import Link from 'next/link';
+import { Alert } from '@/app/components/Alert';
+import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
 
 interface PaginatedResponse {
   count: number;
@@ -38,6 +40,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -46,7 +49,9 @@ export default function ProductsPage() {
       const response = await apiClient.get<PaginatedResponse>('/crm-api/manufacturer/products/');
       setProducts(response.data.results);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch products.');
+      const errorMsg = getErrorMessage(err);
+      setError(errorMsg);
+      console.error('Products fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -58,11 +63,18 @@ export default function ProductsPage() {
 
   const handleDelete = async (productId: number | undefined) => {
     if (!productId) return;
+    
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    
     try {
       await apiClient.delete(`/crm-api/manufacturer/products/${productId}/`);
+      setSuccessMessage('Product deleted successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
       fetchProducts();
     } catch (err: any) {
-      setError(err.message || 'Failed to delete product.');
+      const errorMsg = getErrorMessage(err);
+      setError(errorMsg);
+      console.error('Product delete error:', err);
     }
   };
 
@@ -74,15 +86,32 @@ export default function ProductsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Products</h1>
         </div>
         <Link href="/manufacturer/products/new">
-          <span className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+          <span className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 cursor-pointer">
             <FiPlus className="mr-2" />
             Create Product
             </span>
         </Link>
       </div>
 
+      {error && (
+        <Alert 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+          className="mb-6"
+        />
+      )}
+
+      {successMessage && (
+        <Alert 
+          variant="success" 
+          message={successMessage} 
+          onClose={() => setSuccessMessage(null)} 
+          className="mb-6"
+        />
+      )}
+
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
-        {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
         <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -102,6 +131,15 @@ export default function ProductsPage() {
                         <SkeletonRow />
                         <SkeletonRow />
                     </>
+                ) : products.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center">
+                        <Alert 
+                          variant="info" 
+                          message="No products found. Create your first product to get started." 
+                        />
+                      </td>
+                    </tr>
                 ) : (
                     products.map((product) => (
                     <tr key={product.id} className="hover:bg-gray-50">
@@ -111,7 +149,7 @@ export default function ProductsPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.product_type}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Link href={`/manufacturer/products/${product.id}`}>
-                            <span className="text-indigo-600 hover:text-indigo-900">Edit</span>
+                            <span className="text-indigo-600 hover:text-indigo-900 cursor-pointer">Edit</span>
                         </Link>
                         <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 ml-4">Delete</button>
                         </td>

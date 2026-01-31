@@ -7,6 +7,8 @@ import StatCard from './StatCard';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 import { DateRangePicker } from '@/app/components/DateRangePicker';
+import { Alert } from '@/app/components/Alert';
+import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
 
 interface ManufacturerAnalytics {
   warranty_metrics: {
@@ -56,7 +58,9 @@ export default function ManufacturerDashboardPage() {
         const response = await apiClient.get<ManufacturerAnalytics>(`/crm-api/analytics/manufacturer/?start_date=${startDate}&end_date=${endDate}`);
         setData(response.data);
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch dashboard data.');
+        const errorMsg = getErrorMessage(err);
+        setError(errorMsg);
+        console.error('Dashboard data fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -72,7 +76,14 @@ export default function ManufacturerDashboardPage() {
         <DateRangePicker date={date} setDate={setDate} />
       </div>
       
-      {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
+      {error && (
+        <Alert 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+          className="mb-6"
+        />
+      )}
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {loading ? (
@@ -94,17 +105,25 @@ export default function ManufacturerDashboardPage() {
         )}
       </div>
 
-      {!loading && !error && data && (
+      {!loading && !error && data && data.fault_analytics?.ai_insight_common_faults && data.fault_analytics.ai_insight_common_faults.length > 0 && (
         <div className="mt-8 bg-white p-6 rounded-lg shadow-md border">
             <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center"><FiCpu className="mr-3" /> AI Insight: Common Fault Keywords</h2>
             <div className="flex flex-wrap gap-2">
-                {data.fault_analytics?.ai_insight_common_faults.map((fault, index) => (
+                {data.fault_analytics.ai_insight_common_faults.map((fault, index) => (
                     <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded-full">
                         {fault}
                     </span>
                 ))}
             </div>
         </div>
+      )}
+
+      {!loading && !error && (!data || (!data.warranty_metrics && !data.fault_analytics)) && (
+        <Alert 
+          variant="info" 
+          message="No analytics data available for the selected date range. Try selecting a different time period." 
+          className="mt-6"
+        />
       )}
     </main>
   );

@@ -5,6 +5,8 @@ import { FiShield } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import { WarrantyClaim } from '@/app/types';
 import Link from 'next/link';
+import { Alert } from '@/app/components/Alert';
+import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
 
 interface PaginatedResponse {
   count: number;
@@ -42,7 +44,9 @@ export default function WarrantyClaimsPage() {
       const response = await apiClient.get<PaginatedResponse>('/crm-api/manufacturer/warranty-claims/');
       setClaims(response.data.results);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch warranty claims.');
+      const errorMsg = getErrorMessage(err);
+      setError(errorMsg);
+      console.error('Warranty claims fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -61,8 +65,16 @@ export default function WarrantyClaimsPage() {
         </div>
       </div>
 
+      {error && (
+        <Alert 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+          className="mb-6"
+        />
+      )}
+
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
-        {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
         <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -81,6 +93,15 @@ export default function WarrantyClaimsPage() {
                         <SkeletonRow />
                         <SkeletonRow />
                     </>
+                ) : claims.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center">
+                        <Alert 
+                          variant="info" 
+                          message="No warranty claims found." 
+                        />
+                      </td>
+                    </tr>
                 ) : (
                     claims.map((claim) => (
                         <Link href={`/manufacturer/warranty-claims/${claim.claim_id}`} key={claim.claim_id}>
