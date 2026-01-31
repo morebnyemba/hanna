@@ -519,12 +519,14 @@ export default function TechnicianChecklistsPage() {
 
     showModal(
       'Confirm Commissioning',
-      'Mark this installation as commissioned?\\n\\n' +
-        'This will:\\n' +
-        '• Mark the installation as complete\\n' +
-        '• Lock the checklist from further edits\\n' +
-        '• Notify the customer and admin team\\n\\n' +
-        'This action cannot be undone.',
+      `Mark this installation as commissioned?
+
+This will:
+• Mark the installation as complete
+• Lock the checklist from further edits
+• Notify the customer and admin team
+
+This action cannot be undone.`,
       'confirm',
       handleCommission,
       'Commission Installation'
