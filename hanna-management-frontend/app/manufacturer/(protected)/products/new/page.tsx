@@ -8,7 +8,12 @@ import { InputField, SelectField, TextAreaField } from './FormComponents';
 import { FiPackage, FiArrowLeft } from 'react-icons/fi';
 import Link from 'next/link';
 
-const productTypes = ["Solar Panel", "Inverter", "Battery", "Other"];
+const productTypes = [
+  { label: "Software Package", value: "software" },
+  { label: "Professional Service", value: "service" },
+  { label: "Hardware Device", value: "hardware" },
+  { label: "Software Module", value: "module" },
+];
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -75,7 +80,11 @@ export default function NewProductPage() {
             <InputField id="price" label="Price" type="number" value={formData.price || ''} onChange={handleInputChange} placeholder="e.g., 250.00" required error={errors.price} />
             <SelectField id="product_type" label="Product Type" value={formData.product_type || ''} onChange={handleInputChange} error={errors.product_type}>
                 <option value="">Select a product type</option>
-                {productTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                {productTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
             </SelectField>
           </div>
 
