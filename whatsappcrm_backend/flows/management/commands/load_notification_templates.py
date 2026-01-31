@@ -291,6 +291,48 @@ An installation has been provisionally scheduled and our team will be in touch s
 
 Thank you for choosing Hanna Installations!"""
     },
+    {
+        "name": "solar_alert_notification",
+        "description": "Sent to technical admin and solar monitoring teams when a solar system alert is triggered.",
+        "template_type": "whatsapp",
+        "body": """Solar System Alert ⚠️
+
+A solar system alert has been triggered.
+
+*Alert Details:*
+- Title: *{{ alert_title }}*
+- Severity: *{{ alert_severity }}*
+- Type: {{ alert_type }}
+- Station: {{ station_name }}
+- Inverter: {{ inverter_serial }}
+
+*Description:*
+{{ description }}
+
+*Time:* {{ occurred_at }}
+
+Please investigate immediately."""
+    },
+    {
+        "name": "sla_alert",
+        "description": "Sent to relevant teams when an SLA alert is triggered for warranty requests.",
+        "template_type": "email",
+        "body": """SLA Alert - Warranty Request
+
+An SLA violation has been detected for a warranty request.
+
+*Request Details:*
+- Type: {{ request_type }}
+- Request ID: {{ request_id }}
+- Response Status: {{ response_status }}
+- Resolution Status: {{ resolution_status }}
+
+*Deadlines:*
+- Response Deadline: {{ response_deadline }}
+- Resolution Deadline: {{ resolution_deadline }}
+
+Please take immediate action to address this SLA violation."""
+    },
 ]
 
 
