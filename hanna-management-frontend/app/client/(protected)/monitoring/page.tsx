@@ -27,7 +27,7 @@ export default function ClientMonitoringPage() {
     if (showLoading) setRefreshing(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/installation-systems/installation-system-records/my_installations/`, {
+      const response = await fetch(`${apiUrl}/crm-api/client/installations/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
