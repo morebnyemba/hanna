@@ -77,10 +77,14 @@ interface Photo {
   caption: string;
   checklist_item: string;
   uploaded_at: string;
-  media_asset: {
+  media_asset?: string; // ID reference
+  media_asset_details?: {
     id: string;
     file_url: string;
     thumbnail_url?: string;
+    name?: string;
+    file_size?: number;
+    mime_type?: string;
   };
 }
 
@@ -859,9 +863,13 @@ export default function TechnicianChecklistsPage() {
                                     {itemStatus.photos.map((photo) => (
                                       <div key={photo.id} className="relative group">
                                         <img
-                                          src={photo.media_asset.thumbnail_url || photo.media_asset.file_url}
+                                          src={photo.media_asset_details?.file_url || ''}
                                           alt={photo.caption}
                                           className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                                          onError={(e) => {
+                                            // Fallback if image fails to load
+                                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%2280%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22100%22 height=%2280%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2212%22 fill=%22%23999%22%3EImage%3C/text%3E%3C/svg%3E';
+                                          }}
                                         />
                                         <button
                                           onClick={() => handleDeletePhoto(photo.id)}
