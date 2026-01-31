@@ -64,6 +64,7 @@ router.register(r'loan-applications', views.AdminLoanApplicationViewSet, basenam
 # Commissioning Checklists
 router.register(r'checklist-templates', views.CommissioningChecklistTemplateViewSet, basename='checklist-template')
 router.register(r'checklist-entries', views.InstallationChecklistEntryViewSet, basename='checklist-entry')
+router.register(r'technician/checklists', views.TechnicianChecklistViewSet, basename='technician-checklist')
 
 # Payout Management
 router.register(r'payout-configurations', views.AdminPayoutConfigurationViewSet, basename='payout-configuration')

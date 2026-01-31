@@ -1067,3 +1067,124 @@ class AdminDeviceMonitoringViewSet(viewsets.ViewSet):
             })
         
         return Response({'devices': devices})
+
+class TechnicianChecklistViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Technician API for viewing checklists assigned to them.
+    This is a role-based view that filters checklists by the logged-in technician.
+    """
+    serializer_class = InstallationChecklistEntrySerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['completion_status', 'template__checklist_type', 'installation_record']
+    search_fields = [
+        'installation_record__customer__first_name',
+        'installation_record__customer__last_name',
+        'template__name',
+    ]
+    ordering_fields = ['-created_at', 'completion_percentage', 'installation_record__customer__first_name']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        """
+        Return checklists assigned to the logged-in technician.
+        """
+        user = self.request.user
+        
+        # Get technician profile for the user
+        from warranty.models import Technician
+        try:
+            technician = Technician.objects.get(user=user)
+            # Filter checklists by this technician
+            return InstallationChecklistEntry.objects.filter(
+                technician=technician
+            ).select_related(
+                'installation_record',
+                'installation_record__customer',
+                'installation_record__customer__contact',
+                'installation_record__order',
+                'template',
+                'technician',
+                'technician__user'
+            )
+        except Technician.DoesNotExist:
+            # User is not a technician, return empty queryset
+            return InstallationChecklistEntry.objects.none()
+
+    @action(detail=False, methods=['get'])
+    def by_installation(self, request):
+        """
+        Get checklists for a specific installation.
+        Query: ?installation=<installation_id>
+        """
+        installation_id = request.query_params.get('installation')
+        if not installation_id:
+            return Response(
+                {'error': 'installation parameter required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        checklists = self.get_queryset().filter(installation_record__id=installation_id)
+        serializer = self.get_serializer(checklists, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def toggle_item(self, request, pk=None):
+        """Toggle completion status of a checklist item"""
+        checklist = self.get_object()
+        item_id = request.data.get('item_id')
+        
+        if not item_id:
+            return Response(
+                {'error': 'item_id required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Toggle the item
+        if item_id not in checklist.completed_items:
+            checklist.completed_items[item_id] = {
+                'completed': True,
+                'completed_at': timezone.now().isoformat(),
+                'notes': '',
+                'photos': [],
+                'completed_by': str(request.user.id),
+            }
+        else:
+            item = checklist.completed_items[item_id]
+            item['completed'] = not item.get('completed', False)
+            item['completed_at'] = timezone.now().isoformat() if item['completed'] else None
+            item['completed_by'] = str(request.user.id) if item['completed'] else None
+        
+        # Recalculate completion
+        checklist.update_completion_status()
+        checklist.save()
+        
+        serializer = self.get_serializer(checklist)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def add_note(self, request, pk=None):
+        """Add or update note for a checklist item"""
+        checklist = self.get_object()
+        item_id = request.data.get('item_id')
+        notes = request.data.get('notes', '')
+        
+        if not item_id:
+            return Response(
+                {'error': 'item_id required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if item_id not in checklist.completed_items:
+            checklist.completed_items[item_id] = {
+                'completed': False,
+                'notes': notes,
+                'photos': [],
+            }
+        else:
+            checklist.completed_items[item_id]['notes'] = notes
+        
+        checklist.save()
+        
+        serializer = self.get_serializer(checklist)
+        return Response(serializer.data)

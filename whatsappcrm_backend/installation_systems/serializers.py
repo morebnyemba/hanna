@@ -76,6 +76,16 @@ class InstallationChecklistEntrySerializer(serializers.ModelSerializer):
     installation_record_short_id = serializers.SerializerMethodField()
     technician_name = serializers.SerializerMethodField()
     completion_status_display = serializers.CharField(source='get_completion_status_display', read_only=True)
+    # Installation details
+    customer_name = serializers.SerializerMethodField()
+    customer_phone = serializers.SerializerMethodField()
+    installation_address = serializers.CharField(source='installation_record.installation_address', read_only=True)
+    installation_type = serializers.CharField(source='installation_record.get_installation_type_display', read_only=True)
+    installation_date = serializers.DateField(source='installation_record.installation_date', read_only=True)
+    commissioning_date = serializers.DateField(source='installation_record.commissioning_date', read_only=True, allow_null=True)
+    system_size = serializers.CharField(source='installation_record.system_size', read_only=True)
+    capacity_unit = serializers.CharField(source='installation_record.get_capacity_unit_display', read_only=True)
+    installation_status = serializers.CharField(source='installation_record.get_installation_status_display', read_only=True)
     
     class Meta:
         model = InstallationChecklistEntry
@@ -95,6 +105,16 @@ class InstallationChecklistEntrySerializer(serializers.ModelSerializer):
             'completed_at',
             'created_at',
             'updated_at',
+            # Installation details
+            'customer_name',
+            'customer_phone',
+            'installation_address',
+            'installation_type',
+            'installation_date',
+            'commissioning_date',
+            'system_size',
+            'capacity_unit',
+            'installation_status',
         ]
         read_only_fields = ['id', 'completion_percentage', 'created_at', 'updated_at']
     
@@ -117,6 +137,15 @@ class InstallationChecklistEntrySerializer(serializers.ModelSerializer):
         if obj.technician:
             return obj.technician.user.get_full_name() or obj.technician.user.username
         return None
+    
+    def get_customer_name(self, obj):
+        """Get customer full name or WhatsApp ID"""
+        customer = obj.installation_record.customer
+        return customer.get_full_name() or str(customer.contact.whatsapp_id)
+    
+    def get_customer_phone(self, obj):
+        """Get customer WhatsApp phone number"""
+        return obj.installation_record.customer.contact.whatsapp_id
     
     def validate_completed_items(self, value):
         """Validate completed items structure"""

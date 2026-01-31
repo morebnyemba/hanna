@@ -59,6 +59,16 @@ interface ChecklistEntry {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  // Installation details
+  customer_name?: string;
+  customer_phone?: string;
+  installation_address?: string;
+  installation_type?: string;
+  installation_date?: string;
+  commissioning_date?: string | null;
+  system_size?: string;
+  capacity_unit?: string;
+  installation_status?: string;
 }
 
 interface Photo {
@@ -98,7 +108,7 @@ export default function TechnicianChecklistsPage() {
       setError(null);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
 
-      let url = `${apiUrl}/crm-api/technician/checklists/`;
+      let url = `${apiUrl}/crm-api/admin-panel/technician/checklists/`;
       if (installationId) {
         url += `?installation_record=${installationId}`;
       }
@@ -651,9 +661,77 @@ export default function TechnicianChecklistsPage() {
                     )}
                   </div>
 
-                  <div className="p-6">
+                  <div className="p-6 space-y-6">
+                    {/* Installation Details Card */}
+                    <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                      <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">Installation Details</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Customer Information */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Customer</p>
+                          <p className="text-sm font-semibold text-gray-900 mt-1">
+                            {selectedChecklist.customer_name || 'Unknown'}
+                          </p>
+                          {selectedChecklist.customer_phone && (
+                            <p className="text-xs text-gray-600 mt-1">{selectedChecklist.customer_phone}</p>
+                          )}
+                        </div>
+                        
+                        {/* Address */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Location</p>
+                          <p className="text-sm font-semibold text-gray-900 mt-1">
+                            {selectedChecklist.installation_address || 'Not specified'}
+                          </p>
+                        </div>
+                        
+                        {/* Installation Type */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Installation Type</p>
+                          <p className="text-sm font-semibold text-gray-900 mt-1">
+                            {selectedChecklist.installation_type || 'N/A'}
+                          </p>
+                        </div>
+                        
+                        {/* System Size */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">System Size</p>
+                          <p className="text-sm font-semibold text-gray-900 mt-1">
+                            {selectedChecklist.system_size ? `${selectedChecklist.system_size} ${selectedChecklist.capacity_unit || 'kW'}` : 'N/A'}
+                          </p>
+                        </div>
+                        
+                        {/* Installation Date */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Installation Date</p>
+                          <p className="text-sm font-semibold text-gray-900 mt-1">
+                            {selectedChecklist.installation_date 
+                              ? new Date(selectedChecklist.installation_date).toLocaleDateString() 
+                              : 'Not set'}
+                          </p>
+                        </div>
+                        
+                        {/* Status */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Installation Status</p>
+                          <div className="mt-1">
+                            <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
+                              selectedChecklist.installation_status === 'commissioned' 
+                                ? 'bg-green-100 text-green-800'
+                                : selectedChecklist.installation_status === 'in_progress'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {selectedChecklist.installation_status || 'Unknown'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Checklist Items */}
                     {selectedChecklist.completion_status !== 'completed' && (
-                      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start">
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start">
                         <FiAlertCircle className="h-5 w-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-yellow-800">
