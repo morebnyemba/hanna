@@ -655,13 +655,25 @@ class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
         Generate a new claim token for this installation.
         Endpoint: POST /crm-api/admin-panel/installation-system-records/{id}/generate-claim-token/
         """
+        import secrets
+        from django.utils import timezone
+        from datetime import timedelta
+        
         installation = self.get_object()
         
         try:
+            # Generate a unique token
+            token_string = secrets.token_urlsafe(48)
+            
+            # Set expiration to 30 days from now
+            expires_at = timezone.now() + timedelta(days=30)
+            
             # Create a new claim token
             token = ClientClaimToken.objects.create(
+                token=token_string,
                 installation_system_record=installation,
-                created_by=request.user
+                created_by=request.user,
+                expires_at=expires_at
             )
             
             serializer = ClientClaimTokenSerializer(token)
