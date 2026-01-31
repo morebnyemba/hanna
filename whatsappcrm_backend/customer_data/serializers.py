@@ -588,25 +588,53 @@ class ClaimTokenValidationSerializer(serializers.Serializer):
         """Return ISR details for the frontend."""
         # instance is a dict from validated_data with 'token' key
         # The token value is the actual ClientClaimToken instance
-        claim_token = instance.get('token') if isinstance(instance, dict) else instance
+        if isinstance(instance, dict):
+            claim_token = instance.get('token')
+        else:
+            claim_token = instance
         
-        if isinstance(claim_token, dict):
-            # If it's still a dict, something went wrong
-            return claim_token
+        # If claim_token is None or still a dict, return empty or error response
+        if not claim_token or isinstance(claim_token, dict):
+            return {
+                'token': '',
+                'isr_id': None,
+                'address': '',
+                'system_size': '0',
+                'system_type': '',
+                'customer_name': 'Not specified',
+                'customer_email': '',
+                'customer_phone': '',
+            }
         
-        isr = claim_token.installation_system_record
-        customer = isr.customer
-        
-        return {
-            'token': claim_token.token,
-            'isr_id': isr.id,
-            'address': isr.installation_address,
-            'system_size': str(isr.system_capacity_kw),
-            'system_type': isr.system_classification,
-            'customer_name': customer.get_full_name() if customer else 'Not specified',
-            'customer_email': customer.email if customer else '',
-            'customer_phone': customer.contact.whatsapp_id if customer and customer.contact else '',
-        }
+        try:
+            isr = claim_token.installation_system_record
+            customer = isr.customer
+            
+            return {
+                'token': claim_token.token,
+                'isr_id': isr.id,
+                'address': isr.installation_address,
+                'system_size': str(isr.system_size),
+                'system_type': isr.system_classification,
+                'customer_name': customer.get_full_name() if customer else 'Not specified',
+                'customer_email': customer.email if customer else '',
+                'customer_phone': customer.contact.whatsapp_id if customer and customer.contact else '',
+            }
+        except Exception as e:
+            # If anything goes wrong, log it and return basic response
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in ClaimTokenValidationSerializer.to_representation: {str(e)}")
+            return {
+                'token': '',
+                'isr_id': None,
+                'address': '',
+                'system_size': '0',
+                'system_type': '',
+                'customer_name': 'Not specified',
+                'customer_email': '',
+                'customer_phone': '',
+            }
 
 
 class ClientRegistrationSerializer(serializers.Serializer):
