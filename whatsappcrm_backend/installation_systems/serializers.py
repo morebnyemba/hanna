@@ -363,7 +363,41 @@ class InstallationSystemRecordDetailSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = InstallationSystemRecord
-        fields = '__all__'
+        fields = [
+            'id',
+            'short_id',
+            'customer',
+            'customer_details',
+            'order',
+            'order_details',
+            'installation_request',
+            'installation_request_details',
+            'job_card',
+            'installation_type',
+            'installation_type_display',
+            'system_classification',
+            'system_classification_display',
+            'system_size',
+            'capacity_unit',
+            'capacity_unit_display',
+            'installation_status',
+            'installation_status_display',
+            'installation_date',
+            'commissioning_date',
+            'installation_address',
+            'latitude',
+            'longitude',
+            'remote_monitoring_id',
+            'technician_details',
+            'component_details',
+            'warranty_details',
+            'job_card_details',
+            'photo_details',
+            'required_photo_types',
+            'photos_status',
+            'created_at',
+            'updated_at',
+        ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_short_id(self, obj):

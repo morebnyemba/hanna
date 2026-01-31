@@ -311,13 +311,26 @@ export default function InstallationSystemRecordDetailPage() {
           <h2 className="text-lg font-semibold text-gray-900 flex items-center mb-4">
             <FiUser className="mr-2" /> Customer Information
           </h2>
-          {/* Debug: Show raw customer_details */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-              <strong>Debug - customer_details:</strong>
-              <pre>{JSON.stringify(record.customer_details, null, 2)}</pre>
+          {/* Always show debug info */}
+          <div className="mb-4 p-3 bg-blue-50 border-2 border-blue-300 rounded">
+            <div className="font-bold text-blue-900 mb-2">🔍 DEBUG INFO:</div>
+            <div className="text-sm space-y-1">
+              <div><strong>Has customer_details:</strong> {record.customer_details ? 'YES' : 'NO'}</div>
+              <div><strong>customer_details type:</strong> {typeof record.customer_details}</div>
+              {record.customer_details && (
+                <>
+                  <div><strong>name:</strong> {String(record.customer_details.name)}</div>
+                  <div><strong>phone:</strong> {String(record.customer_details.phone)}</div>
+                  <div><strong>email:</strong> {String(record.customer_details.email)}</div>
+                  <div><strong>company:</strong> {String(record.customer_details.company)}</div>
+                </>
+              )}
+              <details className="mt-2">
+                <summary className="cursor-pointer text-blue-700 font-semibold">Show Full customer_details JSON</summary>
+                <pre className="mt-2 text-xs bg-white p-2 rounded border overflow-auto max-h-40">{JSON.stringify(record.customer_details, null, 2)}</pre>
+              </details>
             </div>
-          )}
+          </div>
           <div className="space-y-3">
             <div className="flex items-start">
               <span className="text-gray-500 w-24 flex-shrink-0">Name:</span>
