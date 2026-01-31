@@ -58,7 +58,8 @@ export default function ClaimInstallationPage() {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/crm-api/customer-data/claim/validate/`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/customer-data/claim/validate/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +103,8 @@ export default function ClaimInstallationPage() {
     setError(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/crm-api/customer-data/claim/register/`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/customer-data/claim/register/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
