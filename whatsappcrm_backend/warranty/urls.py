@@ -9,7 +9,6 @@ from .views import (
     ManufacturerWarrantyClaimDetailView,
     ManufacturerJobCardListView,
     ManufacturerJobCardDetailView,
-    ManufacturerProductListView,
     ManufacturerProfileView,
     ManufacturerProductViewSet,
     ManufacturerWarrantyViewSet,
@@ -40,7 +39,6 @@ manufacturer_patterns = [
     path('warranty-claims/<str:claim_id>/', ManufacturerWarrantyClaimDetailView.as_view(), name='manufacturer_warranty_claim_detail'),
     path('job-cards/', ManufacturerJobCardListView.as_view(), name='manufacturer_job_cards_list'),
     path('job-cards/<str:job_card_number>/', ManufacturerJobCardDetailView.as_view(), name='manufacturer_job_card_detail'),
-    path('products/', ManufacturerProductListView.as_view(), name='manufacturer_product_list'),
     path('product-tracking/', ManufacturerProductTrackingView.as_view(), name='manufacturer_product_tracking'),
     path('profile/', ManufacturerProfileView.as_view(), name='manufacturer_profile'),
 ]

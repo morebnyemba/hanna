@@ -1100,7 +1100,7 @@ class AdminDeviceMonitoringViewSet(viewsets.ViewSet):
         records = InstallationSystemRecord.objects.select_related(
             'customer'
         ).filter(
-            status='active'
+            installation_status='active'
         ).order_by('-installation_date')[:100]  # Limit to recent 100
         
         devices = []
