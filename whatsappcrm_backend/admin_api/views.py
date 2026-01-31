@@ -22,7 +22,7 @@ from users.models import Retailer, RetailerBranch
 from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim, WarrantyRule, SLAThreshold, SLAStatus
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
-from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
+from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication, ClientClaimToken
 from installation_systems.models import (
     InstallationSystemRecord, 
     CommissioningChecklistTemplate, 
@@ -51,6 +51,7 @@ from .serializers import (
     PayoutConfigurationSerializer,
     InstallerPayoutListSerializer,
     InstallerPayoutDetailSerializer,
+    ClientClaimTokenSerializer,
 )
 
 
@@ -645,6 +646,56 @@ class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response(
                 {'error': f'Failed to generate installation report: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'], url_path='generate-claim-token')
+    def generate_claim_token(self, request, pk=None):
+        """
+        Generate a new claim token for this installation.
+        Endpoint: POST /crm-api/admin-panel/installation-system-records/{id}/generate-claim-token/
+        """
+        installation = self.get_object()
+        
+        try:
+            # Create a new claim token
+            token = ClientClaimToken.objects.create(
+                installation_system_record=installation,
+                created_by=request.user
+            )
+            
+            serializer = ClientClaimTokenSerializer(token)
+            return Response(
+                {
+                    'message': 'Claim token generated successfully.',
+                    'data': serializer.data
+                },
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate claim token: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'], url_path='claim-tokens')
+    def claim_tokens(self, request, pk=None):
+        """
+        Get all claim tokens for this installation.
+        Endpoint: GET /crm-api/admin-panel/installation-system-records/{id}/claim-tokens/
+        """
+        installation = self.get_object()
+        
+        try:
+            tokens = ClientClaimToken.objects.filter(
+                installation_system_record=installation
+            ).order_by('-created_at')
+            
+            serializer = ClientClaimTokenSerializer(tokens, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to retrieve claim tokens: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

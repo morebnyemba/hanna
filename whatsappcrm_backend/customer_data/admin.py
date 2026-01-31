@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, JobCard, LoanApplication, Payment
+from .models import CustomerProfile, Interaction, Order, OrderItem, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, JobCard, LoanApplication, Payment, ClientClaimToken
 from warranty.admin import TechnicianCommentInline
 
 class InteractionInline(admin.TabularInline):
@@ -198,3 +198,105 @@ class PaymentAdmin(admin.ModelAdmin):
         return f"{str(obj.id)[:8]}"
     short_id.short_description = "Payment ID"
     short_id.admin_order_field = 'id'
+
+@admin.register(ClientClaimToken)
+class ClientClaimTokenAdmin(admin.ModelAdmin):
+    """
+    Admin interface for managing client claim tokens.
+    Allows admins to generate claim links and track their status.
+    """
+    list_display = ('token_preview', 'isr_display', 'customer_display', 'status_badge', 'created_at', 'expires_at', 'claim_link')
+    list_filter = ('claimed', 'created_at', 'expires_at')
+    search_fields = ('token', 'installation_system_record__installation_address', 'installation_system_record__customer__first_name')
+    readonly_fields = ('token', 'created_at', 'expires_at', 'claimed_at', 'claim_link', 'claim_link_info')
+    
+    fieldsets = (
+        ('Token Information', {
+            'fields': ('token', 'claim_link', 'claim_link_info')
+        }),
+        ('Installation Details', {
+            'fields': ('installation_system_record',)
+        }),
+        ('Creation', {
+            'fields': ('created_by', 'created_at')
+        }),
+        ('Expiration', {
+            'fields': ('expires_at',)
+        }),
+        ('Claim Status', {
+            'fields': ('claimed', 'claimed_at', 'claimed_by_user'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_claimed']
+
+    def token_preview(self, obj):
+        """Show truncated token in list"""
+        return f"{obj.token[:16]}..."
+    token_preview.short_description = "Token"
+
+    def isr_display(self, obj):
+        """Show ISR address"""
+        return obj.installation_system_record.installation_address
+    isr_display.short_description = "Installation"
+
+    def customer_display(self, obj):
+        """Show customer name"""
+        customer = obj.installation_system_record.customer
+        if customer:
+            return customer.get_full_name()
+        return "—"
+    customer_display.short_description = "Customer"
+
+    def status_badge(self, obj):
+        """Show claim status"""
+        if obj.claimed:
+            return '✓ Claimed'
+        elif obj.is_expired():
+            return '✗ Expired'
+        else:
+            return '○ Active'
+    status_badge.short_description = "Status"
+
+    def claim_link(self, obj):
+        """Generate the shareable claim link"""
+        from django.conf import settings
+        domain = settings.DOMAIN if hasattr(settings, 'DOMAIN') else 'hanna.co.zw'
+        link = f"https://{domain}/client/claim/{obj.token}"
+        return f'<a href="{link}" target="_blank">{link}</a>'
+    claim_link.allow_tags = True
+    claim_link.short_description = "Claim Link"
+
+    def claim_link_info(self, obj):
+        """Display copy-friendly claim link and instructions"""
+        from django.conf import settings
+        domain = settings.DOMAIN if hasattr(settings, 'DOMAIN') else 'hanna.co.zw'
+        link = f"https://{domain}/client/claim/{obj.token}"
+        
+        status = "✓ Already claimed" if obj.claimed else f"⏱ Expires {obj.expires_at.strftime('%Y-%m-%d %H:%M')}"
+        
+        return f"""
+        <strong>Share this link with the customer:</strong>
+        <br/>
+        <code style="background: #f0f0f0; padding: 10px; display: block; margin: 10px 0; word-break: break-all;">{link}</code>
+        <strong>Status:</strong> {status}
+        <br/>
+        <small>Token: {obj.token}</small>
+        """
+    claim_link_info.allow_tags = True
+    claim_link_info.short_description = "Share This Link"
+
+    def mark_claimed(self, request, queryset):
+        """Admin action to manually mark tokens as claimed"""
+        updated = queryset.filter(claimed=False).update(claimed=True)
+        self.message_user(request, f'{updated} tokens marked as claimed.')
+    mark_claimed.short_description = "Mark selected as claimed"
+
+    def has_add_permission(self, request):
+        # Tokens are generated via ISR admin actions, not manually created
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Prevent accidental deletion of claim tokens
+        return request.user.is_superuser

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { 
   FiTool, FiArrowLeft, FiEdit, FiMapPin, FiPhone, 
   FiMail, FiCalendar, FiUser, FiPackage, FiShield,
-  FiCamera, FiAlertCircle
+  FiCamera, FiAlertCircle, FiLink, FiCopy, FiX, FiCheck
 } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import { DownloadInstallationReportButton } from '@/app/components/shared/DownloadButtons';
@@ -61,6 +61,15 @@ interface PhotoDetails {
   file_url: string;
   uploaded_by: string;
   uploaded_at: string;
+}
+
+interface ClaimToken {
+  token: string;
+  created_at: string;
+  expires_at: string;
+  claimed: boolean;
+  claimed_at?: string;
+  claimed_by_user?: string;
 }
 
 interface InstallationSystemRecord {
@@ -128,10 +137,77 @@ export default function InstallationSystemRecordDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [claimTokens, setClaimTokens] = useState<ClaimToken[]>([]);
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const { accessToken } = useAuthStore();
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+
+  const generateClaimLink = async () => {
+    if (!accessToken || !id) return;
+    
+    setGeneratingToken(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${id}/generate-claim-token/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to generate claim link');
+      }
+
+      const data = await response.json();
+      setClaimTokens([data, ...claimTokens]);
+      handleSuccess('Claim link generated successfully!');
+    } catch (err: any) {
+      handleError(err.message);
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
+
+  const copyToClipboard = (token: string) => {
+    const domain = typeof window !== 'undefined' ? window.location.hostname : 'hanna.co.zw';
+    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:';
+    const link = `${protocol}//${domain}/client/claim/${token}`;
+    
+    navigator.clipboard.writeText(link);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
+  const loadClaimTokens = async () => {
+    if (!accessToken || !id) return;
+    
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+      const response = await fetch(
+        `${apiUrl}/crm-api/admin-panel/installation-system-records/${id}/claim-tokens/`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setClaimTokens(Array.isArray(data) ? data : data.results || []);
+      }
+    } catch (err) {
+      // Silently fail if endpoint doesn't exist yet
+    }
+  };
 
   useEffect(() => {
     const fetchRecord = async () => {
@@ -160,6 +236,7 @@ export default function InstallationSystemRecordDetailPage() {
     };
 
     fetchRecord();
+    loadClaimTokens();
   }, [accessToken, id]);
 
   const handleSuccess = (message: string) => {
@@ -167,12 +244,9 @@ export default function InstallationSystemRecordDetailPage() {
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const handleError = (message: string) => {
-    setErrorMessage(message);
-    setTimeout(() => setErrorMessage(null), 3000);
-  };
-
-  const getStatusBadgeClass = (status?: string) => {
+  useEffect(() => {
+    const fetchRecord = async () => {
+      if (!accessToken || !id) return;
     const statusMap: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       in_progress: 'bg-blue-100 text-blue-800',
@@ -249,6 +323,15 @@ export default function InstallationSystemRecordDetailPage() {
               onSuccess={handleSuccess}
               onError={handleError}
             />
+            <button
+              onClick={() => {
+                setShowClaimModal(true);
+                loadClaimTokens();
+              }}
+              className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+            >
+              <FiLink /> Claim Link
+            </button>
             <Link
               href={`/admin/installation-system-records/${record.id}/edit`}
               className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
@@ -612,6 +695,170 @@ export default function InstallationSystemRecordDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Claim Link Modal */}
+      {showClaimModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-96 overflow-auto">
+            <div className="sticky top-0 flex items-center justify-between bg-gradient-to-r from-green-600 to-green-700 text-white p-6">
+              <h2 className="text-xl font-bold flex items-center">
+                <FiLink className="mr-2" /> Client Claim Link
+              </h2>
+              <button
+                onClick={() => setShowClaimModal(false)}
+                className="p-1 hover:bg-green-600 rounded"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Generate New Token */}
+              <div className="bg-green-50 border-l-4 border-green-600 p-4 rounded">
+                <h3 className="font-semibold text-green-900 mb-2">Generate New Claim Link</h3>
+                <p className="text-sm text-green-700 mb-4">
+                  Create a unique link for this customer to self-register and claim their installation.
+                </p>
+                <button
+                  onClick={generateClaimLink}
+                  disabled={generatingToken}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                    generatingToken
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  <FiLink /> {generatingToken ? 'Generating...' : 'Generate New Link'}
+                </button>
+              </div>
+
+              {/* Existing Tokens */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Active Claim Links ({claimTokens.filter(t => !t.claimed).length})
+                </h3>
+
+                {claimTokens.length === 0 ? (
+                  <p className="text-gray-600 text-sm italic">
+                    No claim links generated yet. Create one above.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {claimTokens.map((token) => {
+                      const domain = typeof window !== 'undefined' ? window.location.hostname : 'hanna.co.zw';
+                      const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:';
+                      const claimLink = `${protocol}//${domain}/client/claim/${token.token}`;
+                      const isExpired = new Date(token.expires_at) < new Date();
+                      const isClaimed = token.claimed;
+
+                      return (
+                        <div key={token.token} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex gap-2">
+                              <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                                isClaimed
+                                  ? 'bg-green-100 text-green-800'
+                                  : isExpired
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {isClaimed ? '✓ Claimed' : isExpired ? '✗ Expired' : '○ Active'}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {isClaimed && token.claimed_at && (
+                                <>Claimed: {new Date(token.claimed_at).toLocaleDateString()}</>
+                              )}
+                              {!isClaimed && (
+                                <>Expires: {new Date(token.expires_at).toLocaleDateString()}</>
+                              )}
+                            </span>
+                          </div>
+
+                          {!isClaimed && !isExpired && (
+                            <>
+                              <div className="bg-white p-3 rounded border border-gray-300 mb-3 break-all font-mono text-sm text-gray-700">
+                                {claimLink}
+                              </div>
+
+                              <button
+                                onClick={() => copyToClipboard(token.token)}
+                                className={`inline-flex items-center gap-2 px-3 py-1 text-sm rounded transition ${
+                                  copiedToken === token.token
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                              >
+                                {copiedToken === token.token ? (
+                                  <>
+                                    <FiCheck size={16} /> Copied!
+                                  </>
+                                ) : (
+                                  <>
+                                    <FiCopy size={16} /> Copy Link
+                                  </>
+                                )}
+                              </button>
+                            </>
+                          )}
+
+                          {isClaimed && token.claimed_by_user && (
+                            <p className="text-sm text-gray-600">
+                              Claimed by: <span className="font-medium">{token.claimed_by_user}</span>
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Claimed Tokens */}
+              {claimTokens.filter(t => t.claimed).length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3">
+                    Claimed Links ({claimTokens.filter(t => t.claimed).length})
+                  </h3>
+                  <div className="space-y-2">
+                    {claimTokens.filter(t => t.claimed).map((token) => (
+                      <div key={token.token} className="bg-gray-50 p-3 rounded border border-gray-200 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="bg-green-100 text-green-800 px-2 py-1 text-xs font-semibold rounded">
+                            ✓ Claimed
+                          </span>
+                          <span className="text-gray-600">
+                            by {token.claimed_by_user} on {token.claimed_at && new Date(token.claimed_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Instructions */}
+              <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
+                <h4 className="font-semibold text-blue-900 mb-2">How to Share</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>✓ Copy the link above</li>
+                  <li>✓ Send via email, WhatsApp, or SMS</li>
+                  <li>✓ Customer clicks link to claim installation</li>
+                  <li>✓ Automatically creates their account</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 bg-gray-50 p-4 text-right">
+              <button
+                onClick={() => setShowClaimModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
-}
+    </div>

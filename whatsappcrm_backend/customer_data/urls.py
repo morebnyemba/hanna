@@ -2,7 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import CountryListView
+from .views import CountryListView, ValidateClaimTokenView, ClaimInstallationView
 
 # Create a router and register our new viewsets with it.
 router = DefaultRouter()
@@ -18,5 +18,7 @@ app_name = 'customer_data_api'
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
     path('countries/', CountryListView.as_view(), name='country-list'),
+    path('claim/validate/', ValidateClaimTokenView.as_view(), name='validate-claim-token'),
+    path('claim/register/', ClaimInstallationView.as_view(), name='claim-installation'),
     path('', include(router.urls)),
 ]

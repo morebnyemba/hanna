@@ -40,6 +40,7 @@ class InstallationSystemRecordAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_select_related = ('customer', 'order', 'customer__contact')
     date_hierarchy = 'installation_date'
+    actions = ['generate_claim_token']
     
     fieldsets = (
         ('System Identification', {
@@ -88,6 +89,32 @@ class InstallationSystemRecordAdmin(admin.ModelAdmin):
         return "N/A"
     system_capacity_display.short_description = "System Capacity"
     system_capacity_display.admin_order_field = 'system_size'
+
+    def generate_claim_token(self, request, queryset):
+        """Action to generate claim tokens for selected ISR records"""
+        from customer_data.models import ClientClaimToken
+        from django.utils import timezone
+        from datetime import timedelta
+        import secrets
+        import string
+        
+        count = 0
+        for isr in queryset:
+            # Generate unique token
+            token = secrets.token_urlsafe(32)
+            
+            # Create claim token (30 day expiry)
+            ClientClaimToken.objects.create(
+                token=token,
+                installation_system_record=isr,
+                created_by=request.user,
+                expires_at=timezone.now() + timedelta(days=30)
+            )
+            count += 1
+        
+        self.message_user(request, f'Generated claim tokens for {count} installation(s). Check Client Claim Tokens in admin.')
+    
+    generate_claim_token.short_description = "Generate client claim link(s)"
 
 
 @admin.register(CommissioningChecklistTemplate)

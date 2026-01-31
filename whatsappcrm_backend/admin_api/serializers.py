@@ -13,7 +13,7 @@ from users.models import Retailer, RetailerBranch
 from warranty.models import Manufacturer, Technician, Warranty, WarrantyClaim, WarrantyRule, SLAThreshold, SLAStatus
 from stats.models import DailyStat
 from products_and_services.models import Cart, CartItem
-from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication
+from customer_data.models import InstallationRequest, SiteAssessmentRequest, LoanApplication, ClientClaimToken
 from installation_systems.models import (
     InstallationSystemRecord, 
     CommissioningChecklistTemplate, 
@@ -400,3 +400,39 @@ class InstallationSystemRecordSerializer(serializers.ModelSerializer):
     
     def get_short_id(self, obj):
         return f"ISR-{str(obj.id)[:8]}"
+
+
+# Client Claim Token
+class ClientClaimTokenSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    claimed_by_user_name = serializers.CharField(source='claimed_by_user.get_full_name', read_only=True, allow_null=True)
+    is_valid = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ClientClaimToken
+        fields = [
+            'id', 'token', 'installation_system_record', 'created_by', 'created_by_name',
+            'created_at', 'expires_at', 'claimed', 'claimed_at', 'claimed_by_user',
+            'claimed_by_user_name', 'is_valid', 'is_expired', 'status'
+        ]
+        read_only_fields = [
+            'id', 'token', 'created_by', 'created_at', 'claimed_at',
+            'claimed_by_user'
+        ]
+    
+    def get_is_valid(self, obj):
+        return obj.is_valid()
+    
+    def get_is_expired(self, obj):
+        return obj.is_expired()
+    
+    def get_status(self, obj):
+        if obj.claimed:
+            return 'claimed'
+        elif obj.is_expired():
+            return 'expired'
+        else:
+            return 'active'
+

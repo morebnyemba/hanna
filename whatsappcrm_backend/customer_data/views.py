@@ -251,3 +251,58 @@ class InteractionViewSet(viewsets.ModelViewSet):
 
     # No custom perform_create needed, the serializer handles agent assignment from request context.
     # The IsInteractionOwnerOrAdmin permission class allows any authenticated user to create.
+
+
+# Claim Token Views
+class ValidateClaimTokenView(APIView):
+    """
+    Public endpoint to validate a claim token and get ISR details.
+    Client provides token, gets back ISR information for confirmation.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        """Validate claim token and return ISR details."""
+        from .serializers import ClaimTokenValidationSerializer
+        
+        serializer = ClaimTokenValidationSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ClaimInstallationView(APIView):
+    """
+    Public endpoint for client self-registration and ISR claiming.
+    Client provides registration details, system creates user, profile, and returns JWT token.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        """Register client and claim installation via claim token."""
+        from .serializers import ClientRegistrationSerializer
+        from rest_framework_simplejwt.tokens import RefreshToken
+        
+        serializer = ClientRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            result = serializer.save()
+            user = result['user']
+            
+            # Generate JWT tokens for auto-login
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'success': True,
+                'message': 'Account created successfully!',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                },
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

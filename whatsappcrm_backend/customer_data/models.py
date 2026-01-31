@@ -792,3 +792,90 @@ class LoanApplication(models.Model):
         ordering = ['-created_at']
         verbose_name = _("Loan Application")
         verbose_name_plural = _("Loan Applications")
+
+
+class ClientClaimToken(models.Model):
+    """
+    One-time claim tokens for clients to self-register and claim their ISR installation.
+    Admin generates a unique link, shares with client, client uses it to create account.
+    """
+    token = models.CharField(
+        _("Claim Token"),
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text=_("Unique token for claiming an installation")
+    )
+    installation_system_record = models.ForeignKey(
+        'installation_systems.InstallationSystemRecord',
+        on_delete=models.CASCADE,
+        related_name='claim_tokens',
+        help_text=_("The installation system record this claim is for")
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='generated_claim_tokens',
+        help_text=_("The admin user who generated this token")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(
+        _("Expires At"),
+        help_text=_("Token expires 30 days after creation")
+    )
+    
+    # Single-use tracking
+    claimed = models.BooleanField(
+        _("Claimed"),
+        default=False,
+        db_index=True,
+        help_text=_("Whether this token has been used to claim an installation")
+    )
+    claimed_at = models.DateTimeField(
+        _("Claimed At"),
+        null=True,
+        blank=True,
+        help_text=_("When this token was claimed")
+    )
+    claimed_by_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='claimed_tokens',
+        help_text=_("The user who claimed this token")
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Client Claim Token")
+        verbose_name_plural = _("Client Claim Tokens")
+        indexes = [
+            models.Index(fields=['token']),
+            models.Index(fields=['claimed', 'expires_at']),
+        ]
+
+    def __str__(self):
+        status = "Claimed" if self.claimed else "Active"
+        return f"Claim Token for ISR #{self.installation_system_record_id} ({status})"
+
+    def is_valid(self):
+        """Check if token is still valid (not expired and not already claimed)."""
+        if self.claimed:
+            return False
+        if timezone.now() > self.expires_at:
+            return False
+        return True
+
+    def is_expired(self):
+        """Check if token has expired."""
+        return timezone.now() > self.expires_at
+
+    def mark_as_claimed(self, user):
+        """Mark token as claimed by a specific user."""
+        self.claimed = True
+        self.claimed_at = timezone.now()
+        self.claimed_by_user = user
+        self.save()

@@ -557,3 +557,153 @@ class RetailerOrderCreationSerializer(serializers.Serializer):
             'installation_system_record': isr,
             'customer_profile': customer_profile
         }
+
+
+# Claim Token Serializers
+class ClaimTokenValidationSerializer(serializers.Serializer):
+    """Serializer to validate a claim token and return ISR details."""
+    token = serializers.CharField(required=True)
+    
+    def validate_token(self, value):
+        """Validate that the token exists and is valid."""
+        from .models import ClientClaimToken
+        try:
+            claim_token = ClientClaimToken.objects.select_related(
+                'installation_system_record__customer'
+            ).get(token=value)
+        except ClientClaimToken.DoesNotExist:
+            raise serializers.ValidationError("Invalid claim token.")
+        
+        # Check if already claimed
+        if claim_token.claimed:
+            raise serializers.ValidationError("This installation has already been claimed.")
+        
+        # Check if expired
+        if claim_token.is_expired():
+            raise serializers.ValidationError("This claim link has expired. Please contact support.")
+        
+        return claim_token
+
+    def to_representation(self, instance):
+        """Return ISR details for the frontend."""
+        isr = instance.installation_system_record
+        customer = isr.customer
+        
+        return {
+            'token': instance.token,
+            'isr_id': isr.id,
+            'address': isr.installation_address,
+            'system_size': str(isr.system_capacity_kw),
+            'system_type': isr.system_classification,
+            'customer_name': customer.get_full_name() if customer else 'Not specified',
+            'customer_email': customer.email if customer else '',
+            'customer_phone': customer.contact.whatsapp_id if customer and customer.contact else '',
+        }
+
+
+class ClientRegistrationSerializer(serializers.Serializer):
+    """Serializer for client self-registration via claim token."""
+    token = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        min_length=8,
+        style={'input_type': 'password'}
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'}
+    )
+    first_name = serializers.CharField(max_length=100, required=True)
+    last_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    
+    def validate(self, data):
+        """Validate passwords match and token is valid."""
+        from .models import ClientClaimToken
+        
+        # Check passwords match
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError({
+                'password_confirm': 'Passwords do not match.'
+            })
+        
+        # Validate password strength
+        try:
+            validate_password(data['password'])
+        except Exception as e:
+            raise serializers.ValidationError({
+                'password': str(e)
+            })
+        
+        # Validate token
+        try:
+            claim_token = ClientClaimToken.objects.select_related(
+                'installation_system_record__customer'
+            ).get(token=data['token'])
+        except ClientClaimToken.DoesNotExist:
+            raise serializers.ValidationError({'token': 'Invalid claim token.'})
+        
+        if claim_token.claimed:
+            raise serializers.ValidationError({
+                'token': 'This installation has already been claimed.'
+            })
+        
+        if claim_token.is_expired():
+            raise serializers.ValidationError({
+                'token': 'This claim link has expired.'
+            })
+        
+        # Check if user with this email already exists
+        if User.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError({
+                'email': 'A user with this email already exists.'
+            })
+        
+        data['claim_token'] = claim_token
+        return data
+
+    def create(self, validated_data):
+        """Create user, customer profile, and mark token as claimed."""
+        from .models import ClientClaimToken, CustomerProfile
+        
+        claim_token = validated_data.pop('claim_token')
+        password = validated_data.pop('password')
+        validated_data.pop('password_confirm', None)
+        validated_data.pop('token', None)
+        
+        isr = claim_token.installation_system_record
+        customer = isr.customer
+        
+        # Create user
+        user = User.objects.create_user(
+            username=validated_data['email'],  # Use email as username
+            email=validated_data['email'],
+            password=password,
+            first_name=validated_data['first_name'],
+            last_name=validated_data.get('last_name', ''),
+            is_active=True
+        )
+        
+        # Get or create customer profile
+        if customer:
+            # Update customer profile
+            customer.email = validated_data['email']
+            customer.first_name = validated_data['first_name']
+            customer.last_name = validated_data.get('last_name', '')
+            customer.user = user
+            customer.save()
+            profile = customer
+        else:
+            # This shouldn't happen, but handle it
+            profile = customer
+        
+        # Mark token as claimed
+        claim_token.mark_as_claimed(user)
+        
+        return {
+            'user': user,
+            'profile': profile,
+            'claim_token': claim_token
+        }
