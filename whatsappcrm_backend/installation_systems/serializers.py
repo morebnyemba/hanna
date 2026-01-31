@@ -371,28 +371,13 @@ class InstallationSystemRecordDetailSerializer(serializers.ModelSerializer):
         return f"ISR-{str(obj.id)[:8]}"
     
     def get_customer_details(self, obj):
-        """Get customer profile details"""
-        customer = obj.customer
-        if not customer:
-            return {
-                'id': None,
-                'name': 'N/A',
-                'email': None,
-                'phone': None,
-                'company': None,
-            }
-        
-        # Get phone from contact if available
-        phone = None
-        if customer.contact:
-            phone = customer.contact.whatsapp_id
-        
+        """Get customer profile details - using same pattern as list serializer"""
         return {
-            'id': str(customer.contact_id) if customer.contact_id else None,
-            'name': customer.get_full_name() or 'Unknown',
-            'email': customer.email,
-            'phone': phone,
-            'company': customer.company,
+            'id': str(obj.customer.contact_id),
+            'name': obj.customer.get_full_name() or str(obj.customer.contact.whatsapp_id),
+            'email': obj.customer.email,
+            'phone': obj.customer.contact.whatsapp_id,
+            'company': obj.customer.company,
         }
     
     def get_order_details(self, obj):
