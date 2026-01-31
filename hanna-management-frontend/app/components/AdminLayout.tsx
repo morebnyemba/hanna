@@ -28,7 +28,7 @@ const SidebarLink = ({ href, icon: Icon, children }: { href: string; icon: React
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasHydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -38,16 +38,24 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (!user) {
+    if (hasHydrated && !user) {
       router.push('/admin/login');
     }
-  }, [user, router]);
+  }, [user, router, hasHydrated]);
 
   useEffect(() => {
     // Close sidebar on navigation - intentional for UX
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSidebarOpen(false);
   }, [pathname]);
+
+  if (!hasHydrated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <p className="text-gray-500">Initializing...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
