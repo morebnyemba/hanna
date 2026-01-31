@@ -69,10 +69,6 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage', // name of the item in storage (must be unique)
       storage: createJSONStorage(() => localStorage), // use localStorage
-      onRehydrateStorage: () => (state, error) => {
-        // Mark store as hydrated so UI can wait before redirecting
-        useAuthStore.setState({ hasHydrated: true });
-      },
     }
   )
 );

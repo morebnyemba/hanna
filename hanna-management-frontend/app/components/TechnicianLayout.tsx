@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
 import BarcodeScannerButton from './BarcodeScannerButton';
+import { useHydration } from '@/app/hooks/useHydration';
 
 const SidebarLink = ({ href, icon: Icon, children, isCollapsed }: { href: string; icon: React.ElementType; children: ReactNode; isCollapsed: boolean }) => {
   const pathname = usePathname();
@@ -28,6 +29,7 @@ const SidebarLink = ({ href, icon: Icon, children, isCollapsed }: { href: string
 export default function TechnicianLayout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const isHydrated = useHydration();
   const { user, logout } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,17 +39,26 @@ export default function TechnicianLayout({ children }: { children: ReactNode }) 
     router.push('/technician/login');
   };
 
+  // Mark as hydrated on client mount
   useEffect(() => {
-    if (!user) {
+    if (isHydrated && !user) {
       router.push('/technician/login');
     }
-  }, [user, router]);
+  }, [user, router, isHydrated]);
 
   useEffect(() => {
     // Close sidebar on navigation - intentional for UX
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSidebarOpen(false);
   }, [pathname]);
+
+  if (!isHydrated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
