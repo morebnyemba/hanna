@@ -270,6 +270,17 @@ export default function InstallationSystemRecordDetailPage() {
     return colorMap[type || ''] || 'bg-gray-100 text-gray-800';
   };
 
+  const getStatusBadgeClass = (status?: string) => {
+    const statusMap: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      in_progress: 'bg-blue-100 text-blue-800',
+      commissioned: 'bg-green-100 text-green-800',
+      active: 'bg-green-100 text-green-800',
+      decommissioned: 'bg-gray-100 text-gray-800',
+    };
+    return statusMap[status || ''] || 'bg-gray-100 text-gray-800';
+  };
+
   if (loading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
