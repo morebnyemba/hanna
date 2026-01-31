@@ -13,6 +13,8 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.http import HttpResponse
 from django.core.cache import cache
+import secrets
+from datetime import timedelta
 
 # Import models
 from notifications.models import Notification, NotificationTemplate
@@ -655,10 +657,6 @@ class AdminInstallationSystemRecordViewSet(viewsets.ModelViewSet):
         Generate a new claim token for this installation.
         Endpoint: POST /crm-api/admin-panel/installation-system-records/{id}/generate-claim-token/
         """
-        import secrets
-        from django.utils import timezone
-        from datetime import timedelta
-        
         installation = self.get_object()
         
         try:
