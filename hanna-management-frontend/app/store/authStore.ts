@@ -6,6 +6,9 @@ interface User {
   username: string;
   email?: string;
   role: 'admin' | 'client' | 'manufacturer' | 'technician' | 'retailer' | 'retailer_branch' | null;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
 }
 
 interface SelectedRetailer {

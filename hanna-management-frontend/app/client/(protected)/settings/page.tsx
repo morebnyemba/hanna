@@ -51,7 +51,7 @@ export default function ClientSettingsPage() {
 
   // Load user data on mount
   useEffect(() => {
-    if (user && accessToken) {
+    if (user) {
       setSettings(prev => ({
         ...prev,
         firstName: user.first_name || '',
@@ -59,6 +59,8 @@ export default function ClientSettingsPage() {
         email: user.email || '',
         phone: user.phone || '',
       }));
+      setLoading(false);
+    } else if (!accessToken) {
       setLoading(false);
     }
   }, [user, accessToken]);
