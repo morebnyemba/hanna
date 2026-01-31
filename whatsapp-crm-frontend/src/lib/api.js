@@ -13,6 +13,12 @@ const apiClient = axios.create({
 
 let isRefreshing = false;
 let failedQueue = [];
+let authErrorDispatched = false;
+
+// Function to reset auth error flag (can be called on login)
+export const resetAuthErrorFlag = () => {
+  authErrorDispatched = false;
+};
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach(prom => {
@@ -28,7 +34,9 @@ const processQueue = (error, token = null) => {
 const refreshToken = async () => {
   try {
     const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) throw new Error("Session expired. Please log in again.");
+    if (!refreshToken) {
+      throw new Error("Session expired. Please log in again.");
+    }
 
     const response = await axios.post(`${API_BASE_URL}/crm-api/auth/token/refresh/`, {
       refresh: refreshToken,
@@ -68,12 +76,30 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Check if refresh token exists before attempting refresh
+      const storedRefreshToken = localStorage.getItem('refreshToken');
+      
+      if (!storedRefreshToken) {
+        // No refresh token available, don't attempt refresh
+        if (!authErrorDispatched) {
+          console.log('No refresh token available - cannot refresh session');
+          window.dispatchEvent(new Event('auth-error'));
+          authErrorDispatched = true;
+          // Reset flag after a short delay to allow for future sessions
+          setTimeout(() => { authErrorDispatched = false; }, 1000);
+        }
+        return Promise.reject(new Error('Session expired. Please log in again.'));
+      }
+
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
         }).then(token => {
           originalRequest.headers['Authorization'] = 'Bearer ' + token;
           return apiClient(originalRequest);
+        }).catch(err => {
+          // If refresh failed for queued requests, return the original 401 error
+          return Promise.reject(err);
         });
       }
 
@@ -85,6 +111,8 @@ apiClient.interceptors.response.use(
         apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
         processQueue(null, newAccessToken);
+        // Reset auth error flag on successful refresh
+        authErrorDispatched = false;
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);

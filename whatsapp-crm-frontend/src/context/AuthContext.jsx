@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { jwtDecode } from 'jwt-decode';
 
 import apiClient from '@/lib/api'; // Import the central axios client
+import { resetAuthErrorFlag } from '@/lib/api'; // Import reset function
 import { authService } from '../services/auth';
 import {
   userAtom,
@@ -97,6 +98,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(result.user));
       }
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      // Reset auth error flag on successful login
+      resetAuthErrorFlag();
       return { success: true, user: result.user };
     } else {
       return { success: false, error: result.error };

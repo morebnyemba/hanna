@@ -25,6 +25,50 @@ const apiClient = axios.create({
   withCredentials: true, // Enable sending cookies for session-based auth
 });
 
+// Token refresh state
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value?: any) => void; reject: (reason?: any) => void }> = [];
+let authErrorDispatched = false;
+
+// Function to reset auth error flag (can be called on login)
+export const resetAuthErrorFlag = () => {
+  authErrorDispatched = false;
+};
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+const refreshToken = async (): Promise<string> => {
+  const refreshTokenValue = useAuthStore.getState().refreshToken;
+  
+  if (!refreshTokenValue) {
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  try {
+    const response = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw'}/crm-api/auth/token/refresh/`,
+      { refresh: refreshTokenValue }
+    );
+
+    const { access, refresh: newRefresh } = response.data;
+    useAuthStore.getState().setTokens({ access, refresh: newRefresh || refreshTokenValue });
+    return access;
+  } catch (err) {
+    // Refresh failed, log out the user
+    useAuthStore.getState().logout();
+    throw new Error("Session expired. Please log in again.");
+  }
+};
+
 // Use an interceptor to add the auth token and CSRF token to every request
 apiClient.interceptors.request.use(
   (config) => {
@@ -71,14 +115,69 @@ apiClient.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      // Handle unauthorized errors, e.g., by logging out the user.
-      // This prevents you from having to write this logic in every component.
-      console.error("Unauthorized request, logging out.");
-      useAuthStore.getState().logout();
-      window.location.href = '/admin/login';
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Do not attempt to refresh token for login or refresh endpoints
+    if (originalRequest.url?.endsWith('/token/') || originalRequest.url?.endsWith('/token/refresh/')) {
+      return Promise.reject(error);
     }
+
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      // Check if refresh token exists before attempting refresh
+      const storedRefreshToken = useAuthStore.getState().refreshToken;
+      
+      if (!storedRefreshToken) {
+        // No refresh token available, don't attempt refresh
+        if (!authErrorDispatched) {
+          console.log('No refresh token available - cannot refresh session');
+          authErrorDispatched = true;
+          // Reset flag after a short delay to allow for future sessions
+          setTimeout(() => { authErrorDispatched = false; }, 1000);
+        }
+        
+        // Log out and redirect
+        useAuthStore.getState().logout();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/admin/login';
+        }
+        return Promise.reject(new Error('Session expired. Please log in again.'));
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers['Authorization'] = 'Bearer ' + token;
+          return apiClient(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const newAccessToken = await refreshToken();
+        apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
+        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+        processQueue(null, newAccessToken);
+        // Reset auth error flag on successful refresh
+        authErrorDispatched = false;
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        // Redirect to login on refresh failure
+        if (typeof window !== 'undefined') {
+          window.location.href = '/admin/login';
+        }
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
     return Promise.reject(error);
   }
 );
