@@ -151,6 +151,8 @@ export default function InstallationSystemRecordDetailPage() {
         }
 
         const data = await response.json();
+        console.log('ISR Detail API Response:', data);
+        console.log('Customer Details from API:', data.customer_details);
         setRecord(data);
       } catch (err: any) {
         setError(err.message);
@@ -309,6 +311,13 @@ export default function InstallationSystemRecordDetailPage() {
           <h2 className="text-lg font-semibold text-gray-900 flex items-center mb-4">
             <FiUser className="mr-2" /> Customer Information
           </h2>
+          {/* Debug: Show raw customer_details */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <strong>Debug - customer_details:</strong>
+              <pre>{JSON.stringify(record.customer_details, null, 2)}</pre>
+            </div>
+          )}
           <div className="space-y-3">
             <div className="flex items-start">
               <span className="text-gray-500 w-24 flex-shrink-0">Name:</span>
