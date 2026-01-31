@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -90,9 +90,12 @@ export default function TechnicianChecklistsPage() {
   const searchParams = useSearchParams();
   const installationId = searchParams.get('installation');
 
-  const fetchChecklists = async () => {
+  const fetchChecklists = useCallback(async () => {
+    if (!accessToken) return;
+    
     try {
       setLoading(true);
+      setError(null);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
 
       let url = `${apiUrl}/crm-api/technician/checklists/`;
@@ -109,6 +112,9 @@ export default function TechnicianChecklistsPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          throw new Error('Session expired. Please log in again.');
+        }
         throw new Error(errorData.detail || `Failed to fetch checklists: ${response.status}`);
       }
 
@@ -135,11 +141,11 @@ export default function TechnicianChecklistsPage() {
       }
     } catch (err: any) {
       console.error('Error fetching checklists:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to load checklists. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, installationId]);
 
   const fetchPhotosForChecklist = async (checklist: ChecklistEntry) => {
     if (!checklist?.installation_record) {
@@ -181,10 +187,8 @@ export default function TechnicianChecklistsPage() {
   };
 
   useEffect(() => {
-    if (accessToken) {
-      fetchChecklists();
-    }
-  }, [accessToken, installationId]);
+    fetchChecklists();
+  }, [fetchChecklists]);
 
   const handleToggleItem = async (item: ChecklistTemplateItem, currentlyCompleted: boolean) => {
     if (!selectedChecklist) return;
@@ -303,8 +307,16 @@ export default function TechnicianChecklistsPage() {
         throw new Error(errorData.error || errorData.detail || 'Failed to upload photo');
       }
 
-      await fetchChecklists();
-      alert('Photo uploaded successfully!');
+      // Refresh both checklist and photos
+      if (selectedChecklist) {
+        await Promise.all([
+          fetchChecklists(),
+          fetchPhotosForChecklist(selectedChecklist)
+        ]);
+      }
+      
+      // Success toast would be better, but alert for now
+      alert('✓ Photo uploaded successfully!');
     } catch (err: any) {
       console.error('Error uploading photo:', err);
       alert(`Upload failed: ${err.message}`);
@@ -329,12 +341,17 @@ export default function TechnicianChecklistsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete photo');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.detail || 'Failed to delete photo');
       }
 
+      // Refresh photos immediately
       if (selectedChecklist) {
         await fetchPhotosForChecklist(selectedChecklist);
       }
+      
+      // Optional: Show success feedback
+      console.log('Photo deleted successfully');
     } catch (err: any) {
       console.error('Error deleting photo:', err);
       alert(`Error: ${err.message}`);
@@ -345,7 +362,18 @@ export default function TechnicianChecklistsPage() {
 
   const handleRequestCommissioning = async () => {
     if (!selectedChecklist?.installation_record) {
-      alert('Cannot commission: installation record is missing');
+      alert('⚠️ Cannot commission: installation record is missing');
+      return;
+    }
+
+    if (!confirm(
+      'Are you sure you want to mark this installation as commissioned?\n\n' +
+      'This will:\n' +
+      '• Mark the installation as complete\n' +
+      '• Lock the checklist from further edits\n' +
+      '• Notify the customer and admin team\n\n' +
+      'This action cannot be undone.'
+    )) {
       return;
     }
 
@@ -373,7 +401,9 @@ export default function TechnicianChecklistsPage() {
         throw new Error(errorData.error || errorData.detail || 'Commissioning request failed');
       }
 
-      alert('Installation marked as commissioned.');
+      // Show success and refresh
+      alert('✓ Installation successfully commissioned!');
+      await fetchChecklists();
     } catch (err: any) {
       console.error('Error requesting commissioning:', err);
       alert(`Error: ${err.message}`);
@@ -495,7 +525,7 @@ export default function TechnicianChecklistsPage() {
           </div>
         </div>
 
-        {checklists.length === 0 ? (
+        {!loading && checklists.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <FiCheckSquare className="mx-auto h-16 w-16 text-gray-300" />
             <h3 className="mt-4 text-lg font-semibold text-gray-900">
