@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Warranty, WarrantyClaim, Manufacturer, WarrantyRule, SLAThreshold, SLAStatus
-from products_and_services.models import SerializedItem
+from products_and_services.models import SerializedItem, Product
+from products_and_services.serializers import ProductSerializer
 
 class ManufacturerSerializer(serializers.ModelSerializer):
     class Meta:

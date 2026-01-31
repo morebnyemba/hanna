@@ -11,6 +11,7 @@ from .views import (
     ManufacturerJobCardDetailView,
     ManufacturerProfileView,
     ManufacturerProductViewSet,
+    ManufacturerSerializedItemViewSet,
     ManufacturerWarrantyViewSet,
     ManufacturerProductTrackingView,
     TechnicianJobCardViewSet,
@@ -29,6 +30,7 @@ app_name = 'warranty_api'
 
 router = DefaultRouter()
 router.register(r'manufacturer/products', ManufacturerProductViewSet, basename='manufacturer-product')
+router.register(r'manufacturer/serialized-items', ManufacturerSerializedItemViewSet, basename='manufacturer-serialized-item')
 router.register(r'manufacturer/warranties', ManufacturerWarrantyViewSet, basename='manufacturer-warranty')
 router.register(r'technician/job-cards', TechnicianJobCardViewSet, basename='technician-job-card')
 router.register(r'technician/checklists', TechnicianChecklistViewSet, basename='technician-checklist')

@@ -14,10 +14,11 @@ import uuid
 from .models import Warranty, WarrantyClaim
 from customer_data.models import JobCard, CustomerProfile
 from customer_data.serializers import JobCardSerializer, JobCardDetailSerializer
-from products_and_services.models import Product
+from products_and_services.models import Product, SerializedItem
 from products_and_services.serializers import ProductSerializer
 from .permissions import IsManufacturer, IsTechnician
 from .serializers import WarrantyClaimListSerializer, WarrantyClaimCreateSerializer, ManufacturerSerializer, WarrantySerializer
+from .manufacturer_serializers import ManufacturerSerializedItemSerializer
 from .pdf_utils import WarrantyCertificateGenerator, InstallationReportGenerator
 from installation_systems.models import InstallationSystemRecord
 
@@ -111,6 +112,58 @@ class ManufacturerProductViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(manufacturer=self.request.user.manufacturer_profile)
+
+
+class ManufacturerSerializedItemViewSet(viewsets.ViewSet):
+    """
+    Viewset for manufacturers to create serialized items (physical instances of products).
+    Supports auto-creating products if product_id is not provided.
+    
+    POST /crm-api/manufacturer/serialized-items/
+    {
+        "serial_number": "SN-12345",
+        "product_id": 1  # Use existing product
+    }
+    
+    OR
+    
+    {
+        "serial_number": "SN-12345",
+        "product_name": "Solar Panel",
+        "product_type": "hardware",
+        "sku": "SP-100",
+        "price": "250.00"
+    }
+    """
+    permission_classes = [IsManufacturer]
+
+    def create(self, request):
+        """Create a new serialized item"""
+        serializer = ManufacturerSerializedItemSerializer(data=request.data)
+        if serializer.is_valid():
+            # Add manufacturer to validated data for the serializer
+            try:
+                serializer.validated_data['manufacturer'] = request.user.manufacturer_profile
+                instance = serializer.save()
+                return Response(serializer.to_representation(instance), status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def list(self, request):
+        """List all serialized items for the manufacturer's products"""
+        manufacturer = request.user.manufacturer_profile
+        products = Product.objects.filter(manufacturer=manufacturer)
+        serialized_items = SerializedItem.objects.filter(product__in=products).prefetch_related('product')
+        
+        data = [{
+            'id': item.id,
+            'serial_number': item.serial_number,
+            'product': ProductSerializer(item.product).data,
+            'created_at': item.created_at,
+        } for item in serialized_items]
+        
+        return Response(data)
 
 class ManufacturerWarrantyClaimDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = WarrantyClaimListSerializer
