@@ -306,23 +306,8 @@ export default function ClientSettingsPage() {
       </div>
     </div>
     </main>
-
-      {/* Profile Information */}
-      <Card className="mb-4 md:mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-            <FiUser className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
-            Profile Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-            <div>
-              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                First Name
-              </label>
-              <input
-                type="text"
+  );
+}
                 value={settings.firstName}
                 onChange={(e) => handleInputChange('firstName', e.target.value)}
                 className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
