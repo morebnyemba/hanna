@@ -4,10 +4,16 @@ import { toast } from 'sonner';
 import AdminDataTable from '@/components/admin/AdminDataTable';
 import { adminAPI } from '@/services/adminAPI';
 import { DownloadInstallationReportButton } from '@/components/DownloadButtons';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { FiX } from 'react-icons/fi';
 
 export default function AdminInstallationSystemRecordsPage() {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
 
   const columns = [
     { key: 'id', label: 'ID', render: (row) => row.id?.slice(0, 8) || 'N/A' },
@@ -21,21 +27,23 @@ export default function AdminInstallationSystemRecordsPage() {
       key: 'installation_status',
       label: 'Status',
       render: (row) => (
-        <span className={`px-2 py-1 rounded text-xs ${
+        <span className={`px-2 py-1 rounded text-xs font-medium ${
           row.installation_status === 'commissioned' || row.installation_status === 'active' 
             ? 'bg-green-100 text-green-800' : 
           row.installation_status === 'in_progress' 
             ? 'bg-blue-100 text-blue-800' : 
-          'bg-yellow-100 text-yellow-800'
+          row.installation_status === 'pending'
+            ? 'bg-yellow-100 text-yellow-800' :
+          'bg-gray-100 text-gray-800'
         }`}>
-          {row.installation_status?.replace('_', ' ') || 'N/A'}
+          {row.installation_status?.replace('_', ' ').toUpperCase() || 'N/A'}
         </span>
       ),
     },
     {
       key: 'system_size',
       label: 'System Size',
-      render: (row) => row.system_size ? `${row.system_size} ${row.capacity_unit || ''}` : 'N/A',
+      render: (row) => row.system_size ? `${row.system_size} ${row.capacity_unit || 'kW'}` : 'N/A',
     },
     {
       key: 'installation_date',
@@ -44,18 +52,29 @@ export default function AdminInstallationSystemRecordsPage() {
     },
     {
       key: 'commissioning_date',
-      label: 'Commissioning Date',
-      render: (row) => row.commissioning_date ? new Date(row.commissioning_date).toLocaleDateString() : 'N/A',
+      label: 'Commissioned',
+      render: (row) => row.commissioning_date ? new Date(row.commissioning_date).toLocaleDateString() : 'Pending',
     },
     {
       key: 'actions',
-      label: 'Report',
+      label: 'Actions',
       render: (row) => (
-        <DownloadInstallationReportButton 
-          installationId={row.id} 
-          variant="icon"
-          isAdmin={true}
-        />
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setSelectedRecord(row);
+              setShowDetail(true);
+            }}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            View
+          </button>
+          <DownloadInstallationReportButton 
+            installationId={row.id} 
+            variant="icon"
+            isAdmin={true}
+          />
+        </div>
       ),
     },
   ];
@@ -105,8 +124,8 @@ export default function AdminInstallationSystemRecordsPage() {
   };
 
   const handleEdit = (item) => {
-    toast.info(`Edit installation: ${item.id?.slice(0, 8)}`);
-    // TODO: Implement edit modal
+    setSelectedRecord(item);
+    setShowDetail(true);
   };
 
   const handleDelete = async (item) => {
@@ -118,6 +137,20 @@ export default function AdminInstallationSystemRecordsPage() {
       } catch (error) {
         toast.error('Failed to delete installation system record');
       }
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'commissioned':
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -133,6 +166,149 @@ export default function AdminInstallationSystemRecordsPage() {
         filters={filters}
         isLoading={isLoading}
       />
+
+      {/* Detail Modal */}
+      <Dialog open={showDetail} onOpenChange={setShowDetail}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Installation Details</span>
+              <Badge className={getStatusColor(selectedRecord?.installation_status)}>
+                {selectedRecord?.installation_status?.replace('_', ' ').toUpperCase()}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription>
+              ID: {selectedRecord?.id?.slice(0, 16)}...
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRecord && (
+            <div className="space-y-6">
+              {/* Customer Information */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Customer Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Name</p>
+                    <p className="font-medium">{selectedRecord.customer_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Phone</p>
+                    <p className="font-medium">{selectedRecord.customer_phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="font-medium text-sm">{selectedRecord.customer_email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Address</p>
+                    <p className="font-medium text-sm">{selectedRecord.installation_address || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Installation Details */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Installation Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Type</p>
+                    <p className="font-medium">{selectedRecord.installation_type?.replace('_', ' ').toUpperCase()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">System Size</p>
+                    <p className="font-medium">{selectedRecord.system_size} {selectedRecord.capacity_unit || 'kW'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Installation Date</p>
+                    <p className="font-medium">
+                      {selectedRecord.installation_date 
+                        ? new Date(selectedRecord.installation_date).toLocaleDateString() 
+                        : 'Pending'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Commissioning Date</p>
+                    <p className="font-medium">
+                      {selectedRecord.commissioning_date 
+                        ? new Date(selectedRecord.commissioning_date).toLocaleDateString() 
+                        : 'Pending'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Details */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Additional Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Assigned Technician</p>
+                    <p className="font-medium">{selectedRecord.assigned_technician_name || 'Unassigned'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Warranty Years</p>
+                    <p className="font-medium">{selectedRecord.warranty_years || 'N/A'} years</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Location (Lat/Long)</p>
+                    <p className="font-medium text-sm">
+                      {selectedRecord.location_latitude && selectedRecord.location_longitude 
+                        ? `${selectedRecord.location_latitude.toFixed(4)}, ${selectedRecord.location_longitude.toFixed(4)}`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Notes</p>
+                    <p className="font-medium text-sm">{selectedRecord.notes || 'No notes'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Checklist Status */}
+              {selectedRecord.checklist_completion_percentage !== undefined && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Checklist Progress</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Completion Status</span>
+                      <span className="font-bold text-lg">{selectedRecord.checklist_completion_percentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all"
+                        style={{ width: `${selectedRecord.checklist_completion_percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Created/Updated Timestamps */}
+              <div className="border-t pt-4">
+                <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                  <div>
+                    <p>Created</p>
+                    <p className="text-gray-700">
+                      {selectedRecord.created_at 
+                        ? new Date(selectedRecord.created_at).toLocaleString() 
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p>Last Updated</p>
+                    <p className="text-gray-700">
+                      {selectedRecord.updated_at 
+                        ? new Date(selectedRecord.updated_at).toLocaleString() 
+                        : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
