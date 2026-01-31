@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiBox, FiPackage, FiMapPin, FiUser, FiCalendar, FiSearch } from 'react-icons/fi';
+import { FiBox, FiPackage, FiMapPin, FiSearch } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Alert } from '@/app/components/Alert';
+import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
 
 interface SerializedItem {
   id: number;
@@ -67,7 +69,9 @@ export default function ProductTrackingPage() {
         const response = await apiClient.get('/crm-api/manufacturer/product-tracking/');
         setProducts(response.data);
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch product tracking data.');
+        const errorMsg = getErrorMessage(err);
+        setError(errorMsg);
+        console.error('Product tracking fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -103,7 +107,14 @@ export default function ProductTrackingPage() {
         </div>
       </div>
       
-      {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
+      {error && (
+        <Alert 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+          className="mb-6"
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Product List */}
@@ -122,7 +133,10 @@ export default function ProductTrackingPage() {
                   ))}
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No products found.</p>
+                <Alert 
+                  variant="info" 
+                  message={searchTerm ? "No products match your search." : "No products found. Create products to start tracking."}
+                />
               ) : (
                 <div className="space-y-4">
                   {filteredProducts.map((product) => (
@@ -172,9 +186,15 @@ export default function ProductTrackingPage() {
             </CardHeader>
             <CardContent>
               {!selectedProduct ? (
-                <p className="text-gray-500 text-center py-8">Select a product to view its serialized items</p>
+                <Alert 
+                  variant="info" 
+                  message="Select a product from the list to view its serialized items and tracking information."
+                />
               ) : filteredItems.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No serialized items found for this product.</p>
+                <Alert 
+                  variant="info" 
+                  message={searchTerm ? "No items match your search." : "No serialized items found for this product."}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">

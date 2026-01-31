@@ -5,6 +5,8 @@ import { FiBarChart2 } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
+import { Alert } from '@/app/components/Alert';
+import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
 
 import { DateRangePicker } from '@/app/components/DateRangePicker';
 
@@ -48,7 +50,9 @@ export default function ManufacturerAnalyticsPage() {
         const response = await apiClient.get(url);
         setData(response.data);
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch analytics data.');
+        const errorMsg = getErrorMessage(err);
+        setError(errorMsg);
+        console.error('Analytics fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -72,10 +76,23 @@ export default function ManufacturerAnalyticsPage() {
         <DateRangePicker date={date} setDate={setDate} />
       </div>
 
-      {loading && <p>Loading analytics...</p>}
-      {error && <p className="text-red-500">Error: {error}</p>}
+      {error && (
+        <Alert 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+          className="mb-6"
+        />
+      )}
 
-      {data && (
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          <p className="ml-4 text-gray-500">Loading analytics...</p>
+        </div>
+      )}
+
+      {!loading && !error && data && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             <Card>
               <CardHeader>
@@ -91,18 +108,34 @@ export default function ManufacturerAnalyticsPage() {
                 <CardTitle>Fault Analytics</CardTitle>
               </CardHeader>
               <CardContent>
-                <p>Overloaded Inverters: {data.fault_analytics?.overloaded_inverters}</p>
-                <div>
-                  <h4 className="font-semibold mt-4">AI Insight: Common Fault Keywords:</h4>
-                  <ul>
-                    {data.fault_analytics?.ai_insight_common_faults.map((fault: string) => (
-                      <li key={fault}>{fault}</li>
-                    ))}
-                  </ul>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Overloaded Inverters</p>
+                    <p className="text-3xl font-bold text-red-600">{data.fault_analytics?.overloaded_inverters || 0}</p>
+                  </div>
+                  {data.fault_analytics?.ai_insight_common_faults && data.fault_analytics.ai_insight_common_faults.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">AI Insight: Common Fault Keywords</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {data.fault_analytics.ai_insight_common_faults.map((fault: string) => (
+                          <span key={fault} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            {fault}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
         </div>
+      )}
+
+      {!loading && !error && (!data || (!data.warranty_metrics && !data.fault_analytics)) && (
+        <Alert 
+          variant="info" 
+          message="No analytics data available for the selected date range. Try selecting a different time period." 
+        />
       )}
     </>
   );

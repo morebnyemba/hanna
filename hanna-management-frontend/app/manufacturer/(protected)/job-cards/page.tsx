@@ -5,6 +5,8 @@ import { FiTool } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import JobCardList from './JobCardList';
 import JobCardListSkeleton from './JobCardListSkeleton';
+import { Alert } from '@/app/components/Alert';
+import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
 
 interface JobCard {
   job_card_number: string;
@@ -38,7 +40,9 @@ export default function JobCardsPage() {
         const response = await apiClient.get<PaginatedResponse>('/crm-api/manufacturer/job-cards/');
         setJobCards(response.data.results);
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch job cards.');
+        const errorMsg = getErrorMessage(err);
+        setError(errorMsg);
+        console.error('Job cards fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -56,9 +60,26 @@ export default function JobCardsPage() {
         </div>
       </div>
 
+      {error && (
+        <Alert 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+          className="mb-6"
+        />
+      )}
+
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200">
-        {error && <p className="text-center text-red-500 py-4">Error: {error}</p>}
-        {loading ? <JobCardListSkeleton /> : <JobCardList jobCards={jobCards} />}
+        {loading ? (
+          <JobCardListSkeleton />
+        ) : jobCards.length === 0 ? (
+          <Alert 
+            variant="info" 
+            message="No job cards found." 
+          />
+        ) : (
+          <JobCardList jobCards={jobCards} />
+        )}
       </div>
     </main>
   );
