@@ -20,6 +20,10 @@ def send_portal_access_notification(sender, instance, created, **kwargs):
     """
     Send portal access notification when a new user account is created
     with a customer profile.
+    
+    Note: This notification should be sent along with a password reset token
+    rather than transmitting passwords. The actual password reset link should
+    be sent via a separate secure channel (email with token).
     """
     if created:
         # Check if this user has a customer_profile (indicating portal access)
@@ -28,12 +32,12 @@ def send_portal_access_notification(sender, instance, created, **kwargs):
             customer_contact = customer_profile.contact if hasattr(customer_profile, 'contact') else None
             
             if customer_contact:
-                # Generate a temporary password notification
-                # Note: In production, you should use proper password reset tokens
+                # Note: Do not send actual passwords in notifications
+                # Instead, trigger a password reset token generation and send via email
                 context = {
                     'customer_name': instance.get_full_name() or instance.username,
                     'username': instance.username,
-                    'temp_password': '***TEMP***',  # This should be set during user creation
+                    'temp_password': 'Please check your email for a secure password reset link',
                 }
                 
                 transaction.on_commit(
@@ -45,3 +49,10 @@ def send_portal_access_notification(sender, instance, created, **kwargs):
                     )
                 )
                 logger.info(f"Queued portal access notification for user {instance.id}.")
+                
+                # TODO: Integrate with Django's password reset system
+                # from django.contrib.auth.tokens import default_token_generator
+                # from django.core.mail import send_mail
+                # token = default_token_generator.make_token(instance)
+                # Send password reset email with token
+

@@ -84,7 +84,8 @@ def send_order_confirmation(sender, instance: Order, created, **kwargs):
             # Build cart items list
             items_list = []
             for item in instance.items.all():
-                items_list.append(f"- {item.quantity} x {item.product.name if item.product else item.product_name}")
+                product_name = item.product.name if item.product else (item.product_name or 'Unknown Product')
+                items_list.append(f"- {item.quantity} x {product_name}")
             cart_items_list = '\n'.join(items_list) if items_list else '(No items)'
             
             context = {
@@ -177,10 +178,25 @@ def send_installation_scheduled_notification(sender, instance, created, **kwargs
             technician = instance.technicians.first()
             technician_name = technician.user.get_full_name() if technician else 'To be assigned'
             
+            # Format preferred_datetime properly
+            if instance.preferred_datetime:
+                # Try to parse if it's a string, otherwise use as-is
+                try:
+                    from datetime import datetime
+                    if isinstance(instance.preferred_datetime, str):
+                        # Assuming format like "2024-01-15 14:00" or similar
+                        installation_date = instance.preferred_datetime
+                    else:
+                        installation_date = instance.preferred_datetime.strftime('%Y-%m-%d %H:%M')
+                except Exception:
+                    installation_date = str(instance.preferred_datetime)
+            else:
+                installation_date = 'To be confirmed'
+            
             context = {
                 'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
                 'installation_address': instance.address or 'Address not specified',
-                'installation_date': instance.preferred_datetime or 'To be confirmed',
+                'installation_date': installation_date,
                 'installation_time': '',  # Time is usually part of preferred_datetime
                 'technician_name': technician_name,
             }

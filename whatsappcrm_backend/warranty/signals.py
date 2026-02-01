@@ -127,7 +127,7 @@ def notify_warranty_claim_status_change(sender, instance: WarrantyClaim, created
             context = {
                 'customer_name': warranty.customer.get_full_name() if warranty.customer else 'Customer',
                 'claim_number': instance.claim_id,
-                'resolution_type': instance.get_status_display(),
+                'claim_status': instance.get_status_display(),
                 'resolution_notes_section': f"*Notes:*\n{instance.resolution_notes}\n" if instance.resolution_notes else '',
             }
             transaction.on_commit(

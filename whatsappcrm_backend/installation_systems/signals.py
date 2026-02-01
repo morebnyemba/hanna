@@ -256,14 +256,17 @@ def send_technician_assignment_notification(sender, instance, action, pk_set, **
                         'installation_type': instance.get_installation_type_display(),
                         'isr_id': str(instance.id),
                     }
-                    transaction.on_commit(
-                        lambda: queue_notifications_to_users(
+                    
+                    # Use a helper function to capture context values correctly
+                    def send_notification(contact_id, notification_context):
+                        queue_notifications_to_users(
                             template_name='pfungwa_technician_job_assigned',
-                            contact_ids=[tech_contact.id],
+                            contact_ids=[contact_id],
                             related_contact=tech_contact,
-                            template_context=context
+                            template_context=notification_context
                         )
-                    )
+                    
+                    transaction.on_commit(lambda ctx=context, cid=tech_contact.id: send_notification(cid, ctx))
                     logger.info(f"Queued technician assignment notification for technician {tech_id} on ISR {instance.id}.")
             except Technician.DoesNotExist:
                 logger.warning(f"Technician {tech_id} not found when trying to send assignment notification.")
