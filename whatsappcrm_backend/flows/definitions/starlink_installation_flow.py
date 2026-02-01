@@ -279,11 +279,22 @@ STARLINK_INSTALLATION_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "body": {"text": "Please review your details:\n\n*Name*: {{ install_full_name }}\n*Phone*: {{ install_phone }}\n*Kit Type*: {{ install_kit_type|title }}\n*Install Location*: {{ install_mount_location }}\n*Date*: {{ install_datetime }} ({{ install_availability|title }})\n*Address*: {{ install_address }}"},
+                        "header": {"type": "text", "text": "Review Installation Details"},
+                        "body": {"text": "🛰️ *Starlink Installation Request*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "🙋 *Client Name:*\n{{ install_full_name }}\n\n" +
+                            "📱 *Phone:*\n{{ install_phone }}\n\n" +
+                            "📦 *Kit Type:*\n{{ install_kit_type|title }}\n\n" +
+                            "📍 *Installation Location:*\n{{ install_mount_location }}\n\n" +
+                            "📅 *Preferred Date:*\n{{ install_datetime }}\n⏰ {{ install_availability|title }}\n\n" +
+                            "🏠 *Address:*\n{{ install_address }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "Please confirm to submit your installation request."
+                        },
                         "action": {"buttons": [
-                            {"type": "reply", "reply": {"id": "confirm_install", "title": "Confirm & Submit"}},
-                            {"type": "reply", "reply": {"id": "go_back_to_pin", "title": "Go Back"}},
-                            {"type": "reply", "reply": {"id": "cancel_install", "title": "Cancel"}}
+                            {"type": "reply", "reply": {"id": "confirm_install", "title": "✅ Confirm Request"}},
+                            {"type": "reply", "reply": {"id": "go_back_to_pin", "title": "↩️ Go Back"}},
+                            {"type": "reply", "reply": {"id": "cancel_install", "title": "❌ Cancel"}}
                         ]}
                     }
                 },
@@ -339,7 +350,7 @@ STARLINK_INSTALLATION_FLOW = {
         {
             "name": "end_flow_success",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Please complete the form to submit your Starlink installation request. Our team will contact you shortly to confirm the schedule."}}}
+            "config": {"message_config": {"message_type": "text", "text": {"body": "🛰️ *Starlink Installation Request Submitted!*\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *Request Status:* Confirmed\n📅 *Installation Date:* {{ install_datetime }}\n📦 *Kit Type:* {{ install_kit_type|title }}\n📍 *Location:* {{ install_address }}\n━━━━━━━━━━━━━━━━━━━━\n\n📬 *What's Next?*\n• Our installation team will contact you within 24 hours\n• We'll confirm the exact installation time\n• Please ensure access to the mount location\n\n💡 *Preparation Tips:*\n• Ensure {{ install_mount_location }} is accessible\n• Clear the installation area\n• Have your Starlink kit ready\n\nWelcome to high-speed satellite internet! 🌐"}}}
         },
         {
             "name": "end_flow_cancelled",

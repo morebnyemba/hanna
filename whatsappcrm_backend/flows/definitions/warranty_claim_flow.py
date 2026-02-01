@@ -476,7 +476,17 @@ WARRANTY_CLAIM_FLOW = {
                 "message_config": {
                     "message_type": "text",
                     "text": {
-                        "body": "✅ *Claim Submitted Successfully!*\n\nYour warranty claim has been registered in our system.\n\n📋 *Claim ID*: {{ generated_claim_id }}\n👀 *Status*: Under Review\n📬 *Next Step*: You'll receive an update via WhatsApp within 24 hours.\n\nThank you for choosing Hanna! 🙏"
+                        "body": "✅ *Warranty Claim Submitted Successfully!*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "📋 *Claim ID:* {{ generated_claim_id }}\n" +
+                            "👀 *Status:* Under Review\n" +
+                            "⏱️ *Response Time:* 24 hours\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "📬 *What's Next?*\n" +
+                            "• Our technical team will review your claim\n" +
+                            "• You'll receive an update via WhatsApp\n" +
+                            "• Keep your product and receipt ready\n\n" +
+                            "Thank you for choosing Hanna! 🙏"
                     }
                 }
             }

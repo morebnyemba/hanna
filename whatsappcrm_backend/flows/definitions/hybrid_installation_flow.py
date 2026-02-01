@@ -100,7 +100,39 @@ HYBRID_INSTALLATION_FLOW = {
                 ]
             },
             "transitions": [
-                {"to_step": "ask_location_pin", "condition_config": {"type": "always_true"}}
+                {"to_step": "confirm_hybrid_request", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "confirm_hybrid_request",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "header": {"type": "text", "text": "Review Installation Details"},
+                        "body": {"text": "🌞🛰️ *Hybrid Installation Request*\n(Starlink + Solar)\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "👤 *Client Name:*\n{{ install_full_name }}\n\n" +
+                            "📱 *Phone:*\n{{ install_phone }}\n\n" +
+                            "📍 *Address:*\n{{ install_address }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "Confirm to submit your hybrid installation request."
+                        },
+                        "action": {
+                            "buttons": [
+                                {"type": "reply", "reply": {"id": "confirm_hybrid", "title": "✅ Confirm"}},
+                                {"type": "reply", "reply": {"id": "cancel_hybrid", "title": "❌ Cancel"}}
+                            ]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "hybrid_confirmation"}
+            },
+            "transitions": [
+                {"to_step": "ask_location_pin", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_hybrid"}},
+                {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
 
@@ -143,7 +175,21 @@ HYBRID_INSTALLATION_FLOW = {
                 "message_config": {
                     "message_type": "text",
                     "text": {
-                        "body": "Thank you! Please complete the form to submit your hybrid installation request."
+                        "body": "🌞🛰️ *Hybrid Installation Request Submitted!*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "✅ *Request Status:* Confirmed\n" +
+                            "📦 *Package:* Starlink + Solar\n" +
+                            "📍 *Location:* {{ install_address }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "📬 *What's Next?*\n" +
+                            "• Our technical team will contact you within 24 hours\n" +
+                            "• We'll schedule a site assessment\n" +
+                            "• Installation timeline will be confirmed\n\n" +
+                            "💡 *This installation includes:*\n" +
+                            "• Starlink satellite internet setup\n" +
+                            "• Solar power system installation\n" +
+                            "• Complete integration and testing\n\n" +
+                            "Welcome to sustainable connectivity! 🌍"
                     }
                 }
             }
@@ -152,6 +198,18 @@ HYBRID_INSTALLATION_FLOW = {
             "name": "end_flow_unavailable",
             "type": "end_flow",
             "config": {}
+        },
+        {
+            "name": "end_flow_cancelled",
+            "type": "end_flow",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "Your hybrid installation request has been cancelled. Type 'menu' to start over."
+                    }
+                }
+            }
         }
     ]
 }

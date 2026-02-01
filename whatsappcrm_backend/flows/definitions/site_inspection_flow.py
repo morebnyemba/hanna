@@ -97,7 +97,42 @@ SITE_INSPECTION_FLOW = {
             "name": "ask_assessment_contact",
             "type": "question",
             "config": {"message_config": {"message_type": "text", "text": {"body": "Finally, what is the best *contact number* for our team to use?"}}, "reply_config": {"expected_type": "text", "save_to_variable": "assessment_contact_info"}},
-            "transitions": [{"to_step": "generate_assessment_id", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_contact_info"}}]
+            "transitions": [{"to_step": "confirm_assessment_request", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "assessment_contact_info"}}]
+        },
+        {
+            "name": "confirm_assessment_request",
+            "type": "question",
+            "config": {
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "header": {"type": "text", "text": "Review Assessment Request"},
+                        "body": {"text": "📋 *Site Assessment Request*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "👤 *Full Name:*\n{{ assessment_full_name }}\n\n" +
+                            "🏢 *Company:*\n{{ assessment_company_name }}\n\n" +
+                            "🔧 *Assessment Type:*\n{{ assessment_type|title }}\n\n" +
+                            "📅 *Preferred Day:*\n{{ assessment_preferred_day }}\n\n" +
+                            "📍 *Address:*\n{{ assessment_address }}\n\n" +
+                            "📱 *Contact:*\n{{ assessment_contact_info }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "Confirm to submit your site assessment request."
+                        },
+                        "action": {
+                            "buttons": [
+                                {"type": "reply", "reply": {"id": "confirm_assessment", "title": "✅ Confirm"}},
+                                {"type": "reply", "reply": {"id": "cancel_assessment", "title": "❌ Cancel"}}
+                            ]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "assessment_confirmation"}
+            },
+            "transitions": [
+                {"to_step": "generate_assessment_id", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_assessment"}},
+                {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
         },
         {
             "name": "generate_assessment_id",
@@ -123,7 +158,29 @@ SITE_INSPECTION_FLOW = {
         {
             "name": "end_flow_assessment_success",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Your site assessment request (#{{ generated_assessment_id }}) for *{{ assessment_type }}* has been submitted. Our team will contact you shortly to confirm the schedule."}}},
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "📋 *Site Assessment Request Submitted!*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "🔢 *Assessment ID:* {{ generated_assessment_id }}\n" +
+                            "🔧 *Type:* {{ assessment_type|title }}\n" +
+                            "📅 *Preferred Day:* {{ assessment_preferred_day }}\n" +
+                            "📍 *Location:* {{ assessment_address }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "📬 *What's Next?*\n" +
+                            "• Our assessment team will contact you within 24 hours\n" +
+                            "• We'll confirm the exact date and time\n" +
+                            "• Please ensure site access is available\n\n" +
+                            "💡 *Preparation:*\n" +
+                            "• Clear the assessment area\n" +
+                            "• Prepare any relevant documents\n" +
+                            "• Note any specific requirements\n\n" +
+                            "Thank you for choosing Hanna! 🙏"
+                    }
+                }
+            },
             "transitions": []
         },
         {

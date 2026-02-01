@@ -913,7 +913,7 @@ SOLAR_INSTALLATION_FLOW = {
             "name": "end_flow_success",
             "type": "end_flow",
             "config": {
-                "message_config": {"message_type": "text", "text": {"body": "Thank you! Your installation request has been submitted. Our team will contact you shortly to confirm the schedule."}}
+                "message_config": {"message_type": "text", "text": {"body": "☀️ *Solar Installation Request Submitted!*\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *Request Status:* Confirmed\n📅 *Installation Date:* {{ install_datetime }}\n📍 *Location:* {{ install_address }}\n━━━━━━━━━━━━━━━━━━━━\n\n📬 *What's Next?*\n• Our technical team will contact you within 24 hours\n• We'll confirm the exact installation time\n• Please ensure someone is available at the location\n\n💡 *Preparation Tips:*\n• Clear the installation area\n• Ensure roof access is available\n• Have proof of payment ready\n\nThank you for choosing solar energy! 🌍"}}
             },
             "transitions": []
         },
