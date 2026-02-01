@@ -384,7 +384,7 @@ export default function DashboardLayout() {
                 href="https://pfungwa.tech" 
                 target="_blank" rel="noopener noreferrer" 
                 className="font-medium text-purple-600 hover:underline dark:text-purple-400"
-              >Pfungwa Technologies</a>. All rights reserved.
+              >Pfungwa Technologies</a>. All rights reserved. <span className="text-xs text-gray-500 dark:text-gray-500">v2.0.0</span>
             </div>
             <div className="flex items-center gap-4">
               <a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Terms</a>
