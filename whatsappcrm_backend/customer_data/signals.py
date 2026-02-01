@@ -1,6 +1,7 @@
 # customer_data/signals.py
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from django.db import transaction
 from .models import Order, OrderItem
 
 from warranty.models import Warranty
@@ -45,6 +46,64 @@ def on_new_order_created(sender, instance, created, **kwargs):
         )
 
 
+@receiver(post_save, sender=Order)
+def send_payment_notifications(sender, instance: Order, created, **kwargs):
+    """
+    Send notifications to customer when payment status changes.
+    """
+    if not created:
+        # Check if payment_status changed to 'paid'
+        if instance.payment_status == Order.PaymentStatus.PAID:
+            customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
+            if customer_contact:
+                context = {
+                    'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                    'order_number': instance.order_number or str(instance.id),
+                    'order_amount': str(instance.amount) if instance.amount else '0.00',
+                    'payment_method': instance.get_payment_method_display() if instance.payment_method else 'N/A',
+                }
+                transaction.on_commit(
+                    lambda: queue_notifications_to_users(
+                        template_name='pfungwa_payment_received',
+                        contact_ids=[customer_contact.id],
+                        related_contact=customer_contact,
+                        template_context=context
+                    )
+                )
+                logger.info(f"Queued payment received notification for order {instance.id}.")
+
+
+@receiver(post_save, sender=Order)
+def send_order_confirmation(sender, instance: Order, created, **kwargs):
+    """
+    Send order confirmation to customer when order stage changes to closed_won.
+    """
+    if not created and instance.stage == Order.Stage.CLOSED_WON:
+        customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
+        if customer_contact:
+            # Build cart items list
+            items_list = []
+            for item in instance.items.all():
+                items_list.append(f"- {item.quantity} x {item.product.name if item.product else item.product_name}")
+            cart_items_list = '\n'.join(items_list) if items_list else '(No items)'
+            
+            context = {
+                'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                'order_number': instance.order_number or str(instance.id),
+                'order_amount': str(instance.amount) if instance.amount else '0.00',
+                'cart_items_list': cart_items_list,
+            }
+            transaction.on_commit(
+                lambda: queue_notifications_to_users(
+                    template_name='pfungwa_order_confirmation',
+                    contact_ids=[customer_contact.id],
+                    related_contact=customer_contact,
+                    template_context=context
+                )
+            )
+            logger.info(f"Queued order confirmation notification for order {instance.id}.")
+
+
 @receiver([post_save, post_delete], sender=OrderItem)
 def update_order_amount(sender, instance, **kwargs):
     """
@@ -54,6 +113,56 @@ def update_order_amount(sender, instance, **kwargs):
     order = instance.order
     order.update_total_amount()
     order.save(update_fields=['amount'])
+
+
+@receiver(post_save, sender='customer_data.JobCard')
+def send_job_card_notifications(sender, instance, created, **kwargs):
+    """
+    Send notifications when job card is created or status changes.
+    """
+    if created:
+        # Notify customer that job card was created
+        customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
+        if customer_contact:
+            context = {
+                'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                'job_card_number': instance.job_card_number,
+                'product_description': instance.serialized_item.product.name if instance.serialized_item else 'Product',
+                'reported_fault': instance.reported_fault or 'Not specified',
+            }
+            transaction.on_commit(
+                lambda: queue_notifications_to_users(
+                    template_name='pfungwa_job_card_created',
+                    contact_ids=[customer_contact.id],
+                    related_contact=customer_contact,
+                    template_context=context
+                )
+            )
+            logger.info(f"Queued job card creation notification for customer {customer_contact.id}.")
+    
+    elif instance.status in ['resolved', 'closed']:
+        # Notify customer that job is completed
+        customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
+        if customer_contact:
+            # Get resolution notes from warranty claim if available
+            resolution_notes = ''
+            if instance.warranty_claim and instance.warranty_claim.resolution_notes:
+                resolution_notes = f"*Resolution:*\n{instance.warranty_claim.resolution_notes}\n"
+            
+            context = {
+                'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                'job_card_number': instance.job_card_number,
+                'resolution_notes_section': resolution_notes,
+            }
+            transaction.on_commit(
+                lambda: queue_notifications_to_users(
+                    template_name='pfungwa_job_card_completed',
+                    contact_ids=[customer_contact.id],
+                    related_contact=customer_contact,
+                    template_context=context
+                )
+            )
+            logger.info(f"Queued job card completion notification for customer {customer_contact.id}.")
 
 
 @receiver(post_save, sender=Order)
