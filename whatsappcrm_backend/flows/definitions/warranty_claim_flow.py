@@ -101,7 +101,8 @@ WARRANTY_CLAIM_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "map_warranty_whatsapp_response_to_context", "priority": 1, "condition_config": {"type": "whatsapp_flow_response_received"}}
+                {"to_step": "map_warranty_whatsapp_response_to_context", "priority": 1, "condition_config": {"type": "whatsapp_flow_response_received"}},
+                {"to_step": "wait_for_warranty_whatsapp_response", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         # ============================================================================
