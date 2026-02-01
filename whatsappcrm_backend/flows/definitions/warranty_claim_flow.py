@@ -83,14 +83,14 @@ WARRANTY_CLAIM_FLOW = {
                 }
             },
             "transitions": [
-                {"to_step": "wait_for_warranty_whatsapp_response", "condition_config": {"type": "always_true"}}
+                {"to_step": "wait_for_whatsapp_response", "condition_config": {"type": "always_true"}}
             ]
         },
         # ============================================================================
         # STEP 4: WAIT FOR FORM RESPONSE (PATTERN MATCH: Solar)
         # ============================================================================
         {
-            "name": "wait_for_warranty_whatsapp_response",
+            "name": "wait_for_whatsapp_response",
             "type": "action",
             "config": {
                 "actions_to_run": []
