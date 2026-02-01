@@ -10,7 +10,7 @@ class TemplateRenderingTestCase(TestCase):
     """Test that simplified templates render correctly"""
     
     def test_human_handover_flow_template(self):
-        """Test hanna_human_handover_flow template rendering"""
+        """Test pfungwa_human_handover_flow template rendering"""
         template_body = """Human Intervention Required ⚠️
 
 Contact *{{ related_contact_name }}* requires assistance.
@@ -33,7 +33,7 @@ Please respond to them in the main inbox."""
         self.assertNotIn('or ', result)  # No 'or' expressions left
     
     def test_message_send_failure_template(self):
-        """Test hanna_message_send_failure template rendering"""
+        """Test pfungwa_message_send_failure template rendering"""
         template_body = """Message Send Failure ⚠️
 
 Failed to send a message to *{{ related_contact_name }}*.
@@ -55,7 +55,7 @@ Please check the system logs for more details."""
         self.assertNotIn('Unknown error', result)  # No hardcoded defaults
     
     def test_invoice_processed_template(self):
-        """Test hanna_invoice_processed_successfully template rendering"""
+        """Test pfungwa_invoice_processed_successfully template rendering"""
         template_body = """Invoice Processed Successfully ✅
 
 An invoice from *{{ sender }}* (Filename: *{{ filename }}*) has been processed.

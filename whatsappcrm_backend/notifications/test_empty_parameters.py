@@ -225,7 +225,7 @@ class EmptyParameterHandlingTest(TestCase):
     @patch('notifications.services.send_whatsapp_message_task')
     def test_order_notification_with_missing_customer_name(self, mock_task):
         """
-        Test the specific bug: hanna_new_order_created template with empty customer_name.
+        Test the specific bug: pfungwa_new_order_created template with empty customer_name.
         This replicates the actual error from the logs where customer_name was empty.
         """
         # Create order notification template

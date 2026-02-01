@@ -116,7 +116,7 @@ SITE_INSPECTION_FLOW = {
             "type": "action",
             "config": {"actions_to_run": [
                 {"action_type": "create_model_instance", "app_label": "customer_data", "model_name": "SiteAssessmentRequest", "fields_template": {"customer": "current", "assessment_id": "{{ generated_assessment_id }}", "full_name": "{{ assessment_full_name }}", "company_name": "{{ assessment_company_name }}", "address": "{{ assessment_address }}", "contact_info": "{{ assessment_contact_info }}", "preferred_day": "{{ assessment_preferred_day }}", "assessment_type": "{{ assessment_type }}"}, "save_to_variable": "created_assessment_request"},
-                {"action_type": "send_group_notification", "params_template": {"group_names": ["Technical Admin", "Sales Team"], "template_name": "hanna_new_site_assessment_request"}}
+                {"action_type": "send_group_notification", "params_template": {"group_names": ["Technical Admin", "Sales Team"], "template_name": "pfungwa_new_site_assessment_request"}}
             ]},
             "transitions": [{"to_step": "end_flow_assessment_success", "priority": 0, "condition_config": {"type": "always_true"}}]
         },

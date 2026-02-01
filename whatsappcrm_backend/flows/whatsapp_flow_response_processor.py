@@ -203,7 +203,7 @@ class WhatsAppFlowResponseProcessor:
                 }
                 
                 queue_notifications_to_users(
-                    template_name='hanna_new_custom_furniture_installation_request',
+                    template_name='pfungwa_new_custom_furniture_installation_request',
                     template_context=notification_context,
                     group_names=['Pfungwa Staff', 'System Admins']
                 )

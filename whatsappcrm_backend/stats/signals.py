@@ -69,7 +69,7 @@ def on_contact_change(sender, instance, created, **kwargs):
         # --- WhatsApp Notification (NEW) ---
         from notifications.services import queue_notifications_to_users
         queue_notifications_to_users(
-            template_name='hanna_human_handover_flow',
+            template_name='pfungwa_human_handover_flow',
             group_names=["Technical Admin"],
             related_contact=instance
         )
@@ -130,12 +130,12 @@ def on_order_change(sender, instance, created, **kwargs):
             }
             from notifications.services import queue_notifications_to_users
             queue_notifications_to_users(
-                template_name='hanna_new_order_created',
+                template_name='pfungwa_new_order_created',
                 group_names=["System Admins", "Sales Team"],
                 related_contact=instance.customer.contact,
                 template_context=template_context
             )
-            logger.info(f"Queued 'hanna_new_order_created' notification for Order ID {instance.pk}.")
+            logger.info(f"Queued 'pfungwa_new_order_created' notification for Order ID {instance.pk}.")
 
             # The activity log is a simple Celery task and less likely to fail.
             activity_payload = {

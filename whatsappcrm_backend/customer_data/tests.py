@@ -42,7 +42,7 @@ class OrderSignalTest(TestCase):
         
         # Create notification template
         self.template = NotificationTemplate.objects.create(
-            name='hanna_new_order_created',
+            name='pfungwa_new_order_created',
             description='Test template for new orders',
             message_body='New order: {{ order.name }}'
         )

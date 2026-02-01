@@ -32,7 +32,7 @@ NOTIFICATION_TEMPLATES = [
     # ORDER LIFECYCLE TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_new_order_created",
+        "name": "pfungwa_new_order_created",
         "description": "Sent to admin when a new order is created",
         "message_body": """🛒 *New Order Created*
 
@@ -48,7 +48,7 @@ Please review and process the order.""",
         }
     },
     {
-        "name": "hanna_order_confirmation",
+        "name": "pfungwa_order_confirmation",
         "description": "Sent to customer when their order is confirmed",
         "message_body": """✅ *Order Confirmed*
 
@@ -70,7 +70,7 @@ Thank you for choosing HANNA! 🌟""",
         }
     },
     {
-        "name": "hanna_payment_received",
+        "name": "pfungwa_payment_received",
         "description": "Sent to customer when payment is received",
         "message_body": """💰 *Payment Received*
 
@@ -91,7 +91,7 @@ Thank you! 🙏""",
         }
     },
     {
-        "name": "hanna_payment_reminder",
+        "name": "pfungwa_payment_reminder",
         "description": "Reminder sent to customer for pending payment",
         "message_body": """⏰ *Payment Reminder*
 
@@ -111,7 +111,7 @@ Need help? Reply to this message.""",
         }
     },
     {
-        "name": "hanna_order_dispatched",
+        "name": "pfungwa_order_dispatched",
         "description": "Sent to customer when order is dispatched",
         "message_body": """📦 *Order Dispatched*
 
@@ -134,7 +134,7 @@ Track your order or contact us if you have questions.""",
     # SOLAR PACKAGE / INSTALLATION TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_solar_package_purchased",
+        "name": "pfungwa_solar_package_purchased",
         "description": "Sent to customer when they purchase a solar package",
         "message_body": """☀️ *Solar Package Purchased!*
 
@@ -163,7 +163,7 @@ Questions? Reply to this message anytime.""",
         }
     },
     {
-        "name": "hanna_installation_scheduled",
+        "name": "pfungwa_installation_scheduled",
         "description": "Sent to customer when installation is scheduled",
         "message_body": """📅 *Installation Scheduled*
 
@@ -190,7 +190,7 @@ Need to reschedule? Reply to this message.""",
         }
     },
     {
-        "name": "hanna_installation_complete",
+        "name": "pfungwa_installation_complete",
         "description": "Sent to customer when installation is completed",
         "message_body": """✅ *Installation Complete!*
 
@@ -220,7 +220,7 @@ Thank you for choosing HANNA! ☀️""",
         }
     },
     {
-        "name": "hanna_installation_request_new",
+        "name": "pfungwa_installation_request_new",
         "description": "Sent to admin when new installation request is created",
         "message_body": """📋 *New Installation Request*
 
@@ -243,7 +243,7 @@ Please review and schedule.""",
     # TECHNICIAN TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_technician_job_assigned",
+        "name": "pfungwa_technician_job_assigned",
         "description": "Sent to technician when a new job is assigned",
         "message_body": """🔧 *New Job Assigned*
 
@@ -266,7 +266,7 @@ Please confirm your availability.""",
         }
     },
     {
-        "name": "hanna_technician_job_reminder",
+        "name": "pfungwa_technician_job_reminder",
         "description": "Reminder sent to technician before scheduled job",
         "message_body": """⏰ *Job Reminder*
 
@@ -286,7 +286,7 @@ Please ensure you have all required equipment and documentation.""",
         }
     },
     {
-        "name": "hanna_payout_approved",
+        "name": "pfungwa_payout_approved",
         "description": "Sent to technician when payout is approved",
         "message_body": """💵 *Payout Approved*
 
@@ -305,7 +305,7 @@ Payment will be processed shortly.""",
         }
     },
     {
-        "name": "hanna_payout_paid",
+        "name": "pfungwa_payout_paid",
         "description": "Sent to technician when payout is completed",
         "message_body": """✅ *Payment Completed*
 
@@ -329,7 +329,7 @@ Thank you for your excellent work! 🙏""",
     # WARRANTY TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_warranty_registered",
+        "name": "pfungwa_warranty_registered",
         "description": "Sent to customer when warranty is registered",
         "message_body": """🛡️ *Warranty Registered*
 
@@ -351,7 +351,7 @@ Need to claim warranty? Contact us anytime.""",
         }
     },
     {
-        "name": "hanna_warranty_expiring",
+        "name": "pfungwa_warranty_expiring",
         "description": "Reminder sent when warranty is about to expire",
         "message_body": """⚠️ *Warranty Expiring Soon*
 
@@ -374,7 +374,7 @@ Reply to learn about your options.""",
         }
     },
     {
-        "name": "hanna_warranty_claim_submitted",
+        "name": "pfungwa_warranty_claim_submitted",
         "description": "Sent to customer when warranty claim is submitted",
         "message_body": """📝 *Warranty Claim Submitted*
 
@@ -394,7 +394,7 @@ Our team will review and respond within 2 business days.""",
         }
     },
     {
-        "name": "hanna_warranty_claim_approved",
+        "name": "pfungwa_warranty_claim_approved",
         "description": "Sent to customer when warranty claim is approved",
         "message_body": """✅ *Warranty Claim Approved*
 
@@ -417,7 +417,7 @@ Next steps will be communicated shortly.""",
     # SERVICE / JOB CARD TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_service_request_received",
+        "name": "pfungwa_service_request_received",
         "description": "Sent to customer when service request is received",
         "message_body": """🔧 *Service Request Received*
 
@@ -436,7 +436,7 @@ Our team will review and contact you within 24 hours.""",
         }
     },
     {
-        "name": "hanna_job_card_created",
+        "name": "pfungwa_job_card_created",
         "description": "Sent to customer when job card is created",
         "message_body": """📋 *Job Card Created*
 
@@ -456,7 +456,7 @@ A technician will be assigned shortly.""",
         }
     },
     {
-        "name": "hanna_job_card_completed",
+        "name": "pfungwa_job_card_completed",
         "description": "Sent to customer when job is completed",
         "message_body": """✅ *Service Completed*
 
@@ -478,7 +478,7 @@ Please rate your experience by replying with 1-5 stars ⭐""",
     # ADMIN / SYSTEM TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_admin_24h_window_reminder",
+        "name": "pfungwa_admin_24h_window_reminder",
         "description": "Reminder to admin about 24-hour messaging window",
         "message_body": """⚠️ *24-Hour Window Expiring*
 
@@ -492,7 +492,7 @@ The 24-hour messaging window is about to expire. Use a template message to conti
         }
     },
     {
-        "name": "hanna_message_send_failure",
+        "name": "pfungwa_message_send_failure",
         "description": "Sent to admin when message sending fails",
         "message_body": """❌ *Message Send Failure*
 
@@ -504,7 +504,7 @@ Please check the conversation and retry or use a template message.""",
         }
     },
     {
-        "name": "hanna_human_handover_required",
+        "name": "pfungwa_human_handover_required",
         "description": "Sent to admin when bot needs human intervention",
         "message_body": """🆘 *Human Handover Requested*
 
@@ -522,7 +522,7 @@ Please respond promptly.""",
         }
     },
     {
-        "name": "hanna_low_stock_alert",
+        "name": "pfungwa_low_stock_alert",
         "description": "Alert sent when product stock is low",
         "message_body": """📦 *Low Stock Alert*
 
@@ -542,7 +542,7 @@ Please reorder to avoid stockouts.""",
     # RETAILER / BRANCH TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_branch_order_received",
+        "name": "pfungwa_branch_order_received",
         "description": "Sent to branch when order is assigned to them",
         "message_body": """📦 *New Order for Your Branch*
 
@@ -558,7 +558,7 @@ Please process and dispatch.""",
         }
     },
     {
-        "name": "hanna_retailer_commission_earned",
+        "name": "pfungwa_retailer_commission_earned",
         "description": "Sent to retailer when commission is earned",
         "message_body": """💰 *Commission Earned*
 
@@ -580,7 +580,7 @@ Keep up the great work! 🎯""",
     # MONITORING / ALERT TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_system_offline_alert",
+        "name": "pfungwa_system_offline_alert",
         "description": "Alert when monitored system goes offline",
         "message_body": """🔴 *System Offline Alert*
 
@@ -596,7 +596,7 @@ Please investigate the issue.""",
         }
     },
     {
-        "name": "hanna_system_back_online",
+        "name": "pfungwa_system_back_online",
         "description": "Notification when system comes back online",
         "message_body": """🟢 *System Back Online*
 
@@ -614,7 +614,7 @@ The system is now online and functioning normally.""",
     # PORTAL ACCESS TEMPLATES
     # ============================================================================
     {
-        "name": "hanna_portal_access_granted",
+        "name": "pfungwa_portal_access_granted",
         "description": "Sent to customer when portal access is granted",
         "message_body": """🔐 *Portal Access Granted*
 
@@ -640,7 +640,7 @@ Features available:
         }
     },
     {
-        "name": "hanna_password_reset",
+        "name": "pfungwa_password_reset",
         "description": "Password reset notification",
         "message_body": """🔑 *Password Reset*
 

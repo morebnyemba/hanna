@@ -38,7 +38,7 @@ def on_new_order_created(sender, instance, created, **kwargs):
         }
         
         queue_notifications_to_users(
-            template_name='hanna_new_order_created',
+            template_name='pfungwa_new_order_created',
             group_names=["System Admins", "Sales Team"],
             related_contact=instance.customer.contact if instance.customer else None,
             template_context=context

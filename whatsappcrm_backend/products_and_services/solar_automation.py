@@ -266,7 +266,7 @@ def solar_package_purchase_automation(sender, instance: Order, created, **kwargs
             # 5a. Send purchase confirmation to customer
             if customer.contact:
                 queue_notifications_to_users(
-                    template_name='hanna_solar_package_purchased',
+                    template_name='pfungwa_solar_package_purchased',
                     contact_ids=[customer.contact.id],
                     template_context=base_context
                 )
@@ -274,7 +274,7 @@ def solar_package_purchase_automation(sender, instance: Order, created, **kwargs
             
             # 5b. Send notification to admin about new solar order
             queue_notifications_to_users(
-                template_name='hanna_installation_request_new',
+                template_name='pfungwa_installation_request_new',
                 group_names=['System Admins', 'Installation Team'],
                 related_contact=customer.contact if customer.contact else None,
                 template_context={
@@ -287,7 +287,7 @@ def solar_package_purchase_automation(sender, instance: Order, created, **kwargs
             # 5c. Send portal access credentials if newly created
             if portal_access_granted and temp_password and customer.contact:
                 queue_notifications_to_users(
-                    template_name='hanna_portal_access_granted',
+                    template_name='pfungwa_portal_access_granted',
                     contact_ids=[customer.contact.id],
                     template_context={
                         'customer_name': base_context['customer_name'],
@@ -338,7 +338,7 @@ def send_installation_complete_notification(sender, instance: InstallationSystem
     
     try:
         queue_notifications_to_users(
-            template_name='hanna_installation_complete',
+            template_name='pfungwa_installation_complete',
             contact_ids=[customer.contact.id],
             template_context={
                 'customer_name': customer.get_full_name() or customer.contact.name or 'Customer',

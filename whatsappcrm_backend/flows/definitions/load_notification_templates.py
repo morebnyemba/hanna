@@ -9,7 +9,7 @@ from notifications.models import NotificationTemplate
 # This makes them easy to manage and deploy.
 NOTIFICATION_TEMPLATES = [
     {
-        "name": "hanna_new_order_created",
+        "name": "pfungwa_new_order_created",
         "description": "Sent to admins when a new order is created via a signal.",
         "template_type": "whatsapp",
         "body": """New Order Created! 📦
@@ -23,7 +23,7 @@ A new order has been created for customer *{{ customer_name }}*.
 Please see the admin panel for full details."""
     },
     {
-        "name": "hanna_new_online_order_placed",
+        "name": "pfungwa_new_online_order_placed",
         "description": "Sent to admins when a customer places a new order through the 'Purchase Product' flow.",
         "template_type": "whatsapp",
         "body": """New Online Order Placed! 🛍️
@@ -46,7 +46,7 @@ A new order has been placed via WhatsApp by *{{ contact_name }}*.
 Please follow up with the customer to arrange payment."""
     },
     {
-        "name": "hanna_order_payment_status_updated",
+        "name": "pfungwa_order_payment_status_updated",
         "description": "Sent to a customer when an admin updates their order's payment status.",
         "template_type": "whatsapp",
         "body": """Hello! 👋
@@ -56,7 +56,7 @@ The status for your order '{{ order_name }}' (#{{ order_number }}) has been upda
 Thank you for choosing us!"""
     },
     {
-        "name": "hanna_assessment_status_updated",
+        "name": "pfungwa_assessment_status_updated",
         "description": "Sent to a customer when an admin updates their site assessment status.",
         "template_type": "whatsapp",
         "body": """Hello! 👋
@@ -66,7 +66,7 @@ The status for your Site Assessment Request (#{{ assessment_id }}) has been upda
 Our team will be in touch with the next steps. Thank you!"""
     },
     {
-        "name": "hanna_new_installation_request",
+        "name": "pfungwa_new_installation_request",
         "description": "Sent to admins when a customer submits a new solar installation request.",
         "template_type": "whatsapp",
         "body": """New Installation Request 🛠️
@@ -91,7 +91,7 @@ A new installation request has been submitted by *{{ contact_name }}*.
 Please review and schedule the installation."""
     },
     {
-        "name": "hanna_new_starlink_installation_request",
+        "name": "pfungwa_new_starlink_installation_request",
         "description": "Sent to admins when a customer submits a new Starlink installation request.",
         "template_type": "whatsapp",
         "body": """New Starlink Installation Request 🛰️
@@ -114,7 +114,7 @@ A new Starlink installation request has been submitted by *{{ contact_name }}*.
 Please follow up to confirm the schedule."""
     },
     {
-        "name": "hanna_new_solar_cleaning_request",
+        "name": "pfungwa_new_solar_cleaning_request",
         "description": "Sent to admins when a customer submits a new solar panel cleaning request.",
         "template_type": "whatsapp",
         "body": """New Solar Cleaning Request 💧
@@ -135,7 +135,7 @@ A new cleaning request has been submitted by *{{ contact_name }}*.
 Please follow up to provide a quote and schedule the service."""
     },
     {
-        "name": "hanna_new_custom_furniture_installation_request",
+        "name": "pfungwa_new_custom_furniture_installation_request",
         "description": "Sent to admins when a customer submits a new custom furniture installation/delivery request.",
         "template_type": "whatsapp",
         "body": """New Custom Furniture Installation Request 🪑
@@ -158,7 +158,7 @@ A new furniture installation request has been submitted by *{{ contact_name }}*.
 Please follow up to confirm the delivery/installation schedule."""
     },
     {
-        "name": "hanna_admin_order_and_install_created",
+        "name": "pfungwa_admin_order_and_install_created",
         "description": "Sent to admins when another admin creates a new order and installation request via the admin flow.",
         "template_type": "whatsapp",
         "body": """Admin Action: New Order & Install Created 📝
@@ -172,7 +172,7 @@ Admin *{{ admin_name }}* has created a new order and installation request.
 Please see the admin panel for full details."""
     },
     {
-        "name": "hanna_new_site_assessment_request",
+        "name": "pfungwa_new_site_assessment_request",
         "description": "Sent to admins when a customer books a new site assessment.",
         "template_type": "whatsapp",
         "body": """New Site Assessment Request 📋
@@ -189,7 +189,7 @@ A new site assessment has been requested by *{{ contact_name }}*.
 Please follow up to schedule the assessment."""
     },
     {
-        "name": "hanna_job_card_created_successfully",
+        "name": "pfungwa_job_card_created_successfully",
         "description": "Sent to admins when a job card is successfully created from an email attachment.",
         "template_type": "whatsapp",
         "body": """New Job Card Created ⚙️
@@ -205,7 +205,7 @@ A new job card has been automatically created from an email attachment.
 Please review the job card in the admin panel and assign it to a technician."""
     },
     {
-        "name": "hanna_human_handover_flow",
+        "name": "pfungwa_human_handover_flow",
         "description": "Sent to admins when a user is handed over to a human agent by the flow engine.",
         "template_type": "whatsapp",
         "body": """Human Intervention Required ⚠️
@@ -218,7 +218,7 @@ Contact *{{ related_contact_name }}* requires assistance.
 Please respond to them in the main inbox."""
     },
     {
-        "name": "hanna_new_placeholder_order_created",
+        "name": "pfungwa_new_placeholder_order_created",
         "description": "Sent to admins when a placeholder order is created via the order receiver number.",
         "template_type": "whatsapp",
         "body": """New Placeholder Order Created 📦
@@ -230,7 +230,7 @@ A new placeholder order has been created by *{{ contact_name }}*.
 Please update the order details in the admin panel as soon as possible."""
     },
     {
-        "name": "hanna_message_send_failure",
+        "name": "pfungwa_message_send_failure",
         "description": "Sent to admins when a WhatsApp message fails to send.",
         "template_type": "whatsapp",
         "body": """Message Send Failure ⚠️
@@ -242,7 +242,7 @@ Failed to send a message to *{{ related_contact_name }}*.
 Please check the system logs for more details."""
     },
     {
-        "name": "hanna_admin_24h_window_reminder",
+        "name": "pfungwa_admin_24h_window_reminder",
         "description": "Sent to an admin user when their 24-hour interaction window is about to close.",
         "template_type": "whatsapp",
         "body": """Hi {{ recipient_name }},
@@ -252,7 +252,7 @@ This is an automated reminder. Your 24-hour interaction window for receiving sys
 Please reply with "status" or any other command to keep the window open."""
     },
     {
-        "name": "hanna_invoice_processed_successfully",
+        "name": "pfungwa_invoice_processed_successfully",
         "description": "Sent to admins when an invoice from an email has been successfully processed into an order.",
         "template_type": "whatsapp",
         "body": """Invoice Processed Successfully ✅

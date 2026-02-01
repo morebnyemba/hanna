@@ -57,14 +57,14 @@ def main():
     
     # Templates that were rejected and need to be validated
     templates_to_validate = [
-        'hanna_new_starlink_installation_request',
-        'hanna_new_solar_cleaning_request',
-        'hanna_new_installation_request',
-        'hanna_new_site_assessment_request',
-        'hanna_new_placeholder_order_created',
-        'hanna_new_order_created',
-        'hanna_new_online_order_placed',
-        'hanna_admin_order_and_install_created'
+        'pfungwa_new_starlink_installation_request',
+        'pfungwa_new_solar_cleaning_request',
+        'pfungwa_new_installation_request',
+        'pfungwa_new_site_assessment_request',
+        'pfungwa_new_placeholder_order_created',
+        'pfungwa_new_order_created',
+        'pfungwa_new_online_order_placed',
+        'pfungwa_admin_order_and_install_created'
     ]
     
     print("=" * 70)

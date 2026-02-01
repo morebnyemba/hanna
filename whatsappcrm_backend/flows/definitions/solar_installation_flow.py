@@ -856,7 +856,7 @@ SOLAR_INSTALLATION_FLOW = {
                         "params_template": {
                             "group_names": ["Pfungwa Staff", "System Admins"],
                             # This name must match a NotificationTemplate in the database
-                            "template_name": "hanna_new_installation_request"
+                            "template_name": "pfungwa_new_installation_request"
                         }
                     }
                 ]

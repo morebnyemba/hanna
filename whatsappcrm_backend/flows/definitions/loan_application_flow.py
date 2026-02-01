@@ -260,7 +260,7 @@ LOAN_APPLICATION_FLOW = {
                         "action_type": "send_group_notification",
                         "params_template": {
                             "group_names": ["Finance Team", "System Admins"],
-                            "template_name": "hanna_new_loan_application"
+                            "template_name": "pfungwa_new_loan_application"
                         }
                     }
                 ]
