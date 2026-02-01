@@ -93,13 +93,7 @@ WARRANTY_CLAIM_FLOW = {
             "name": "wait_for_warranty_whatsapp_response",
             "type": "action",
             "config": {
-                "actions_to_run": [],
-                "message_config": {
-                    "message_type": "text",
-                    "text": {
-                        "body": "Please complete the WhatsApp form. We will continue once your submission is received."
-                    }
-                }
+                "actions_to_run": []
             },
             "transitions": [
                 {"to_step": "map_warranty_whatsapp_response_to_context", "condition_config": {"type": "whatsapp_flow_response_received"}}
