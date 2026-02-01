@@ -122,7 +122,7 @@ def send_job_card_notifications(sender, instance, created, **kwargs):
     Send notifications when job card is created or status changes.
     """
     if created:
-        # Notify customer that job card was created
+        # Notify customer that job card was created (service request received)
         customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
         if customer_contact:
             context = {
@@ -131,6 +131,8 @@ def send_job_card_notifications(sender, instance, created, **kwargs):
                 'product_description': instance.serialized_item.product.name if instance.serialized_item else 'Product',
                 'reported_fault': instance.reported_fault or 'Not specified',
             }
+            
+            # Send to customer (using pfungwa_job_card_created)
             transaction.on_commit(
                 lambda: queue_notifications_to_users(
                     template_name='pfungwa_job_card_created',
@@ -140,6 +142,23 @@ def send_job_card_notifications(sender, instance, created, **kwargs):
                 )
             )
             logger.info(f"Queued job card creation notification for customer {customer_contact.id}.")
+        
+        # Also send service request notification to admins
+        service_context = {
+            'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+            'service_request_id': instance.job_card_number,
+            'reported_issue': instance.reported_fault or 'Not specified',
+        }
+        
+        transaction.on_commit(
+            lambda: queue_notifications_to_users(
+                template_name='pfungwa_service_request_received',
+                group_names=["System Admins", "Technical Admin"],
+                related_contact=customer_contact if customer_contact else None,
+                template_context=service_context
+            )
+        )
+        logger.info(f"Queued service request notification for admins (job card {instance.job_card_number}).")
     
     elif instance.status in ['resolved', 'closed']:
         # Notify customer that job is completed

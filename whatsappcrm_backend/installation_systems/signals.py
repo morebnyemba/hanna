@@ -11,7 +11,7 @@ from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
 from customer_data.models import InstallationRequest
 from warranty.models import Technician
-from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry, InstallerPayout
 from notifications.services import queue_notifications_to_users
 from decimal import Decimal
 
@@ -344,3 +344,59 @@ def sync_technicians_to_isr_and_create_checklists(sender, instance, action, pk_s
                         logger.info(
                             f"Assigned technician {technician} to {updated} existing checklists for ISR {isr.id}"
                         )
+
+
+@receiver(post_save, sender=InstallerPayout)
+def send_payout_status_notifications(sender, instance, created, **kwargs):
+    """
+    Send notifications to technician when payout status changes to approved or paid.
+    """
+    if not created:
+        # Get technician contact
+        tech_contact = None
+        if instance.technician and hasattr(instance.technician, 'user'):
+            user = instance.technician.user
+            if hasattr(user, 'customer_profile') and hasattr(user.customer_profile, 'contact'):
+                tech_contact = user.customer_profile.contact
+        
+        if tech_contact:
+            # Notification when payout is approved
+            if instance.status == InstallerPayout.PayoutStatus.APPROVED:
+                # Count installations in this payout
+                installation_count = instance.installations.count()
+                
+                context = {
+                    'technician_name': instance.technician.user.get_full_name() or instance.technician.user.username,
+                    'payout_id': str(instance.id),
+                    'payout_amount': str(instance.payout_amount),
+                    'installation_count': str(installation_count),
+                }
+                
+                transaction.on_commit(
+                    lambda: queue_notifications_to_users(
+                        template_name='pfungwa_payout_approved',
+                        contact_ids=[tech_contact.id],
+                        related_contact=tech_contact,
+                        template_context=context
+                    )
+                )
+                logger.info(f"Queued payout approval notification for payout {instance.id}.")
+            
+            # Notification when payout is paid
+            elif instance.status == InstallerPayout.PayoutStatus.PAID:
+                context = {
+                    'technician_name': instance.technician.user.get_full_name() or instance.technician.user.username,
+                    'payout_id': str(instance.id),
+                    'payout_amount': str(instance.payout_amount),
+                    'payment_reference': str(instance.id)[:8],  # Use first 8 chars of UUID as reference
+                }
+                
+                transaction.on_commit(
+                    lambda: queue_notifications_to_users(
+                        template_name='pfungwa_payout_paid',
+                        contact_ids=[tech_contact.id],
+                        related_contact=tech_contact,
+                        template_context=context
+                    )
+                )
+                logger.info(f"Queued payout paid notification for payout {instance.id}.")

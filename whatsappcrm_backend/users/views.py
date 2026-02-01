@@ -342,3 +342,80 @@ class RetailerOrderViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED
         )
+
+# Password reset with notification
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth import get_user_model
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from rest_framework.views import APIView
+from notifications.services import queue_notifications_to_users
+
+User = get_user_model()
+
+
+class RequestPasswordResetView(APIView):
+    """
+    API view to request a password reset and send notification to user.
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        """
+        Handle password reset request.
+        Expects 'email' or 'username' in the request data.
+        """
+        identifier = request.data.get('email') or request.data.get('username')
+        
+        if not identifier:
+            return Response(
+                {"error": "Email or username is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Find user by email or username
+        try:
+            if '@' in identifier:
+                user = User.objects.get(email=identifier, is_active=True)
+            else:
+                user = User.objects.get(username=identifier, is_active=True)
+        except User.DoesNotExist:
+            # Don't reveal whether user exists (security best practice)
+            return Response(
+                {"message": "If a user with that email exists, a password reset link will be sent."},
+                status=status.HTTP_200_OK
+            )
+        
+        # Generate password reset token
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        
+        # Generate temporary password (for WhatsApp notification)
+        # In production, this would be a secure reset link
+        temp_password = f"RESET-{token[:8]}"
+        
+        # Send notification to user
+        customer_contact = None
+        if hasattr(user, 'customer_profile') and hasattr(user.customer_profile, 'contact'):
+            customer_contact = user.customer_profile.contact
+            
+            context = {
+                'customer_name': user.get_full_name() or user.username,
+                'temp_password': f"Use reset link: https://hanna.co.zw/reset/{uid}/{token}/",
+            }
+            
+            queue_notifications_to_users(
+                template_name='pfungwa_password_reset',
+                contact_ids=[customer_contact.id],
+                related_contact=customer_contact,
+                template_context=context
+            )
+        
+        return Response(
+            {
+                "message": "Password reset notification sent successfully.",
+                "reset_token": token,  # Only for development, remove in production
+                "uid": uid
+            },
+            status=status.HTTP_200_OK
+        )

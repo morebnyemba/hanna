@@ -423,3 +423,67 @@ def auto_create_payouts_for_completed_installations():
         'created_payouts': [str(p.id) for p in created_payouts],
         'errors': errors
     }
+
+
+@shared_task(queue='celery')
+def send_technician_job_reminders():
+    """
+    Send reminder notifications to technicians for installations scheduled for tomorrow.
+    Should be run daily via Celery Beat.
+    """
+    from .models import InstallationSystemRecord
+    from notifications.services import queue_notifications_to_users
+    from datetime import timedelta
+    
+    logger.info("Starting technician job reminder task")
+    
+    try:
+        # Get tomorrow's date
+        tomorrow = timezone.now().date() + timedelta(days=1)
+        
+        # Find installations scheduled for tomorrow
+        scheduled_installations = InstallationSystemRecord.objects.filter(
+            installation_date=tomorrow,
+            installation_status__in=['pending', 'in_progress']
+        ).select_related('customer').prefetch_related('technicians')
+        
+        notifications_sent = 0
+        
+        for installation in scheduled_installations:
+            # Send reminder to each assigned technician
+            for technician in installation.technicians.all():
+                # Get technician contact
+                tech_contact = None
+                if hasattr(technician, 'user'):
+                    user = technician.user
+                    if hasattr(user, 'customer_profile') and hasattr(user.customer_profile, 'contact'):
+                        tech_contact = user.customer_profile.contact
+                
+                if tech_contact:
+                    context = {
+                        'technician_name': technician.user.get_full_name() or technician.user.username,
+                        'customer_name': installation.customer.get_full_name() if installation.customer else 'Customer',
+                        'installation_address': installation.installation_address or 'Address not specified',
+                        'installation_time': installation.installation_date.strftime('%Y-%m-%d') if installation.installation_date else 'Tomorrow',
+                    }
+                    
+                    queue_notifications_to_users(
+                        template_name='pfungwa_technician_job_reminder',
+                        contact_ids=[tech_contact.id],
+                        related_contact=tech_contact,
+                        template_context=context
+                    )
+                    
+                    notifications_sent += 1
+                    logger.info(f"Queued job reminder for technician {technician.id} on installation {installation.id}.")
+        
+        logger.info(f"Technician job reminders complete. Sent {notifications_sent} notifications.")
+        
+        return {
+            'success': True,
+            'notifications_sent': notifications_sent
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in technician job reminder task: {str(e)}")
+        raise
