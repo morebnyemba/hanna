@@ -271,3 +271,106 @@ def create_warranties_on_paid_order(sender, instance: Order, created, **kwargs):
                     status=Warranty.WarrantyStatus.ACTIVE
                 )
                 logger.info(f"{log_prefix} Created Warranty for {item.product.name} (SN: {serial_number}).")
+
+@receiver(post_save, sender=Order)
+def send_order_dispatch_notification(sender, instance, created, **kwargs):
+    """
+    Send notification to customer when order dispatch_date is set.
+    """
+    if not created and instance.dispatch_date:
+        # Check if dispatch_date was just set (compare with database state)
+        try:
+            old_instance = Order.objects.get(pk=instance.pk)
+            if old_instance.dispatch_date != instance.dispatch_date:
+                customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
+                
+                if customer_contact:
+                    context = {
+                        'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                        'order_number': instance.order_number or str(instance.id),
+                        'dispatch_date': instance.dispatch_date.strftime('%Y-%m-%d'),
+                        'tracking_number': instance.tracking_number or 'Will be provided',
+                    }
+                    
+                    transaction.on_commit(
+                        lambda: queue_notifications_to_users(
+                            template_name='pfungwa_order_dispatched',
+                            contact_ids=[customer_contact.id],
+                            related_contact=customer_contact,
+                            template_context=context
+                        )
+                    )
+                    logger.info(f"Queued order dispatch notification for order {instance.id}.")
+        except Order.DoesNotExist:
+            pass  # Instance is being created
+
+
+@receiver(post_save, sender=Order)
+def send_branch_order_notification(sender, instance, created, **kwargs):
+    """
+    Send notification to retailer branch when an order is assigned to them.
+    """
+    if created and instance.retailer_branch:
+        # Notify the branch user
+        branch_user = instance.retailer_branch.user
+        branch_contact = None
+        
+        if hasattr(branch_user, 'customer_profile') and hasattr(branch_user.customer_profile, 'contact'):
+            branch_contact = branch_user.customer_profile.contact
+        
+        if branch_contact:
+            context = {
+                'branch_name': instance.retailer_branch.branch_name,
+                'order_number': instance.order_number or str(instance.id),
+                'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                'order_amount': str(instance.amount) if instance.amount else '0.00',
+            }
+            
+            transaction.on_commit(
+                lambda: queue_notifications_to_users(
+                    template_name='pfungwa_branch_order_received',
+                    contact_ids=[branch_contact.id],
+                    related_contact=branch_contact,
+                    template_context=context
+                )
+            )
+            logger.info(f"Queued branch order notification for order {instance.id} to branch {instance.retailer_branch.id}.")
+
+
+@receiver(post_save, sender=Order)
+def send_commission_earned_notification(sender, instance, created, **kwargs):
+    """
+    Send notification to retailer when commission is calculated and order is completed.
+    """
+    if not created and instance.commission_amount and instance.stage == Order.Stage.CLOSED_WON:
+        # Check if commission was just calculated
+        try:
+            old_instance = Order.objects.get(pk=instance.pk)
+            if old_instance.commission_amount != instance.commission_amount and instance.retailer_branch:
+                # Notify the retailer (parent of the branch)
+                retailer_user = instance.retailer_branch.retailer.user
+                retailer_contact = None
+                
+                if hasattr(retailer_user, 'customer_profile') and hasattr(retailer_user.customer_profile, 'contact'):
+                    retailer_contact = retailer_user.customer_profile.contact
+                
+                if retailer_contact:
+                    context = {
+                        'retailer_name': instance.retailer_branch.retailer.company_name,
+                        'branch_name': instance.retailer_branch.branch_name,
+                        'order_number': instance.order_number or str(instance.id),
+                        'commission_amount': str(instance.commission_amount),
+                        'order_amount': str(instance.amount) if instance.amount else '0.00',
+                    }
+                    
+                    transaction.on_commit(
+                        lambda: queue_notifications_to_users(
+                            template_name='pfungwa_retailer_commission_earned',
+                            contact_ids=[retailer_contact.id],
+                            related_contact=retailer_contact,
+                            template_context=context
+                        )
+                    )
+                    logger.info(f"Queued commission earned notification for order {instance.id} to retailer {instance.retailer_branch.retailer.id}.")
+        except Order.DoesNotExist:
+            pass
