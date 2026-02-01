@@ -165,6 +165,36 @@ def send_job_card_notifications(sender, instance, created, **kwargs):
             logger.info(f"Queued job card completion notification for customer {customer_contact.id}.")
 
 
+@receiver(post_save, sender='customer_data.InstallationRequest')
+def send_installation_scheduled_notification(sender, instance, created, **kwargs):
+    """
+    Send notification when installation request status changes to scheduled.
+    """
+    if not created and instance.status == 'scheduled':
+        customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
+        if customer_contact:
+            # Get assigned technician name
+            technician = instance.technicians.first()
+            technician_name = technician.user.get_full_name() if technician else 'To be assigned'
+            
+            context = {
+                'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                'installation_address': instance.address or 'Address not specified',
+                'installation_date': instance.preferred_datetime or 'To be confirmed',
+                'installation_time': '',  # Time is usually part of preferred_datetime
+                'technician_name': technician_name,
+            }
+            transaction.on_commit(
+                lambda: queue_notifications_to_users(
+                    template_name='pfungwa_installation_scheduled',
+                    contact_ids=[customer_contact.id],
+                    related_contact=customer_contact,
+                    template_context=context
+                )
+            )
+            logger.info(f"Queued installation scheduled notification for customer {customer_contact.id}.")
+
+
 @receiver(post_save, sender=Order)
 def create_warranties_on_paid_order(sender, instance: Order, created, **kwargs):
     """

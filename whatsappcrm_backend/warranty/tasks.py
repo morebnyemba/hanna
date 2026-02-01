@@ -137,6 +137,64 @@ def monitor_sla_compliance():
         raise
 
 
+@shared_task(queue='celery')
+def check_expiring_warranties():
+    """
+    Periodic task to check for warranties expiring soon and send notifications.
+    Should be run daily via Celery Beat.
+    Sends notifications 30 days before expiry.
+    """
+    from .models import Warranty
+    from notifications.services import queue_notifications_to_users
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    logger.info("Starting warranty expiry check task")
+    
+    try:
+        # Get today's date
+        today = timezone.now().date()
+        
+        # Check for warranties expiring in 30 days
+        expiry_threshold = today + timedelta(days=30)
+        
+        # Find active warranties expiring in exactly 30 days
+        # This ensures we send the notification once, not repeatedly
+        expiring_warranties = Warranty.objects.filter(
+            status=Warranty.WarrantyStatus.ACTIVE,
+            end_date=expiry_threshold
+        ).select_related('customer', 'serialized_item__product')
+        
+        notifications_sent = 0
+        
+        for warranty in expiring_warranties:
+            customer_contact = warranty.customer.contact if warranty.customer and hasattr(warranty.customer, 'contact') else None
+            
+            if customer_contact:
+                context = {
+                    'customer_name': warranty.customer.get_full_name() if warranty.customer else 'Customer',
+                    'product_name': warranty.serialized_item.product.name if warranty.serialized_item else 'Product',
+                    'serial_number': warranty.serialized_item.serial_number if warranty.serialized_item else 'N/A',
+                    'warranty_end_date': warranty.end_date.strftime('%Y-%m-%d'),
+                }
+                
+                queue_notifications_to_users(
+                    template_name='pfungwa_warranty_expiring',
+                    contact_ids=[customer_contact.id],
+                    related_contact=customer_contact,
+                    template_context=context
+                )
+                
+                notifications_sent += 1
+                logger.info(f"Queued warranty expiry notification for warranty {warranty.id}.")
+        
+        logger.info(f"Warranty expiry check completed. Sent {notifications_sent} notifications.")
+        
+    except Exception as e:
+        logger.error(f"Error in warranty expiry check task: {str(e)}")
+        raise
+
+
 def _get_sla_notification_recipients(request_object):
     """
     Helper function to extract notification recipients from a request object.
