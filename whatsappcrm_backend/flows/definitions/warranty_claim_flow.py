@@ -1,9 +1,10 @@
 # whatsappcrm_backend/flows/definitions/warranty_claim_flow.py
+# REFACTORED: Follows the same step pattern as solar_installation_flow.py
 
 WARRANTY_CLAIM_FLOW = {
     "name": "warranty_claim_request",
     "friendly_name": "Submit Warranty Claim",
-    "description": "Allows customers to submit a warranty claim for their products via WhatsApp. Follows the same steps pattern as solar installation flow.",
+    "description": "Customers submit warranty claims for their products via WhatsApp. Follows solar installation flow pattern: ensure_profile → query_whatsapp_flow → send_form → wait_response → map_response → create_record → send_confirmation → end",
     "trigger_keywords": ["warranty", "claim", "defect", "issue"],
     "is_active": True,
     "steps": [
@@ -465,6 +466,18 @@ WARRANTY_CLAIM_FLOW = {
                     "message_type": "text",
                     "text": {
                         "body": "No problem! I'm connecting you with our support team.\n\nAn agent will be with you shortly to assist with your warranty claim.\n\n⏳ Average wait time: 5-10 minutes"
+                    }
+                }
+            }
+        },
+        {
+            "name": "end_flow_cancelled",
+            "type": "end_flow",
+            "config": {
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "❌ *Warranty Claim Cancelled*\n\nNo problem! You can submit a claim anytime.\n\n💬 Just type 'warranty' or 'claim' and I'll help you get started.\n\nThank you! 👋"
                     }
                 }
             }
