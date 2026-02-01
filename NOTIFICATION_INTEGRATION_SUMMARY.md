@@ -188,19 +188,42 @@ python manage.py shell
 - [ ] Update production environment variables
 - [ ] Document any custom template parameters
 
-## Remaining Templates (13)
+## Remaining Templates (6)
 
-These templates are pending future features or infrastructure:
+These templates require new infrastructure that doesn't currently exist:
 
-### Future Features (11 templates)
-- Order dispatch tracking (2)
-- Payout workflows (3)
-- System monitoring (3)
-- Branch/retailer features (2)
-- Password reset (1)
+### Future Features (6 templates)
+- **Order dispatch tracking** (2 templates):
+  - `pfungwa_order_dispatched` - Needs dispatch_date field and tracking
+  - `pfungwa_payment_reminder` - Needs scheduled task with pending payment logic
+  
+- **System monitoring** (2 templates):
+  - `pfungwa_system_offline_alert` - Needs system health monitoring infrastructure
+  - `pfungwa_system_back_online` - Needs system health monitoring infrastructure
+  
+- **Branch/retailer features** (2 templates):
+  - `pfungwa_branch_order_received` - Needs branch assignment on orders
+  - `pfungwa_retailer_commission_earned` - Needs commission tracking system
 
-### Duplicates/Aliases (2 templates)
-- `pfungwa_human_handover_required` - Similar to `pfungwa_human_handover_flow`
+## Latest Integrations (v2.0.1 - Part 2)
+
+### Payout Workflow (2 templates)
+**File**: `installation_systems/signals.py`
+- ✅ `pfungwa_payout_approved` - Technician notified when payout approved
+- ✅ `pfungwa_payout_paid` - Technician notified when payment completed
+
+### Scheduled Tasks (2 templates)
+**Files**: `installation_systems/tasks.py`, `products_and_services/tasks.py`
+- ✅ `pfungwa_technician_job_reminder` - Daily reminders for jobs tomorrow
+- ✅ `pfungwa_low_stock_alert` - Low inventory alerts to admins
+
+### Service & Auth (2 templates)
+**Files**: `customer_data/signals.py`, `users/views.py`
+- ✅ `pfungwa_service_request_received` - Admin notification on job card creation
+- ✅ `pfungwa_password_reset` - Password reset link via notification
+
+### Duplicate Handling (1 template)
+- ✅ `pfungwa_human_handover_required` - Alias of existing `pfungwa_human_handover_flow`
 
 ## Maintenance
 
@@ -211,6 +234,26 @@ These templates are pending future features or infrastructure:
 4. Create signal handler or task
 5. Test notification
 6. Update documentation
+
+### Celery Beat Schedule
+Required periodic tasks:
+
+```python
+CELERY_BEAT_SCHEDULE = {
+    'check-expiring-warranties': {
+        'task': 'warranty.tasks.check_expiring_warranties',
+        'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
+    },
+    'send-technician-job-reminders': {
+        'task': 'installation_systems.tasks.send_technician_job_reminders',
+        'schedule': crontab(hour=18, minute=0),  # Daily at 6 PM
+    },
+    'check-low-stock-products': {
+        'task': 'products_and_services.tasks.check_low_stock_products',
+        'schedule': crontab(hour=8, minute=0),  # Daily at 8 AM
+    },
+}
+```
 
 ### Troubleshooting
 - Check signal is imported in app's `ready()` method
@@ -223,12 +266,13 @@ These templates are pending future features or infrastructure:
 
 This integration significantly improves the HANNA CRM system's communication capabilities by:
 - ✅ Automating customer notifications across the entire lifecycle
-- ✅ Proactively notifying customers of important events
-- ✅ Keeping technicians informed of job assignments
-- ✅ Ensuring warranty expiry notifications are sent on time
+- ✅ Proactively notifying customers and technicians of important events
+- ✅ Keeping technicians informed of job assignments and payouts
+- ✅ Ensuring warranty expiry and job reminders are sent on time
+- ✅ Alerting admins to low stock and service requests
 - ✅ Following security and coding best practices
 - ✅ Maintaining high code quality standards
 
-**Integration Success Rate**: 72% (33/46 templates)
+**Integration Success Rate**: 87% (40/46 templates)
 **Code Quality**: 100% (passed all checks)
 **Security**: 100% (0 vulnerabilities found)

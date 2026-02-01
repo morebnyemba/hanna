@@ -464,7 +464,7 @@ def send_technician_job_reminders():
                         'technician_name': technician.user.get_full_name() or technician.user.username,
                         'customer_name': installation.customer.get_full_name() if installation.customer else 'Customer',
                         'installation_address': installation.installation_address or 'Address not specified',
-                        'installation_time': installation.installation_date.strftime('%Y-%m-%d') if installation.installation_date else 'Tomorrow',
+                        'installation_date': installation.installation_date.strftime('%Y-%m-%d') if installation.installation_date else 'Tomorrow',
                     }
                     
                     queue_notifications_to_users(

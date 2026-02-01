@@ -401,7 +401,7 @@ class RequestPasswordResetView(APIView):
             
             context = {
                 'customer_name': user.get_full_name() or user.username,
-                'temp_password': f"Use reset link: https://hanna.co.zw/reset/{uid}/{token}/",
+                'reset_link': f"https://hanna.co.zw/reset/{uid}/{token}/",
             }
             
             queue_notifications_to_users(
@@ -414,8 +414,6 @@ class RequestPasswordResetView(APIView):
         return Response(
             {
                 "message": "Password reset notification sent successfully.",
-                "reset_token": token,  # Only for development, remove in production
-                "uid": uid
             },
             status=status.HTTP_200_OK
         )

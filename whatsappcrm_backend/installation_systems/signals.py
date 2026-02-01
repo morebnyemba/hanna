@@ -388,7 +388,7 @@ def send_payout_status_notifications(sender, instance, created, **kwargs):
                     'technician_name': instance.technician.user.get_full_name() or instance.technician.user.username,
                     'payout_id': str(instance.id),
                     'payout_amount': str(instance.payout_amount),
-                    'payment_reference': str(instance.id)[:8],  # Use first 8 chars of UUID as reference
+                    'payment_reference': str(instance.id),  # Full UUID for uniqueness
                 }
                 
                 transaction.on_commit(
