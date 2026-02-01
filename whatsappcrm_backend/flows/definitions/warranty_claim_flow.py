@@ -115,6 +115,32 @@ WARRANTY_CLAIM_FLOW = {
                 ]
             },
             "transitions": [
+                {"to_step": "lookup_warranty_by_serial", "condition_config": {"type": "always_true"}}
+            ]
+        },
+        # ============================================================================
+        # STEP 5B: LOOKUP WARRANTY BY SERIAL NUMBER
+        # ============================================================================
+        {
+            "name": "lookup_warranty_by_serial",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {
+                        "action_type": "query_model",
+                        "app_label": "warranty",
+                        "model_name": "Warranty",
+                        "variable_name": "selected_warranty",
+                        "filters_template": {
+                            "serialized_item__serial_number": "{{ product_serial_number }}",
+                            "status__in": ["active", "expired"]
+                        },
+                        "fields_to_return": ["id", "serialized_item__serial_number", "serialized_item__product__name", "status", "end_date"],
+                        "limit": 1
+                    }
+                ]
+            },
+            "transitions": [
                 {"to_step": "confirm_warranty_claim_from_whatsapp", "condition_config": {"type": "always_true"}}
             ]
         },
