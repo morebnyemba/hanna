@@ -34,13 +34,13 @@ NOTIFICATION_TEMPLATES = [
     {
         "name": "pfungwa_new_order_created",
         "description": "Sent to admin when a new order is created",
-        "message_body": """🛒 *New Order Created*
+        "message_body": """New Order Created
 
 Order: {{ order_number }}
 Customer: {{ customer_name }}
 Amount: ${{ order_amount }}
 
-Please review and process the order.""",
+Status: Requires review and processing""",
         "body_parameters": {
             "1": "order_number",
             "2": "customer_name",
@@ -50,19 +50,14 @@ Please review and process the order.""",
     {
         "name": "pfungwa_order_confirmation",
         "description": "Sent to customer when their order is confirmed",
-        "message_body": """✅ *Order Confirmed*
+        "message_body": """Order Confirmed
 
-Hi {{ customer_name }},
+Customer: {{ customer_name }}
+Order Number: {{ order_number }}
+Amount: ${{ order_amount }}
 
-Your order *{{ order_number }}* has been confirmed!
-
-Order Details:
-- Amount: ${{ order_amount }}
-{{ cart_items_list }}
-
-We'll notify you when it's ready for dispatch.
-
-Thank you for choosing HANNA! 🌟""",
+Status: Confirmed and being processed
+{{ cart_items_list }}""",
         "body_parameters": {
             "1": "customer_name",
             "2": "order_number",
@@ -72,18 +67,14 @@ Thank you for choosing HANNA! 🌟""",
     {
         "name": "pfungwa_payment_received",
         "description": "Sent to customer when payment is received",
-        "message_body": """💰 *Payment Received*
+        "message_body": """Payment Received
 
-Hi {{ customer_name }},
-
-We've received your payment for order *{{ order_number }}*.
-
+Order Number: {{ order_number }}
 Amount: ${{ order_amount }}
 Payment Method: {{ payment_method }}
 
-Your order is now being processed. We'll update you on the next steps.
-
-Thank you! 🙏""",
+Status: Payment confirmed
+Your order is now being processed.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "order_number",
@@ -93,17 +84,13 @@ Thank you! 🙏""",
     {
         "name": "pfungwa_payment_reminder",
         "description": "Reminder sent to customer for pending payment",
-        "message_body": """⏰ *Payment Reminder*
+        "message_body": """Payment Reminder
 
-Hi {{ customer_name }},
-
-Your order *{{ order_number }}* is awaiting payment.
-
+Order Number: {{ order_number }}
 Amount Due: ${{ order_amount }}
 
-Please complete your payment to proceed with your order.
-
-Need help? Reply to this message.""",
+Status: Awaiting payment
+Please complete payment to proceed with order processing.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "order_number",
@@ -113,16 +100,13 @@ Need help? Reply to this message.""",
     {
         "name": "pfungwa_order_dispatched",
         "description": "Sent to customer when order is dispatched",
-        "message_body": """📦 *Order Dispatched*
+        "message_body": """Order Dispatched
 
-Hi {{ customer_name }},
-
-Great news! Your order *{{ order_number }}* has been dispatched.
-
-Estimated delivery: {{ delivery_date }}
+Order Number: {{ order_number }}
+Estimated Delivery: {{ delivery_date }}
 {{ tracking_info }}
 
-Track your order or contact us if you have questions.""",
+Status: Dispatched""",
         "body_parameters": {
             "1": "customer_name",
             "2": "order_number",
@@ -136,53 +120,40 @@ Track your order or contact us if you have questions.""",
     {
         "name": "pfungwa_solar_package_purchased",
         "description": "Sent to customer when they purchase a solar package",
-        "message_body": """☀️ *Solar Package Purchased!*
-
-Hi {{ customer_name }},
-
-Congratulations on your new solar system! 🎉
+        "message_body": """Solar Package Purchased
 
 Package: {{ package_name }}
 System Size: {{ system_size }}kW
-Order: {{ order_number }}
+Order Number: {{ order_number }}
 
-*What's Next?*
+Installation Record: {{ isr_id }}
+
+Next Steps:
 1. Our team will contact you to schedule installation
-2. Site assessment (if required)
-3. Installation & commissioning
-4. Warranty registration
-
-Your Installation Record: {{ isr_id }}
-
-Questions? Reply to this message anytime.""",
+2. Site assessment will be arranged
+3. Installation and commissioning
+4. Warranty registration""",
         "body_parameters": {
             "1": "customer_name",
             "2": "package_name",
-            "3": "system_size",
-            "4": "order_number"
+            "3": "system_size"
         }
     },
     {
         "name": "pfungwa_installation_scheduled",
         "description": "Sent to customer when installation is scheduled",
-        "message_body": """📅 *Installation Scheduled*
+        "message_body": """Installation Scheduled
 
-Hi {{ customer_name }},
+Location: {{ installation_address }}
+Date: {{ installation_date }}
+Time: {{ installation_time }}
 
-Your installation has been scheduled!
+Assigned Technician: {{ technician_name }}
 
-📍 *Location:* {{ installation_address }}
-📆 *Date:* {{ installation_date }}
-⏰ *Time:* {{ installation_time }}
-
-*Assigned Technician:* {{ technician_name }}
-
-Please ensure:
-- Someone is home on the day
-- Roof/installation area is accessible
-- Electrical panel is accessible
-
-Need to reschedule? Reply to this message.""",
+Preparation Required:
+- Ensure someone is present
+- Roof/installation area must be accessible
+- Electrical panel must be accessible""",
         "body_parameters": {
             "1": "customer_name",
             "2": "installation_date",
@@ -192,27 +163,21 @@ Need to reschedule? Reply to this message.""",
     {
         "name": "pfungwa_installation_complete",
         "description": "Sent to customer when installation is completed",
-        "message_body": """✅ *Installation Complete!*
+        "message_body": """Installation Completed
 
-Hi {{ customer_name }},
+System: {{ installation_type }}
+Size: {{ system_size }}kW
+Installation Record: {{ isr_id }}
 
-Your solar system has been successfully installed and commissioned! 🎊
+Status: Successfully installed and commissioned
 
-*System Details:*
-- Type: {{ installation_type }}
-- Size: {{ system_size }}kW
-- Installation Record: {{ isr_id }}
-
-*Warranties Registered:*
+Warranties Registered:
 {{ warranty_summary }}
 
-*Your Client Portal:*
-Access your portal at https://hanna.co.zw/client to:
+Portal Access: https://hanna.co.zw/client
 - Monitor your system
 - View warranties
-- Request service
-
-Thank you for choosing HANNA! ☀️""",
+- Request service""",
         "body_parameters": {
             "1": "customer_name",
             "2": "installation_type",
@@ -222,7 +187,7 @@ Thank you for choosing HANNA! ☀️""",
     {
         "name": "pfungwa_installation_request_new",
         "description": "Sent to admin when new installation request is created",
-        "message_body": """📋 *New Installation Request*
+        "message_body": """New Installation Request
 
 Customer: {{ customer_name }}
 Phone: {{ customer_phone }}
@@ -231,7 +196,7 @@ Address: {{ installation_address }}
 
 Request ID: {{ installation_request_id }}
 
-Please review and schedule.""",
+Status: Requires scheduling""",
         "body_parameters": {
             "1": "customer_name",
             "2": "installation_type",
@@ -245,20 +210,16 @@ Please review and schedule.""",
     {
         "name": "pfungwa_technician_job_assigned",
         "description": "Sent to technician when a new job is assigned",
-        "message_body": """🔧 *New Job Assigned*
+        "message_body": """New Job Assigned
 
-Hi {{ technician_name }},
-
-You have a new installation assignment:
-
-*Customer:* {{ customer_name }}
-*Address:* {{ installation_address }}
-*Date:* {{ installation_date }}
-*System:* {{ system_size }}kW {{ installation_type }}
+Customer: {{ customer_name }}
+Address: {{ installation_address }}
+Date: {{ installation_date }}
+System: {{ system_size }}kW {{ installation_type }}
 
 Installation ID: {{ isr_id }}
 
-Please confirm your availability.""",
+Status: Please confirm availability""",
         "body_parameters": {
             "1": "technician_name",
             "2": "customer_name",
@@ -268,17 +229,15 @@ Please confirm your availability.""",
     {
         "name": "pfungwa_technician_job_reminder",
         "description": "Reminder sent to technician before scheduled job",
-        "message_body": """⏰ *Job Reminder*
+        "message_body": """Job Reminder
 
-Hi {{ technician_name }},
+Customer: {{ customer_name }}
+Address: {{ installation_address }}
+Scheduled Time: {{ installation_time }}
 
-Reminder: You have an installation scheduled for tomorrow.
+Installation scheduled for tomorrow.
 
-*Customer:* {{ customer_name }}
-*Address:* {{ installation_address }}
-*Time:* {{ installation_time }}
-
-Please ensure you have all required equipment and documentation.""",
+Ensure all required equipment and documentation are ready.""",
         "body_parameters": {
             "1": "technician_name",
             "2": "customer_name",
@@ -288,15 +247,13 @@ Please ensure you have all required equipment and documentation.""",
     {
         "name": "pfungwa_payout_approved",
         "description": "Sent to technician when payout is approved",
-        "message_body": """💵 *Payout Approved*
+        "message_body": """Payout Approved
 
-Hi {{ technician_name }},
-
-Your payout request *{{ payout_id }}* has been approved!
-
+Payout ID: {{ payout_id }}
 Amount: ${{ payout_amount }}
 Installations: {{ installation_count }}
 
+Status: Approved
 Payment will be processed shortly.""",
         "body_parameters": {
             "1": "technician_name",
@@ -307,17 +264,13 @@ Payment will be processed shortly.""",
     {
         "name": "pfungwa_payout_paid",
         "description": "Sent to technician when payout is completed",
-        "message_body": """✅ *Payment Completed*
-
-Hi {{ technician_name }},
-
-Your payment has been processed!
+        "message_body": """Payment Completed
 
 Payout ID: {{ payout_id }}
 Amount: ${{ payout_amount }}
 Reference: {{ payment_reference }}
 
-Thank you for your excellent work! 🙏""",
+Status: Payment processed successfully""",
         "body_parameters": {
             "1": "technician_name",
             "2": "payout_amount",
@@ -331,19 +284,15 @@ Thank you for your excellent work! 🙏""",
     {
         "name": "pfungwa_warranty_registered",
         "description": "Sent to customer when warranty is registered",
-        "message_body": """🛡️ *Warranty Registered*
+        "message_body": """Warranty Registered
 
-Hi {{ customer_name }},
+Product: {{ product_name }}
+Serial Number: {{ serial_number }}
+Valid Until: {{ warranty_end_date }}
 
-Your warranty has been registered:
+Status: Successfully registered
 
-*Product:* {{ product_name }}
-*Serial Number:* {{ serial_number }}
-*Valid Until:* {{ warranty_end_date }}
-
-Download your warranty certificate from your client portal.
-
-Need to claim warranty? Contact us anytime.""",
+Warranty certificate available in your client portal.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "product_name",
@@ -353,20 +302,18 @@ Need to claim warranty? Contact us anytime.""",
     {
         "name": "pfungwa_warranty_expiring",
         "description": "Reminder sent when warranty is about to expire",
-        "message_body": """⚠️ *Warranty Expiring Soon*
+        "message_body": """Warranty Expiring
 
-Hi {{ customer_name }},
-
-Your warranty for *{{ product_name }}* will expire on {{ warranty_end_date }}.
-
+Product: {{ product_name }}
 Serial Number: {{ serial_number }}
+Expiration Date: {{ warranty_end_date }}
+
+Status: Expiring soon
 
 Consider:
 - Extended warranty options
 - Service check before expiry
-- Upgrading your system
-
-Reply to learn about your options.""",
+- System upgrades""",
         "body_parameters": {
             "1": "customer_name",
             "2": "product_name",
@@ -376,17 +323,14 @@ Reply to learn about your options.""",
     {
         "name": "pfungwa_warranty_claim_submitted",
         "description": "Sent to customer when warranty claim is submitted",
-        "message_body": """📝 *Warranty Claim Submitted*
-
-Hi {{ customer_name }},
-
-Your warranty claim has been received.
+        "message_body": """Warranty Claim Submitted
 
 Claim Number: {{ claim_number }}
 Product: {{ product_name }}
 Issue: {{ reported_issue }}
 
-Our team will review and respond within 2 business days.""",
+Status: Under review
+Response expected within 2 business days""",
         "body_parameters": {
             "1": "customer_name",
             "2": "claim_number",
@@ -396,14 +340,14 @@ Our team will review and respond within 2 business days.""",
     {
         "name": "pfungwa_warranty_claim_approved",
         "description": "Sent to customer when warranty claim is approved",
-        "message_body": """✅ *Warranty Claim Approved*
+        "message_body": """Warranty Claim Approved
 
-Hi {{ customer_name }},
-
-Your warranty claim *{{ claim_number }}* has been approved!
-
-*Resolution:* {{ resolution_type }}
+Claim Number: {{ claim_number }}
+Product: {{ product_name }}
+Resolution: {{ resolution_type }}
 {{ resolution_notes_section }}
+
+Status: Approved
 
 Next steps will be communicated shortly.""",
         "body_parameters": {
@@ -419,16 +363,13 @@ Next steps will be communicated shortly.""",
     {
         "name": "pfungwa_service_request_received",
         "description": "Sent to customer when service request is received",
-        "message_body": """🔧 *Service Request Received*
-
-Hi {{ customer_name }},
-
-We've received your service request.
+        "message_body": """Service Request Received
 
 Reference: {{ service_request_id }}
 Issue: {{ reported_issue }}
 
-Our team will review and contact you within 24 hours.""",
+Status: Under review
+Team will contact within 24 hours""",
         "body_parameters": {
             "1": "customer_name",
             "2": "service_request_id",
@@ -438,17 +379,13 @@ Our team will review and contact you within 24 hours.""",
     {
         "name": "pfungwa_job_card_created",
         "description": "Sent to customer when job card is created",
-        "message_body": """📋 *Job Card Created*
+        "message_body": """Job Card Created
 
-Hi {{ customer_name }},
-
-A job card has been created for your service request.
-
-Job Card: {{ job_card_number }}
+Job Card Number: {{ job_card_number }}
 Product: {{ product_description }}
 Issue: {{ reported_fault }}
 
-A technician will be assigned shortly.""",
+Status: Technician assignment in progress""",
         "body_parameters": {
             "1": "customer_name",
             "2": "job_card_number",
@@ -458,16 +395,14 @@ A technician will be assigned shortly.""",
     {
         "name": "pfungwa_job_card_completed",
         "description": "Sent to customer when job is completed",
-        "message_body": """✅ *Service Completed*
-
-Hi {{ customer_name }},
-
-Your service request has been completed.
+        "message_body": """Service Completed
 
 Job Card: {{ job_card_number }}
 {{ resolution_notes_section }}
 
-Please rate your experience by replying with 1-5 stars ⭐""",
+Status: Completed
+
+Your feedback is appreciated.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "job_card_number"
@@ -480,12 +415,13 @@ Please rate your experience by replying with 1-5 stars ⭐""",
     {
         "name": "pfungwa_admin_24h_window_reminder",
         "description": "Reminder to admin about 24-hour messaging window",
-        "message_body": """⚠️ *24-Hour Window Expiring*
+        "message_body": """24-Hour Messaging Window Alert
 
 Contact: {{ contact_name }}
 Phone: {{ customer_whatsapp_id }}
 
-The 24-hour messaging window is about to expire. Use a template message to continue the conversation.""",
+Status: Messaging window expiring soon
+Use template message to continue conversation""",
         "body_parameters": {
             "1": "contact_name",
             "2": "customer_whatsapp_id"
@@ -494,28 +430,30 @@ The 24-hour messaging window is about to expire. Use a template message to conti
     {
         "name": "pfungwa_message_send_failure",
         "description": "Sent to admin when message sending fails",
-        "message_body": """❌ *Message Send Failure*
+        "message_body": """Message Send Failure
 
-Failed to send message to {{ contact_name }}.
+Contact: {{ contact_name }}
+Phone: {{ customer_whatsapp_id }}
 
-Please check the conversation and retry or use a template message.""",
+Status: Message delivery failed
+Please check conversation and retry or use template""",
         "body_parameters": {
-            "1": "contact_name"
+            "1": "contact_name",
+            "2": "customer_whatsapp_id"
         }
     },
     {
         "name": "pfungwa_human_handover_required",
         "description": "Sent to admin when bot needs human intervention",
-        "message_body": """🆘 *Human Handover Requested*
+        "message_body": """Human Intervention Requested
 
 Contact: {{ contact_name }}
 Phone: {{ customer_whatsapp_id }}
 
-The customer has requested to speak with a human agent.
+Status: Customer requested human agent
+Last Bot Message: {{ last_bot_message }}
 
-Last bot message: {{ last_bot_message }}
-
-Please respond promptly.""",
+Please respond promptly""",
         "body_parameters": {
             "1": "contact_name",
             "2": "customer_whatsapp_id"
@@ -524,13 +462,13 @@ Please respond promptly.""",
     {
         "name": "pfungwa_low_stock_alert",
         "description": "Alert sent when product stock is low",
-        "message_body": """📦 *Low Stock Alert*
+        "message_body": """Low Stock Alert
 
 Product: {{ product_name }}
 SKU: {{ product_sku }}
 Current Stock: {{ stock_quantity }}
 
-Please reorder to avoid stockouts.""",
+Status: Reorder required""",
         "body_parameters": {
             "1": "product_name",
             "2": "product_sku",
@@ -544,13 +482,13 @@ Please reorder to avoid stockouts.""",
     {
         "name": "pfungwa_branch_order_received",
         "description": "Sent to branch when order is assigned to them",
-        "message_body": """📦 *New Order for Your Branch*
+        "message_body": """New Order for Branch
 
 Order: {{ order_number }}
 Customer: {{ customer_name }}
 Amount: ${{ order_amount }}
 
-Please process and dispatch.""",
+Status: Requires processing and dispatch""",
         "body_parameters": {
             "1": "order_number",
             "2": "customer_name",
@@ -560,15 +498,13 @@ Please process and dispatch.""",
     {
         "name": "pfungwa_retailer_commission_earned",
         "description": "Sent to retailer when commission is earned",
-        "message_body": """💰 *Commission Earned*
-
-Great news! You've earned a commission.
+        "message_body": """Commission Earned
 
 Order: {{ order_number }}
 Sale Amount: ${{ order_amount }}
 Commission: ${{ commission_amount }}
 
-Keep up the great work! 🎯""",
+Status: Recorded""",
         "body_parameters": {
             "1": "order_number",
             "2": "order_amount",
@@ -582,13 +518,14 @@ Keep up the great work! 🎯""",
     {
         "name": "pfungwa_system_offline_alert",
         "description": "Alert when monitored system goes offline",
-        "message_body": """🔴 *System Offline Alert*
+        "message_body": """System Offline Alert
 
 Customer: {{ customer_name }}
 System: {{ system_type }} - {{ system_size }}kW
 Last Seen: {{ last_seen_time }}
 
-Please investigate the issue.""",
+Status: Offline
+Investigation required""",
         "body_parameters": {
             "1": "customer_name",
             "2": "system_type",
@@ -598,12 +535,12 @@ Please investigate the issue.""",
     {
         "name": "pfungwa_system_back_online",
         "description": "Notification when system comes back online",
-        "message_body": """🟢 *System Back Online*
+        "message_body": """System Online
 
 Customer: {{ customer_name }}
 System: {{ system_type }}
 
-The system is now online and functioning normally.""",
+Status: System restored and functioning normally""",
         "body_parameters": {
             "1": "customer_name",
             "2": "system_type"
@@ -616,23 +553,20 @@ The system is now online and functioning normally.""",
     {
         "name": "pfungwa_portal_access_granted",
         "description": "Sent to customer when portal access is granted",
-        "message_body": """🔐 *Portal Access Granted*
+        "message_body": """Portal Access Granted
 
-Hi {{ customer_name }},
+Portal: https://hanna.co.zw/client
+Username: {{ username }}
+Temporary Password: {{ temp_password }}
 
-Your client portal access has been set up!
+Status: Account created
+Please change password on first login
 
-*Portal:* https://hanna.co.zw/client
-*Username:* {{ username }}
-*Temporary Password:* {{ temp_password }}
-
-Please change your password on first login.
-
-Features available:
-- Monitor your system
-- View warranties
-- Request service
-- Download reports""",
+Available Features:
+- System monitoring
+- Warranty management
+- Service requests
+- Document access""",
         "body_parameters": {
             "1": "customer_name",
             "2": "username",
@@ -642,15 +576,12 @@ Features available:
     {
         "name": "pfungwa_password_reset",
         "description": "Password reset notification",
-        "message_body": """🔑 *Password Reset*
+        "message_body": """Password Reset
 
-Hi {{ customer_name }},
+Temporary Password: {{ temp_password }}
 
-Your password has been reset.
-
-*New Temporary Password:* {{ temp_password }}
-
-Please login and change your password immediately.""",
+Status: Reset completed
+Please login and change password immediately""",
         "body_parameters": {
             "1": "customer_name",
             "2": "temp_password"
