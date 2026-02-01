@@ -267,7 +267,7 @@ An invoice from *{{ sender }}* (Filename: *{{ filename }}*) has been processed.
 The new order has been created in the system."""
     },
     {
-        "name": "hanna_customer_invoice_confirmation",
+        "name": "pfungwa_customer_invoice_confirmation",
         "description": "Sent to a customer via WhatsApp after their emailed invoice has been successfully processed and an order created.",
         "template_type": "whatsapp",
         "body": """Hello {{ customer_name }}! 👋
@@ -284,7 +284,7 @@ An installation has been provisionally scheduled and our team will be in touch s
 Thank you for choosing Hanna Installations!"""
     },
     {
-        "name": "hanna_new_loan_application",
+        "name": "pfungwa_new_loan_application",
         "description": "Sent to the finance team when a customer submits a new loan application.",
         "template_type": "whatsapp",
         "body": """New Loan Application Received 💰
@@ -304,7 +304,7 @@ A new loan application has been submitted by *{{ contact_name }}*.
 Please review the application in the admin panel and follow up with the customer."""
     },
     {
-        "name": "hanna_new_warranty_claim_submitted",
+        "name": "pfungwa_new_warranty_claim_submitted",
         "description": "Sent to admins when a customer submits a new warranty claim.",
         "template_type": "whatsapp",
         "body": """New Warranty Claim Submitted 🛡️
@@ -322,7 +322,7 @@ A new warranty claim has been submitted by *{{ contact_name }}*.
 Please review the claim in the admin panel and update its status."""
     },
     {
-        "name": "hanna_warranty_claim_status_updated",
+        "name": "pfungwa_warranty_claim_status_updated",
         "description": "Sent to a customer when an admin updates their warranty claim status.",
         "template_type": "whatsapp",
         "body": """Hello! 👋
