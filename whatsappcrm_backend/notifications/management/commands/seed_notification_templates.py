@@ -601,6 +601,20 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        defined_names = [template['name'] for template in NOTIFICATION_TEMPLATES]
+        defined_count = len(defined_names)
+        unique_defined_count = len(set(defined_names))
+        existing_count = NotificationTemplate.objects.filter(name__in=defined_names).count()
+
+        self.stdout.write(f"Template definitions: {defined_count}")
+        if unique_defined_count != defined_count:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Duplicate template names detected: {defined_count - unique_defined_count}"
+                )
+            )
+        self.stdout.write(f"Existing templates matched: {existing_count}")
+
         created_count = 0
         updated_count = 0
         skipped_count = 0

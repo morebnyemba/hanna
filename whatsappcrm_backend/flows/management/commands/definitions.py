@@ -64,16 +64,14 @@ Our team will be in touch with the next steps. Thank you!"""
     {
         "name": "pfungwa_new_installation_request",
         "description": "Sent to admins when a customer submits a new solar installation request.",
-        "body": """New Installation Request 🛠️
+        "body": """New Installation Request
 
-A new installation request has been submitted by *{{ contact_name }}*.
+Contact: {{ contact_name }}
+Type: {{ installation_type }}
+Order Number: {{ order_number }}
+Assessment Number: {{ assessment_number }}
 
-*Request Details:*
-- Type: {{ installation_type }}
-- Order #: {{ order_number }}
-- Assessment #: {{ assessment_number }}
-
-*Installation Info:*
+Installation Details:
 - Branch: {{ install_branch }}
 - Sales Person: {{ install_sales_person }}
 - Client Name: {{ install_full_name }}
@@ -83,29 +81,27 @@ A new installation request has been submitted by *{{ contact_name }}*.
 {{ install_location_pin_line }}
 - Preferred Date: {{ install_datetime }} ({{ install_availability }})
 
-Please review and schedule the installation."""
+Status: Requires scheduling"""
     },
     {
         "name": "pfungwa_new_starlink_installation_request",
         "description": "Sent to admins when a customer submits a new Starlink installation request.",
-        "body": """New Starlink Installation Request 🛰️
+        "body": """New Starlink Installation Request
 
-A new Starlink installation request has been submitted by *{{ contact_name }}*.
-
-*Client & Location:*
-- Name: {{ install_full_name }}
-- Phone: {{ install_phone }}
-- Address: {{ install_address }}
+Contact: {{ contact_name }}
+Client Name: {{ install_full_name }}
+Phone: {{ install_phone }}
+Address: {{ install_address }}
 {{ install_location_pin_line }}
 
-*Scheduling:*
+Scheduling:
 - Preferred Date: {{ install_datetime }} ({{ install_availability }})
 
-*Job Details:*
+Job Details:
 - Kit Type: {{ install_kit_type }}
 - Desired Mount: {{ install_mount_location }}
 
-Please follow up to confirm the schedule."""
+Status: Requires scheduling confirmation"""
     },
     {
         "name": "pfungwa_new_solar_cleaning_request",
