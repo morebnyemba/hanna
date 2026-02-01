@@ -601,8 +601,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        force_update = options.get('force', False)
-        
         created_count = 0
         updated_count = 0
         skipped_count = 0
@@ -613,23 +611,17 @@ class Command(BaseCommand):
             existing = NotificationTemplate.objects.filter(name=name).first()
             
             if existing:
-                if force_update:
-                    # Update existing template
-                    existing.description = template_data.get('description', '')
-                    existing.message_body = template_data['message_body']
-                    existing.body_parameters = template_data.get('body_parameters', {})
-                    existing.buttons = template_data.get('buttons', [])
-                    existing.url_parameters = template_data.get('url_parameters', {})
-                    existing.save()
-                    updated_count += 1
-                    self.stdout.write(
-                        self.style.WARNING(f'Updated: {name}')
-                    )
-                else:
-                    skipped_count += 1
-                    self.stdout.write(
-                        self.style.NOTICE(f'Skipped (exists): {name}')
-                    )
+                # Update existing template
+                existing.description = template_data.get('description', '')
+                existing.message_body = template_data['message_body']
+                existing.body_parameters = template_data.get('body_parameters', {})
+                existing.buttons = template_data.get('buttons', [])
+                existing.url_parameters = template_data.get('url_parameters', {})
+                existing.save()
+                updated_count += 1
+                self.stdout.write(
+                    self.style.WARNING(f'Updated: {name}')
+                )
             else:
                 # Create new template
                 NotificationTemplate.objects.create(
