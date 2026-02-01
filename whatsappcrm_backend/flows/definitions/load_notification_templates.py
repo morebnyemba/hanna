@@ -69,22 +69,22 @@ Status: Team will follow up with next steps"""
         "template_type": "whatsapp",
         "body": """New Installation Request
 
-Contact: {{ contact_name }}
+Contact Name: {{ contact_name }}
+Contact Phone: {{ install_phone }}
 Type: {{ installation_type }}
 Order Number: {{ order_number }}
 Assessment Number: {{ assessment_number }}
 
-Installation Details:
-- Branch: {{ install_branch }}
-- Sales Person: {{ install_sales_person }}
-- Client Name: {{ install_full_name }}
-- Client Phone: {{ install_phone }}
-{{ install_alt_contact_line }}
-- Address: {{ install_address }}
-{{ install_location_pin_line }}
-- Preferred Date: {{ install_datetime }} ({{ install_availability }})
+Branch: {{ install_branch }}
+Sales Person: {{ install_sales_person }}
+Client Name: {{ install_full_name }}
+Alt Contact: {{ install_alt_contact_line }}
+Address: {{ install_address }}
+Location Pin: {{ install_location_pin_line }}
+Preferred Date: {{ install_datetime }}
+Availability: {{ install_availability }}
 
-Status: Requires scheduling"""
+Action: Schedule installation"""
     },
     {
         "name": "pfungwa_new_starlink_installation_request",
@@ -92,20 +92,19 @@ Status: Requires scheduling"""
         "template_type": "whatsapp",
         "body": """New Starlink Installation Request
 
-Contact: {{ contact_name }}
+Contact Name: {{ contact_name }}
+Contact Phone: {{ install_phone }}
 Client Name: {{ install_full_name }}
-Phone: {{ install_phone }}
 Address: {{ install_address }}
-{{ install_location_pin_line }}
+Location Pin: {{ install_location_pin_line }}
 
-Scheduling:
-- Preferred Date: {{ install_datetime }} ({{ install_availability }})
+Preferred Date: {{ install_datetime }}
+Availability: {{ install_availability }}
 
-Job Details:
-- Kit Type: {{ install_kit_type }}
-- Desired Mount: {{ install_mount_location }}
+Kit Type: {{ install_kit_type }}
+Mount Location: {{ install_mount_location }}
 
-Status: Requires scheduling confirmation"""
+Action: Confirm schedule"""
     },
     {
         "name": "pfungwa_new_solar_cleaning_request",
