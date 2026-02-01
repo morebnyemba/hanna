@@ -96,8 +96,8 @@ def check_system_health():
             )
             logger.info("System back online notification sent.")
         
-        # Update state
-        cache.set(SYSTEM_STATE_KEY, current_state, timeout=None)
+        # Update state (use 30 days timeout for reliability across cache backends)
+        cache.set(SYSTEM_STATE_KEY, current_state, timeout=60*60*24*30)
     
     return {
         'success': True,

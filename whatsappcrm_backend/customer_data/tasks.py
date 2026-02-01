@@ -50,7 +50,7 @@ def send_payment_reminders():
                 days_pending = (timezone.now() - order.created_at).days
                 
                 context = {
-                    'customer_name': order.customer.get_full_name() if order.customer else 'Customer',
+                    'customer_name': order.customer.get_full_name(),
                     'order_number': order.order_number or str(order.id),
                     'order_amount': str(order.amount) if order.amount else '0.00',
                     'days_pending': str(days_pending),
