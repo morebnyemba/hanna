@@ -3,10 +3,13 @@
 WARRANTY_CLAIM_FLOW = {
     "name": "warranty_claim_request",
     "friendly_name": "Submit Warranty Claim",
-    "description": "Allows customers to submit a warranty claim for their products via WhatsApp.",
+    "description": "Allows customers to submit a warranty claim for their products via WhatsApp. Follows the same steps pattern as solar installation flow.",
     "trigger_keywords": ["warranty", "claim", "defect", "issue"],
     "is_active": True,
     "steps": [
+        # ============================================================================
+        # STEP 1: ENSURE CUSTOMER PROFILE (PATTERN MATCH: Solar)
+        # ============================================================================
         {
             "name": "ensure_customer_profile",
             "is_entry_point": True,
@@ -21,6 +24,9 @@ WARRANTY_CLAIM_FLOW = {
                 {"to_step": "query_warranty_whatsapp_flow", "condition_config": {"type": "always_true"}}
             ]
         },
+        # ============================================================================
+        # STEP 2: QUERY WHATSAPP FLOW (PATTERN MATCH: Solar)
+        # ============================================================================
         {
             "name": "query_warranty_whatsapp_flow",
             "type": "action",
@@ -43,6 +49,9 @@ WARRANTY_CLAIM_FLOW = {
                 {"to_step": "fallback_to_legacy_warranty_claim", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
+        # ============================================================================
+        # STEP 3: SEND WHATSAPP FORM (PATTERN MATCH: Solar)
+        # ============================================================================
         {
             "name": "send_warranty_whatsapp_flow",
             "type": "send_message",
@@ -76,17 +85,29 @@ WARRANTY_CLAIM_FLOW = {
                 {"to_step": "wait_for_warranty_whatsapp_response", "condition_config": {"type": "always_true"}}
             ]
         },
+        # ============================================================================
+        # STEP 4: WAIT FOR FORM RESPONSE (PATTERN MATCH: Solar)
+        # ============================================================================
         {
             "name": "wait_for_warranty_whatsapp_response",
             "type": "action",
             "config": {
-                "actions_to_run": []
+                "actions_to_run": [],
+                "message_config": {
+                    "message_type": "text",
+                    "text": {
+                        "body": "Please complete the WhatsApp form. We will continue once your submission is received."
+                    }
+                }
             },
             "transitions": [
                 {"to_step": "map_warranty_whatsapp_response_to_context", "priority": 1, "condition_config": {"type": "whatsapp_flow_response_received"}},
                 {"to_step": "fallback_to_legacy_warranty_claim", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
+        # ============================================================================
+        # STEP 5: MAP FORM RESPONSE TO CONTEXT (PATTERN MATCH: Solar)
+        # ============================================================================
         {
             "name": "map_warranty_whatsapp_response_to_context",
             "type": "action",
@@ -103,17 +124,20 @@ WARRANTY_CLAIM_FLOW = {
                 {"to_step": "confirm_warranty_claim_from_whatsapp", "condition_config": {"type": "always_true"}}
             ]
         },
+        # ============================================================================
+        # STEP 6: SEND CONFIRMATION (PATTERN MATCH: Solar)
+        # ============================================================================
         {
             "name": "confirm_warranty_claim_from_whatsapp",
             "type": "send_message",
             "config": {
                 "message_type": "text",
                 "text": {
-                    "body": "✅ *Warranty Claim Received*\n\n*Product Serial:* {{ product_serial_number }}\n*Issue:* {{ issue_description }}\n*Date Started:* {{ issue_date }}\n*Troubleshooting Done:* {{ troubleshooting_attempted }}\n*Photos:* {{ has_photos }}\n\nYour warranty claim has been submitted successfully. Our technical team will review it and contact you within 24-48 hours.\n\nClaim Reference: WC-{{ contact.id }}-{{ now().strftime('%y%m%d') }}"
+                    "body": "✅ *Warranty Claim Received*\n\n*Product Serial:* {{ product_serial_number }}\n*Issue:* {{ issue_description }}\n*Date Started:* {{ issue_date }}\n*Troubleshooting Done:* {{ troubleshooting_attempted }}\n*Photos:* {{ 'Provided' if has_photos else 'Not provided' }}\n\nYour warranty claim has been submitted successfully. Our technical team will review it and contact you within 24-48 hours.\n\nClaim Reference: WC-{{ contact.id }}-{{ now().strftime('%y%m%d') }}"
                 }
             },
             "transitions": [
-                {"to_step": "submit_warranty_claim", "condition_config": {"type": "always_true"}}
+                {"to_step": "create_warranty_claim_record", "condition_config": {"type": "always_true"}}
             ]
         },
         {
