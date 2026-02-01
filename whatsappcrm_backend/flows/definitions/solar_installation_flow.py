@@ -782,21 +782,24 @@ SOLAR_INSTALLATION_FLOW = {
                     "message_type": "interactive",
                     "interactive": {
                         "type": "button",
-                        "body": {"text": "Please review your details and confirm to submit your installation request.\n\n"
-                            "Thank you. Please review your details and confirm to submit your installation request.\n\n"
-                            "{% if order_number %}*Order #*: {{ order_number }}{% if found_order and found_order.0 %} ({{ found_order.0.name }}){% endif %}\n\n{% endif %}"
-                            "Branch: {{ install_branch }}\n"
-                            "Sales Person: {{ install_sales_person }}\n"
-                            "Client Name: {{ install_full_name }}\n"
-                            "Client Contact: {{ install_phone }}\n"
-                            "Alt. Contact: {{ install_alt_name }} ({{ install_alt_phone }})\n"
-                            "Install Date: {{ install_datetime }} ({{ install_availability|title }})\n"
-                            "Address: {{ install_address }}"
+                        "header": {"type": "text", "text": "Review Installation Details"},
+                        "body": {"text": "☀️ *Solar Installation Request*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "{% if order_number %}📋 *Order Number:*\n{{ order_number }}{% if found_order and found_order.0 %} ({{ found_order.0.name }}){% endif %}\n\n{% endif %}" +
+                            "🏢 *Branch:*\n{{ install_branch }}\n\n" +
+                            "👤 *Sales Person:*\n{{ install_sales_person }}\n\n" +
+                            "🙋 *Client Name:*\n{{ install_full_name }}\n\n" +
+                            "📱 *Client Phone:*\n{{ install_phone }}\n\n" +
+                            "👥 *Alt. Contact:*\n{{ install_alt_name }} ({{ install_alt_phone }})\n\n" +
+                            "📅 *Installation Date:*\n{{ install_datetime }}\n⏰ {{ install_availability|title }}\n\n" +
+                            "📍 *Address:*\n{{ install_address }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "Please confirm to submit your installation request."
                         },
                         "action": {
                             "buttons": [
-                                {"type": "reply", "reply": {"id": "confirm_install", "title": "Confirm Request"}},
-                                {"type": "reply", "reply": {"id": "cancel_install", "title": "Cancel"}}
+                                {"type": "reply", "reply": {"id": "confirm_install", "title": "✅ Confirm Request"}},
+                                {"type": "reply", "reply": {"id": "cancel_install", "title": "❌ Cancel"}}
                             ]
                         }
                     }

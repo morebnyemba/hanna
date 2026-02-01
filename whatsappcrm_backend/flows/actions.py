@@ -573,6 +573,29 @@ def generate_unique_assessment_id_action(contact: Contact, context: Dict[str, An
     
     return []
 
+def generate_unique_claim_id_action(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Generates a unique warranty claim ID with format WC-XXXXXX and saves it to the context.
+    """
+    from warranty.models import WarrantyClaim
+    save_to_variable = params.get('save_to_variable', 'generated_claim_id')
+    prefix = params.get('prefix', 'WC')
+    length = params.get('length', 6)
+    
+    while True:
+        if length == 6:
+            claim_num = f"{prefix}-{random.randint(100000, 999999)}"
+        else:
+            claim_num = f"{prefix}-{random.randint(10**(length-1), 10**length - 1)}"
+        
+        if not WarrantyClaim.objects.filter(claim_id=claim_num).exists():
+            break
+    
+    context[save_to_variable] = claim_num
+    logger.info(f"Generated unique claim ID {claim_num} for contact {contact.id} and saved to '{save_to_variable}'.")
+    
+    return []
+
 def create_placeholder_order(contact: Contact, context: Dict[str, Any], params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Creates a placeholder Order with just an order number.
@@ -1479,6 +1502,7 @@ flow_action_registry.register('update_model_instance', update_model_instance)
 flow_action_registry.register('create_order_from_cart', create_order_from_cart)
 flow_action_registry.register('checkout_cart_for_contact', checkout_cart_for_contact)
 flow_action_registry.register('generate_unique_assessment_id', generate_unique_assessment_id_action)
+flow_action_registry.register('generate_unique_claim_id', generate_unique_claim_id_action)
 flow_action_registry.register('create_placeholder_order', create_placeholder_order)
 flow_action_registry.register('normalize_order_number', normalize_order_number)
 flow_action_registry.register('send_catalog_message', send_catalog_message)

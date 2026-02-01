@@ -125,19 +125,41 @@ WARRANTY_CLAIM_FLOW = {
             ]
         },
         # ============================================================================
-        # STEP 6: SEND CONFIRMATION (PATTERN MATCH: Solar)
+        # STEP 6: CONFIRM BEFORE SUBMISSION (PATTERN MATCH: Solar)
         # ============================================================================
         {
             "name": "confirm_warranty_claim_from_whatsapp",
-            "type": "send_message",
+            "type": "question",
             "config": {
-                "message_type": "text",
-                "text": {
-                    "body": "✅ *Warranty Claim Received*\n\n*Product Serial:* {{ product_serial_number }}\n*Issue:* {{ issue_description }}\n*Date Started:* {{ issue_date }}\n*Troubleshooting Done:* {{ troubleshooting_attempted }}\n*Photos:* {{ 'Provided' if has_photos else 'Not provided' }}\n\nYour warranty claim has been submitted successfully. Our technical team will review it and contact you within 24-48 hours.\n\nClaim Reference: WC-{{ contact.id }}-{{ now().strftime('%y%m%d') }}"
-                }
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "header": {"type": "text", "text": "Review Warranty Claim"},
+                        "body": {"text": "📋 *Please review your warranty claim details:*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "📦 *Product Serial:*\n{{ product_serial_number }}\n\n" +
+                            "🔴 *Issue Reported:*\n{{ issue_description }}\n\n" +
+                            "📅 *Date Started:*\n{{ issue_date }}\n\n" +
+                            "🔧 *Troubleshooting Done:*\n{{ troubleshooting_attempted }}\n\n" +
+                            "📸 *Photos:* {{ 'Yes, provided' if has_photos else 'Not provided' }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "⏱️ *Response Time:* 24-48 hours\n\n" +
+                            "Please confirm to submit your warranty claim."
+                        },
+                        "action": {
+                            "buttons": [
+                                {"type": "reply", "reply": {"id": "confirm_warranty", "title": "✅ Confirm & Submit"}},
+                                {"type": "reply", "reply": {"id": "cancel_warranty", "title": "❌ Cancel"}}
+                            ]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "warranty_confirmation"}
             },
             "transitions": [
-                {"to_step": "create_warranty_claim_record", "condition_config": {"type": "always_true"}}
+                {"to_step": "create_warranty_claim_record", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "confirm_warranty"}},
+                {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
         {
@@ -319,25 +341,117 @@ WARRANTY_CLAIM_FLOW = {
         },
         {
             "name": "review_claim_summary",
-            "type": "send_message",
+            "type": "question",
             "config": {
-                "message_type": "text",
-                "text": {
-                    "body": "✅ Perfect! Here's a summary of your warranty claim:\n\n📦 *Product*: {{ selected_warranty.serialized_item__product__name or 'Custom Product' }}\n🔢 *Serial*: {{ selected_warranty.serialized_item__serial_number or manual_serial_number }}\n\n🔴 *Issue*: {{ issue_description }}\n⏰ *When*: {{ issue_when_started }}\n🔧 *Actions Taken*: {{ troubleshooting_steps }}\n📸 *Photos*: {{ 'Provided' if has_photos == 'photos_yes' else 'Not provided' }}\n\n👤 *Your Contact*: {{ customer_profile.first_name or 'Customer' }} ({{ contact.whatsapp_id }})\n\nOur team will review your claim and contact you within 24 hours with an update."
-                }
+                "message_config": {
+                    "message_type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "header": {"type": "text", "text": "Review Your Claim"},
+                        "body": {"text": "📋 *Please review your warranty claim details:*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "📦 *Product:*\n{{ selected_warranty.serialized_item__product__name or 'Custom Product' }}\n\n" +
+                            "🔢 *Serial Number:*\n{{ selected_warranty.serialized_item__serial_number or manual_serial_number }}\n\n" +
+                            "🔴 *Issue Description:*\n{{ issue_description }}\n\n" +
+                            "📅 *When Started:*\n{{ issue_when_started }}\n\n" +
+                            "🔧 *Troubleshooting Done:*\n{{ troubleshooting_steps }}\n\n" +
+                            "📸 *Photos:* {{ 'Yes, provided' if has_photos == 'photos_yes' else 'Not provided' }}\n\n" +
+                            "👤 *Contact:* {{ customer_profile.first_name or 'Customer' }}\n" +
+                            "📱 *Phone:* {{ contact.whatsapp_id }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "⏱️ *Response Time:* 24 hours\n\n" +
+                            "Confirm to submit your warranty claim."
+                        },
+                        "action": {
+                            "buttons": [
+                                {"type": "reply", "reply": {"id": "submit_claim", "title": "✅ Submit Claim"}},
+                                {"type": "reply", "reply": {"id": "cancel_claim", "title": "❌ Cancel"}}
+                            ]
+                        }
+                    }
+                },
+                "reply_config": {"expected_type": "interactive_id", "save_to_variable": "claim_confirmation"}
             },
             "transitions": [
-                {"to_step": "submit_warranty_claim", "condition_config": {"type": "always_true"}}
+                {"to_step": "submit_warranty_claim", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "submit_claim"}},
+                {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        {
+            "name": "create_warranty_claim_record",
+            "type": "action",
+            "config": {
+                "actions_to_run": [
+                    {
+                        "action_type": "generate_unique_claim_id",
+                        "params_template": {
+                            "prefix": "WC",
+                            "length": 6,
+                            "save_to_variable": "generated_claim_id"
+                        }
+                    },
+                    {
+                        "action_type": "create_model_instance",
+                        "app_label": "warranty",
+                        "model_name": "WarrantyClaim",
+                        "fields_template": {
+                            "warranty_id": "{{ selected_warranty.id if selected_warranty else None }}",
+                            "claim_id": "{{ generated_claim_id }}",
+                            "description_of_fault": "{{ issue_description }}\n\nDate started: {{ issue_date or issue_when_started }}\nTroubleshooting attempted: {{ troubleshooting_attempted or troubleshooting_steps }}\nSerial Number: {{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}",
+                            "status": "pending"
+                        },
+                        "save_to_variable": "created_claim"
+                    },
+                    {
+                        "action_type": "send_group_notification",
+                        "params_template": {
+                            "group_names": ["Technical Admin", "Warranty Team"],
+                            "template_name": "pfungwa_new_warranty_claim_submitted",
+                            "template_context": {
+                                "customer_name": "{{ customer_profile.first_name or 'Customer' }}",
+                                "contact_phone": "{{ contact.whatsapp_id }}",
+                                "product_name": "{{ selected_warranty.serialized_item__product__name or 'Product' }}",
+                                "serial_number": "{{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}",
+                                "issue_description": "{{ issue_description }}",
+                                "generated_claim_id": "{{ generated_claim_id }}"
+                            }
+                        }
+                    }
+                ]
+            },
+            "transitions": [
+                {"to_step": "end_flow_success", "priority": 1, "condition_config": {"type": "always_true"}}
             ]
         },
         {
             "name": "submit_warranty_claim",
             "type": "action",
             "config": {
-                "actions_to_run": [{
-                    "action_type": "log_message",
-                    "message_template": "Warranty Claim: Serial={{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}, Issue={{ issue_description }}, Date={{ issue_date or issue_when_started }}, Photos={{ has_photos }}, Troubleshooting={{ troubleshooting_attempted or troubleshooting_steps }}"
-                }]
+                "actions_to_run": [
+                    {
+                        "action_type": "generate_unique_claim_id",
+                        "params_template": {
+                            "prefix": "WC",
+                            "length": 6,
+                            "save_to_variable": "generated_claim_id"
+                        }
+                    },
+                    {
+                        "action_type": "send_group_notification",
+                        "params_template": {
+                            "group_names": ["Technical Admin", "Warranty Team"],
+                            "template_name": "pfungwa_new_warranty_claim_submitted",
+                            "template_context": {
+                                "customer_name": "{{ customer_profile.first_name or 'Customer' }}",
+                                "contact_phone": "{{ contact.whatsapp_id }}",
+                                "product_name": "{{ selected_warranty.serialized_item__product__name or 'Product' }}",
+                                "serial_number": "{{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}",
+                                "issue_description": "{{ issue_description }}",
+                                "generated_claim_id": "{{ generated_claim_id }}"
+                            }
+                        }
+                    }
+                ]
             },
             "transitions": [
                 {"to_step": "end_flow_success", "priority": 1, "condition_config": {"type": "always_true"}}
@@ -362,7 +476,7 @@ WARRANTY_CLAIM_FLOW = {
                 "message_config": {
                     "message_type": "text",
                     "text": {
-                        "body": "✅ *Claim Submitted Successfully!*\n\nYour warranty claim has been registered in our system.\n\n📋 *Claim ID*: Generated\n👀 *Status*: Under Review\n📬 *Next Step*: You'll receive an update via WhatsApp within 24 hours.\n\nThank you for choosing Hanna! 🙏"
+                        "body": "✅ *Claim Submitted Successfully!*\n\nYour warranty claim has been registered in our system.\n\n📋 *Claim ID*: {{ generated_claim_id }}\n👀 *Status*: Under Review\n📬 *Next Step*: You'll receive an update via WhatsApp within 24 hours.\n\nThank you for choosing Hanna! 🙏"
                     }
                 }
             }
