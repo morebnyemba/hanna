@@ -91,19 +91,21 @@ WARRANTY_CLAIM_FLOW = {
         # ============================================================================
         {
             "name": "wait_for_warranty_whatsapp_response",
-            "type": "action",
+            "type": "question",
             "config": {
-                "actions_to_run": [],
                 "message_config": {
                     "message_type": "text",
                     "text": {
-                        "body": "Please complete the WhatsApp form. We will continue once your submission is received."
+                        "body": "📝 Please complete the warranty claim form above. We'll continue processing once we receive your submission."
                     }
+                },
+                "reply_config": {
+                    "expected_type": "whatsapp_flow_response",
+                    "save_to_variable": "whatsapp_flow_response"
                 }
             },
             "transitions": [
-                {"to_step": "map_warranty_whatsapp_response_to_context", "priority": 1, "condition_config": {"type": "whatsapp_flow_response_received"}},
-                {"to_step": "wait_for_warranty_whatsapp_response", "priority": 2, "condition_config": {"type": "always_true"}}
+                {"to_step": "map_warranty_whatsapp_response_to_context", "priority": 1, "condition_config": {"type": "whatsapp_flow_response_received"}}
             ]
         },
         # ============================================================================
