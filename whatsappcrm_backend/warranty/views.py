@@ -212,12 +212,8 @@ class ManufacturerSerializedItemViewSet(viewsets.ViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            serial_number = item.serial_number
             item.delete()
-            return Response(
-                {'message': f'Serialized item {serial_number} deleted successfully'},
-                status=status.HTTP_204_NO_CONTENT
-            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except SerializedItem.DoesNotExist:
             return Response(
                 {'error': 'Serialized item not found or does not belong to this manufacturer'},

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.core.exceptions import ObjectDoesNotExist
 from .models import Warranty, WarrantyClaim, Manufacturer, WarrantyRule, SLAThreshold, SLAStatus
 from products_and_services.models import SerializedItem, Product
 from products_and_services.serializers import ProductSerializer
@@ -170,7 +171,8 @@ class ManufacturerWarrantyClaimDetailSerializer(serializers.ModelSerializer):
                 'creation_date': jc.creation_date.isoformat() if jc.creation_date else None,
                 'is_under_warranty': jc.is_under_warranty,
             } for jc in job_cards]
-        except Exception:
+        except (AttributeError, ObjectDoesNotExist):
+            # Handle cases where warranty, serialized_item, or job_cards are missing
             return []
 
 
