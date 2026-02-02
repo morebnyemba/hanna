@@ -141,7 +141,7 @@ WARRANTY_CLAIM_FLOW = {
                 ]
             },
             "transitions": [
-            {"to_step": "confirm_warranty_claim_from_whatsapp", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "selected_warranty.0"}},
+                {"to_step": "confirm_warranty_claim_from_whatsapp", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "selected_warranty.0"}},
                 {"to_step": "warranty_not_found_error", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -419,7 +419,7 @@ WARRANTY_CLAIM_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [
-DTGVGZQ                    {
+                    {
                         "action_type": "create_model_instance",
                         "app_label": "warranty",
                         "model_name": "WarrantyClaim",
