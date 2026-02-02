@@ -297,7 +297,19 @@ SOLAR_CLEANING_FLOW = {
         {
             "name": "end_flow_success",
             "type": "end_flow",
-            "config": {"message_config": {"message_type": "text", "text": {"body": "Thank you! Please complete the form to submit your solar panel cleaning request. Our team will contact you shortly to confirm the schedule and provide a quote."}}}
+            "config": {"message_config": {"message_type": "text", "text": {"body": "✅ *Solar Cleaning Request Submitted!*\n\n" +
+                "━━━━━━━━━━━━━━━━━━━━\n" +
+                "👤 *Name:* {{ cleaning_full_name }}\n" +
+                "📱 *Phone:* {{ cleaning_phone }}\n" +
+                "📍 *Address:* {{ cleaning_address }}\n" +
+                "📅 *Date:* {{ cleaning_date }} ({{ cleaning_availability|title }})\n" +
+                "📊 *Panels:* {{ cleaning_panel_count }} x {{ cleaning_panel_type|replace('_', ' ')|title }}\n" +
+                "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                "📬 *What's Next?*\n" +
+                "• Our team will review your request\n" +
+                "• You'll receive a quote within 24 hours\n" +
+                "• We'll confirm the cleaning schedule\n\n" +
+                "Thank you for maintaining your solar panels! 🌞"}}}
         },
         {
             "name": "end_flow_cancelled",

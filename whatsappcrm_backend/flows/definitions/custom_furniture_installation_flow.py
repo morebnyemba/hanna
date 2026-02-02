@@ -112,14 +112,35 @@ CUSTOM_FURNITURE_INSTALLATION_FLOW = {
             },
             "transitions": [
                 {"to_step": "set_skipped_location", "priority": 1, "condition_config": {"type": "user_reply_matches_keyword", "keyword": "skip"}},
-                {"to_step": "end_flow_success", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
+                {"to_step": "generate_installation_id", "priority": 2, "condition_config": {"type": "variable_exists", "variable_name": "install_location_pin"}}
             ]
         },
         {
             "name": "set_skipped_location",
             "type": "action",
             "config": {"actions_to_run": [{"action_type": "set_context_variable", "variable_name": "install_location_pin", "value_template": {"latitude": None, "longitude": None}}]},
-            "transitions": [{"to_step": "end_flow_success", "condition_config": {"type": "always_true"}}]
+            "transitions": [{"to_step": "generate_installation_id", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "generate_installation_id",
+            "type": "action",
+            "config": {"actions_to_run": [{"action_type": "generate_unique_installation_id", "params_template": {"save_to_variable": "generated_installation_id_raw"}}]},
+            "transitions": [{"to_step": "prefix_installation_id", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "prefix_installation_id",
+            "type": "action",
+            "config": {"actions_to_run": [{"action_type": "set_context_variable", "variable_name": "generated_installation_id", "value_template": "CFI-{{ generated_installation_id_raw }}"}]},
+            "transitions": [{"to_step": "save_furniture_installation_request", "condition_config": {"type": "always_true"}}]
+        },
+        {
+            "name": "save_furniture_installation_request",
+            "type": "action",
+            "config": {"actions_to_run": [
+                {"action_type": "create_model_instance", "app_label": "customer_data", "model_name": "FurnitureInstallationRequest", "fields_template": {"customer": "current", "installation_id": "{{ generated_installation_id }}", "full_name": "{{ install_full_name }}", "phone": "{{ install_phone }}", "address": "{{ install_address }}", "location_latitude": "{{ install_location_pin.latitude }}", "location_longitude": "{{ install_location_pin.longitude }}"}, "save_to_variable": "created_installation_request"},
+                {"action_type": "send_group_notification", "params_template": {"group_names": ["Technical Admin", "Sales Team"], "template_name": "pfungwa_new_furniture_installation_request"}}
+            ]},
+            "transitions": [{"to_step": "end_flow_success", "priority": 0, "condition_config": {"type": "always_true"}}]
         },
         {
             "name": "fallback_message",
@@ -141,7 +162,17 @@ CUSTOM_FURNITURE_INSTALLATION_FLOW = {
                 "message_config": {
                     "message_type": "text",
                     "text": {
-                        "body": "Thank you! Please complete the form to submit your custom furniture installation request."
+                        "body": "✅ *Installation Request Submitted!*\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n" +
+                            "🔢 *Request ID:* {{ generated_installation_id }}\n" +
+                            "👤 *Name:* {{ install_full_name }}\n" +
+                            "📍 *Address:* {{ install_address }}\n" +
+                            "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "📬 *What's Next?*\n" +
+                            "• Our team will review your request\n" +
+                            "• We'll contact you within 24 hours to confirm\n" +
+                            "• Please keep the location accessible\n\n" +
+                            "Thank you for choosing Hanna! 🙏"
                     }
                 }
             }
