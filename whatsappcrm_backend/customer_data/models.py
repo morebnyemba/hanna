@@ -308,6 +308,44 @@ class Order(models.Model):
         related_name='orders'
     )
     
+    # Dispatch tracking
+    dispatch_date = models.DateTimeField(
+        _("Dispatch Date"),
+        null=True,
+        blank=True,
+        help_text=_("Date and time when the order was dispatched for delivery.")
+    )
+    tracking_number = models.CharField(
+        _("Tracking Number"),
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text=_("Delivery tracking number if applicable.")
+    )
+    
+    # Retailer/Branch assignment
+    retailer_branch = models.ForeignKey(
+        'users.RetailerBranch',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders',
+        help_text=_("The retailer branch assigned to handle this order.")
+    )
+    commission_amount = models.DecimalField(
+        _("Commission Amount"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Commission earned by the retailer/branch for this order.")
+    )
+    commission_paid = models.BooleanField(
+        _("Commission Paid"),
+        default=False,
+        help_text=_("Whether the commission has been paid to the retailer.")
+    )
+    
     notes = models.TextField(_("Notes"), blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -6,12 +6,13 @@ Also auto-creates checklist entries when technicians are assigned to installatio
 """
 
 import logging
-from django.db import models
+from django.db import models, transaction
 from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
 from customer_data.models import InstallationRequest
 from warranty.models import Technician
-from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry
+from .models import InstallationSystemRecord, CommissioningChecklistTemplate, InstallationChecklistEntry, InstallerPayout
+from notifications.services import queue_notifications_to_users
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
@@ -198,6 +199,79 @@ def auto_create_checklists_on_isr_create(sender, instance, created, **kwargs):
         create_checklists_for_installation(instance)
 
 
+@receiver(post_save, sender=InstallationSystemRecord)
+def send_installation_status_notifications(sender, instance, created, **kwargs):
+    """
+    Send notifications when installation status changes to specific states.
+    """
+    if not created:
+        # Check if status changed to commissioned (installation complete)
+        if instance.installation_status == 'commissioned':
+            customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
+            if customer_contact:
+                # Build warranty summary
+                warranty_list = []
+                for warranty in instance.warranties.all():
+                    warranty_list.append(f"- {warranty.serialized_item.product.name}: {warranty.end_date.strftime('%Y-%m-%d')}")
+                warranty_summary = '\n'.join(warranty_list) if warranty_list else 'No warranties registered yet'
+                
+                context = {
+                    'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                    'installation_type': instance.get_installation_type_display(),
+                    'system_size': str(instance.system_size) if instance.system_size else 'N/A',
+                    'isr_id': str(instance.id),
+                    'warranty_summary': warranty_summary,
+                }
+                transaction.on_commit(
+                    lambda: queue_notifications_to_users(
+                        template_name='pfungwa_installation_complete',
+                        contact_ids=[customer_contact.id],
+                        related_contact=customer_contact,
+                        template_context=context
+                    )
+                )
+                logger.info(f"Queued installation complete notification for ISR {instance.id}.")
+
+
+@receiver(m2m_changed, sender=InstallationSystemRecord.technicians.through)
+def send_technician_assignment_notification(sender, instance, action, pk_set, **kwargs):
+    """
+    Send notification to technician when they are assigned to an installation.
+    """
+    if action == 'post_add' and pk_set:
+        customer_contact = instance.customer.contact if instance.customer and hasattr(instance.customer, 'contact') else None
+        
+        for tech_id in pk_set:
+            try:
+                technician = Technician.objects.get(pk=tech_id)
+                tech_contact = technician.user.customer_profile.contact if hasattr(technician.user, 'customer_profile') and hasattr(technician.user.customer_profile, 'contact') else None
+                
+                if tech_contact:
+                    context = {
+                        'technician_name': technician.user.get_full_name() or technician.user.username,
+                        'customer_name': instance.customer.get_full_name() if instance.customer else 'Customer',
+                        'installation_address': instance.installation_address or 'Address not specified',
+                        'installation_date': instance.installation_date.strftime('%Y-%m-%d') if instance.installation_date else 'To be scheduled',
+                        'system_size': str(instance.system_size) if instance.system_size else 'N/A',
+                        'installation_type': instance.get_installation_type_display(),
+                        'isr_id': str(instance.id),
+                    }
+                    
+                    # Use a helper function to capture context values correctly
+                    def send_notification(contact_id, notification_context):
+                        queue_notifications_to_users(
+                            template_name='pfungwa_technician_job_assigned',
+                            contact_ids=[contact_id],
+                            related_contact=tech_contact,
+                            template_context=notification_context
+                        )
+                    
+                    transaction.on_commit(lambda ctx=context, cid=tech_contact.id: send_notification(cid, ctx))
+                    logger.info(f"Queued technician assignment notification for technician {tech_id} on ISR {instance.id}.")
+            except Technician.DoesNotExist:
+                logger.warning(f"Technician {tech_id} not found when trying to send assignment notification.")
+
+
 @receiver(m2m_changed, sender=InstallationSystemRecord.technicians.through)
 def auto_create_checklists_on_technician_assigned(sender, instance, action, **kwargs):
     """
@@ -270,3 +344,59 @@ def sync_technicians_to_isr_and_create_checklists(sender, instance, action, pk_s
                         logger.info(
                             f"Assigned technician {technician} to {updated} existing checklists for ISR {isr.id}"
                         )
+
+
+@receiver(post_save, sender=InstallerPayout)
+def send_payout_status_notifications(sender, instance, created, **kwargs):
+    """
+    Send notifications to technician when payout status changes to approved or paid.
+    """
+    if not created:
+        # Get technician contact
+        tech_contact = None
+        if instance.technician and hasattr(instance.technician, 'user'):
+            user = instance.technician.user
+            if hasattr(user, 'customer_profile') and hasattr(user.customer_profile, 'contact'):
+                tech_contact = user.customer_profile.contact
+        
+        if tech_contact:
+            # Notification when payout is approved
+            if instance.status == InstallerPayout.PayoutStatus.APPROVED:
+                # Count installations in this payout
+                installation_count = instance.installations.count()
+                
+                context = {
+                    'technician_name': instance.technician.user.get_full_name() or instance.technician.user.username,
+                    'payout_id': str(instance.id),
+                    'payout_amount': str(instance.payout_amount),
+                    'installation_count': str(installation_count),
+                }
+                
+                transaction.on_commit(
+                    lambda: queue_notifications_to_users(
+                        template_name='pfungwa_payout_approved',
+                        contact_ids=[tech_contact.id],
+                        related_contact=tech_contact,
+                        template_context=context
+                    )
+                )
+                logger.info(f"Queued payout approval notification for payout {instance.id}.")
+            
+            # Notification when payout is paid
+            elif instance.status == InstallerPayout.PayoutStatus.PAID:
+                context = {
+                    'technician_name': instance.technician.user.get_full_name() or instance.technician.user.username,
+                    'payout_id': str(instance.id),
+                    'payout_amount': str(instance.payout_amount),
+                    'payment_reference': str(instance.id),  # Full UUID for uniqueness
+                }
+                
+                transaction.on_commit(
+                    lambda: queue_notifications_to_users(
+                        template_name='pfungwa_payout_paid',
+                        contact_ids=[tech_contact.id],
+                        related_contact=tech_contact,
+                        template_context=context
+                    )
+                )
+                logger.info(f"Queued payout paid notification for payout {instance.id}.")
