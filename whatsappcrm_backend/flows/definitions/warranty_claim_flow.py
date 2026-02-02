@@ -141,7 +141,24 @@ WARRANTY_CLAIM_FLOW = {
                 ]
             },
             "transitions": [
-                {"to_step": "confirm_warranty_claim_from_whatsapp", "condition_config": {"type": "always_true"}}
+            {"to_step": "confirm_warranty_claim_from_whatsapp", "priority": 1, "condition_config": {"type": "variable_exists", "variable_name": "selected_warranty.0"}},
+                {"to_step": "warranty_not_found_error", "priority": 2, "condition_config": {"type": "always_true"}}
+            ]
+        },
+        # ============================================================================
+        # STEP 5C: WARRANTY NOT FOUND ERROR
+        # ============================================================================
+        {
+            "name": "warranty_not_found_error",
+            "type": "send_message",
+            "config": {
+                "message_type": "text",
+                "text": {
+                    "body": "❌ *Warranty Not Found*\n\nWe couldn't find an active warranty for serial number: {{ product_serial_number }}\n\n⚠️ This could mean:\n• The product isn't registered in our system\n• The serial number may be incorrect\n• The warranty may have expired\n\n📞 Please contact our support team for assistance. We'll help you resolve this issue.\n\nThank you for your patience!"
+                }
+            },
+            "transitions": [
+                {"to_step": "end_flow_cancelled", "condition_config": {"type": "always_true"}}
             ]
         },
         # ============================================================================
@@ -393,7 +410,7 @@ WARRANTY_CLAIM_FLOW = {
                 "reply_config": {"expected_type": "interactive_id", "save_to_variable": "claim_confirmation"}
             },
             "transitions": [
-                {"to_step": "submit_warranty_claim", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "submit_claim"}},
+                {"to_step": "create_warranty_claim_record", "priority": 1, "condition_config": {"type": "interactive_reply_id_equals", "value": "submit_claim"}},
                 {"to_step": "end_flow_cancelled", "priority": 2, "condition_config": {"type": "always_true"}}
             ]
         },
@@ -402,22 +419,13 @@ WARRANTY_CLAIM_FLOW = {
             "type": "action",
             "config": {
                 "actions_to_run": [
-                    {
-                        "action_type": "generate_unique_claim_id",
-                        "params_template": {
-                            "prefix": "WC",
-                            "length": 6,
-                            "save_to_variable": "generated_claim_id"
-                        }
-                    },
-                    {
+DTGVGZQ                    {
                         "action_type": "create_model_instance",
                         "app_label": "warranty",
                         "model_name": "WarrantyClaim",
                         "fields_template": {
-                            "warranty_id": "{{ selected_warranty.id if selected_warranty else None }}",
-                            "claim_id": "{{ generated_claim_id }}",
-                            "description_of_fault": "{{ issue_description }}\n\nDate started: {{ issue_date or issue_when_started }}\nTroubleshooting attempted: {{ troubleshooting_attempted or troubleshooting_steps }}\nSerial Number: {{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}",
+                            "warranty_id": "{{ selected_warranty.0.id }}",
+                            "description_of_fault": "{{ issue_description }}\n\nDate started: {{ issue_date or issue_when_started }}\nTroubleshooting attempted: {{ troubleshooting_attempted or troubleshooting_steps }}\nSerial Number: {{ product_serial_number or selected_warranty.0.serialized_item__serial_number or manual_serial_number }}",
                             "status": "pending"
                         },
                         "save_to_variable": "created_claim"
@@ -430,44 +438,10 @@ WARRANTY_CLAIM_FLOW = {
                             "template_context": {
                                 "customer_name": "{{ customer_profile.first_name or 'Customer' }}",
                                 "contact_phone": "{{ contact.whatsapp_id }}",
-                                "product_name": "{{ selected_warranty.serialized_item__product__name or 'Product' }}",
-                                "serial_number": "{{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}",
+                                "product_name": "{{ selected_warranty.0.serialized_item__product__name or 'Product' }}",
+                                "serial_number": "{{ product_serial_number or selected_warranty.0.serialized_item__serial_number or manual_serial_number }}",
                                 "issue_description": "{{ issue_description }}",
-                                "generated_claim_id": "{{ generated_claim_id }}"
-                            }
-                        }
-                    }
-                ]
-            },
-            "transitions": [
-                {"to_step": "end_flow_success", "priority": 1, "condition_config": {"type": "always_true"}}
-            ]
-        },
-        {
-            "name": "submit_warranty_claim",
-            "type": "action",
-            "config": {
-                "actions_to_run": [
-                    {
-                        "action_type": "generate_unique_claim_id",
-                        "params_template": {
-                            "prefix": "WC",
-                            "length": 6,
-                            "save_to_variable": "generated_claim_id"
-                        }
-                    },
-                    {
-                        "action_type": "send_group_notification",
-                        "params_template": {
-                            "group_names": ["Technical Admin", "Warranty Team"],
-                            "template_name": "pfungwa_new_warranty_claim_submitted",
-                            "template_context": {
-                                "customer_name": "{{ customer_profile.first_name or 'Customer' }}",
-                                "contact_phone": "{{ contact.whatsapp_id }}",
-                                "product_name": "{{ selected_warranty.serialized_item__product__name or 'Product' }}",
-                                "serial_number": "{{ product_serial_number or selected_warranty.serialized_item__serial_number or manual_serial_number }}",
-                                "issue_description": "{{ issue_description }}",
-                                "generated_claim_id": "{{ generated_claim_id }}"
+                                "generated_claim_id": "{{ created_claim.claim_id }}"
                             }
                         }
                     }
@@ -510,7 +484,7 @@ WARRANTY_CLAIM_FLOW = {
                     "text": {
                         "body": "✅ *Warranty Claim Submitted Successfully!*\n\n" +
                             "━━━━━━━━━━━━━━━━━━━━\n" +
-                            "📋 *Claim ID:* {{ generated_claim_id }}\n" +
+                            "📋 *Claim ID:* {{ created_claim.claim_id }}\n" +
                             "👀 *Status:* Under Review\n" +
                             "⏱️ *Response Time:* 24 hours\n" +
                             "━━━━━━━━━━━━━━━━━━━━\n\n" +

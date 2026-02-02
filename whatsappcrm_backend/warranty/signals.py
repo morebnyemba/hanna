@@ -6,8 +6,35 @@ from .models import WarrantyClaim, Warranty
 from .tasks import send_manufacturer_notification_task
 from notifications.services import queue_notifications_to_users
 import logging
+import random
+import string
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(pre_save, sender=WarrantyClaim)
+def generate_claim_id(sender, instance: WarrantyClaim, **kwargs):
+    """
+    Auto-generate a unique claim_id before saving if not already set.
+    Format: WC-XXXXXX (6 random alphanumeric characters)
+    """
+    if not instance.claim_id:
+        # Generate a unique claim ID
+        max_attempts = 10
+        for attempt in range(max_attempts):
+            # Generate 6 random uppercase alphanumeric characters
+            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            potential_claim_id = f"WC-{random_suffix}"
+            
+            # Check if this claim_id already exists
+            if not WarrantyClaim.objects.filter(claim_id=potential_claim_id).exists():
+                instance.claim_id = potential_claim_id
+                logger.info(f"Generated claim_id '{potential_claim_id}' for new WarrantyClaim")
+                return
+        
+        # Fallback if we couldn't generate unique ID in max_attempts
+        logger.error(f"Failed to generate unique claim_id after {max_attempts} attempts")
+        raise ValueError("Unable to generate unique claim_id")
 
 
 @receiver(post_save, sender=WarrantyClaim)
