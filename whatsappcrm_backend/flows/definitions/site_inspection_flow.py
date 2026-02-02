@@ -65,7 +65,7 @@ SITE_INSPECTION_FLOW = {
                     "message_type": "text",
                     "text": {"body": "Thank you for submitting the form! Please now send your site location by using WhatsApp's location feature (📍 Location button). This helps our team find your site easily."}
                 },
-                "reply_config": {"expected_type": "text", "save_to_variable": "location_pin_details"}
+                "reply_config": {"expected_type": "location", "save_to_variable": "location_pin_details"}
             },
             "transitions": [
                 {"to_step": "generate_assessment_id", "priority": 0, "condition_config": {"type": "variable_exists", "variable_name": "location_pin_details"}}
