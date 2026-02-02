@@ -81,6 +81,99 @@ class WarrantyClaimListSerializer(serializers.ModelSerializer):
         ]
 
 
+class ManufacturerWarrantyClaimDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for warranty claims viewed by manufacturers.
+    Includes all relevant information for processing claims and repair reports.
+    """
+    product_name = serializers.CharField(source='warranty.serialized_item.product.name', read_only=True)
+    product_sku = serializers.CharField(source='warranty.serialized_item.product.sku', read_only=True)
+    product_serial_number = serializers.CharField(source='warranty.serialized_item.serial_number', read_only=True)
+    product_barcode = serializers.CharField(source='warranty.serialized_item.barcode', read_only=True)
+    product_type = serializers.CharField(source='warranty.serialized_item.product.product_type', read_only=True)
+    
+    # Customer details
+    customer_name = serializers.CharField(source='warranty.customer.get_full_name', read_only=True, default='N/A')
+    customer_email = serializers.CharField(source='warranty.customer.email', read_only=True)
+    customer_phone = serializers.CharField(source='warranty.customer.contact.phone_number', read_only=True, default='N/A')
+    
+    # Warranty details
+    warranty_start_date = serializers.DateField(source='warranty.start_date', read_only=True)
+    warranty_end_date = serializers.DateField(source='warranty.end_date', read_only=True)
+    warranty_status = serializers.CharField(source='warranty.status', read_only=True)
+    
+    # Item current location
+    item_current_location = serializers.CharField(source='warranty.serialized_item.current_location', read_only=True)
+    item_location_display = serializers.CharField(source='warranty.serialized_item.get_current_location_display', read_only=True)
+    item_status = serializers.CharField(source='warranty.serialized_item.status', read_only=True)
+    item_status_display = serializers.CharField(source='warranty.serialized_item.get_status_display', read_only=True)
+    
+    # Related job cards for repair tracking
+    related_job_cards = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WarrantyClaim
+        fields = [
+            'id',
+            'claim_id',
+            'description_of_fault',
+            'status',
+            'resolution_notes',
+            'created_at',
+            'updated_at',
+            # Product info
+            'product_name',
+            'product_sku',
+            'product_serial_number',
+            'product_barcode',
+            'product_type',
+            # Customer info
+            'customer_name',
+            'customer_email',
+            'customer_phone',
+            # Warranty info
+            'warranty_start_date',
+            'warranty_end_date',
+            'warranty_status',
+            # Item tracking
+            'item_current_location',
+            'item_location_display',
+            'item_status',
+            'item_status_display',
+            # Related jobs
+            'related_job_cards',
+        ]
+        read_only_fields = [
+            'id', 'claim_id', 'created_at', 'updated_at',
+            'product_name', 'product_sku', 'product_serial_number', 
+            'product_barcode', 'product_type',
+            'customer_name', 'customer_email', 'customer_phone',
+            'warranty_start_date', 'warranty_end_date', 'warranty_status',
+            'item_current_location', 'item_location_display',
+            'item_status', 'item_status_display',
+            'related_job_cards',
+        ]
+    
+    def get_related_job_cards(self, obj):
+        """Get job cards related to this warranty claim's product"""
+        from customer_data.models import JobCard
+        
+        try:
+            serial_item = obj.warranty.serialized_item
+            job_cards = JobCard.objects.filter(serialized_item=serial_item).order_by('-creation_date')[:5]
+            return [{
+                'job_card_number': jc.job_card_number,
+                'status': jc.status,
+                'status_display': jc.get_status_display(),
+                'reported_fault': jc.reported_fault,
+                'technician_diagnosis': jc.technician_diagnosis,
+                'creation_date': jc.creation_date.isoformat() if jc.creation_date else None,
+                'is_under_warranty': jc.is_under_warranty,
+            } for jc in job_cards]
+        except Exception:
+            return []
+
+
 class WarrantyRuleSerializer(serializers.ModelSerializer):
     """Serializer for WarrantyRule CRUD operations"""
     product_name = serializers.CharField(source='product.name', read_only=True)

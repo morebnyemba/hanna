@@ -166,12 +166,32 @@ class ManufacturerSerializedItemViewSet(viewsets.ViewSet):
         return Response(data)
 
 class ManufacturerWarrantyClaimDetailView(generics.RetrieveUpdateAPIView):
-    serializer_class = WarrantyClaimListSerializer
+    """
+    Retrieve and update warranty claim details for manufacturers.
+    Provides comprehensive claim information including product, customer,
+    warranty details, and related repair job cards.
+    """
     permission_classes = [IsManufacturer]
     lookup_field = 'claim_id'
 
+    def get_serializer_class(self):
+        from .serializers import ManufacturerWarrantyClaimDetailSerializer, WarrantyClaimListSerializer
+        if self.request.method == 'GET':
+            return ManufacturerWarrantyClaimDetailSerializer
+        return WarrantyClaimListSerializer
+
     def get_queryset(self):
-        return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
+        return WarrantyClaim.objects.filter(
+            warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile
+        ).select_related(
+            'warranty',
+            'warranty__serialized_item',
+            'warranty__serialized_item__product',
+            'warranty__customer',
+            'warranty__customer__contact',
+        ).prefetch_related(
+            'warranty__serialized_item__job_cards',
+        )
 
 class ManufacturerWarrantyViewSet(viewsets.ModelViewSet):
     serializer_class = WarrantySerializer
