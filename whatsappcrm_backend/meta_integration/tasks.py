@@ -18,7 +18,7 @@ from .catalog_service import MetaCatalogService
 
 logger = logging.getLogger(__name__)
 
-@shared_task(bind=True, max_retries=10, default_retry_delay=3) # bind=True gives access to self, retry settings
+@shared_task(bind=True, max_retries=10, default_retry_delay=2) # bind=True gives access to self, retry settings
 def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id: int):
     """
     Celery task to send a WhatsApp message asynchronously.
@@ -59,14 +59,14 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
 
     # To ensure sequential delivery, check for preceding messages that are either:
     # 1. Still pending dispatch (these should always be sent first).
-    # 2. Were sent recently but not yet confirmed as delivered. We'll wait for a short period
-    #    (e.g., 2 minutes) for the delivery receipt. This prevents sending a new message
-    #    before the previous one is confirmed delivered by WhatsApp's servers.
-    stale_threshold = timezone.now() - timedelta(seconds=20)
+    # 2. Were sent very recently but the API call may still be in-flight.
+    #    Once Meta accepts a message (status='sent'), ordering is guaranteed on their side,
+    #    so we only need a brief wait to avoid overtaking an in-flight API call.
+    stale_threshold = timezone.now() - timedelta(seconds=5)
 
-    # NEW: Add a threshold for stale pending messages to prevent deadlocks.
-    # If a message has been pending for more than 5 minutes, assume it's stuck and proceed.
-    stale_pending_threshold = timezone.now() - timedelta(minutes=1)
+    # Threshold for stale pending messages to prevent deadlocks.
+    # If a message has been pending for more than 15 seconds, assume it's stuck and proceed.
+    stale_pending_threshold = timezone.now() - timedelta(seconds=15)
 
     # Find the specific message causing the halt for better logging
     # A message is halting if it's a preceding message for the same contact AND
