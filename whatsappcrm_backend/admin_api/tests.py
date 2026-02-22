@@ -453,7 +453,6 @@ class QueryPerformanceMiddlewareTestCase(TestCase):
     def test_middleware_processes_request(self):
         """Test that middleware processes a request without error"""
         from whatsappcrm_backend.middleware import QueryPerformanceMiddleware
-        from django.test import RequestFactory
         factory = RequestFactory()
         request = factory.get('/test/')
 

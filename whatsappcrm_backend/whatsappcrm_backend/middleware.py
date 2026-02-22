@@ -76,15 +76,12 @@ class QueryPerformanceMiddleware:
         )
 
     def __call__(self, request):
-        # Reset query log for this request
-        initial_queries = len(connection.queries)
-
         start_time = time.monotonic()
         response = self.get_response(request)
         total_time = (time.monotonic() - start_time) * 1000  # Convert to ms
 
         if settings.DEBUG:
-            queries = connection.queries[initial_queries:]
+            queries = connection.queries
             total_queries = len(queries)
 
             if total_queries > 0:
