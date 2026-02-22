@@ -3,7 +3,7 @@
 Tests for Admin API endpoints
 """
 
-from django.test import TestCase
+from django.test import TestCase, RequestFactory
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
@@ -12,6 +12,7 @@ from rest_framework import status
 from customer_data.models import InstallationRequest, CustomerProfile
 from conversations.models import Contact
 from warranty.models import Technician
+from admin_api.models import FailedTask, TaskProgress
 
 
 class AdminInstallationRequestAPITestCase(TestCase):
@@ -252,3 +253,214 @@ class AdminInstallationRequestAPITestCase(TestCase):
         response = self.client.get('/crm-api/admin-panel/installation-requests/')
         
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class FailedTaskModelTestCase(TestCase):
+    """Test cases for the FailedTask model (dead letter queue)"""
+
+    def test_create_failed_task(self):
+        """Test creating a failed task record"""
+        task = FailedTask.objects.create(
+            task_id='test-task-id-123',
+            task_name='meta_integration.tasks.send_whatsapp_message_task',
+            args=[1, 2],
+            kwargs={'key': 'value'},
+            exception_type='ValueError',
+            exception_message='Test error message',
+            traceback='Traceback...',
+            retries=3,
+        )
+        self.assertEqual(task.status, 'failed')
+        self.assertEqual(task.task_id, 'test-task-id-123')
+        self.assertEqual(task.retries, 3)
+        self.assertIsNotNone(task.created_at)
+        self.assertIsNone(task.resolved_at)
+
+    def test_failed_task_unique_id(self):
+        """Test that task_id is unique"""
+        FailedTask.objects.create(
+            task_id='unique-id-1',
+            task_name='test.task',
+            exception_type='Error',
+            exception_message='msg',
+        )
+        with self.assertRaises(Exception):
+            FailedTask.objects.create(
+                task_id='unique-id-1',
+                task_name='test.task',
+                exception_type='Error',
+                exception_message='msg',
+            )
+
+
+class TaskProgressModelTestCase(TestCase):
+    """Test cases for the TaskProgress model"""
+
+    def test_create_task_progress(self):
+        """Test creating a task progress record"""
+        progress = TaskProgress.objects.create(
+            task_id='progress-task-123',
+            task_name='test.long_running_task',
+            status='started',
+            progress_percent=0,
+            message='Task started',
+        )
+        self.assertEqual(progress.status, 'started')
+        self.assertEqual(progress.progress_percent, 0)
+
+    def test_update_task_progress(self):
+        """Test updating task progress"""
+        progress = TaskProgress.objects.create(
+            task_id='progress-task-456',
+            task_name='test.task',
+            status='progress',
+            progress_percent=50,
+            message='Halfway done',
+        )
+        progress.progress_percent = 100
+        progress.status = 'completed'
+        progress.result = {'processed': 100}
+        progress.save()
+
+        progress.refresh_from_db()
+        self.assertEqual(progress.progress_percent, 100)
+        self.assertEqual(progress.status, 'completed')
+        self.assertEqual(progress.result, {'processed': 100})
+
+
+class FailedTaskAPITestCase(TestCase):
+    """Test cases for the FailedTask API endpoints"""
+
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username='admin_task',
+            email='admin_task@test.com',
+            password='adminpass123'
+        )
+        self.regular_user = User.objects.create_user(
+            username='user_task',
+            email='user_task@test.com',
+            password='userpass123'
+        )
+        self.client = APIClient()
+
+        self.failed_task = FailedTask.objects.create(
+            task_id='api-test-task-001',
+            task_name='meta_integration.tasks.send_whatsapp_message_task',
+            args=[42, 7],
+            kwargs={},
+            exception_type='ConnectionError',
+            exception_message='Connection refused',
+            retries=5,
+        )
+
+    def test_list_failed_tasks_as_admin(self):
+        """Test listing failed tasks as admin"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get('/crm-api/admin-panel/failed-tasks/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_list_failed_tasks_non_admin(self):
+        """Test non-admin cannot access failed tasks"""
+        self.client.force_authenticate(user=self.regular_user)
+        response = self.client.get('/crm-api/admin-panel/failed-tasks/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_resolve_failed_task(self):
+        """Test resolving a failed task"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post(
+            f'/crm-api/admin-panel/failed-tasks/{self.failed_task.id}/resolve/'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.failed_task.refresh_from_db()
+        self.assertEqual(self.failed_task.status, 'resolved')
+        self.assertIsNotNone(self.failed_task.resolved_at)
+
+    def test_unauthenticated_access(self):
+        """Test unauthenticated access is rejected"""
+        response = self.client.get('/crm-api/admin-panel/failed-tasks/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class TaskProgressAPITestCase(TestCase):
+    """Test cases for the TaskProgress API endpoints"""
+
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username='admin_progress',
+            email='admin_progress@test.com',
+            password='adminpass123'
+        )
+        self.client = APIClient()
+
+        self.task_progress = TaskProgress.objects.create(
+            task_id='progress-api-001',
+            task_name='test.long_task',
+            status='progress',
+            progress_percent=50,
+            message='Processing...',
+        )
+
+    def test_list_task_progress_as_admin(self):
+        """Test listing task progress as admin"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get('/crm-api/admin-panel/tasks/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_task_progress_is_read_only(self):
+        """Test that task progress endpoint is read-only"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post(
+            '/crm-api/admin-panel/tasks/',
+            {'task_id': 'new-task', 'task_name': 'test'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class BaseTaskWithRetryTestCase(TestCase):
+    """Test cases for the BaseTaskWithRetry class"""
+
+    def test_base_task_class_attributes(self):
+        """Test that BaseTaskWithRetry has correct attributes"""
+        from whatsappcrm_backend.celery import BaseTaskWithRetry
+        self.assertEqual(BaseTaskWithRetry.max_retries, 5)
+        self.assertEqual(BaseTaskWithRetry.retry_backoff, 60)
+        self.assertEqual(BaseTaskWithRetry.retry_backoff_max, 3600)
+        self.assertTrue(BaseTaskWithRetry.retry_jitter)
+
+    def test_base_task_autoretry(self):
+        """Test that BaseTaskWithRetry auto-retries on Exception"""
+        from whatsappcrm_backend.celery import BaseTaskWithRetry
+        self.assertIn(Exception, BaseTaskWithRetry.autoretry_for)
+
+
+class QueryPerformanceMiddlewareTestCase(TestCase):
+    """Test cases for the QueryPerformanceMiddleware"""
+
+    def test_middleware_initializes(self):
+        """Test that middleware initializes correctly"""
+        from whatsappcrm_backend.middleware import QueryPerformanceMiddleware
+        middleware = QueryPerformanceMiddleware(get_response=lambda r: r)
+        self.assertIsNotNone(middleware)
+        self.assertIsInstance(middleware.slow_query_threshold_ms, float)
+
+    def test_middleware_processes_request(self):
+        """Test that middleware processes a request without error"""
+        from whatsappcrm_backend.middleware import QueryPerformanceMiddleware
+        from django.test import RequestFactory
+        factory = RequestFactory()
+        request = factory.get('/test/')
+
+        def mock_response(request):
+            from django.http import HttpResponse
+            return HttpResponse('OK')
+
+        middleware = QueryPerformanceMiddleware(get_response=mock_response)
+        response = middleware(request)
+        self.assertEqual(response.status_code, 200)
