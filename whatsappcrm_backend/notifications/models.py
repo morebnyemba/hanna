@@ -36,12 +36,34 @@ class NotificationTemplate(models.Model):
     """
     Stores templates for system notifications.
     """
+    CATEGORY_CHOICES = [
+        ('order', 'Order Lifecycle'),
+        ('installation', 'Installation'),
+        ('warranty', 'Warranty'),
+        ('technician', 'Technician'),
+        ('service', 'Service / Job Card'),
+        ('admin', 'Admin / System'),
+        ('retailer', 'Retailer / Branch'),
+        ('monitoring', 'Monitoring / Alerts'),
+        ('portal', 'Portal Access'),
+        ('invoice', 'Invoice Processing'),
+        ('other', 'Other'),
+    ]
+
     name = models.CharField(
         _("Template Name"),
         max_length=100,
         unique=True,
         db_index=True,
         help_text="Unique identifier for this template, e.g., 'human_handover_required'."
+    )
+    category = models.CharField(
+        _("Category"),
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default='other',
+        db_index=True,
+        help_text="The category this template belongs to for organizational purposes."
     )
     description = models.TextField(_("Description"), blank=True, null=True)
     message_body = models.TextField(
