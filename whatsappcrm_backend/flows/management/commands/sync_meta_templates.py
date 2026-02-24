@@ -210,9 +210,18 @@ class Command(BaseCommand):
             # Fallback: try direct component update (works for non-approved templates)
             return self._direct_update_template(template, components)
 
-        # Step 2: Recreate with new components
+        # Step 2: Clear old ID and save before recreating, so we don't lose track on failure
+        old_meta_id = template.meta_template_id
         template.meta_template_id = None
-        return self._create_template(template, template_name_with_version, components, dry_run=False)
+        template.sync_status = 'pending'
+        template.save(update_fields=['meta_template_id', 'sync_status'])
+
+        success = self._create_template(template, template_name_with_version, components, dry_run=False)
+        if not success:
+            self.stdout.write(self.style.WARNING(
+                f"  Recreate failed. Old Meta ID was: {old_meta_id}"
+            ))
+        return success
 
     def _direct_update_template(self, template, components):
         """Attempt a direct component update on Meta (only works for editable templates)."""
