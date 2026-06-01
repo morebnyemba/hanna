@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 AI_SHOPPING_MAX_PRODUCTS = 50  # Maximum products to include in AI context (token limit consideration)
 # ---------------------------------
 
-@shared_task(queue='celery') # Use your main I/O queue
+@shared_task(queue='flow_processing')
 def process_flow_for_message_task(message_id: int):
     """
     This task asynchronously runs the entire flow engine for an incoming message.

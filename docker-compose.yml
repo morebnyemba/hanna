@@ -76,6 +76,62 @@ services:
       - db
     restart: unless-stopped
 
+  celery_flow_worker_1:
+    build: ./whatsappcrm_backend
+    container_name: whatsappcrm_celery_flow_worker_1
+    command: celery -A whatsappcrm_backend worker -Q flow_processing -l INFO --concurrency=20
+    volumes:
+      - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+  celery_flow_worker_2:
+    build: ./whatsappcrm_backend
+    container_name: whatsappcrm_celery_flow_worker_2
+    command: celery -A whatsappcrm_backend worker -Q flow_processing -l INFO --concurrency=20
+    volumes:
+      - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+  celery_msg_sender_1:
+    build: ./whatsappcrm_backend
+    container_name: whatsappcrm_celery_msg_sender_1
+    command: celery -A whatsappcrm_backend worker -Q msg_sending -l INFO --concurrency=30
+    volumes:
+      - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+  celery_msg_sender_2:
+    build: ./whatsappcrm_backend
+    container_name: whatsappcrm_celery_msg_sender_2
+    command: celery -A whatsappcrm_backend worker -Q msg_sending -l INFO --concurrency=30
+    volumes:
+      - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
   celery_cpu_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_cpu_worker
@@ -84,6 +140,20 @@ services:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
       - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+  celery_cpu_worker_2:
+    build: ./whatsappcrm_backend
+    container_name: whatsappcrm_celery_cpu_worker_2
+    command: celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=2
+    volumes:
+      - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
