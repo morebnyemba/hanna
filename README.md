@@ -65,28 +65,82 @@ For detailed SSL setup and troubleshooting, see [docs/configuration/README_SSL.m
 
 ## Architecture
 
-### Backend (Django)
-- **Location:** `whatsappcrm_backend/`
-- **Port:** 8000
-- **Features:** REST API, WebSocket support, Celery tasks
-- **Run:** `python manage.py runserver`
-- **Test:** `python manage.py test`
+> **📖 For comprehensive architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
 
-### Frontend Dashboard (React + Vite)
-- **Location:** `whatsapp-crm-frontend/`
-- **Port:** 80 (via nginx)
-- **Run:** `npm install && npm run dev`
-- **Build:** `npm run build`
+### System Overview
 
-### Management Frontend (Next.js)
-- **Location:** `hanna-management-frontend/`
-- **Port:** 3000
-- **Run:** `npm install && npm start`
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         NGINX REVERSE PROXY (SSL)                       │
+├─────────────────┬─────────────────┬─────────────────────────────────────┤
+│ dashboard.      │ backend.        │ hanna.co.zw                         │
+│ hanna.co.zw     │ hanna.co.zw     │ (Next.js Multi-Portal)              │
+└────────┬────────┴────────┬────────┴────────┬────────────────────────────┘
+         │                 │                 │
+         ▼                 ▼                 ▼
+┌────────────────┐  ┌──────────────────┐  ┌────────────────────────────────┐
+│ React + Vite   │  │ Django Backend   │  │ Next.js Management             │
+│ Dashboard      │  │ (Daphne ASGI)    │  │                                │
+│                │  │ + Celery Workers │  │ Admin | Client | Technician    │
+│ Agent/Admin UI │  │ + Redis + PgSQL  │  │ Manufacturer | Retailer        │
+└────────────────┘  └──────────────────┘  └────────────────────────────────┘
+```
 
-### Nginx Reverse Proxy
-- **Location:** `nginx_proxy/`
-- **Ports:** 80 (HTTP), 443 (HTTPS)
-- **Config:** `nginx_proxy/nginx.conf`
+### Components
+
+| Component | Location | Port | Description |
+|-----------|----------|------|-------------|
+| **Django Backend** | `whatsappcrm_backend/` | 8000 | REST API, WebSockets, Celery tasks |
+| **React Dashboard** | `whatsapp-crm-frontend/` | 80 | Agent/Admin CRM interface |
+| **Next.js Portals** | `hanna-management-frontend/` | 3000 | Multi-portal management |
+| **Nginx Proxy** | `nginx_proxy/` | 80/443 | SSL termination, routing |
+| **PostgreSQL** | Docker | 5432 | Primary database |
+| **Redis** | Docker | 6379 | Cache, message broker |
+
+### Backend Django Apps
+
+| App | Purpose |
+|-----|---------|
+| `meta_integration` | WhatsApp Business API integration |
+| `conversations` | Chat management, contacts, messages |
+| `flows` | Conversational flow automation engine |
+| `notifications` | Multi-channel notification system |
+| `customer_data` | Customer profiles, orders, jobs |
+| `installation_systems` | Installation lifecycle (ISR) management |
+| `warranty` | Warranty and service management |
+| `products_and_services` | Product catalog, inventory |
+| `email_integration` | Email processing, notifications |
+| `ai_integration` | Google Gemini AI features |
+| `paynow_integration` | Payment processing |
+| `integrations` | Third-party integrations (Zoho) |
+
+### Notification System
+
+The HANNA notification system provides multi-channel communication:
+
+```
+queue_notifications_to_users()
+         │
+         ├── Internal Users ──► WhatsApp Template Message
+         │   (by user_ids or group_names)
+         │
+         └── External Contacts ──► WhatsApp Template Message
+             (by contact_ids)
+```
+
+**Key Features:**
+- Template-based notifications with Jinja2 rendering
+- Meta-compliant WhatsApp template messages
+- Signal-driven event notifications
+- Admin group targeting (e.g., "Technical Admin", "Sales Team")
+- 24-hour window management
+
+**Common Notification Events:**
+- Order creation
+- Installation scheduling
+- Human handover requests
+- Message delivery failures
+- Warranty claims
 
 ## Core Features & Implementation Status
 
@@ -327,8 +381,9 @@ Comprehensive documentation is available in the **[docs/](docs/)** folder:
 
 ### Quick Links
 - **[📖 Documentation Home](docs/)** - Complete documentation index
+- **[🏛️ System Architecture](docs/ARCHITECTURE.md)** - Complete system architecture documentation
 - **[🔌 API Documentation](docs/api/)** - RESTful API reference
-- **[🏗️ Architecture](docs/architecture/)** - System diagrams and flows
+- **[🏗️ Architecture Diagrams](docs/architecture/)** - System diagrams and flows
 - **[⚙️ Configuration](docs/configuration/)** - Setup and configuration guides
 - **[✨ Features](docs/features/)** - Feature implementation docs
 - **[📖 Integration Guides](docs/guides/)** - How-to integrate with external systems
@@ -337,6 +392,7 @@ Comprehensive documentation is available in the **[docs/](docs/)** folder:
 - **[🔧 Troubleshooting](docs/troubleshooting/)** - Common issues and solutions
 
 ### Key Documents
+- **[System Architecture](docs/ARCHITECTURE.md)** - Complete architecture with data flows and component documentation
 - **[Flow Integration Guide](docs/guides/FLOW_INTEGRATION_GUIDE.md)** - WhatsApp flows integration
 - **[E-commerce Implementation](docs/features/ECOMMERCE_IMPLEMENTATION.md)** - Shopping features
 - **[SSL Configuration](docs/configuration/README_SSL.md)** - SSL certificate setup

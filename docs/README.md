@@ -2,9 +2,25 @@
 
 Welcome to the HANNA documentation! This folder contains all essential documentation for the HANNA Installation Lifecycle Operating System.
 
+## 🏛️ System Architecture
+
+**[📖 ARCHITECTURE.md](./ARCHITECTURE.md)** - Complete system architecture documentation including:
+- High-level architecture diagrams
+- All Django backend apps with detailed descriptions
+- Frontend components (React + Vite, Next.js portals)
+- Notification system architecture and usage
+- Data flow diagrams (WhatsApp messages, notifications, installation lifecycle)
+- Infrastructure components (Docker, Redis, PostgreSQL, Celery)
+- API architecture and endpoints
+- Security architecture
+- Deployment architecture
+
+---
+
 ## 🎯 Quick Start - Core Implementation Status
 
 **New to HANNA Core Scope?** Start here:
+- **[System Architecture](./ARCHITECTURE.md)** - 🏛️ Complete system architecture documentation
 - **[ISR Quick Reference](./architecture/ISR_QUICK_REFERENCE.md)** - 📊 Quick overview of implementation status
 - **[ISR Implementation Status](./architecture/ISR_IMPLEMENTATION_STATUS.md)** - 📖 Comprehensive technical documentation
 - **[Implementation Status](./planning/IMPLEMENTATION_STATUS.md)** - ✅ Per-issue tracking and completion status
@@ -15,7 +31,14 @@ Welcome to the HANNA documentation! This folder contains all essential documenta
 
 ## 📁 Documentation Structure
 
-### 🏗️ [Architecture](./architecture/)
+### 🏛️ [System Architecture](./ARCHITECTURE.md)
+Complete system architecture documentation with:
+- Component diagrams and data flows
+- Backend apps detailed documentation
+- Notification system usage
+- Infrastructure and deployment
+
+### 🏗️ [Architecture Diagrams](./architecture/)
 System architecture diagrams, flow documentation, and **implementation status**:
 - **[ISR Quick Reference](./architecture/ISR_QUICK_REFERENCE.md)** - Quick overview of Installation System Record implementation
 - **[ISR Implementation Status](./architecture/ISR_IMPLEMENTATION_STATUS.md)** - Comprehensive technical status document
