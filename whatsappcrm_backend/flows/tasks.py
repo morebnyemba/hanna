@@ -30,11 +30,7 @@ logger = logging.getLogger(__name__)
 AI_SHOPPING_MAX_PRODUCTS = 50  # Maximum products to include in AI context (token limit consideration)
 # ---------------------------------
 
-<<<<<<< HEAD
 @shared_task(queue='flow_processing')
-=======
-@shared_task  # Routed to 'whatsapp' queue via CELERY_TASK_ROUTES in settings.py
->>>>>>> 2547c307012a9e52ba2d9d1559253c37d226adc6
 def process_flow_for_message_task(message_id: int):
     """
     This task asynchronously runs the entire flow engine for an incoming message.
