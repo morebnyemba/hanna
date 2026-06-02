@@ -65,7 +65,21 @@ services:
   celery_io_worker:
     build: ./whatsappcrm_backend
     container_name: whatsappcrm_celery_io_worker
-    command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=20
+    command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=10
+    volumes:
+      - ./whatsappcrm_backend:/app
+      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
+    env_file:
+      - ./whatsappcrm_backend/.env.prod
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+  celery_whatsapp_worker:
+    build: ./whatsappcrm_backend
+    container_name: whatsappcrm_celery_whatsapp_worker
+    command: celery -A whatsappcrm_backend worker -Q whatsapp -l INFO --concurrency=10
     volumes:
       - ./whatsappcrm_backend:/app
       - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)

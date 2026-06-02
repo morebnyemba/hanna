@@ -138,6 +138,14 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD', DB_PASSWORD_DEFAULT), # Ensure this is in your .env!
         'HOST': os.getenv('DB_HOST', DB_HOST_DEFAULT),
         'PORT': os.getenv('DB_PORT', DB_PORT_DEFAULT),
+        # Connection pooling: Keep database connections open for reuse instead of
+        # opening/closing a new connection for every request or Celery task.
+        # This significantly reduces latency, especially for high-concurrency workers.
+        # Set to 0 for unlimited persistent connections, or a specific number of seconds.
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '600')),  # 10 minutes
+        # Health checks: Verify connections are still usable before reusing them.
+        # Prevents errors from stale/broken connections after server restarts or timeouts.
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
@@ -303,26 +311,47 @@ CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT_SECONDS', '1800')
 CELERY_RESULT_EXTENDED = True
 CELERY_CACHE_BACKEND = 'django-cache'
 
-# --- NEW: Celery Task Queues and Routing ---
+# --- Celery Task Queues and Routing ---
 # Define queues for different types of workloads.
+# The 'whatsapp' queue is dedicated to time-sensitive WhatsApp message tasks
+# to prevent them from being delayed by other I/O-bound or periodic tasks.
 from kombu import Queue
 CELERY_TASK_DEFAULT_QUEUE = 'celery'
 
 CELERY_TASK_QUEUES = (
-    Queue('celery', routing_key='celery'), # Default queue for I/O-bound tasks
-    Queue('cpu_heavy', routing_key='cpu_heavy'),
+    Queue('celery', routing_key='celery'),       # Default queue for general I/O-bound tasks
+    Queue('whatsapp', routing_key='whatsapp'),    # High-priority queue for WhatsApp messaging tasks
+    Queue('cpu_heavy', routing_key='cpu_heavy'),  # CPU-intensive tasks (AI processing, media sync)
 )
 
 # Route tasks to specific queues.
 # By default, tasks go to the 'celery' queue.
-# Add any CPU-intensive tasks to the 'cpu_heavy' queue.
+# WhatsApp message-critical tasks go to the 'whatsapp' queue for faster processing.
+# CPU-intensive tasks go to the 'cpu_heavy' queue.
 CELERY_TASK_ROUTES = {
-    # Example: Route a hypothetical report generation task to the CPU-heavy queue.
-    # 'reports.tasks.generate_monthly_report': {'queue': 'cpu_heavy'},
+    # --- WhatsApp-critical tasks (high priority, dedicated worker) ---
+    'meta_integration.tasks.send_whatsapp_message_task': {'queue': 'whatsapp'},
+    'meta_integration.tasks.send_read_receipt_task': {'queue': 'whatsapp'},
+    'meta_integration.download_whatsapp_media_task': {'queue': 'whatsapp'},
+    'flows.tasks.process_flow_for_message_task': {'queue': 'whatsapp'},
+    'flows.handle_ai_conversation_task': {'queue': 'whatsapp'},
+    'flows.handle_ai_shopping_task': {'queue': 'whatsapp'},
+    # --- CPU-intensive tasks ---
     'media_manager.tasks.trigger_media_asset_sync_task': {'queue': 'cpu_heavy'},
-    # Route the consolidated Gemini processing task to the CPU-heavy queue.
     'email_integration.process_attachment_with_gemini': {'queue': 'cpu_heavy'},
 }
+
+# --- Celery Worker Optimization ---
+# Prefetch multiplier: number of tasks a worker prefetches. Lower values
+# reduce latency for high-priority tasks by avoiding large prefetch buffers.
+CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv('CELERY_WORKER_PREFETCH_MULTIPLIER', '4'))
+
+# Late ack: acknowledge tasks after execution (not before). This prevents
+# task loss if a worker crashes mid-execution.
+CELERY_TASK_ACKS_LATE = True
+
+# Reject tasks on worker lost (requeue them to be picked up by another worker)
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 
 # --- Channels (WebSocket) Configuration ---
