@@ -1,348 +1,211 @@
 'use client';
 
-import type { Metadata } from 'next';
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiPackage, FiHome, FiX, FiMessageCircle, FiZap, FiCopy, FiExternalLink, FiCheck, FiMenu, FiFilter } from 'react-icons/fi';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient from '@/app/lib/apiClient';
 import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: string;
-  currency: string;
-  is_active: boolean;
-  stock_quantity: number;
-  product_type: string;
-  category: {
-    id: number;
-    name: string;
-  } | null;
-  images?: Array<{
-    id: number;
-    image: string;
-    alt_text?: string;
-  }>;
+import ShopHeader from './_components/ShopHeader';
+import HeroBanner from './_components/HeroBanner';
+import CategoryPills from './_components/CategoryPills';
+import ProductGrid from './_components/ProductGrid';
+import ProductDetailModal from './_components/ProductDetailModal';
+import CartDrawer, { type Cart, type CartItem } from './_components/CartDrawer';
+import AIAssistantFAB from './_components/AIAssistantFAB';
+import ShopFooter from './_components/ShopFooter';
+import type { Product } from './_components/ProductCard';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface DeliveryDetails {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  notes: string;
 }
 
-interface CartItem {
-  id: number;
-  product: Product;
-  quantity: number;
-  subtotal: string;
+interface PaymentInfo {
+  instructions?: string;
+  paynow_reference?: string;
+  poll_url?: string;
+  payment_method?: string;
+  requires_otp?: boolean;
+  otp_message?: string;
+  authorization_code?: string;
+  authorization_expires?: string;
+  deeplink?: string;
+  redirect_url?: string;
 }
 
-interface Cart {
-  id: number;
-  items: CartItem[];
-  total_items: number;
-  total_price: string;
-}
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function PublicShopPage() {
+  // Products
   const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cartLoading, setCartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showCart, setShowCart] = useState(false);
+
+  // Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
-  const [csrfToken, setCsrfToken] = useState<string | null>(null);
-  const [showAssistant, setShowAssistant] = useState<boolean>(false);
-  const [assistantPrompt, setAssistantPrompt] = useState<string>('Hi, I need help choosing a solar system for my home (2 fridges, 4 TVs, 6 lights, 2 laptops). Please suggest a reliable bundle with pricing.');
-  const [assistantCopyStatus, setAssistantCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
-  const assistantRef = useRef<HTMLDivElement | null>(null);
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
-  const assistantQuickPrompts = [
-    {
-      label: 'Size my system',
-      prompt: 'I need solar sizing help for a 3-bedroom home with 2 fridges, 3 TVs, lights, and phone charging. Share a safe starter bundle.',
-    },
-    {
-      label: 'Backup for business',
-      prompt: 'Recommend a backup solar kit for a small shop with POS, lights, laptops, and a display fridge. Budget-conscious.',
-    },
-    {
-      label: 'Off-grid package',
-      prompt: 'I want a fully off-grid package for a rural site. Include panels, batteries, inverter, and installation estimate.',
-    },
-    {
-      label: 'Best value bundle',
-      prompt: 'Show me the best-value solar bundle with good warranty and components you recommend.',
-    },
-  ];
 
-  // Close assistant on Esc key
+  // Cart
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [showCart, setShowCart] = useState(false);
+  const [clearConfirm, setClearConfirm] = useState(false);
+
+  // Checkout
+  const [checkoutStep, setCheckoutStep] = useState<number>(1);
+  const [deliveryDetails, setDeliveryDetails] = useState<DeliveryDetails>({
+    fullName: '', email: '', phone: '', address: '', city: '', notes: '',
+  });
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof DeliveryDetails, string>>>({});
+  const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'omari' | 'innbucks' | 'telecash'>('ecocash');
+  const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+
+  // UI
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showAssistant, setShowAssistant] = useState(false);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+
+  // CSRF
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
+
+  // ── Debounce search ─────────────────────────────────────────────────────────
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowAssistant(false);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(searchQuery), 250);
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+  }, [searchQuery]);
+
+  // ── CSRF + initial load ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const res = await apiClient.get('/crm-api/products/csrf/');
+        if (res.data?.token) setCsrfToken(res.data.token);
+      } catch {
+        // CSRF prefetch is best-effort
       }
+      await Promise.all([fetchProducts(), fetchCart()]);
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    init();
   }, []);
 
-  const buildAssistantLink = (prompt: string) => {
-    if (!whatsappNumber) return null;
-    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(prompt)}`;
-  };
-
-  const copyAssistantPrompt = async (prompt: string) => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(prompt);
-        setAssistantCopyStatus('copied');
-        setTimeout(() => setAssistantCopyStatus('idle'), 2000);
-      } else {
-        setAssistantCopyStatus('error');
-      }
-    } catch (e) {
-      console.error('Failed to copy prompt', e);
-      setAssistantCopyStatus('error');
-    }
-  };
-
-  const launchAssistant = (prompt: string) => {
-    setAssistantPrompt(prompt);
-    const link = buildAssistantLink(prompt);
-    if (link) {
-      window.open(link, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    copyAssistantPrompt(prompt);
-  };
-
-  
-  // Checkout state
-  const [checkoutStep, setCheckoutStep] = useState<number>(1); // 1: Cart, 2: Details, 3: Confirmation, 4: Payment
-  const [deliveryDetails, setDeliveryDetails] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    notes: ''
-  });
-  const [paymentInfo, setPaymentInfo] = useState<{
-    instructions?: string; 
-    paynow_reference?: string; 
-    poll_url?: string;
-    payment_method?: string;
-    requires_otp?: boolean;
-    otp_message?: string;
-    authorization_code?: string;
-    authorization_expires?: string;
-    deeplink?: string;
-    redirect_url?: string;
-  } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'ecocash' | 'omari' | 'innbucks' | 'telecash'>('ecocash');  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-  // Fetch products (handles pagination)
+  // ── Data fetching ────────────────────────────────────────────────────────────
   const fetchProducts = async () => {
     try {
-      let allProducts: Product[] = [];
-      let nextUrl: string | null = '/crm-api/products/products/';
-      
-      // Fetch all pages
-      while (nextUrl) {
-        const response: any = await apiClient.get(nextUrl);
-        const pageProducts = normalizePaginatedResponse<Product>(response.data);
-        allProducts = [...allProducts, ...pageProducts];
-        nextUrl = response.data.next ? response.data.next.replace(/^https?:\/\/[^\/]+/, '') : null;
+      let all: Product[] = [];
+      let next: string | null = '/crm-api/products/products/';
+      while (next) {
+        const res: any = await apiClient.get(next);
+        all = [...all, ...normalizePaginatedResponse<Product>(res.data)];
+        next = res.data.next ? res.data.next.replace(/^https?:\/\/[^/]+/, '') : null;
       }
-      
-      console.log('Total products fetched:', allProducts.length);
-      const activeProducts = allProducts.filter((p: Product) => p.is_active);
-      console.log('Active products:', activeProducts.length);
-      setProducts(activeProducts);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching products:', err);
+      setProducts(all.filter((p) => p.is_active));
+    } catch {
       setError('Failed to load products. Please try again later.');
+    } finally {
       setLoading(false);
     }
   };
 
-  // Outside click to close assistant
-  useEffect(() => {
-    const onMouseDown = (e: MouseEvent) => {
-      if (!showAssistant) return;
-      const node = assistantRef.current;
-      if (node && !node.contains(e.target as Node)) {
-        setShowAssistant(false);
-      }
-    };
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [showAssistant]);
-
-  // Fetch cart
   const fetchCart = async () => {
     try {
-      const response = await apiClient.get('/crm-api/products/cart/');
-      setCart(response.data);
-    } catch (err) {
-      console.error('Error fetching cart:', err);
+      const res = await apiClient.get('/crm-api/products/cart/');
+      setCart(res.data);
+    } catch {
+      // Cart fetch failure is non-fatal
     }
   };
 
-  useEffect(() => {
-    const ensureCsrf = async () => {
-      try {
-        console.log('[shop] Calling CSRF endpoint...');
-        const response = await apiClient.get('/crm-api/products/csrf/');
-        console.log('[shop] CSRF endpoint response:', response.data);
-        const token = response.data.token;
-        if (token) {
-          setCsrfToken(token);
-          console.log('[shop] CSRF token stored in state:', token.substring(0, 10) + '...');
-        }
-      } catch (e) {
-        console.warn('[shop] Failed to prefetch CSRF token', e);
-      }
-    };
+  const csrfHeaders = useCallback(() => (
+    csrfToken ? { headers: { 'X-CSRFToken': csrfToken } } : {}
+  ), [csrfToken]);
 
-    ensureCsrf().finally(() => {
-      fetchProducts();
-      fetchCart();
-    });
-  }, []);
-
-  // Add to cart
-  const addToCart = async (productId: number, quantity: number = 1) => {
+  // ── Cart operations ──────────────────────────────────────────────────────────
+  const addToCart = async (productId: number, quantity = 1) => {
     setCartLoading(true);
     try {
-      console.log('Adding to cart:', { productId, quantity });
-      
-      const config: any = {};
-      if (csrfToken) {
-        config.headers = { 'X-CSRFToken': csrfToken };
-        console.log('[shop] Using CSRF token from state');
-      }
-      
-      const response = await apiClient.post('/crm-api/products/cart/add/', {
-        product_id: productId,
-        quantity: quantity
-      }, config);
-      console.log('Add to cart response:', response.data);
-      setCart(response.data.cart);
+      const res = await apiClient.post('/crm-api/products/cart/add/', { product_id: productId, quantity }, csrfHeaders());
+      setCart(res.data.cart);
       setShowCart(true);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string | { detail?: string } } } };
-      console.error('Add to cart error:', error);
-      console.error('Error response:', error.response?.data);
-      const errorMsg = typeof error.response?.data?.error === 'string' 
-        ? error.response.data.error 
-        : (error.response?.data?.error as { detail?: string })?.detail || 'Failed to add item to cart';
-      alert(errorMsg);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error;
+      alert(typeof msg === 'string' ? msg : msg?.detail || 'Failed to add item to cart');
     } finally {
       setCartLoading(false);
     }
   };
 
-  // Update cart item quantity
   const updateCartItem = async (cartItemId: number, quantity: number) => {
     setCartLoading(true);
     try {
-      const config: any = {};
-      if (csrfToken) {
-        config.headers = { 'X-CSRFToken': csrfToken };
-      }
-      
-      const response = await apiClient.post('/crm-api/products/cart/update/', {
-        cart_item_id: cartItemId,
-        quantity: quantity
-      }, config);
-      setCart(response.data.cart);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      alert(error.response?.data?.error || 'Failed to update cart');
+      const res = await apiClient.post('/crm-api/products/cart/update/', { cart_item_id: cartItemId, quantity }, csrfHeaders());
+      setCart(res.data.cart);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to update cart');
     } finally {
       setCartLoading(false);
     }
   };
 
-  // Remove from cart
   const removeFromCart = async (cartItemId: number) => {
     setCartLoading(true);
     try {
-      const config: any = {};
-      if (csrfToken) {
-        config.headers = { 'X-CSRFToken': csrfToken };
-      }
-      
-      const response = await apiClient.post('/crm-api/products/cart/remove/', {
-        cart_item_id: cartItemId
-      }, config);
-      setCart(response.data.cart);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      alert(error.response?.data?.error || 'Failed to remove item from cart');
+      const res = await apiClient.post('/crm-api/products/cart/remove/', { cart_item_id: cartItemId }, csrfHeaders());
+      setCart(res.data.cart);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to remove item');
     } finally {
       setCartLoading(false);
     }
   };
 
-  // Clear cart
   const clearCart = async () => {
-    if (!confirm('Are you sure you want to clear your cart?')) return;
     setCartLoading(true);
     try {
-      const config: any = {};
-      if (csrfToken) {
-        config.headers = { 'X-CSRFToken': csrfToken };
-      }
-      
-      const response = await apiClient.post('/crm-api/products/cart/clear/', {}, config);
-      setCart(response.data.cart);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      alert(error.response?.data?.error || 'Failed to clear cart');
+      const res = await apiClient.post('/crm-api/products/cart/clear/', {}, csrfHeaders());
+      setCart(res.data.cart);
+      setClearConfirm(false);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to clear cart');
     } finally {
       setCartLoading(false);
     }
   };
 
-  // Handle delivery details input change
-  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
-    const target = e.target as HTMLInputElement & HTMLTextAreaElement;
-    setDeliveryDetails({
-      ...deliveryDetails,
-      [target.name]: target.value
-    });
+  // ── Checkout ─────────────────────────────────────────────────────────────────
+  const validateDelivery = (): boolean => {
+    const errs: Partial<Record<keyof DeliveryDetails, string>> = {};
+    if (!deliveryDetails.fullName.trim()) errs.fullName = 'Full name is required';
+    if (!deliveryDetails.email.trim()) errs.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deliveryDetails.email)) errs.email = 'Enter a valid email address';
+    if (!deliveryDetails.phone.trim()) errs.phone = 'Phone number is required';
+    if (!deliveryDetails.address.trim()) errs.address = 'Delivery address is required';
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
-  // Proceed to next checkout step
   const proceedToNextStep = () => {
     if (checkoutStep === 1) {
       setCheckoutStep(2);
     } else if (checkoutStep === 2) {
-      // Validate delivery details
-      if (!deliveryDetails.fullName || !deliveryDetails.email || !deliveryDetails.phone || !deliveryDetails.address) {
-        alert('Please fill in all required fields');
-        return;
-      }
-      setCheckoutStep(3);
+      if (validateDelivery()) setCheckoutStep(3);
     }
   };
 
-  // Place order
   const placeOrder = async () => {
     setCartLoading(true);
     try {
-      // 1) Checkout cart -> create order
-      const config: any = {};
-      if (csrfToken) {
-        config.headers = { 'X-CSRFToken': csrfToken };
-      }
-
       const checkoutRes = await apiClient.post('/crm-api/products/cart/checkout/', {
         full_name: deliveryDetails.fullName,
         email: deliveryDetails.email,
@@ -350,17 +213,12 @@ export default function PublicShopPage() {
         address: deliveryDetails.address,
         city: deliveryDetails.city,
         notes: deliveryDetails.notes,
-      }, config);
+      }, csrfHeaders());
 
-      if (!checkoutRes.data?.success) {
-        throw new Error(checkoutRes.data?.error || 'Failed to create order from cart');
-      }
+      if (!checkoutRes.data?.success) throw new Error(checkoutRes.data?.error || 'Failed to create order');
 
       const { order_number, amount, currency } = checkoutRes.data;
-
-      // 2) Initiate Paynow payment
-      // Normalize phone: convert leading '0' to country code if needed
-      const normalizedPhone = (deliveryDetails.phone || '').replace(/\s+/g, '').replace(/^0/, '263');
+      const normalizedPhone = deliveryDetails.phone.replace(/\s+/g, '').replace(/^0/, '263');
 
       const paynowRes = await apiClient.post('/crm-api/paynow/initiate-payment/', {
         order_number,
@@ -369,918 +227,183 @@ export default function PublicShopPage() {
         amount: String(amount),
         payment_method: paymentMethod,
         currency: currency || 'USD',
-      }, config);
+      }, csrfHeaders());
 
-      const payData = paynowRes.data || {};
+      const d = paynowRes.data || {};
       setPaymentInfo({
-        instructions: payData.instructions,
-        paynow_reference: payData.paynow_reference,
-        poll_url: payData.poll_url,
-        payment_method: payData.payment_method || paymentMethod,
-        requires_otp: payData.requires_otp || false,
-        otp_message: payData.otp_message,
-        authorization_code: payData.authorization_code,
-        authorization_expires: payData.authorization_expires,
-        deeplink: payData.deeplink,
-        redirect_url: payData.redirect_url,
+        instructions: d.instructions,
+        paynow_reference: d.paynow_reference,
+        poll_url: d.poll_url,
+        payment_method: d.payment_method || paymentMethod,
+        requires_otp: d.requires_otp || false,
+        otp_message: d.otp_message,
+        authorization_code: d.authorization_code,
+        authorization_expires: d.authorization_expires,
+        deeplink: d.deeplink,
+        redirect_url: d.redirect_url,
       });
-
-      // Move to step 4 to show payment instructions
       setCheckoutStep(4);
-    } catch (err) {
-      console.error('Checkout/Paynow error', err);
-      alert((err as any)?.response?.data?.message || (err as any)?.message || 'Failed to place order');
+    } catch (err: any) {
+      alert(err?.response?.data?.message || err?.message || 'Failed to place order');
     } finally {
       setCartLoading(false);
     }
   };
 
-  // Submit Omari OTP
   const submitOTP = async () => {
     if (!otpCode || !paymentInfo?.paynow_reference) {
       alert('Please enter the OTP code');
       return;
     }
-    
     setCartLoading(true);
     try {
-      const config: any = {};
-      if (csrfToken) {
-        config.headers = { 'X-CSRFToken': csrfToken };
-      }
-      
-      const response = await apiClient.post('/crm-api/paynow/submit-otp/', {
+      const res = await apiClient.post('/crm-api/paynow/submit-otp/', {
         payment_reference: paymentInfo.paynow_reference,
         otp_code: otpCode,
-      }, config);
-      
-      if (response.data?.success) {
-        alert('OTP submitted successfully! Please wait for payment confirmation.');
+      }, csrfHeaders());
+      if (res.data?.success) {
         setOtpCode('');
+        setCheckoutStep(5);
       } else {
-        alert(response.data?.message || 'Failed to submit OTP');
+        alert(res.data?.message || 'Failed to submit OTP');
       }
     } catch (err: any) {
-      console.error('OTP submission error', err);
-      alert(err.response?.data?.message || 'Failed to submit OTP');
+      alert(err?.response?.data?.message || 'Failed to submit OTP');
     } finally {
       setCartLoading(false);
     }
   };
 
-  const categories: string[] = ['all', ...Array.from(new Set(products.map((p: Product) => p.category?.name).filter((name): name is string => Boolean(name))))];
-  
-  const filteredProducts: Product[] = products.filter((p: Product) => {
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      if (!p.category || p.category.name !== selectedCategory) {
-        return false;
-      }
-    }
-    // Filter by availability
-    if (showAvailableOnly && p.stock_quantity === 0) {
-      return false;
-    }
-    // Filter by search query (name or description)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      return (
-        p.name.toLowerCase().includes(query) ||
-        p.description?.toLowerCase().includes(query)
-      );
+  const handleDone = () => {
+    setShowCart(false);
+    setCheckoutStep(1);
+    setPaymentInfo(null);
+    setOtpCode('');
+    setDeliveryDetails({ fullName: '', email: '', phone: '', address: '', city: '', notes: '' });
+    setFieldErrors({});
+    fetchCart();
+  };
+
+  // ── Derived data ─────────────────────────────────────────────────────────────
+  const allCategories = Array.from(
+    new Set(products.map((p) => p.category?.name).filter((n): n is string => Boolean(n)))
+  );
+  const categories = ['all', ...allCategories];
+
+  const filteredProducts = products.filter((p) => {
+    if (selectedCategory !== 'all' && p.category?.name !== selectedCategory) return false;
+    if (showAvailableOnly && p.stock_quantity === 0) return false;
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
+      return p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
     }
     return true;
   });
 
+  const productCounts: Record<string, number> = {
+    all: products.length,
+    ...Object.fromEntries(
+      allCategories.map((cat) => [cat, products.filter((p) => p.category?.name === cat).length])
+    ),
+  };
+
+  const cartItemCount = cart?.total_items ?? 0;
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo and Title */}
-            <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
-              <Link href="/" className="flex items-center space-x-1 sm:space-x-2 text-gray-700 hover:text-gray-900 flex-shrink-0">
-                <FiHome className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline font-medium">Home</span>
-              </Link>
-              <span className="text-gray-300 hidden sm:inline">|</span>
-              <h1 className="text-lg sm:text-2xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent truncate">
-                Hanna Shop
-              </h1>
-            </div>
+    <div className="min-h-screen bg-white">
+      <ShopHeader
+        cartItemCount={cartItemCount}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onCartOpen={() => { setShowCart(true); }}
+        onAssistantToggle={() => setShowAssistant((v) => !v)}
+        showMobileMenu={showMobileMenu}
+        onMobileMenuToggle={() => setShowMobileMenu((v) => !v)}
+        showAssistant={showAssistant}
+      />
 
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-2">
-              <button
-                onClick={() => setShowAssistant((v) => !v)}
-                className="relative flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <FiZap className="w-5 h-5" />
-                <span className="font-medium">AI Assistant</span>
-              </button>
-              <button
-                onClick={() => setShowCart(!showCart)}
-                className="relative flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <FiShoppingCart className="w-5 h-5" />
-                <span className="font-medium">Cart</span>
-                {cart && cart.total_items > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-                    {cart.total_items}
-                  </span>
-                )}
-              </button>
-            </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <HeroBanner
+          whatsappNumber={whatsappNumber}
+          onShopNow={() => {
+            document.getElementById('product-section')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
 
-            {/* Mobile Actions */}
-            <div className="flex md:hidden items-center gap-2">
-              <button
-                onClick={() => setShowCart(!showCart)}
-                className="relative p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                aria-label="Cart"
-              >
-                <FiShoppingCart className="w-5 h-5" />
-                {cart && cart.total_items > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {cart.total_items}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                aria-label="Menu"
-              >
-                <FiMenu className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+        <div id="product-section">
+          <CategoryPills
+            categories={categories}
+            selected={selectedCategory}
+            onSelect={setSelectedCategory}
+            productCounts={productCounts}
+            showAvailableOnly={showAvailableOnly}
+            onAvailableToggle={setShowAvailableOnly}
+          />
 
-          {/* Mobile Menu Dropdown */}
-          {showMobileMenu && (
-            <div className="md:hidden mt-3 pt-3 border-t border-gray-200 space-y-2">
-              <button
-                onClick={() => {
-                  setShowAssistant((v) => !v);
-                  setShowMobileMenu(false);
-                }}
-                className="w-full flex items-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <FiZap className="w-5 h-5" />
-                <span className="font-medium">AI Shopping Assistant</span>
-              </button>
-            </div>
-          )}
+          <ProductGrid
+            products={filteredProducts}
+            loading={loading}
+            error={error}
+            selectedCategory={selectedCategory}
+            onAddToCart={addToCart}
+            onQuickView={setQuickViewProduct}
+            cartLoading={cartLoading}
+          />
         </div>
-      </header>
-
-      {/* Payment Instructions Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
-            <button
-              onClick={() => setShowPaymentModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <FiX className="w-6 h-6" />
-            </button>
-            
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiCheck className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Initiated!</h3>
-              <p className="text-gray-600">Your order has been created successfully</p>
-            </div>
-
-            {paymentInfo?.paynow_reference && (
-              <div className="bg-indigo-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-600 mb-1">Paynow Reference</p>
-                <p className="font-mono font-bold text-indigo-900">{paymentInfo.paynow_reference}</p>
-              </div>
-            )}
-
-            {paymentInfo?.instructions && (
-              <div className="bg-blue-50 rounded-lg p-4 mb-6">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Payment Instructions</p>
-                <p className="text-gray-700 whitespace-pre-line">{paymentInfo.instructions}</p>
-              </div>
-            )}
-
-            {paymentInfo?.poll_url && (
-              <div className="text-sm text-gray-500 mb-4">
-                <p>You will receive a confirmation message once payment is complete.</p>
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowPaymentModal(false)}
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-            >
-              Got it, thanks!
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* AI Shopping Assistant */}
-        {showAssistant && (
-        <section className="mb-10 relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-white shadow-xl">
-          <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,#3b82f6,transparent_25%),radial-gradient(circle_at_80%_0%,#60a5fa,transparent_30%),radial-gradient(circle_at_50%_80%,#93c5fd,transparent_30%)]" aria-hidden="true"></div>
-          <button
-            aria-label="Close AI Assistant"
-            onClick={() => setShowAssistant(false)}
-            className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full bg-white/80 text-gray-700 hover:bg-white shadow px-3 py-2"
-          >
-            <FiX className="w-5 h-5" />
-          </button>
-          <div ref={assistantRef} className="relative p-6 sm:p-8 grid gap-6 md:grid-cols-[1.1fr,1fr] items-center">
-            <div className="space-y-4">
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-700/20 border border-blue-700/30 text-sm font-semibold text-blue-900">
-                <FiZap className="mr-2" /> AI Shopping Assistant
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-gray-900">Get tailored solar recommendations in minutes</h2>
-              <p className="text-gray-700 max-w-xl">Use our AI assistant to size your system, compare bundles, and get cart-ready suggestions based on your exact appliances and budget.</p>
-              <div className="flex flex-wrap gap-2">
-                {assistantQuickPrompts.map((preset) => (
-                  <button
-                    key={preset.label}
-                    onClick={() => launchAssistant(preset.prompt)}
-                    className="px-4 py-2 rounded-full bg-blue-700/15 hover:bg-blue-700/25 border border-blue-700/30 text-sm font-semibold text-blue-900 backdrop-blur transition-colors"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-              {!whatsappNumber && (
-                <div className="inline-flex items-center gap-2 text-xs font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-full px-3 py-1">
-                  <FiCopy className="w-4 h-4" /> Add NEXT_PUBLIC_WHATSAPP_NUMBER to enable direct WhatsApp launch; we will copy the message instead.
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white text-gray-900 rounded-xl shadow-lg p-4 sm:p-5 border border-white/50">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-700"><FiMessageCircle /></span>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Prompt</p>
-                    <p className="text-sm font-semibold text-gray-900">What do you need?</p>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <textarea
-                  value={assistantPrompt}
-                  onChange={(e) => setAssistantPrompt(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Describe your appliances, hours of use, and budget..."
-                />
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    onClick={() => launchAssistant(assistantPrompt)}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors"
-                  >
-                    <FiExternalLink className="w-4 h-4" /> Start in WhatsApp
-                  </button>
-                  <button
-                    onClick={() => copyAssistantPrompt(assistantPrompt)}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                  >
-                    <FiCopy className="w-4 h-4" /> {assistantCopyStatus === 'copied' ? 'Copied' : 'Copy prompt'}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">We send this to the AI assistant. Mention appliances, runtime, and budget for the best recommendation.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-        )}
-
-        {/* Search and Filter Controls */}
-        <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
-          {/* Search Bar and Filter Toggle */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-              className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="hidden sm:block px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Clear
-              </button>
-            )}
-            <button
-              onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className="md:hidden p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              aria-label="Toggle Filters"
-            >
-              <FiFilter className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Desktop Filters */}
-          <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block space-y-3 sm:space-y-4`}>
-            {/* Availability and Category Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              {/* Availability Toggle */}
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showAvailableOnly}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowAvailableOnly(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 rounded"
-                />
-                <span className="text-sm font-medium text-gray-700">In Stock Only</span>
-              </label>
-
-              {/* Active Filter Indicators */}
-              {(searchQuery || showAvailableOnly) && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm text-gray-600">Filters:</span>
-                  {searchQuery && (
-                    <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
-                      "{searchQuery.length > 20 ? searchQuery.substring(0, 20) + '...' : searchQuery}"
-                    </span>
-                  )}
-                  {showAvailableOnly && (
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                      In Stock
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Category Filter */}
-            <div className="pt-2">
-              <p className="text-sm font-medium text-gray-700 mb-2">Categories:</p>
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                      selectedCategory === category
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                    }`}
-                  >
-                    {category === 'all' ? '✓ All' : category}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Counter */}
-        <div className="mb-4 sm:mb-6 flex items-center justify-between">
-          <p className="text-xs sm:text-sm text-gray-600">
-            <span className="font-semibold text-gray-900">{filteredProducts.length}</span>
-            <span className="hidden sm:inline"> of {products.length}</span> products
-          </p>
-        </div>
-
-        {/* Products Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading products...</p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-20">
-            <FiPackage className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-red-600 text-lg">{error}</p>
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20">
-            <FiPackage className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 text-lg">No products available</p>
-          </div>
-        ) : (
-          <div>
-            {/* Group products by category */}
-            {(() => {
-              const groupedByCategory = filteredProducts.reduce((acc: { [key: string]: Product[] }, product) => {
-                const categoryName = product.category?.name || 'Uncategorized';
-                if (!acc[categoryName]) {
-                  acc[categoryName] = [];
-                }
-                acc[categoryName].push(product);
-                return acc;
-              }, {});
-              
-              return Object.entries(groupedByCategory).map(([categoryName, categoryProducts]) => (
-                <div key={categoryName} className="mb-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">{categoryName}</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {categoryProducts.map((product) => (
-                      <div
-                        key={product.id}
-                        className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
-                      >
-                        <div className="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden">
-                          {product.images && product.images.length > 0 ? (
-                            <img
-                              src={product.images[0].image}
-                              alt={product.images[0].alt_text || product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <FiPackage className="w-16 h-16 text-indigo-400" />
-                          )}
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                          {product.description && (
-                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-                          )}
-                          <div className="flex items-center justify-between mb-4">
-                            <span className="text-2xl font-bold text-indigo-600">
-                              {product.currency} {parseFloat(product.price).toFixed(2)}
-                            </span>
-                            {product.stock_quantity > 0 ? (
-                              <span className="text-xs text-green-600 font-medium">In Stock</span>
-                            ) : (
-                              <span className="text-xs text-red-600 font-medium">Out of Stock</span>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => addToCart(product.id)}
-                            disabled={product.stock_quantity === 0 || cartLoading}
-                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <FiShoppingCart className="w-4 h-4" />
-                            <span>{product.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ));
-            })()}
-          </div>
-        )}
       </main>
 
-      {/* Cart/Checkout Sidebar */}
-      {showCart && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => { setShowCart(false); setCheckoutStep(1); }}></div>
-          <div className="absolute right-0 top-0 bottom-0 w-full sm:max-w-md bg-white shadow-xl">
-            <div className="flex flex-col h-full">
-              {/* Header with Steps */}
-              <div className="p-4 sm:p-6 border-b">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                    {checkoutStep === 1 && 'Cart'}
-                    {checkoutStep === 2 && 'Details'}
-                    {checkoutStep === 3 && 'Confirm'}
-                    {checkoutStep === 4 && 'Payment'}
-                  </h2>
-                  <button
-                    onClick={() => { setShowCart(false); setCheckoutStep(1); }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
-                </div>
-                
-                {/* Step Indicators */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-base ${
-                      checkoutStep >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      1
-                    </div>
-                    <span className="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Cart</span>
-                  </div>
-                  <div className={`flex-1 h-1 mx-1 sm:mx-2 ${checkoutStep >= 2 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
-                  <div className="flex items-center">
-                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-base ${
-                      checkoutStep >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      2
-                    </div>
-                    <span className="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Details</span>
-                  </div>
-                  <div className={`flex-1 h-1 mx-1 sm:mx-2 ${checkoutStep >= 3 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
-                  <div className="flex items-center">
-                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-base ${
-                      checkoutStep >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      3
-                    </div>
-                    <span className="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Confirm</span>
-                  </div>
-                  <div className={`flex-1 h-1 mx-1 sm:mx-2 ${checkoutStep >= 4 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
-                  <div className="flex items-center">
-                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-base ${
-                      checkoutStep >= 4 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      4
-                    </div>
-                    <span className="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Payment</span>
-                  </div>
-                </div>
-              </div>
+      <ShopFooter whatsappNumber={whatsappNumber} />
 
-              {/* Step Content */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                {/* Step 1: Cart Items */}
-                {checkoutStep === 1 && (
-                  <>
-                    {!cart || cart.items.length === 0 ? (
-                      <div className="text-center py-12">
-                        <FiShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600">Your cart is empty</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {cart.items.map((item) => (
-                          <div key={item.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center shrink-0">
-                              <FiPackage className="w-8 h-8 text-indigo-400" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-gray-900 mb-1">{item.product.name}</h3>
-                              <p className="text-sm text-gray-600 mb-2">
-                                {item.product.currency} {parseFloat(item.product.price).toFixed(2)} each
-                              </p>
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => updateCartItem(item.id, item.quantity - 1)}
-                                  disabled={cartLoading || item.quantity <= 1}
-                                  className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                                >
-                                  <FiMinus className="w-4 h-4" />
-                                </button>
-                                <span className="font-medium text-gray-900 w-8 text-center">{item.quantity}</span>
-                                <button
-                                  onClick={() => updateCartItem(item.id, item.quantity + 1)}
-                                  disabled={cartLoading || item.quantity >= item.product.stock_quantity}
-                                  className="p-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                                >
-                                  <FiPlus className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => removeFromCart(item.id)}
-                                  disabled={cartLoading}
-                                  className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"
-                                >
-                                  <FiTrash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-gray-900">
-                                {item.product.currency} {parseFloat(item.subtotal).toFixed(2)}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
+      {/* Product detail modal */}
+      <ProductDetailModal
+        product={quickViewProduct}
+        whatsappNumber={whatsappNumber}
+        onClose={() => setQuickViewProduct(null)}
+        onAddToCart={addToCart}
+        cartLoading={cartLoading}
+      />
 
-                {/* Step 2: Delivery Details */}
-                {checkoutStep === 2 && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                      <select
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value as any)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="ecocash">Paynow - Ecocash</option>
-                        <option value="omari">Paynow - Omari</option>
-                        <option value="innbucks">Paynow - Innbucks</option>
-                        <option value="telecash">Paynow - Telecash</option>
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">We’ll send a secure Paynow request to your wallet.</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Full Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={deliveryDetails.fullName}
-                        onChange={handleDeliveryChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="John Doe"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={deliveryDetails.email}
-                        onChange={handleDeliveryChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="john@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={deliveryDetails.phone}
-                        onChange={handleDeliveryChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="e.g. 0771234567 or 263771234567"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">We automatically format to +263 if you start with 0.</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Delivery Address <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="address"
-                        value={deliveryDetails.address}
-                        onChange={handleDeliveryChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="123 Main St, Apt 4B"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        name="city"
-                        value={deliveryDetails.city}
-                        onChange={handleDeliveryChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="New York"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Additional Notes
-                      </label>
-                      <textarea
-                        name="notes"
-                        value={deliveryDetails.notes}
-                        onChange={handleDeliveryChange}
-                        rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Any special instructions..."
-                      />
-                    </div>
-                  </div>
-                )}
+      {/* Cart + Checkout drawer */}
+      <CartDrawer
+        open={showCart}
+        cart={cart}
+        cartLoading={cartLoading}
+        checkoutStep={checkoutStep}
+        deliveryDetails={deliveryDetails}
+        paymentMethod={paymentMethod}
+        paymentInfo={paymentInfo}
+        otpCode={otpCode}
+        fieldErrors={fieldErrors}
+        clearConfirm={clearConfirm}
+        onClose={() => { setShowCart(false); setCheckoutStep(1); }}
+        onUpdateQty={updateCartItem}
+        onRemove={removeFromCart}
+        onClearRequest={() => setClearConfirm(true)}
+        onClearConfirm={clearCart}
+        onClearCancel={() => setClearConfirm(false)}
+        onDeliveryChange={(e) => {
+          const { name, value } = e.target;
+          setDeliveryDetails((prev) => ({ ...prev, [name]: value }));
+          if (fieldErrors[name as keyof DeliveryDetails]) {
+            setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+          }
+        }}
+        onPaymentMethodChange={setPaymentMethod}
+        onProceed={proceedToNextStep}
+        onBack={() => setCheckoutStep((s) => Math.max(1, s - 1))}
+        onPlaceOrder={placeOrder}
+        onOtpChange={setOtpCode}
+        onSubmitOTP={submitOTP}
+        onDone={handleDone}
+      />
 
-                {/* Step 3: Order Confirmation */}
-                {checkoutStep === 3 && cart && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Delivery Information</h3>
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                        <p><span className="font-medium">Name:</span> {deliveryDetails.fullName}</p>
-                        <p><span className="font-medium">Email:</span> {deliveryDetails.email}</p>
-                        <p><span className="font-medium">Phone:</span> {deliveryDetails.phone}</p>
-                        <p><span className="font-medium">Address:</span> {deliveryDetails.address}</p>
-                        {deliveryDetails.city && <p><span className="font-medium">City:</span> {deliveryDetails.city}</p>}
-                        {deliveryDetails.notes && <p><span className="font-medium">Notes:</span> {deliveryDetails.notes}</p>}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Order Summary</h3>
-                      <div className="space-y-2">
-                        {cart.items.map((item) => (
-                          <div key={item.id} className="flex justify-between text-sm">
-                            <span className="text-gray-700">{item.quantity}x {item.product.name}</span>
-                            <span className="font-medium text-gray-900">
-                              {item.product.currency} {parseFloat(item.subtotal).toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Payment Instructions */}
-                {checkoutStep === 4 && (
-                  <div className="space-y-6">
-                    <div className="text-center mb-6">
-                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FiCheck className="w-10 h-10 text-green-600" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Initiated!</h3>
-                      <p className="text-gray-600">Your order has been created successfully</p>
-                    </div>
-
-                    {paymentInfo?.paynow_reference && (
-                      <div className="bg-indigo-50 rounded-lg p-4">
-                        <p className="text-sm text-gray-600 mb-1 font-medium">Paynow Reference</p>
-                        <p className="font-mono font-bold text-indigo-900 text-lg">{paymentInfo.paynow_reference}</p>
-                      </div>
-                    )}
-
-                    {paymentInfo?.instructions && (
-                      <div className="bg-blue-50 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-gray-700 mb-2">Payment Instructions</p>
-                        <p className="text-gray-700 whitespace-pre-line leading-relaxed">{paymentInfo.instructions}</p>
-                      </div>
-                    )}
-
-                    {/* Omari OTP Input */}
-                    {paymentInfo?.requires_otp && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-amber-900 mb-3">📱 Omari Payment</p>
-                        
-                        {paymentInfo.authorization_code && (
-                          <div className="mb-3 bg-white border border-amber-300 rounded-lg p-3 text-center">
-                            <p className="text-xs text-amber-600 mb-1 uppercase tracking-wide">Authorization Code</p>
-                            <p className="text-2xl font-bold text-amber-900 font-mono">{paymentInfo.authorization_code}</p>
-                            {paymentInfo.authorization_expires && (
-                              <p className="text-xs text-amber-600 mt-1">Expires: {paymentInfo.authorization_expires}</p>
-                            )}
-                          </div>
-                        )}
-                        
-                        <p className="text-sm text-amber-800 mb-3">
-                          {paymentInfo.otp_message || 'An OTP has been sent to your Omari phone. Please enter it below to complete payment.'}
-                        </p>
-                        
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={otpCode}
-                            onChange={(e) => setOtpCode(e.target.value)}
-                            placeholder="Enter OTP"
-                            className="flex-1 px-4 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            maxLength={6}
-                          />
-                          <button
-                            onClick={submitOTP}
-                            disabled={cartLoading || !otpCode}
-                            className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-semibold transition-colors disabled:bg-gray-400"
-                          >
-                            Submit OTP
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Innbucks Authorization Code */}
-                    {paymentInfo?.payment_method === 'innbucks' && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-purple-900 mb-3">💳 Innbucks Payment</p>
-                        
-                        {paymentInfo.authorization_code && (
-                          <div className="mb-4">
-                            <div className="bg-white border-2 border-purple-400 rounded-lg p-4 text-center">
-                              <p className="text-xs text-purple-600 mb-1 uppercase tracking-wide">Authorization Code</p>
-                              <p className="text-3xl font-bold text-purple-900 font-mono tracking-wider">{paymentInfo.authorization_code}</p>
-                              {paymentInfo.authorization_expires && (
-                                <p className="text-xs text-purple-600 mt-2">Expires: {paymentInfo.authorization_expires}</p>
-                              )}
-                            </div>
-                            <div className="mt-3 bg-purple-100 rounded p-3">
-                              <p className="text-sm text-purple-800">
-                                <strong>How to complete payment:</strong>
-                              </p>
-                              <ol className="text-sm text-purple-700 mt-2 space-y-1 ml-4 list-decimal">
-                                <li>Open your Innbucks wallet app</li>
-                                <li>Go to "Authorize Payment" or "Enter Code"</li>
-                                <li>Enter the authorization code above</li>
-                                <li>Confirm the payment</li>
-                              </ol>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {paymentInfo.deeplink && (
-                          <div className="text-center">
-                            <p className="text-xs text-purple-600 mb-2">Or click here to open Innbucks app:</p>
-                            <a
-                              href={paymentInfo.deeplink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
-                            >
-                              Open Innbucks App
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {paymentInfo?.poll_url && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <p className="text-sm text-amber-800">💡 You will receive a WhatsApp confirmation message once payment is complete.</p>
-                      </div>
-                    )}
-
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">What's next?</h4>
-                      <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
-                        <li>Check your phone for the Paynow prompt</li>
-                        <li>Follow the instructions to complete payment</li>
-                        <li>You'll receive confirmation via WhatsApp</li>
-                      </ol>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer Actions */}
-              {cart && cart.items.length > 0 && (
-                <div className="border-t p-6 space-y-4">
-                  <div className="flex items-center justify-between text-lg">
-                    <span className="font-medium text-gray-700">Total:</span>
-                    <span className="text-2xl font-bold text-indigo-600">
-                      USD {parseFloat(cart.total_price).toFixed(2)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    {checkoutStep > 1 && (
-                      <button
-                        onClick={() => setCheckoutStep(checkoutStep - 1)}
-                        disabled={cartLoading}
-                        className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition-colors disabled:bg-gray-400"
-                      >
-                        Back
-                      </button>
-                    )}
-                    
-                    {checkoutStep < 3 && (
-                      <button
-                        onClick={proceedToNextStep}
-                        disabled={cartLoading}
-                        className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors disabled:bg-gray-400"
-                      >
-                        Continue
-                      </button>
-                    )}
-                    
-                    {checkoutStep === 3 && (
-                      <button
-                        onClick={placeOrder}
-                        disabled={cartLoading}
-                        className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors disabled:bg-gray-400"
-                      >
-                        Pay with Paynow
-                      </button>
-                    )}
-                    
-                    {checkoutStep === 4 && (
-                      <button
-                        onClick={() => { setShowCart(false); setCheckoutStep(1); }}
-                        className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors"
-                      >
-                        Done
-                      </button>
-                    )}
-                  </div>
-
-                  {checkoutStep === 1 && (
-                    <button
-                      onClick={clearCart}
-                      disabled={cartLoading}
-                      className="w-full px-6 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
-                    >
-                      Clear Cart
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Floating AI Assistant */}
+      <AIAssistantFAB
+        whatsappNumber={whatsappNumber}
+        open={showAssistant}
+        onToggle={() => setShowAssistant((v) => !v)}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ router.register(r'serialized-items', views.SerializedItemViewSet, basename='seri
 router.register(r'barcode', views.BarcodeScanViewSet, basename='barcode')
 router.register(r'cart', views.CartViewSet, basename='cart')
 router.register(r'compatibility', views.CompatibilityViewSet, basename='compatibility')
+router.register(r'solar-packages', views.SolarPackageViewSet, basename='solar-package')
 # Item tracking endpoints
 router.register(r'items', views.ItemTrackingViewSet, basename='item-tracking')
 # Item location history endpoints

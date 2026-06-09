@@ -79,7 +79,9 @@ class Product(models.Model):
     
     # --- Inventory ---
     stock_quantity = models.PositiveIntegerField(_("Stock Quantity"), default=0, help_text=_("The number of items available in stock. Used for WhatsApp Catalog inventory management."))
-    
+    featured = models.BooleanField(_("Featured"), default=False, help_text=_("Pin this product to the shop's featured section."))
+    short_description = models.CharField(_("Short Description"), max_length=255, blank=True, null=True, help_text=_("Brief preview text shown on product cards. Falls back to description if empty."))
+
     # Software-specific fields
     license_type = models.CharField(_("License Type"), max_length=20, choices=LicenseType.choices, default=LicenseType.SUBSCRIPTION)
     dedicated_flow_name = models.CharField(
