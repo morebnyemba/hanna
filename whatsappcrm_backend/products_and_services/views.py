@@ -5,10 +5,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory
+from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, SolarPackage
 from .serializers import (
-    ProductSerializer, 
-    ProductCategorySerializer, 
+    ProductSerializer,
+    ProductCategorySerializer,
     SerializedItemSerializer,
     BarcodeScanSerializer,
     BarcodeResponseSerializer,
@@ -36,6 +36,8 @@ from .serializers import (
     MetaCatalogBatchUpdateSerializer,
     MetaCatalogProductStatusSerializer,
     MetaCatalogSyncResultSerializer,
+    # Solar package serializer
+    SolarPackageSerializer,
 )
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
@@ -69,7 +71,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
-        
+
+        # Allow filtering by featured
+        featured = self.request.query_params.get('featured')
+        if featured is not None:
+            queryset = queryset.filter(featured=featured.lower() == 'true')
+
         return queryset
     
     def get_permissions(self):
@@ -2633,3 +2640,12 @@ class CompatibilityViewSet(viewsets.ViewSet):
             'system_size': size_result,
             'overall_valid': compatibility_result['valid'] and size_result['valid']
         }, status=status.HTTP_200_OK)
+
+
+class SolarPackageViewSet(viewsets.ReadOnlyModelViewSet):
+    """Public read-only endpoint for solar packages."""
+    serializer_class = SolarPackageSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        return SolarPackage.objects.filter(is_active=True).prefetch_related('package_products__product')

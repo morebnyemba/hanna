@@ -2,7 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PaynowConfigViewSet, initiate_whatsapp_payment, submit_omari_otp, paynow_ipn_handler
+from .views import PaynowConfigViewSet, initiate_whatsapp_payment, submit_omari_otp, paynow_ipn_handler, payment_status
 
 router = DefaultRouter()
 router.register(r'config', PaynowConfigViewSet, basename='paynow-config')
@@ -14,4 +14,5 @@ urlpatterns = [
     path('initiate-payment/', initiate_whatsapp_payment, name='initiate-whatsapp-payment'),
     path('submit-otp/', submit_omari_otp, name='submit-omari-otp'),
     path('ipn/', paynow_ipn_handler, name='paynow-ipn'),
+    path('payment-status/<str:reference>/', payment_status, name='payment-status'),
 ]

@@ -393,3 +393,27 @@ def paynow_ipn_handler(request):
     except Exception as e:
         logger.error(f"Error processing Paynow IPN: {e}", exc_info=True)
         return HttpResponse(f"Error: {str(e)}", status=500)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def payment_status(request, reference):
+    """
+    Poll payment status by provider_transaction_id reference.
+    GET /crm-api/paynow/payment-status/{reference}/
+    Returns: {status: "pending"|"paid"|"failed", message}
+    """
+    try:
+        from customer_data.models import PaymentStatus as PS
+        payment = Payment.objects.select_related('order').get(provider_transaction_id=reference)
+        if payment.status in (PS.SUCCESSFUL, 'successful', 'paid'):
+            return Response({'status': 'paid', 'message': 'Payment confirmed.'})
+        elif payment.status in (PS.FAILED, 'failed', 'cancelled'):
+            return Response({'status': 'failed', 'message': 'Payment failed or was cancelled.'})
+        else:
+            return Response({'status': 'pending', 'message': 'Awaiting payment confirmation.'})
+    except Payment.DoesNotExist:
+        return Response({'status': 'pending', 'message': 'Payment record not found.'})
+    except Exception as e:
+        logger.error(f"Error checking payment status: {e}", exc_info=True)
+        return Response({'status': 'pending', 'message': 'Could not check status.'})
