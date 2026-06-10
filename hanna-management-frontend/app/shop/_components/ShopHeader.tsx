@@ -30,48 +30,52 @@ const NAV_ITEMS = [
   {
     label: 'Solar Products',
     icon: <FiSun className="w-4 h-4" />,
+    href: '/shop/solar',
     filter: { search: 'solar' },
     color: 'text-orange-600',
     children: [
-      { label: 'Solar Panels', filter: { search: 'solar panel' } },
-      { label: 'Solar Batteries', filter: { search: 'solar battery' } },
-      { label: 'Inverters', filter: { search: 'inverter' } },
-      { label: 'Solar Packages', filter: { search: 'solar package' } },
+      { label: 'Solar Panels', href: '/shop/solar', filter: { search: 'solar panel' } },
+      { label: 'Solar Batteries', href: '/shop/solar', filter: { search: 'solar battery' } },
+      { label: 'Inverters', href: '/shop/solar', filter: { search: 'inverter' } },
+      { label: 'Solar Packages', href: '/shop/solar', filter: { search: 'solar package' } },
     ],
   },
   {
     label: 'Furniture',
     icon: <FiPackage className="w-4 h-4" />,
+    href: '/shop/furniture',
     filter: { search: 'furniture' },
     color: 'text-purple-600',
     children: [
-      { label: 'All Furniture', filter: { search: 'furniture' } },
-      { label: 'Fitted Furniture', filter: { search: 'fitted' } },
-      { label: 'Bedroom', filter: { search: 'bedroom' } },
-      { label: 'Kitchen', filter: { search: 'kitchen' } },
-      { label: 'Luxury', filter: { search: 'luxury' } },
+      { label: 'All Furniture', href: '/shop/furniture', filter: { search: 'furniture' } },
+      { label: 'Fitted Furniture', href: '/shop/furniture/fitted', filter: { search: 'fitted' } },
+      { label: 'Bedroom', href: '/shop/furniture/bedroom', filter: { search: 'bedroom' } },
+      { label: 'Kitchen', href: '/shop/furniture/kitchen', filter: { search: 'kitchen' } },
+      { label: 'Luxury', href: '/shop/furniture/luxury', filter: { search: 'luxury' } },
     ],
   },
   {
     label: 'Starlink',
     icon: <FiWifi className="w-4 h-4" />,
+    href: '/shop/starlink',
     filter: { search: 'starlink' },
     color: 'text-sky-600',
     children: [
-      { label: 'Starlink Kits', filter: { search: 'starlink kit' } },
-      { label: 'Accessories', filter: { search: 'starlink accessory' } },
-      { label: 'Installation', filter: { search: 'starlink install' } },
+      { label: 'Starlink Kits', href: '/shop/starlink', filter: { search: 'starlink kit' } },
+      { label: 'Accessories', href: '/shop/starlink', filter: { search: 'starlink accessory' } },
+      { label: 'Installation', href: '/shop/starlink', filter: { search: 'starlink install' } },
     ],
   },
   {
     label: 'Tech',
     icon: <FiMonitor className="w-4 h-4" />,
+    href: '/shop/tech',
     filter: { search: 'tech' },
     color: 'text-green-600',
     children: [
-      { label: 'Electronics', filter: { search: 'electronics' } },
-      { label: 'Accessories', filter: { search: 'accessories' } },
-      { label: 'Smart Home', filter: { search: 'smart' } },
+      { label: 'Electronics', href: '/shop/tech', filter: { search: 'electronics' } },
+      { label: 'Accessories', href: '/shop/tech', filter: { search: 'accessories' } },
+      { label: 'Smart Home', href: '/shop/tech', filter: { search: 'smart' } },
     ],
   },
 ] as const;
@@ -80,10 +84,8 @@ const NAV_ITEMS = [
 
 function NavDropdown({
   item,
-  onSelect,
 }: {
   item: typeof NAV_ITEMS[number];
-  onSelect: (f: NavFilter) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -98,8 +100,9 @@ function NavDropdown({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
+      <Link
+        href={item.href}
+        onClick={() => setOpen(false)}
         onMouseEnter={() => setOpen(true)}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm transition-all ${
           open ? 'bg-purple-50 text-purple-700' : `hover:bg-gray-50 ${item.color}`
@@ -108,33 +111,34 @@ function NavDropdown({
         {item.icon}
         {item.label}
         <FiChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Link>
 
       {open && (
         <div
           className="absolute top-full left-0 mt-1 w-52 bg-white rounded-2xl shadow-xl border border-purple-100 py-2 z-50"
           onMouseLeave={() => setOpen(false)}
         >
-          {/* Top-level shortcut */}
-          <button
-            onClick={() => { onSelect(item.filter); setOpen(false); }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-purple-800 hover:bg-purple-50 transition"
+          <Link
+            href={item.href}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-purple-800 hover:bg-purple-50 transition"
           >
             {item.icon}
             All {item.label}
-          </button>
+          </Link>
 
           <div className="mx-3 border-t border-gray-100 my-1" />
 
           {item.children.map((child) => (
-            <button
+            <Link
               key={child.label}
-              onClick={() => { onSelect(child.filter); setOpen(false); }}
-              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition text-left"
+              href={child.href}
+              onClick={() => setOpen(false)}
+              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-purple-300 mr-2 flex-shrink-0" />
               {child.label}
-            </button>
+            </Link>
           ))}
         </div>
       )}
@@ -231,14 +235,7 @@ export default function ShopHeader({
         {/* ── Nav row (desktop) ── */}
         <div className="hidden md:flex items-center gap-1 pb-2 border-t border-purple-50 pt-2">
           {NAV_ITEMS.map((item) => (
-            <NavDropdown
-              key={item.label}
-              item={item}
-              onSelect={(f) => {
-                onNavFilter(f);
-                document.getElementById('product-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
+            <NavDropdown key={item.label} item={item} />
           ))}
           <div className="ml-auto flex items-center gap-2 text-xs text-gray-400">
             <span className="hidden lg:block">🇿🇼 Delivering Nationwide</span>
@@ -293,18 +290,14 @@ export default function ShopHeader({
                 {mobileExpandedItem === item.label && (
                   <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-purple-100 pl-3">
                     {item.children.map((child) => (
-                      <button
+                      <Link
                         key={child.label}
-                        onClick={() => {
-                          onNavFilter(child.filter);
-                          onMobileMenuToggle();
-                          setMobileExpandedItem(null);
-                          document.getElementById('product-section')?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
+                        href={child.href}
+                        onClick={() => { onMobileMenuToggle(); setMobileExpandedItem(null); }}
+                        className="block px-3 py-2 text-sm text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
                       >
                         {child.label}
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 )}
