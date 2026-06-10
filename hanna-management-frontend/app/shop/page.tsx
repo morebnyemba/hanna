@@ -6,7 +6,7 @@ import apiClient from '@/app/lib/apiClient';
 import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
 import ShopHeader from './_components/ShopHeader';
-import HeroBanner from './_components/HeroBanner';
+import HeroCarousel from './_components/HeroCarousel';
 import CategoryPills from './_components/CategoryPills';
 import ProductGrid from './_components/ProductGrid';
 import ProductDetailModal from './_components/ProductDetailModal';
@@ -212,14 +212,19 @@ export default function PublicShopPage() {
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={() => setShowMobileMenu((v) => !v)}
         showAssistant={showAssistant}
+        onNavFilter={({ search, category }) => {
+          setSearchQuery(search ?? '');
+          if (category) setSelectedCategory(category);
+        }}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <HeroBanner
+        <HeroCarousel
+          products={products}
           whatsappNumber={whatsappNumber}
-          onShopNow={() => {
-            document.getElementById('product-section')?.scrollIntoView({ behavior: 'smooth' });
-          }}
+          onAddToCart={addToCart}
+          onQuickView={setQuickViewProduct}
+          cartLoading={cartLoading}
         />
 
         <div id="product-section">
