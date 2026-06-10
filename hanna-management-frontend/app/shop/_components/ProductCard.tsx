@@ -48,13 +48,15 @@ export default function ProductCard({ product, onAddToCart, onQuickView, cartLoa
   const price = parseFloat(product.price);
 
   return (
-    <div className="group bg-white rounded-2xl border border-purple-100 shadow-sm hover:shadow-lg hover:border-purple-300 transition-all duration-300 overflow-hidden flex flex-col">
+    <div className="shop-fade-up group bg-white rounded-2xl border border-purple-100 shadow-sm hover:shadow-lg hover:border-purple-300 transition-all duration-300 overflow-hidden flex flex-col">
       {/* Image */}
       <div className="relative h-44 bg-gradient-to-br from-purple-50 to-sky-50 flex items-center justify-center overflow-hidden">
         {product.images && product.images.length > 0 ? (
           <img
             src={product.images[0].image}
             alt={product.images[0].alt_text || product.name}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
           />
         ) : (

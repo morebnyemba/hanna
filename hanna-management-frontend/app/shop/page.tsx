@@ -12,7 +12,10 @@ import ProductDetailModal from './_components/ProductDetailModal';
 import CartDrawer, { type Cart, type CartItem } from './_components/CartDrawer';
 import AIAssistantFAB from './_components/AIAssistantFAB';
 import ShopFooter from './_components/ShopFooter';
+import ToastStack, { type ToastData } from './_components/ToastStack';
 import type { Product } from './_components/ProductCard';
+
+const PRODUCTS_CACHE_KEY = 'hanna_shop_products_v1';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -75,6 +78,15 @@ export default function PublicShopPage() {
   // CSRF
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
+  // Toasts
+  const [toasts, setToasts] = useState<ToastData[]>([]);
+  const toastId = useRef(0);
+  const pushToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    const id = ++toastId.current;
+    setToasts((prev) => [...prev.slice(-2), { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
+  }, []);
+
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
 
   // ── Debounce search ─────────────────────────────────────────────────────────
@@ -82,22 +94,32 @@ export default function PublicShopPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => setDebouncedSearch(searchQuery), 250);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(searchQuery), 150);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [searchQuery]);
 
   // ── CSRF + initial load ─────────────────────────────────────────────────────
   useEffect(() => {
-    const init = async () => {
-      try {
-        const res = await apiClient.get('/crm-api/products/csrf/');
-        if (res.data?.token) setCsrfToken(res.data.token);
-      } catch {
-        // CSRF prefetch is best-effort
+    // Instant paint from session cache while fresh data loads in background
+    try {
+      const cached = sessionStorage.getItem(PRODUCTS_CACHE_KEY);
+      if (cached) {
+        const parsed: Product[] = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProducts(parsed);
+          setLoading(false);
+        }
       }
-      await Promise.all([fetchProducts(), fetchCart()]);
-    };
-    init();
+    } catch {
+      // Cache read is best-effort
+    }
+
+    // CSRF, products and cart all load in parallel — none blocks another
+    apiClient.get('/crm-api/products/csrf/')
+      .then((res) => { if (res.data?.token) setCsrfToken(res.data.token); })
+      .catch(() => {});
+    fetchProducts();
+    fetchCart();
   }, []);
 
   // ── Data fetching ────────────────────────────────────────────────────────────
@@ -105,14 +127,30 @@ export default function PublicShopPage() {
     try {
       let all: Product[] = [];
       let next: string | null = '/crm-api/products/products/';
+      let firstPage = true;
       while (next) {
         const res: any = await apiClient.get(next);
         all = [...all, ...normalizePaginatedResponse<Product>(res.data)];
         next = res.data.next ? res.data.next.replace(/^https?:\/\/[^/]+/, '') : null;
+        // Paint the first page immediately; remaining pages stream in behind it
+        const active = all.filter((p) => p.is_active);
+        setProducts(active);
+        if (firstPage) {
+          setLoading(false);
+          firstPage = false;
+        }
       }
-      setProducts(all.filter((p) => p.is_active));
+      try {
+        sessionStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(all.filter((p) => p.is_active)));
+      } catch {
+        // Cache write is best-effort
+      }
     } catch {
-      setError('Failed to load products. Please try again later.');
+      // Only surface an error if we have nothing to show (no cache hit)
+      setProducts((prev) => {
+        if (prev.length === 0) setError('Failed to load products. Please try again later.');
+        return prev;
+      });
     } finally {
       setLoading(false);
     }
@@ -137,10 +175,11 @@ export default function PublicShopPage() {
     try {
       const res = await apiClient.post('/crm-api/products/cart/add/', { product_id: productId, quantity }, csrfHeaders());
       setCart(res.data.cart);
-      setShowCart(true);
+      const name = products.find((p) => p.id === productId)?.name || 'Item';
+      pushToast(`${name} added to cart`);
     } catch (err: any) {
       const msg = err?.response?.data?.error;
-      alert(typeof msg === 'string' ? msg : msg?.detail || 'Failed to add item to cart');
+      pushToast(typeof msg === 'string' ? msg : msg?.detail || 'Failed to add item to cart', 'error');
     } finally {
       setCartLoading(false);
     }
@@ -152,7 +191,7 @@ export default function PublicShopPage() {
       const res = await apiClient.post('/crm-api/products/cart/update/', { cart_item_id: cartItemId, quantity }, csrfHeaders());
       setCart(res.data.cart);
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Failed to update cart');
+      pushToast(err?.response?.data?.error || 'Failed to update cart', 'error');
     } finally {
       setCartLoading(false);
     }
@@ -164,7 +203,7 @@ export default function PublicShopPage() {
       const res = await apiClient.post('/crm-api/products/cart/remove/', { cart_item_id: cartItemId }, csrfHeaders());
       setCart(res.data.cart);
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Failed to remove item');
+      pushToast(err?.response?.data?.error || 'Failed to remove item', 'error');
     } finally {
       setCartLoading(false);
     }
@@ -176,8 +215,9 @@ export default function PublicShopPage() {
       const res = await apiClient.post('/crm-api/products/cart/clear/', {}, csrfHeaders());
       setCart(res.data.cart);
       setClearConfirm(false);
+      pushToast('Cart cleared');
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Failed to clear cart');
+      pushToast(err?.response?.data?.error || 'Failed to clear cart', 'error');
     } finally {
       setCartLoading(false);
     }
@@ -244,7 +284,7 @@ export default function PublicShopPage() {
       });
       setCheckoutStep(4);
     } catch (err: any) {
-      alert(err?.response?.data?.message || err?.message || 'Failed to place order');
+      pushToast(err?.response?.data?.message || err?.message || 'Failed to place order', 'error');
     } finally {
       setCartLoading(false);
     }
@@ -252,7 +292,7 @@ export default function PublicShopPage() {
 
   const submitOTP = async () => {
     if (!otpCode || !paymentInfo?.paynow_reference) {
-      alert('Please enter the OTP code');
+      pushToast('Please enter the OTP code', 'error');
       return;
     }
     setCartLoading(true);
@@ -265,10 +305,10 @@ export default function PublicShopPage() {
         setOtpCode('');
         setCheckoutStep(5);
       } else {
-        alert(res.data?.message || 'Failed to submit OTP');
+        pushToast(res.data?.message || 'Failed to submit OTP', 'error');
       }
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to submit OTP');
+      pushToast(err?.response?.data?.message || 'Failed to submit OTP', 'error');
     } finally {
       setCartLoading(false);
     }
@@ -404,6 +444,9 @@ export default function PublicShopPage() {
         open={showAssistant}
         onToggle={() => setShowAssistant((v) => !v)}
       />
+
+      {/* Toast notifications */}
+      <ToastStack toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
     </div>
   );
 }
