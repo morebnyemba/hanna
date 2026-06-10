@@ -48,7 +48,10 @@ export default function ProductCard({ product, onAddToCart, onQuickView, cartLoa
   const price = parseFloat(product.price);
 
   return (
-    <div className="shop-fade-up group bg-white rounded-2xl border border-purple-100 shadow-sm hover:shadow-lg hover:border-purple-300 transition-all duration-300 overflow-hidden flex flex-col">
+    <div
+      className="shop-fade-up group bg-white rounded-2xl border border-purple-100 shadow-sm hover:shadow-lg hover:border-purple-300 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
+      onClick={() => onQuickView(product)}
+    >
       {/* Image */}
       <div className="relative h-44 bg-gradient-to-br from-purple-50 to-sky-50 flex items-center justify-center overflow-hidden">
         {product.images && product.images.length > 0 ? (
@@ -74,16 +77,13 @@ export default function ProductCard({ product, onAddToCart, onQuickView, cartLoa
         </div>
 
         {/* Quick view hover overlay */}
-        <button
-          onClick={() => onQuickView(product)}
-          className="absolute inset-0 bg-purple-900/0 group-hover:bg-purple-900/10 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100"
-          tabIndex={-1}
-          aria-label="Quick view"
+        <div
+          className="absolute inset-0 bg-purple-900/0 group-hover:bg-purple-900/10 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none"
         >
           <span className="flex items-center gap-1.5 bg-white text-purple-700 font-semibold text-xs px-3 py-1.5 rounded-full shadow border border-purple-100">
             <FiEye className="w-3.5 h-3.5" /> Quick View
           </span>
-        </button>
+        </div>
 
         {product.featured && (
           <span className="absolute bottom-2 left-2 text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500 text-white shadow">
@@ -113,7 +113,7 @@ export default function ProductCard({ product, onAddToCart, onQuickView, cartLoa
           </div>
 
           <button
-            onClick={() => onAddToCart(product.id)}
+            onClick={(e) => { e.stopPropagation(); onAddToCart(product.id); }}
             disabled={product.stock_quantity === 0 || cartLoading}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition disabled:cursor-not-allowed bg-orange-500 hover:bg-orange-600 text-white disabled:bg-gray-200 disabled:text-gray-400 shadow-sm"
           >
