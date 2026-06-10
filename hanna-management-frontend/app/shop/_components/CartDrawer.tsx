@@ -126,12 +126,12 @@ export default function CartDrawer({
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="shop-backdrop-enter absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={() => { onClose(); }}
       />
 
       {/* Drawer */}
-      <div className="absolute right-0 top-0 bottom-0 w-full sm:max-w-md bg-white shadow-2xl flex flex-col">
+      <div className="shop-drawer-enter absolute right-0 top-0 bottom-0 w-full sm:max-w-md bg-white shadow-2xl flex flex-col">
         {/* Header */}
         <div className="px-5 pt-5 pb-4 border-b border-purple-50 bg-white">
           <div className="flex items-center justify-between">
