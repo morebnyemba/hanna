@@ -143,6 +143,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ecocash');
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [otpCode, setOtpCode] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -178,6 +180,7 @@ export default function CheckoutPage() {
   };
 
   const handleProceedToConfirm = () => {
+    if (!agreedToTerms) { setTermsError(true); return; }
     if (validateDelivery()) setStep('confirm');
   };
 
@@ -394,6 +397,35 @@ export default function CheckoutPage() {
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 transition hover:border-purple-200 resize-none"
                       />
                     </div>
+                  </div>
+
+                  {/* Terms of service agreement */}
+                  <div className={`rounded-xl border p-4 transition-colors ${termsError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={agreedToTerms}
+                        onChange={(e) => { setAgreedToTerms(e.target.checked); setTermsError(false); }}
+                        className="mt-0.5 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-400 flex-shrink-0 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-600 leading-relaxed">
+                        I agree to the{' '}
+                        <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 font-semibold underline underline-offset-2">
+                          Terms of Service
+                        </a>
+                        {' '}and{' '}
+                        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 font-semibold underline underline-offset-2">
+                          Privacy Policy
+                        </a>
+                        . I understand my order will be processed and payment collected via Paynow.
+                      </span>
+                    </label>
+                    {termsError && (
+                      <p className="mt-2 text-xs text-red-600 flex items-center gap-1">
+                        <FiAlertCircle className="w-3 h-3 flex-shrink-0" />
+                        You must agree to the terms before proceeding.
+                      </p>
+                    )}
                   </div>
 
                   <button
