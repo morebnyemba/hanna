@@ -48,3 +48,4 @@ imapclient
 jinja2
 pydantic
 requests
+gevent

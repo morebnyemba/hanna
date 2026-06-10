@@ -62,38 +62,32 @@ services:
       - backend
     restart: unless-stopped
 
-  celery_io_worker:
-    build: ./whatsappcrm_backend
-    container_name: whatsappcrm_celery_io_worker
-    command: celery -A whatsappcrm_backend worker -Q celery -l INFO --concurrency=10
-    volumes:
-      - ./whatsappcrm_backend:/app
-      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
-    depends_on:
-      - redis
-      - db
-    restart: unless-stopped
+  # ── Celery workers (optimised for 2 vCPU / 8 GB RAM) ──────────────────────
+  #
+  # Strategy:
+  #   • All messaging / flow tasks are I/O-bound (HTTP calls to Meta API,
+  #     DB reads). gevent greenlets cost ~KB each vs ~200 MB per prefork
+  #     process, so we get high concurrency at a fraction of the RAM.
+  #   • CPU-heavy work (media sync, AI attachment processing) keeps prefork
+  #     but is capped at 1 so it never fights the other vCPU.
+  #   • prefetch_multiplier=1 keeps Redis fair when a single worker handles
+  #     multiple queues — no worker hoards tasks from the others.
+  #
+  #  Before → After
+  #  8 workers, 123 prefork processes → 3 workers, ~32 greenlets + 1 process
 
-  celery_whatsapp_worker:
+  # Worker 1 — messaging + default I/O  (gevent, 20 greenlets)
+  # Handles: whatsapp sends, read receipts, msg_sending, beat-scheduled tasks
+  celery_messaging_worker:
     build: ./whatsappcrm_backend
-    container_name: whatsappcrm_celery_whatsapp_worker
-    command: celery -A whatsappcrm_backend worker -Q whatsapp -l INFO --concurrency=10
-    volumes:
-      - ./whatsappcrm_backend:/app
-      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
-    depends_on:
-      - redis
-      - db
-    restart: unless-stopped
-
-  celery_flow_worker_1:
-    build: ./whatsappcrm_backend
-    container_name: whatsappcrm_celery_flow_worker_1
-    command: celery -A whatsappcrm_backend worker -Q flow_processing -l INFO --concurrency=20
+    container_name: whatsappcrm_celery_messaging
+    command: >
+      celery -A whatsappcrm_backend worker
+      -Q whatsapp,msg_sending,celery
+      -l INFO
+      -P gevent
+      --concurrency=20
+      --prefetch-multiplier=1
     volumes:
       - ./whatsappcrm_backend:/app
       - mediafiles_volume:/app/mediafiles
@@ -104,10 +98,18 @@ services:
       - db
     restart: unless-stopped
 
-  celery_flow_worker_2:
+  # Worker 2 — flow processing + AI conversations  (gevent, 10 greenlets)
+  # Handles: flow engine, AI chat, AI shopping, idle-session cleanup
+  celery_flow_worker:
     build: ./whatsappcrm_backend
-    container_name: whatsappcrm_celery_flow_worker_2
-    command: celery -A whatsappcrm_backend worker -Q flow_processing -l INFO --concurrency=20
+    container_name: whatsappcrm_celery_flow
+    command: >
+      celery -A whatsappcrm_backend worker
+      -Q flow_processing
+      -l INFO
+      -P gevent
+      --concurrency=10
+      --prefetch-multiplier=1
     volumes:
       - ./whatsappcrm_backend:/app
       - mediafiles_volume:/app/mediafiles
@@ -118,55 +120,19 @@ services:
       - db
     restart: unless-stopped
 
-  celery_msg_sender_1:
-    build: ./whatsappcrm_backend
-    container_name: whatsappcrm_celery_msg_sender_1
-    command: celery -A whatsappcrm_backend worker -Q msg_sending -l INFO --concurrency=30
-    volumes:
-      - ./whatsappcrm_backend:/app
-      - mediafiles_volume:/app/mediafiles
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
-    depends_on:
-      - redis
-      - db
-    restart: unless-stopped
-
-  celery_msg_sender_2:
-    build: ./whatsappcrm_backend
-    container_name: whatsappcrm_celery_msg_sender_2
-    command: celery -A whatsappcrm_backend worker -Q msg_sending -l INFO --concurrency=30
-    volumes:
-      - ./whatsappcrm_backend:/app
-      - mediafiles_volume:/app/mediafiles
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
-    depends_on:
-      - redis
-      - db
-    restart: unless-stopped
-
+  # Worker 3 — CPU-bound tasks  (prefork, 1 process)
+  # Handles: media sync, Gemini attachment processing
   celery_cpu_worker:
     build: ./whatsappcrm_backend
-    container_name: whatsappcrm_celery_cpu_worker
-    command: celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=1
+    container_name: whatsappcrm_celery_cpu
+    command: >
+      celery -A whatsappcrm_backend worker
+      -Q cpu_heavy
+      -l INFO
+      --concurrency=1
     volumes:
       - ./whatsappcrm_backend:/app
-      - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
-      - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
-    env_file:
-      - ./whatsappcrm_backend/.env.prod
-    depends_on:
-      - redis
-      - db
-    restart: unless-stopped
-
-  celery_cpu_worker_2:
-    build: ./whatsappcrm_backend
-    container_name: whatsappcrm_celery_cpu_worker_2
-    command: celery -A whatsappcrm_backend worker -Q cpu_heavy -l INFO --concurrency=2
-    volumes:
-      - ./whatsappcrm_backend:/app
+      - staticfiles_volume:/app/staticfiles
       - mediafiles_volume:/app/mediafiles
     env_file:
       - ./whatsappcrm_backend/.env.prod

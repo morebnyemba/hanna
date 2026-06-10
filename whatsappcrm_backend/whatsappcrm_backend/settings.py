@@ -344,7 +344,7 @@ CELERY_TASK_ROUTES = {
 # --- Celery Worker Optimization ---
 # Prefetch multiplier: number of tasks a worker prefetches. Lower values
 # reduce latency for high-priority tasks by avoiding large prefetch buffers.
-CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv('CELERY_WORKER_PREFETCH_MULTIPLIER', '4'))
+CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv('CELERY_WORKER_PREFETCH_MULTIPLIER', '1'))
 
 # Late ack: acknowledge tasks after execution (not before). This prevents
 # task loss if a worker crashes mid-execution.
