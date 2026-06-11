@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, ProductImage, SolarPackage, SolarPackageProduct, ProductReview, StockNotification
+from .models import (
+    Product, ProductCategory, SerializedItem, Cart, CartItem,
+    ItemLocationHistory, ProductImage, SolarPackage, SolarPackageProduct,
+    ProductReview, StockNotification, ProductTag, ProductVariant, Coupon,
+    Wishlist, WishlistItem,
+)
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -9,21 +14,98 @@ class ProductCategorySerializer(serializers.ModelSerializer):
         model = ProductCategory
         fields = '__all__'
 
+
+class ProductTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductTag
+        fields = ['id', 'name', 'slug', 'color']
+
+
 class ProductImageSerializer(serializers.ModelSerializer):
-    """
-    Serializer for product images with full URL for easy display.
-    """
     class Meta:
         model = ProductImage
         fields = ['id', 'image', 'alt_text', 'created_at']
 
+
+class ProductVariantSerializer(serializers.ModelSerializer):
+    effective_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = ProductVariant
+        fields = [
+            'id', 'name', 'sku_suffix', 'price_override', 'effective_price',
+            'stock_quantity', 'is_active', 'attributes', 'image', 'created_at',
+        ]
+
+
 class ProductSerializer(serializers.ModelSerializer):
     category = ProductCategorySerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
+    tags = ProductTagSerializer(many=True, read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
+    discount_percent = serializers.SerializerMethodField()
+    avg_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = '__all__'
+
+    def get_discount_percent(self, obj):
+        if obj.compare_at_price and obj.price and obj.compare_at_price > obj.price:
+            return round((1 - obj.price / obj.compare_at_price) * 100)
+        return None
+
+    def get_avg_rating(self, obj):
+        approved = obj.reviews.filter(is_approved=True)
+        if not approved.exists():
+            return None
+        return round(sum(r.rating for r in approved) / approved.count(), 1)
+
+    def get_review_count(self, obj):
+        return obj.reviews.filter(is_approved=True).count()
+
+
+class CouponSerializer(serializers.ModelSerializer):
+    is_valid = serializers.SerializerMethodField()
+    validity_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Coupon
+        fields = [
+            'id', 'code', 'description', 'discount_type', 'discount_value',
+            'minimum_order_amount', 'max_uses', 'uses', 'is_active',
+            'valid_from', 'valid_until', 'is_valid', 'validity_message',
+        ]
+
+    def get_is_valid(self, obj):
+        valid, _ = obj.is_valid()
+        return valid
+
+    def get_validity_message(self, obj):
+        _, msg = obj.is_valid()
+        return msg
+
+
+class WishlistItemSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+    variant = ProductVariantSerializer(read_only=True)
+
+    class Meta:
+        model = WishlistItem
+        fields = ['id', 'product', 'variant', 'added_at']
+
+
+class WishlistSerializer(serializers.ModelSerializer):
+    items = WishlistItemSerializer(many=True, read_only=True)
+    item_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Wishlist
+        fields = ['id', 'items', 'item_count', 'created_at', 'updated_at']
+
+    def get_item_count(self, obj):
+        return obj.items.count()
 
 class SerializedItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
@@ -79,16 +161,26 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 class CartSerializer(serializers.ModelSerializer):
     """
-    Serializer for shopping cart including all items and totals.
+    Serializer for shopping cart including all items, coupon, and totals.
     """
     items = CartItemSerializer(many=True, read_only=True)
     total_items = serializers.IntegerField(read_only=True)
     total_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    subtotal = serializers.SerializerMethodField()
+    coupon_code = serializers.CharField(source='coupon.code', read_only=True, allow_null=True)
+    coupon_description = serializers.CharField(source='coupon.description', read_only=True, allow_null=True)
 
     class Meta:
         model = Cart
-        fields = ['id', 'user', 'session_key', 'items', 'total_items', 'total_price', 'created_at', 'updated_at']
+        fields = [
+            'id', 'user', 'session_key', 'items', 'total_items',
+            'subtotal', 'discount_amount', 'coupon_code', 'coupon_description',
+            'total_price', 'created_at', 'updated_at',
+        ]
         read_only_fields = ['id', 'user', 'session_key', 'created_at', 'updated_at']
+
+    def get_subtotal(self, obj):
+        return sum(item.subtotal for item in obj.items.all())
 
 
 class AddToCartSerializer(serializers.Serializer):
@@ -634,7 +726,11 @@ class PackageValidationSerializer(serializers.Serializer):
 class ProductReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductReview
-        fields = '__all__'
+        fields = [
+            'id', 'product', 'reviewer_name', 'reviewer_email', 'rating',
+            'comment', 'is_approved', 'verified_purchase', 'helpful_votes', 'created_at',
+        ]
+        read_only_fields = ['id', 'is_approved', 'verified_purchase', 'helpful_votes', 'created_at']
 
 
 class StockNotificationSerializer(serializers.ModelSerializer):

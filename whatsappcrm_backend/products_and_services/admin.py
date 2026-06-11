@@ -2,10 +2,59 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.contrib import messages
 from .models import (
-    Product, ProductCategory, ProductImage, SerializedItem, 
+    Product, ProductCategory, ProductImage, SerializedItem,
     Cart, CartItem, SolarPackage, SolarPackageProduct, CompatibilityRule,
-    ItemLocationHistory
+    ItemLocationHistory, ProductTag, ProductVariant, Coupon,
+    Wishlist, WishlistItem, ProductReview, StockNotification,
 )
+
+
+@admin.register(ProductTag)
+class ProductTagAdmin(admin.ModelAdmin):
+    list_display = ['name', 'slug', 'color']
+    prepopulated_fields = {'slug': ('name',)}
+
+
+@admin.register(ProductVariant)
+class ProductVariantAdmin(admin.ModelAdmin):
+    list_display = ['product', 'name', 'effective_price', 'stock_quantity', 'is_active']
+    list_filter = ['is_active', 'product__category']
+    search_fields = ['product__name', 'name']
+
+
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = ['code', 'discount_type', 'discount_value', 'uses', 'max_uses', 'is_active', 'valid_until']
+    list_filter = ['is_active', 'discount_type']
+    search_fields = ['code', 'description']
+    readonly_fields = ['uses']
+
+
+@admin.register(Wishlist)
+class WishlistAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'session_key', 'created_at']
+
+
+@admin.register(WishlistItem)
+class WishlistItemAdmin(admin.ModelAdmin):
+    list_display = ['wishlist', 'product', 'variant', 'added_at']
+
+
+@admin.register(ProductReview)
+class ProductReviewAdmin(admin.ModelAdmin):
+    list_display = ['product', 'reviewer_name', 'rating', 'is_approved', 'verified_purchase', 'created_at']
+    list_filter = ['is_approved', 'verified_purchase', 'rating']
+    actions = ['approve_reviews']
+
+    def approve_reviews(self, request, queryset):
+        queryset.update(is_approved=True)
+    approve_reviews.short_description = "Approve selected reviews"
+
+
+@admin.register(StockNotification)
+class StockNotificationAdmin(admin.ModelAdmin):
+    list_display = ['product', 'email', 'phone', 'notified', 'created_at']
+    list_filter = ['notified']
 
 @admin.register(ProductCategory)
 class ProductCategoryAdmin(admin.ModelAdmin):

@@ -81,6 +81,22 @@ class Product(models.Model):
     stock_quantity = models.PositiveIntegerField(_("Stock Quantity"), default=0, help_text=_("The number of items available in stock. Used for WhatsApp Catalog inventory management."))
     featured = models.BooleanField(_("Featured"), default=False, help_text=_("Pin this product to the shop's featured section."))
     short_description = models.CharField(_("Short Description"), max_length=255, blank=True, null=True, help_text=_("Brief preview text shown on product cards. Falls back to description if empty."))
+    compare_at_price = models.DecimalField(
+        _("Compare-at Price"), max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text=_("Original / crossed-out price shown to indicate a discount.")
+    )
+    tags = models.ManyToManyField(
+        'ProductTag', blank=True, related_name='products',
+        help_text=_("Labels like 'New Arrival', 'Best Seller', 'On Sale'.")
+    )
+    weight_kg = models.DecimalField(
+        _("Weight (kg)"), max_digits=8, decimal_places=3, null=True, blank=True,
+        help_text=_("Used for shipping rate calculations.")
+    )
+    dimensions = models.JSONField(
+        _("Dimensions (cm)"), default=dict, blank=True,
+        help_text=_('Packed dimensions e.g. {"length": 30, "width": 20, "height": 10}')
+    )
 
     # Software-specific fields
     license_type = models.CharField(_("License Type"), max_length=20, choices=LicenseType.choices, default=LicenseType.SUBSCRIPTION)
@@ -122,6 +138,174 @@ class Product(models.Model):
         ordering = ['name']
 
 
+class ProductTag(models.Model):
+    """Flexible tags for products — New Arrival, Best Seller, On Sale, etc."""
+    name = models.CharField(_("Tag Name"), max_length=50, unique=True)
+    slug = models.SlugField(_("Slug"), max_length=60, unique=True)
+    color = models.CharField(
+        _("Badge Color"), max_length=30, default='sky',
+        help_text=_("Tailwind colour name shown on the storefront badge (e.g. orange, green, sky).")
+    )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = _("Product Tag")
+        verbose_name_plural = _("Product Tags")
+
+
+class ProductVariant(models.Model):
+    """
+    A specific variant of a product (size, colour, kit configuration, etc.).
+    e.g. "5kW Solar Kit – Blue", "Bedroom Set – Queen", "Router – Black".
+    """
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+    name = models.CharField(_("Variant Name"), max_length=100, help_text=_("e.g. 'Blue / Large', '5kW Kit'"))
+    sku_suffix = models.CharField(
+        _("SKU Suffix"), max_length=30, blank=True, null=True,
+        help_text=_("Appended to the parent SKU to form the variant SKU.")
+    )
+    price_override = models.DecimalField(
+        _("Price Override"), max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text=_("Leave blank to inherit the parent product price.")
+    )
+    stock_quantity = models.PositiveIntegerField(_("Stock Quantity"), default=0)
+    is_active = models.BooleanField(_("Is Active"), default=True)
+    attributes = models.JSONField(
+        _("Attributes"), default=dict, blank=True,
+        help_text=_('JSON of variant attributes, e.g. {"colour": "blue", "size": "large"}')
+    )
+    image = models.ImageField(_("Variant Image"), upload_to='product_variant_images/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def effective_price(self):
+        return self.price_override if self.price_override is not None else self.product.price
+
+    def __str__(self):
+        return f"{self.product.name} — {self.name}"
+
+    class Meta:
+        ordering = ['product', 'name']
+        verbose_name = _("Product Variant")
+        verbose_name_plural = _("Product Variants")
+        unique_together = ['product', 'name']
+
+
+class Coupon(models.Model):
+    """Promo / discount codes redeemable at checkout."""
+
+    class DiscountType(models.TextChoices):
+        PERCENTAGE = 'percentage', _('Percentage Off')
+        FIXED = 'fixed', _('Fixed Amount Off')
+        FREE_SHIPPING = 'free_shipping', _('Free Shipping')
+
+    code = models.CharField(_("Coupon Code"), max_length=50, unique=True, db_index=True)
+    description = models.CharField(_("Description"), max_length=255, blank=True)
+    discount_type = models.CharField(
+        _("Discount Type"), max_length=20, choices=DiscountType.choices, default=DiscountType.PERCENTAGE
+    )
+    discount_value = models.DecimalField(
+        _("Discount Value"), max_digits=10, decimal_places=2, default=0,
+        help_text=_("Percentage (0-100) or fixed amount depending on discount_type.")
+    )
+    minimum_order_amount = models.DecimalField(
+        _("Minimum Order Amount"), max_digits=12, decimal_places=2, default=0,
+        help_text=_("Cart total must be at least this amount before the coupon applies.")
+    )
+    max_uses = models.PositiveIntegerField(
+        _("Max Uses"), null=True, blank=True,
+        help_text=_("Leave blank for unlimited uses.")
+    )
+    uses = models.PositiveIntegerField(_("Times Used"), default=0, editable=False)
+    max_uses_per_customer = models.PositiveIntegerField(
+        _("Max Uses Per Customer"), default=1,
+        help_text=_("How many times a single customer can use this coupon.")
+    )
+    is_active = models.BooleanField(_("Is Active"), default=True)
+    valid_from = models.DateTimeField(_("Valid From"), null=True, blank=True)
+    valid_until = models.DateTimeField(_("Valid Until"), null=True, blank=True)
+    applicable_products = models.ManyToManyField(
+        Product, blank=True, related_name='coupons',
+        help_text=_("Limit coupon to specific products. Leave blank to apply to all products.")
+    )
+    applicable_categories = models.ManyToManyField(
+        ProductCategory, blank=True, related_name='coupons',
+        help_text=_("Limit coupon to specific categories. Leave blank to apply to all categories.")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def is_valid(self):
+        from django.utils import timezone
+        now = timezone.now()
+        if not self.is_active:
+            return False, "Coupon is not active."
+        if self.valid_from and now < self.valid_from:
+            return False, "Coupon is not yet valid."
+        if self.valid_until and now > self.valid_until:
+            return False, "Coupon has expired."
+        if self.max_uses is not None and self.uses >= self.max_uses:
+            return False, "Coupon usage limit has been reached."
+        return True, "Valid"
+
+    def calculate_discount(self, cart_total):
+        if self.discount_type == self.DiscountType.PERCENTAGE:
+            return min(cart_total, cart_total * self.discount_value / 100)
+        if self.discount_type == self.DiscountType.FIXED:
+            return min(cart_total, self.discount_value)
+        return 0  # free_shipping handled separately
+
+    def __str__(self):
+        return f"{self.code} ({self.get_discount_type_display()})"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Coupon")
+        verbose_name_plural = _("Coupons")
+
+
+class Wishlist(models.Model):
+    """Server-side wishlist — one per session/customer."""
+    session_key = models.CharField(
+        _("Session Key"), max_length=255, blank=True, null=True, db_index=True
+    )
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        null=True, blank=True, related_name='wishlist'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Wishlist ({self.user or self.session_key})"
+
+    class Meta:
+        verbose_name = _("Wishlist")
+        verbose_name_plural = _("Wishlists")
+
+
+class WishlistItem(models.Model):
+    wishlist = models.ForeignKey(Wishlist, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='wishlist_items')
+    variant = models.ForeignKey(
+        ProductVariant, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='wishlist_items'
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['wishlist', 'product', 'variant']
+        ordering = ['-added_at']
+        verbose_name = _("Wishlist Item")
+        verbose_name_plural = _("Wishlist Items")
+
+    def __str__(self):
+        return f"{self.product.name} in {self.wishlist}"
+
+
 class ProductReview(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
     reviewer_name = models.CharField(max_length=100)
@@ -129,6 +313,11 @@ class ProductReview(models.Model):
     rating = models.PositiveSmallIntegerField(choices=[(i, i) for i in range(1, 6)])
     comment = models.TextField(blank=True)
     is_approved = models.BooleanField(default=False)
+    verified_purchase = models.BooleanField(
+        _("Verified Purchase"), default=False,
+        help_text=_("Set automatically when the reviewer's email matches an order for this product.")
+    )
+    helpful_votes = models.PositiveIntegerField(_("Helpful Votes"), default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -432,6 +621,14 @@ class Cart(models.Model):
         db_index=True,
         help_text=_("Session identifier for guest carts")
     )
+    coupon = models.ForeignKey(
+        'Coupon', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='carts', help_text=_("Applied coupon code, if any.")
+    )
+    discount_amount = models.DecimalField(
+        _("Discount Amount"), max_digits=12, decimal_places=2, default=0,
+        help_text=_("Calculated discount applied to this cart.")
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -447,8 +644,9 @@ class Cart(models.Model):
 
     @property
     def total_price(self):
-        """Total price of all items in the cart"""
-        return sum(item.subtotal for item in self.items.all())
+        """Total price after any applied coupon discount."""
+        subtotal = sum(item.subtotal for item in self.items.all())
+        return max(0, subtotal - self.discount_amount)
 
     class Meta:
         verbose_name = _("Cart")
