@@ -122,6 +122,33 @@ class Product(models.Model):
         ordering = ['name']
 
 
+class ProductReview(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    reviewer_name = models.CharField(max_length=100)
+    reviewer_email = models.EmailField(blank=True, null=True)
+    rating = models.PositiveSmallIntegerField(choices=[(i, i) for i in range(1, 6)])
+    comment = models.TextField(blank=True)
+    is_approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Review by {self.reviewer_name} for {self.product.name} ({self.rating}/5)"
+
+
+class StockNotification(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_notifications')
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    notified = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"StockNotification for {self.product.name} ({self.email or self.phone})"
+
+
 class ProductImage(models.Model):
     """
     An image associated with a product. Products can have multiple images.

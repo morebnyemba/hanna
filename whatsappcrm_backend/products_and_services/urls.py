@@ -18,6 +18,7 @@ router.register(r'item-location-history', views.ItemLocationHistoryViewSet, base
 router.register(r'retailer', views.RetailerPortalViewSet, basename='retailer-portal')
 # Retailer Branch portal endpoints (main portal for branch operations)
 router.register(r'retailer-branch', views.RetailerBranchPortalViewSet, basename='retailer-branch-portal')
+router.register(r'reviews', views.ProductReviewViewSet, basename='review')
 
 app_name = 'products_and_services_api'
 
@@ -25,4 +26,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('csrf/', views.csrf_cookie, name='csrf-cookie'),
     path('admin/sync-zoho/', views.trigger_sync_view, name='sync-zoho'),
+    path('notify-stock/', views.notify_stock, name='notify-stock'),
 ]

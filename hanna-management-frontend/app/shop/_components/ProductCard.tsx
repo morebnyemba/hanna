@@ -1,6 +1,7 @@
 'use client';
 
 import { FiShoppingCart, FiPackage, FiEye, FiSun, FiWifi } from 'react-icons/fi';
+import WishlistButton from './WishlistButton';
 
 export interface Product {
   id: number;
@@ -24,6 +25,8 @@ interface ProductCardProps {
   onAddToCart: (id: number) => void;
   onQuickView: (product: Product) => void;
   cartLoading: boolean;
+  isWishlisted?: boolean;
+  onWishlistToggle?: (id: number) => void;
 }
 
 function CategoryIcon({ category }: { category: string | null }) {
@@ -43,7 +46,7 @@ function StockBadge({ qty }: { qty: number }) {
   return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">In Stock</span>;
 }
 
-export default function ProductCard({ product, onAddToCart, onQuickView, cartLoading }: ProductCardProps) {
+export default function ProductCard({ product, onAddToCart, onQuickView, cartLoading, isWishlisted = false, onWishlistToggle }: ProductCardProps) {
   const preview = product.short_description || product.description || '';
   const price = parseFloat(product.price);
 
@@ -72,8 +75,15 @@ export default function ProductCard({ product, onAddToCart, onQuickView, cartLoa
             {product.category.name}
           </span>
         )}
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
           <StockBadge qty={product.stock_quantity} />
+          {onWishlistToggle && (
+            <WishlistButton
+              productId={product.id}
+              isWishlisted={isWishlisted}
+              onToggle={onWishlistToggle}
+            />
+          )}
         </div>
 
         {/* Quick view hover overlay */}

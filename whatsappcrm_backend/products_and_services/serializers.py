@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, ProductImage, SolarPackage, SolarPackageProduct
+from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, ProductImage, SolarPackage, SolarPackageProduct, ProductReview, StockNotification
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -629,3 +629,15 @@ class PackageValidationSerializer(serializers.Serializer):
             return SolarPackage.objects.get(id=value)
         except SolarPackage.DoesNotExist:
             raise serializers.ValidationError('Solar package not found')
+
+
+class ProductReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductReview
+        fields = '__all__'
+
+
+class StockNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StockNotification
+        fields = '__all__'

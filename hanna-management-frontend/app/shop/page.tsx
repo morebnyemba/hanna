@@ -7,13 +7,17 @@ import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
 import ShopHeader from './_components/ShopHeader';
 import HeroCarousel from './_components/HeroCarousel';
-import CategoryPills from './_components/CategoryPills';
+import CategoryPills, { type ProductTypeFilter } from './_components/CategoryPills';
 import ProductGrid from './_components/ProductGrid';
 import ProductDetailModal from './_components/ProductDetailModal';
 import CartDrawer, { type Cart } from './_components/CartDrawer';
 import AIAssistantFAB from './_components/AIAssistantFAB';
 import ShopFooter from './_components/ShopFooter';
 import ToastStack, { type ToastData } from './_components/ToastStack';
+import AnnouncementBar from './_components/AnnouncementBar';
+import RecentlyViewed from './_components/RecentlyViewed';
+import { useWishlist } from './_hooks/useWishlist';
+import { useRecentlyViewed } from './_hooks/useRecentlyViewed';
 import type { Product } from './_components/ProductCard';
 
 const PRODUCTS_CACHE_KEY = 'hanna_shop_products_v1';
@@ -27,7 +31,7 @@ export default function PublicShopPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<ProductTypeFilter>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
 
@@ -55,6 +59,9 @@ export default function PublicShopPage() {
   }, []);
 
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
+  const { ids: wishlistIdArray, toggle: toggleWishlist } = useWishlist();
+  const wishlistIds = new Set(wishlistIdArray);
+  const { viewed: recentlyViewed, track: trackViewed } = useRecentlyViewed();
 
   // Debounce search
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -176,33 +183,42 @@ export default function PublicShopPage() {
     }
   };
 
-  // Derived data
-  const allCategories = Array.from(
-    new Set(products.map((p) => p.category?.name).filter((n): n is string => Boolean(n)))
-  );
-  const categories = ['all', ...allCategories];
-
+  // Derived data — filter by product_type
   const filteredProducts = products.filter((p) => {
-    if (selectedCategory !== 'all' && p.category?.name !== selectedCategory) return false;
+    if (selectedType !== 'all' && p.product_type !== selectedType) return false;
     if (showAvailableOnly && p.stock_quantity === 0) return false;
     if (debouncedSearch.trim()) {
       const q = debouncedSearch.toLowerCase();
-      return p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        (p.category?.name || '').toLowerCase().includes(q)
+      );
     }
     return true;
   });
 
-  const productCounts: Record<string, number> = {
-    all: products.length,
-    ...Object.fromEntries(
-      allCategories.map((cat) => [cat, products.filter((p) => p.category?.name === cat).length])
-    ),
+  // Counts per type for pill badges
+  const typeCounts: Record<string, number> = {
+    hardware: products.filter((p) => p.product_type === 'hardware').length,
+    service:  products.filter((p) => p.product_type === 'service').length,
+    software: products.filter((p) => p.product_type === 'software').length,
+    module:   products.filter((p) => p.product_type === 'module').length,
   };
 
   const cartItemCount = cart?.total_items ?? 0;
 
+<<<<<<< HEAD
+  const handleQuickView = (product: Product) => {
+    trackViewed(product);
+    setQuickViewProduct(product);
+  };
+
+=======
+>>>>>>> origin/main
   return (
     <div className="min-h-screen bg-white">
+      <AnnouncementBar />
       <ShopHeader
         cartItemCount={cartItemCount}
         searchQuery={searchQuery}
@@ -212,9 +228,14 @@ export default function PublicShopPage() {
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={() => setShowMobileMenu((v) => !v)}
         showAssistant={showAssistant}
+<<<<<<< HEAD
+        onNavFilter={({ search }) => {
+          setSearchQuery(search ?? '');
+=======
         onNavFilter={({ search, category }) => {
           setSearchQuery(search ?? '');
           if (category) setSelectedCategory(category);
+>>>>>>> origin/main
         }}
       />
 
@@ -223,16 +244,19 @@ export default function PublicShopPage() {
           products={products}
           whatsappNumber={whatsappNumber}
           onAddToCart={addToCart}
+<<<<<<< HEAD
+          onQuickView={handleQuickView}
+=======
           onQuickView={setQuickViewProduct}
+>>>>>>> origin/main
           cartLoading={cartLoading}
         />
 
         <div id="product-section">
           <CategoryPills
-            categories={categories}
-            selected={selectedCategory}
-            onSelect={setSelectedCategory}
-            productCounts={productCounts}
+            selected={selectedType}
+            onSelect={setSelectedType}
+            typeCounts={typeCounts}
             showAvailableOnly={showAvailableOnly}
             onAvailableToggle={setShowAvailableOnly}
           />
@@ -241,11 +265,20 @@ export default function PublicShopPage() {
             products={filteredProducts}
             loading={loading}
             error={error}
-            selectedCategory={selectedCategory}
+            selectedCategory={selectedType}
             onAddToCart={addToCart}
-            onQuickView={setQuickViewProduct}
+            onQuickView={handleQuickView}
             cartLoading={cartLoading}
+            wishlistIds={wishlistIds}
+            onWishlistToggle={toggleWishlist}
           />
+
+          {recentlyViewed.length > 0 && (
+            <RecentlyViewed
+              products={recentlyViewed}
+              onSelect={handleQuickView}
+            />
+          )}
         </div>
       </main>
 
@@ -257,6 +290,9 @@ export default function PublicShopPage() {
         onClose={() => setQuickViewProduct(null)}
         onAddToCart={addToCart}
         cartLoading={cartLoading}
+        allProducts={products}
+        csrfToken={csrfToken}
+        onSelectProduct={handleQuickView}
       />
 
       <CartDrawer

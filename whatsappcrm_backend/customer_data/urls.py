@@ -20,5 +20,6 @@ urlpatterns = [
     path('countries/', CountryListView.as_view(), name='country-list'),
     path('claim/validate/', ValidateClaimTokenView.as_view(), name='validate-claim-token'),
     path('claim/register/', ClaimInstallationView.as_view(), name='claim-installation'),
+    path('orders/track/', views.public_order_tracking, name='order-tracking'),
     path('', include(router.urls)),
 ]

@@ -11,6 +11,8 @@ interface ProductGridProps {
   onAddToCart: (id: number) => void;
   onQuickView: (product: Product) => void;
   cartLoading: boolean;
+  wishlistIds?: Set<number>;
+  onWishlistToggle?: (id: number) => void;
 }
 
 export default function ProductGrid({
@@ -21,6 +23,8 @@ export default function ProductGrid({
   onAddToCart,
   onQuickView,
   cartLoading,
+  wishlistIds,
+  onWishlistToggle,
 }: ProductGridProps) {
   if (loading) {
     return (
@@ -84,7 +88,7 @@ export default function ProductGrid({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {items.map((p) => (
-                <ProductCard key={p.id} product={p} onAddToCart={onAddToCart} onQuickView={onQuickView} cartLoading={cartLoading} />
+                <ProductCard key={p.id} product={p} onAddToCart={onAddToCart} onQuickView={onQuickView} cartLoading={cartLoading} isWishlisted={wishlistIds?.has(p.id)} onWishlistToggle={onWishlistToggle} />
               ))}
             </div>
           </div>
@@ -103,7 +107,7 @@ export default function ProductGrid({
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {products.map((p) => (
-          <ProductCard key={p.id} product={p} onAddToCart={onAddToCart} onQuickView={onQuickView} cartLoading={cartLoading} />
+          <ProductCard key={p.id} product={p} onAddToCart={onAddToCart} onQuickView={onQuickView} cartLoading={cartLoading} isWishlisted={wishlistIds?.has(p.id)} onWishlistToggle={onWishlistToggle} />
         ))}
       </div>
     </div>
