@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   FiShoppingCart, FiZap, FiMenu, FiSearch, FiX,
   FiSun, FiWifi, FiPackage, FiMonitor, FiChevronDown,
@@ -84,8 +85,10 @@ const NAV_ITEMS = [
 
 function NavDropdown({
   item,
+  onNavFilter,
 }: {
   item: typeof NAV_ITEMS[number];
+  onNavFilter: (f: NavFilter) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -98,11 +101,15 @@ function NavDropdown({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const handleTopClick = () => {
+    onNavFilter(item.filter as NavFilter);
+    setOpen(false);
+  };
+
   return (
     <div ref={ref} className="relative">
-      <Link
-        href={item.href}
-        onClick={() => setOpen(false)}
+      <button
+        onClick={handleTopClick}
         onMouseEnter={() => setOpen(true)}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm transition-all ${
           open ? 'bg-purple-50 text-purple-700' : `hover:bg-gray-50 ${item.color}`
@@ -111,34 +118,32 @@ function NavDropdown({
         {item.icon}
         {item.label}
         <FiChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-      </Link>
+      </button>
 
       {open && (
         <div
           className="absolute top-full left-0 mt-1 w-52 bg-white rounded-2xl shadow-xl border border-purple-100 py-2 z-50"
           onMouseLeave={() => setOpen(false)}
         >
-          <Link
-            href={item.href}
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-purple-800 hover:bg-purple-50 transition"
+          <button
+            onClick={handleTopClick}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-purple-800 hover:bg-purple-50 transition text-left"
           >
             {item.icon}
             All {item.label}
-          </Link>
+          </button>
 
           <div className="mx-3 border-t border-gray-100 my-1" />
 
           {item.children.map((child) => (
-            <Link
+            <button
               key={child.label}
-              href={child.href}
-              onClick={() => setOpen(false)}
-              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition"
+              onClick={() => { onNavFilter(child.filter as NavFilter); setOpen(false); }}
+              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition text-left"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-purple-300 mr-2 flex-shrink-0" />
               {child.label}
-            </Link>
+            </button>
           ))}
         </div>
       )}
@@ -235,7 +240,7 @@ export default function ShopHeader({
         {/* ── Nav row (desktop) ── */}
         <div className="hidden md:flex items-center gap-1 pb-2 border-t border-purple-50 pt-2">
           {NAV_ITEMS.map((item) => (
-            <NavDropdown key={item.label} item={item} />
+            <NavDropdown key={item.label} item={item} onNavFilter={onNavFilter} />
           ))}
           <div className="ml-auto flex items-center gap-2 text-xs text-gray-400">
             <span className="hidden lg:block">🇿🇼 Delivering Nationwide</span>
@@ -290,14 +295,13 @@ export default function ShopHeader({
                 {mobileExpandedItem === item.label && (
                   <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-purple-100 pl-3">
                     {item.children.map((child) => (
-                      <Link
+                      <button
                         key={child.label}
-                        href={child.href}
-                        onClick={() => { onMobileMenuToggle(); setMobileExpandedItem(null); }}
-                        className="block px-3 py-2 text-sm text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
+                        onClick={() => { onNavFilter(child.filter as NavFilter); onMobileMenuToggle(); setMobileExpandedItem(null); }}
+                        className="w-full text-left block px-3 py-2 text-sm text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
                       >
                         {child.label}
-                      </Link>
+                      </button>
                     ))}
                   </div>
                 )}
