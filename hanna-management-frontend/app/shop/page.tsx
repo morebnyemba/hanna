@@ -208,14 +208,11 @@ export default function PublicShopPage() {
 
   const cartItemCount = cart?.total_items ?? 0;
 
-<<<<<<< HEAD
   const handleQuickView = (product: Product) => {
     trackViewed(product);
     setQuickViewProduct(product);
   };
 
-=======
->>>>>>> origin/main
   return (
     <div className="min-h-screen bg-white">
       <AnnouncementBar />
@@ -228,14 +225,8 @@ export default function PublicShopPage() {
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={() => setShowMobileMenu((v) => !v)}
         showAssistant={showAssistant}
-<<<<<<< HEAD
         onNavFilter={({ search }) => {
           setSearchQuery(search ?? '');
-=======
-        onNavFilter={({ search, category }) => {
-          setSearchQuery(search ?? '');
-          if (category) setSelectedCategory(category);
->>>>>>> origin/main
         }}
       />
 
@@ -244,11 +235,7 @@ export default function PublicShopPage() {
           products={products}
           whatsappNumber={whatsappNumber}
           onAddToCart={addToCart}
-<<<<<<< HEAD
           onQuickView={handleQuickView}
-=======
-          onQuickView={setQuickViewProduct}
->>>>>>> origin/main
           cartLoading={cartLoading}
         />
 
