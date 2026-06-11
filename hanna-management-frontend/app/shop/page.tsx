@@ -14,6 +14,10 @@ import CartDrawer, { type Cart } from './_components/CartDrawer';
 import AIAssistantFAB from './_components/AIAssistantFAB';
 import ShopFooter from './_components/ShopFooter';
 import ToastStack, { type ToastData } from './_components/ToastStack';
+import AnnouncementBar from './_components/AnnouncementBar';
+import RecentlyViewed from './_components/RecentlyViewed';
+import { useWishlist } from './_hooks/useWishlist';
+import { useRecentlyViewed } from './_hooks/useRecentlyViewed';
 import type { Product } from './_components/ProductCard';
 
 const PRODUCTS_CACHE_KEY = 'hanna_shop_products_v1';
@@ -55,6 +59,9 @@ export default function PublicShopPage() {
   }, []);
 
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '';
+  const { ids: wishlistIdArray, toggle: toggleWishlist } = useWishlist();
+  const wishlistIds = new Set(wishlistIdArray);
+  const { viewed: recentlyViewed, track: trackViewed } = useRecentlyViewed();
 
   // Debounce search
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -201,8 +208,14 @@ export default function PublicShopPage() {
 
   const cartItemCount = cart?.total_items ?? 0;
 
+  const handleQuickView = (product: Product) => {
+    trackViewed(product);
+    setQuickViewProduct(product);
+  };
+
   return (
     <div className="min-h-screen bg-white">
+      <AnnouncementBar />
       <ShopHeader
         cartItemCount={cartItemCount}
         searchQuery={searchQuery}
@@ -222,7 +235,7 @@ export default function PublicShopPage() {
           products={products}
           whatsappNumber={whatsappNumber}
           onAddToCart={addToCart}
-          onQuickView={setQuickViewProduct}
+          onQuickView={handleQuickView}
           cartLoading={cartLoading}
         />
 
@@ -241,9 +254,18 @@ export default function PublicShopPage() {
             error={error}
             selectedCategory={selectedType}
             onAddToCart={addToCart}
-            onQuickView={setQuickViewProduct}
+            onQuickView={handleQuickView}
             cartLoading={cartLoading}
+            wishlistIds={wishlistIds}
+            onWishlistToggle={toggleWishlist}
           />
+
+          {recentlyViewed.length > 0 && (
+            <RecentlyViewed
+              products={recentlyViewed}
+              onSelect={handleQuickView}
+            />
+          )}
         </div>
       </main>
 
@@ -255,6 +277,9 @@ export default function PublicShopPage() {
         onClose={() => setQuickViewProduct(null)}
         onAddToCart={addToCart}
         cartLoading={cartLoading}
+        allProducts={products}
+        csrfToken={csrfToken}
+        onSelectProduct={handleQuickView}
       />
 
       <CartDrawer

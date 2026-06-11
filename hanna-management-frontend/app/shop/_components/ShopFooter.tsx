@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FiMessageCircle } from 'react-icons/fi';
+import { FiMessageCircle, FiTruck, FiSun } from 'react-icons/fi';
 
 interface ShopFooterProps {
   whatsappNumber: string;
@@ -25,8 +25,16 @@ export default function ShopFooter({ whatsappNumber }: ShopFooterProps) {
             <p className="text-xs text-gray-500">A Pfungwa Technologies Platform</p>
           </div>
 
-          {/* Contact */}
-          <div className="flex items-center gap-4 text-sm">
+          {/* Links */}
+          <div className="flex flex-wrap items-center gap-4 text-sm justify-center">
+            <Link href="/shop/track-order" className="flex items-center gap-1.5 text-sky-600 hover:text-sky-700 font-semibold transition text-xs">
+              <FiTruck className="w-4 h-4" />
+              Track Order
+            </Link>
+            <Link href="/shop/solar-calculator" className="flex items-center gap-1.5 text-orange-500 hover:text-orange-600 font-semibold transition text-xs">
+              <FiSun className="w-4 h-4" />
+              Solar Calculator
+            </Link>
             {waLink && (
               <a href={waLink} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-sky-600 hover:text-sky-700 font-semibold transition">

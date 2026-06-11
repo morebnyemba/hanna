@@ -5,7 +5,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, SolarPackage
+from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, SolarPackage, ProductReview, StockNotification
 from .serializers import (
     ProductSerializer,
     ProductCategorySerializer,
@@ -38,6 +38,9 @@ from .serializers import (
     MetaCatalogSyncResultSerializer,
     # Solar package serializer
     SolarPackageSerializer,
+    # Review and stock notification serializers
+    ProductReviewSerializer,
+    StockNotificationSerializer,
 )
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
@@ -2649,3 +2652,67 @@ class SolarPackageViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return SolarPackage.objects.filter(is_active=True).prefetch_related('package_products__product')
+
+
+class ProductReviewViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for product reviews.
+    - list: public, filtered by product_id, only approved reviews
+    - create: public (AllowAny), new reviews start unapproved
+    - other actions: require authentication
+    """
+    serializer_class = ProductReviewSerializer
+
+    def get_queryset(self):
+        from .models import ProductReview
+        queryset = ProductReview.objects.all()
+        if self.action == 'list':
+            queryset = queryset.filter(is_approved=True)
+            product_id = self.request.query_params.get('product_id')
+            if product_id:
+                queryset = queryset.filter(product_id=product_id)
+        return queryset
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'create']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        serializer.save(is_approved=False)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def notify_stock(request):
+    """
+    Create a StockNotification for a product.
+
+    POST body: { product_id, email (optional), phone (optional) }
+    Returns 201 on success.
+    """
+    from .models import StockNotification, Product as _Product
+    from .serializers import StockNotificationSerializer
+
+    product_id = request.data.get('product_id')
+    email = request.data.get('email', '').strip() or None
+    phone = request.data.get('phone', '').strip() or None
+
+    if not product_id:
+        return Response({'error': 'product_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        product = _Product.objects.get(id=product_id)
+    except _Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not email and not phone:
+        return Response({'error': 'At least one of email or phone is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    notification = StockNotification.objects.create(
+        product=product,
+        email=email,
+        phone=phone,
+    )
+    serializer = StockNotificationSerializer(notification)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)

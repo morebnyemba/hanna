@@ -1,5 +1,5 @@
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -304,5 +304,56 @@ class ClaimInstallationView(APIView):
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
             }, status=status.HTTP_201_CREATED)
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def public_order_tracking(request):
+    """
+    Public order tracking endpoint.
+
+    GET /crm-api/orders/track/?order_number=WA-ABC123&email=customer@example.com
+
+    Returns order details if the order_number and email match.
+    Returns 404 if not found or email does not match.
+    """
+    order_number = request.query_params.get('order_number', '').strip()
+    email = request.query_params.get('email', '').strip()
+
+    if not order_number or not email:
+        return Response(
+            {'error': 'order_number and email query parameters are required'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        order = Order.objects.select_related('customer').prefetch_related(
+            'items__product'
+        ).get(order_number__iexact=order_number)
+    except Order.DoesNotExist:
+        return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Validate email against customer profile email
+    customer_email = order.customer.email if order.customer else None
+    if not customer_email or customer_email.lower() != email.lower():
+        return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    items = []
+    for item in order.items.all():
+        product_name = (
+            item.product.name if item.product else item.product_description or item.product_sku or 'Unknown'
+        )
+        items.append({'product_name': product_name, 'quantity': item.quantity})
+
+    return Response({
+        'order_number': order.order_number,
+        'stage': order.get_stage_display(),
+        'payment_status': order.get_payment_status_display(),
+        'tracking_number': order.tracking_number,
+        'dispatch_date': order.dispatch_date,
+        'amount': order.amount,
+        'currency': order.currency,
+        'items': items,
+    }, status=status.HTTP_200_OK)

@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
-import { FiX, FiShoppingCart, FiMessageCircle, FiPackage, FiSun, FiWifi, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { FiX, FiShoppingCart, FiMessageCircle, FiPackage, FiSun, FiWifi, FiChevronLeft, FiChevronRight, FiBell } from 'react-icons/fi';
 import type { Product } from './ProductCard';
+import ReviewSection from './ReviewSection';
+import RelatedProducts from './RelatedProducts';
+import BackInStockModal from './BackInStockModal';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -11,6 +13,9 @@ interface ProductDetailModalProps {
   onClose: () => void;
   onAddToCart: (id: number) => void;
   cartLoading: boolean;
+  allProducts?: Product[];
+  csrfToken?: string | null;
+  onSelectProduct?: (product: Product) => void;
 }
 
 function PlaceholderIcon({ category }: { category: string | null }) {
@@ -26,13 +31,15 @@ function StockBadge({ qty }: { qty: number }) {
   return <span className="text-sm font-semibold px-3 py-1 rounded-full bg-green-100 text-green-700">In Stock</span>;
 }
 
-export default function ProductDetailModal({ product, whatsappNumber, onClose, onAddToCart, cartLoading }: ProductDetailModalProps) {
+export default function ProductDetailModal({ product, whatsappNumber, onClose, onAddToCart, cartLoading, allProducts = [], csrfToken = null, onSelectProduct }: ProductDetailModalProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [qty, setQty] = useState(1);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
 
   useEffect(() => {
     setImgIdx(0);
     setQty(1);
+    setShowNotifyModal(false);
   }, [product]);
 
   useEffect(() => {
@@ -150,6 +157,16 @@ export default function ProductDetailModal({ product, whatsappNumber, onClose, o
                 {product.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
               </button>
 
+              {product.stock_quantity === 0 && (
+                <button
+                  onClick={() => setShowNotifyModal(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-semibold text-sm transition"
+                >
+                  <FiBell className="w-4 h-4" />
+                  Notify Me When Available
+                </button>
+              )}
+
               {waLink && (
                 <a href={waLink} target="_blank" rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-semibold text-sm transition">
@@ -160,7 +177,28 @@ export default function ProductDetailModal({ product, whatsappNumber, onClose, o
             </div>
           </div>
         </div>
+
+        {/* Related Products + Reviews */}
+        <div className="px-6 pb-6">
+          {allProducts.length > 0 && (
+            <RelatedProducts
+              currentProduct={product}
+              allProducts={allProducts}
+              onSelect={(p) => onSelectProduct ? onSelectProduct(p) : onClose()}
+              onAddToCart={onAddToCart}
+            />
+          )}
+          <ReviewSection productId={product.id} csrfToken={csrfToken} />
+        </div>
       </div>
+
+      {showNotifyModal && (
+        <BackInStockModal
+          product={product}
+          csrfToken={csrfToken}
+          onClose={() => setShowNotifyModal(false)}
+        />
+      )}
     </div>
   );
 }
