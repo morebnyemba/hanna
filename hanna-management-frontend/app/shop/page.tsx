@@ -7,7 +7,7 @@ import { normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
 import ShopHeader from './_components/ShopHeader';
 import HeroCarousel from './_components/HeroCarousel';
-import CategoryPills from './_components/CategoryPills';
+import CategoryPills, { type ProductTypeFilter } from './_components/CategoryPills';
 import ProductGrid from './_components/ProductGrid';
 import ProductDetailModal from './_components/ProductDetailModal';
 import CartDrawer, { type Cart } from './_components/CartDrawer';
@@ -27,7 +27,7 @@ export default function PublicShopPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<ProductTypeFilter>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
 
@@ -176,27 +176,27 @@ export default function PublicShopPage() {
     }
   };
 
-  // Derived data
-  const allCategories = Array.from(
-    new Set(products.map((p) => p.category?.name).filter((n): n is string => Boolean(n)))
-  );
-  const categories = ['all', ...allCategories];
-
+  // Derived data — filter by product_type
   const filteredProducts = products.filter((p) => {
-    if (selectedCategory !== 'all' && p.category?.name !== selectedCategory) return false;
+    if (selectedType !== 'all' && p.product_type !== selectedType) return false;
     if (showAvailableOnly && p.stock_quantity === 0) return false;
     if (debouncedSearch.trim()) {
       const q = debouncedSearch.toLowerCase();
-      return p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        (p.category?.name || '').toLowerCase().includes(q)
+      );
     }
     return true;
   });
 
-  const productCounts: Record<string, number> = {
-    all: products.length,
-    ...Object.fromEntries(
-      allCategories.map((cat) => [cat, products.filter((p) => p.category?.name === cat).length])
-    ),
+  // Counts per type for pill badges
+  const typeCounts: Record<string, number> = {
+    hardware: products.filter((p) => p.product_type === 'hardware').length,
+    service:  products.filter((p) => p.product_type === 'service').length,
+    software: products.filter((p) => p.product_type === 'software').length,
+    module:   products.filter((p) => p.product_type === 'module').length,
   };
 
   const cartItemCount = cart?.total_items ?? 0;
@@ -212,9 +212,8 @@ export default function PublicShopPage() {
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={() => setShowMobileMenu((v) => !v)}
         showAssistant={showAssistant}
-        onNavFilter={({ search, category }) => {
+        onNavFilter={({ search }) => {
           setSearchQuery(search ?? '');
-          if (category) setSelectedCategory(category);
         }}
       />
 
@@ -229,10 +228,9 @@ export default function PublicShopPage() {
 
         <div id="product-section">
           <CategoryPills
-            categories={categories}
-            selected={selectedCategory}
-            onSelect={setSelectedCategory}
-            productCounts={productCounts}
+            selected={selectedType}
+            onSelect={setSelectedType}
+            typeCounts={typeCounts}
             showAvailableOnly={showAvailableOnly}
             onAvailableToggle={setShowAvailableOnly}
           />
@@ -241,7 +239,7 @@ export default function PublicShopPage() {
             products={filteredProducts}
             loading={loading}
             error={error}
-            selectedCategory={selectedCategory}
+            selectedCategory={selectedType}
             onAddToCart={addToCart}
             onQuickView={setQuickViewProduct}
             cartLoading={cartLoading}
