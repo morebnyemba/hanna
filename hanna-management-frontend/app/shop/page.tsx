@@ -32,6 +32,7 @@ export default function PublicShopPage() {
 
   // Filters
   const [selectedType, setSelectedType] = useState<ProductTypeFilter>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState<boolean>(false);
 
@@ -183,9 +184,10 @@ export default function PublicShopPage() {
     }
   };
 
-  // Derived data — filter by product_type
+  // Derived data
   const filteredProducts = products.filter((p) => {
     if (selectedType !== 'all' && p.product_type !== selectedType) return false;
+    if (selectedCategory !== 'all' && (p.category?.name || '') !== selectedCategory) return false;
     if (showAvailableOnly && p.stock_quantity === 0) return false;
     if (debouncedSearch.trim()) {
       const q = debouncedSearch.toLowerCase();
@@ -205,6 +207,15 @@ export default function PublicShopPage() {
     software: products.filter((p) => p.product_type === 'software').length,
     module:   products.filter((p) => p.product_type === 'module').length,
   };
+
+  // Dynamic category list + counts
+  const categories = Array.from(
+    new Set(products.map((p) => p.category?.name).filter((n): n is string => Boolean(n)))
+  ).sort();
+  const categoryCounts: Record<string, number> = {};
+  categories.forEach((cat) => {
+    categoryCounts[cat] = products.filter((p) => p.category?.name === cat).length;
+  });
 
   const cartItemCount = cart?.total_items ?? 0;
 
@@ -242,10 +253,14 @@ export default function PublicShopPage() {
         <div id="product-section">
           <CategoryPills
             selected={selectedType}
-            onSelect={setSelectedType}
+            onSelect={(t) => { setSelectedType(t); setSelectedCategory('all'); }}
             typeCounts={typeCounts}
             showAvailableOnly={showAvailableOnly}
             onAvailableToggle={setShowAvailableOnly}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onCategorySelect={(c) => { setSelectedCategory(c); setSelectedType('all'); }}
+            categoryCounts={categoryCounts}
           />
 
           <ProductGrid
