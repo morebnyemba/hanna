@@ -187,12 +187,14 @@ export default function HeroCarousel({ products, whatsappNumber, onAddToCart, on
           <button
             onClick={() => { prev(); resetTimer(); }}
             className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2.5 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full text-white transition shadow-lg"
+            aria-label="Previous"
           >
             <FiChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={() => { next(); resetTimer(); }}
             className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2.5 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full text-white transition shadow-lg"
+            aria-label="Next"
           >
             <FiChevronRight className="w-5 h-5" />
           </button>
@@ -209,6 +211,7 @@ export default function HeroCarousel({ products, whatsappNumber, onAddToCart, on
               className={`rounded-full transition-all duration-300 shadow ${
                 i === idx ? 'bg-white w-7 h-2.5' : 'bg-white/40 w-2.5 h-2.5 hover:bg-white/70'
               }`}
+              aria-label={`Slide ${i + 1}`}
             />
           ))}
         </div>
