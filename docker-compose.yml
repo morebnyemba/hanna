@@ -129,7 +129,7 @@ services:
       celery -A whatsappcrm_backend worker
       -Q cpu_heavy
       -l INFO
-      --concurrency=1
+      --concurrency=2
     volumes:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles
