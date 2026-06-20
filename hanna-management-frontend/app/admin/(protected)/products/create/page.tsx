@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiPackage, FiArrowLeft } from 'react-icons/fi';
-import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage, normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
 interface ProductCategory {
   id: number;
@@ -14,42 +15,42 @@ interface ProductCategory {
 import { InputField, SelectField, TextAreaField } from '@/app/components/forms/FormComponents';
 import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
 
+const PRODUCT_TYPES = [
+  { value: 'hardware', label: 'Hardware Device' },
+  { value: 'software', label: 'Software Package' },
+  { value: 'module', label: 'Software Module' },
+  { value: 'service', label: 'Professional Service' },
+];
+
 export default function CreateProductPage() {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
     description: '',
+    product_type: 'hardware',
     price: '',
     category: '',
+    stock_quantity: '0',
+    is_active: true,
+    published: false,
+    featured: false,
   });
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<any>({});
-  const { accessToken } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/products/categories/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch categories');
-        }
-        const data = await response.json();
-        setCategories(data.results);
-      } catch (err: any) {
-        setErrors({ api: err.message });
+        const response = await apiClient.get('/crm-api/products/categories/?ordering=name');
+        setCategories(normalizePaginatedResponse<ProductCategory>(response.data));
+      } catch (err) {
+        setErrors({ api: extractErrorMessage(err, 'Failed to fetch categories') });
       }
     };
-    if (accessToken) {
-      fetchCategories();
-    }
-  }, [accessToken]);
+    fetchCategories();
+  }, []);
 
   const validate = () => {
     const tempErrors: any = {};
@@ -66,10 +67,11 @@ export default function CreateProductPage() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type } = target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? target.checked : value,
     }));
   };
 
@@ -87,24 +89,16 @@ export default function CreateProductPage() {
     setErrors({});
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/products/products/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+      const { category, stock_quantity, ...rest } = formData;
+      await apiClient.post('/crm-api/products/products/', {
+        ...rest,
+        category_id: category ? Number(category) : null,
+        stock_quantity: Number(stock_quantity) || 0,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to create product. Status: ${response.status}`);
-      }
-
       router.push('/admin/products');
-    } catch (err: any) {
-      setErrors({ api: err.message });
+    } catch (err) {
+      setErrors({ api: extractErrorMessage(err, 'Failed to create product') });
     } finally {
       setLoading(false);
     }
@@ -135,12 +129,32 @@ export default function CreateProductPage() {
                 <TextAreaField id="description" label="Description" value={formData.description} onChange={handleChange} placeholder="A short description of the product." />
             </div>
             <InputField id="price" label="Price" type="number" value={formData.price} onChange={handleChange} placeholder="e.g., 250.00" required error={errors.price} />
+            <SelectField id="product_type" label="Product Type" value={formData.product_type} onChange={handleChange} error={errors.product_type}>
+                {PRODUCT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+            </SelectField>
             <SelectField id="category" label="Category" value={formData.category} onChange={handleChange} error={errors.category}>
                 <option value="">Select a category</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
             </SelectField>
+            <InputField id="stock_quantity" label="Stock Quantity" type="number" value={formData.stock_quantity} onChange={handleChange} placeholder="e.g., 10" />
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <label htmlFor="is_active" className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" id="is_active" name="is_active" checked={formData.is_active} onChange={handleChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                Active <span className="text-gray-400">(available for sale)</span>
+              </label>
+              <label htmlFor="published" className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" id="published" name="published" checked={formData.published} onChange={handleChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                Published <span className="text-gray-400">(show on shop)</span>
+              </label>
+              <label htmlFor="featured" className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" id="featured" name="featured" checked={formData.featured} onChange={handleChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                Featured <span className="text-gray-400">(highlight on shop)</span>
+              </label>
+            </div>
           </div>
 
           {errors.api && (

@@ -37,6 +37,7 @@ interface Product {
     name: string;
   };
   is_active: boolean;
+  published?: boolean;
   description?: string;
   created_at?: string;
 }
@@ -324,6 +325,7 @@ export default function AdminProductsPage() {
                         <th className="text-left py-2 px-3">Category</th>
                         <th className="text-left py-2 px-3">Price</th>
                         <th className="text-left py-2 px-3">Status</th>
+                        <th className="text-left py-2 px-3">Shop</th>
                         <th className="text-left py-2 px-3">Actions</th>
                       </tr>
                     </thead>
@@ -343,6 +345,17 @@ export default function AdminProductsPage() {
                               }`}
                             >
                               {product?.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                product?.published
+                                  ? 'bg-indigo-100 text-indigo-800'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {product?.published ? 'Published' : 'Hidden'}
                             </span>
                           </td>
                           <td className="py-3 px-3">

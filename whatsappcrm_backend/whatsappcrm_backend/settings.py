@@ -318,25 +318,49 @@ CELERY_CACHE_BACKEND = 'django-cache'
 from kombu import Queue
 CELERY_TASK_DEFAULT_QUEUE = 'celery'
 
+# IMPORTANT: These queue names must stay in sync with the worker `-Q` lists in
+# docker-compose.yml:
+#   • messaging worker -> whatsapp, msg_sending, celery
+#   • flow worker      -> flow_processing
+#   • cpu worker       -> cpu_heavy
+# A task routed to a queue that no running worker consumes will never execute
+# (the bot silently stops responding), so every queue used in CELERY_TASK_ROUTES
+# or a task's `queue=` decorator MUST be declared here AND consumed by a worker.
 CELERY_TASK_QUEUES = (
-    Queue('celery', routing_key='celery'),       # Default queue for general I/O-bound tasks
-    Queue('whatsapp', routing_key='whatsapp'),    # High-priority queue for WhatsApp messaging tasks
-    Queue('cpu_heavy', routing_key='cpu_heavy'),  # CPU-intensive tasks (AI processing, media sync)
+    Queue('celery', routing_key='celery'),                  # Default / general I/O-bound tasks
+    Queue('whatsapp', routing_key='whatsapp'),              # Inbound WhatsApp handling (e.g. media download)
+    Queue('msg_sending', routing_key='msg_sending'),        # Outgoing message dispatch + read receipts
+    Queue('flow_processing', routing_key='flow_processing'),# Flow engine: turns inbound messages into replies
+    Queue('cpu_heavy', routing_key='cpu_heavy'),            # CPU/latency-heavy work (AI, media sync)
 )
 
-# Route tasks to specific queues.
-# By default, tasks go to the 'celery' queue.
-# WhatsApp message-critical tasks go to the 'whatsapp' queue for faster processing.
-# CPU-intensive tasks go to the 'cpu_heavy' queue.
+# Auto-create queues that aren't pre-declared, so a stray queue name never causes
+# tasks to be silently dropped.
+CELERY_TASK_CREATE_MISSING_QUEUES = True
+
+# Route tasks to the queue consumed by their dedicated worker so the workload is
+# spread across all three workers instead of piling onto one.
+#
+# Note: `task_routes` takes precedence over a task's `queue=` decorator in Celery,
+# so these entries are also kept consistent with the decorators to avoid surprises.
+# Previously every WhatsApp task was routed to a single 'whatsapp' queue, which
+# left the dedicated flow/cpu workers idle and made the messaging worker a
+# bottleneck (slow blocking AI calls starved message delivery and flow replies).
 CELERY_TASK_ROUTES = {
-    # --- WhatsApp-critical tasks (high priority, dedicated worker) ---
-    'meta_integration.tasks.send_whatsapp_message_task': {'queue': 'whatsapp'},
-    'meta_integration.tasks.send_read_receipt_task': {'queue': 'whatsapp'},
+    # --- Outgoing message dispatch + read receipts -> messaging worker ---
+    'meta_integration.tasks.send_whatsapp_message_task': {'queue': 'msg_sending'},
+    'meta_integration.tasks.send_read_receipt_task': {'queue': 'msg_sending'},
+    # --- Inbound media download -> messaging worker (whatsapp) ---
     'meta_integration.download_whatsapp_media_task': {'queue': 'whatsapp'},
-    'flows.tasks.process_flow_for_message_task': {'queue': 'whatsapp'},
-    'flows.handle_ai_conversation_task': {'queue': 'whatsapp'},
-    'flows.handle_ai_shopping_task': {'queue': 'whatsapp'},
-    # --- CPU-intensive tasks ---
+    # --- Flow engine (generates the reply) -> dedicated flow worker ---
+    'flows.tasks.process_flow_for_message_task': {'queue': 'flow_processing'},
+    # --- Gemini AI work -> flow worker (gevent, I/O-bound: greenlets yield while
+    #     waiting on the model, giving far more concurrency than the prefork
+    #     cpu_heavy pool). Kept off the messaging worker so slow AI calls never
+    #     block outgoing message delivery. ---
+    'flows.handle_ai_conversation_task': {'queue': 'flow_processing'},
+    'flows.handle_ai_shopping_task': {'queue': 'flow_processing'},
+    # --- Other CPU-intensive tasks ---
     'media_manager.tasks.trigger_media_asset_sync_task': {'queue': 'cpu_heavy'},
     'email_integration.process_attachment_with_gemini': {'queue': 'cpu_heavy'},
 }
