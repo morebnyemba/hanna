@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiPackage, FiArrowLeft } from 'react-icons/fi';
-import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage, normalizePaginatedResponse } from '@/app/lib/apiUtils';
 
 interface ProductCategory {
   id: number;
@@ -14,11 +15,19 @@ interface ProductCategory {
 import { InputField, SelectField, TextAreaField } from '@/app/components/forms/FormComponents';
 import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
 
+const PRODUCT_TYPES = [
+  { value: 'hardware', label: 'Hardware Device' },
+  { value: 'software', label: 'Software Package' },
+  { value: 'module', label: 'Software Module' },
+  { value: 'service', label: 'Professional Service' },
+];
+
 export default function CreateProductPage() {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
     description: '',
+    product_type: 'hardware',
     price: '',
     category: '',
     stock_quantity: '0',
@@ -29,31 +38,19 @@ export default function CreateProductPage() {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<any>({});
-  const { accessToken } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/products/categories/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch categories');
-        }
-        const data = await response.json();
-        setCategories(data.results);
-      } catch (err: any) {
-        setErrors({ api: err.message });
+        const response = await apiClient.get('/crm-api/products/categories/?ordering=name');
+        setCategories(normalizePaginatedResponse<ProductCategory>(response.data));
+      } catch (err) {
+        setErrors({ api: extractErrorMessage(err, 'Failed to fetch categories') });
       }
     };
-    if (accessToken) {
-      fetchCategories();
-    }
-  }, [accessToken]);
+    fetchCategories();
+  }, []);
 
   const validate = () => {
     const tempErrors: any = {};
@@ -92,24 +89,16 @@ export default function CreateProductPage() {
     setErrors({});
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/products/products/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+      const { category, stock_quantity, ...rest } = formData;
+      await apiClient.post('/crm-api/products/products/', {
+        ...rest,
+        category_id: category ? Number(category) : null,
+        stock_quantity: Number(stock_quantity) || 0,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to create product. Status: ${response.status}`);
-      }
-
       router.push('/admin/products');
-    } catch (err: any) {
-      setErrors({ api: err.message });
+    } catch (err) {
+      setErrors({ api: extractErrorMessage(err, 'Failed to create product') });
     } finally {
       setLoading(false);
     }
@@ -140,6 +129,11 @@ export default function CreateProductPage() {
                 <TextAreaField id="description" label="Description" value={formData.description} onChange={handleChange} placeholder="A short description of the product." />
             </div>
             <InputField id="price" label="Price" type="number" value={formData.price} onChange={handleChange} placeholder="e.g., 250.00" required error={errors.price} />
+            <SelectField id="product_type" label="Product Type" value={formData.product_type} onChange={handleChange} error={errors.product_type}>
+                {PRODUCT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+            </SelectField>
             <SelectField id="category" label="Category" value={formData.category} onChange={handleChange} error={errors.category}>
                 <option value="">Select a category</option>
                 {categories.map((cat) => (

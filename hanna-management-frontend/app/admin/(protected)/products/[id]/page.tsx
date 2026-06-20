@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/app/store/authStore';
 import { FiPackage, FiTrash2, FiSave, FiArrowLeft } from 'react-icons/fi';
 import Link from 'next/link';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage, normalizePaginatedResponse } from '@/app/lib/apiUtils';
+
+const PRODUCT_TYPES = [
+  { value: 'hardware', label: 'Hardware Device' },
+  { value: 'software', label: 'Software Package' },
+  { value: 'module', label: 'Software Module' },
+  { value: 'service', label: 'Professional Service' },
+];
 
 interface Product {
   id: number;
@@ -42,7 +50,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     name: '',
     sku: '',
     description: '',
-    product_type: 'Hardware',
+    product_type: 'hardware',
     price: '',
     currency: 'USD',
     is_active: true,
@@ -54,7 +62,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     brand: '',
     country_of_origin: '',
   });
-  const { accessToken } = useAuthStore();
   const router = useRouter();
   const [productId, setProductId] = useState<string>('');
 
@@ -64,30 +71,18 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!productId || !accessToken) return;
+      if (!productId) return;
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        
         // Fetch product
-        const productResponse = await fetch(`${apiUrl}/crm-api/products/products/${productId}/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!productResponse.ok) {
-          throw new Error(`Failed to fetch product. Status: ${productResponse.status}`);
-        }
-
-        const productData = await productResponse.json();
+        const productResponse = await apiClient.get(`/crm-api/products/products/${productId}/`);
+        const productData = productResponse.data;
         setProduct(productData);
         setFormData({
           name: productData.name || '',
           sku: productData.sku || '',
           description: productData.description || '',
-          product_type: productData.product_type || 'Hardware',
+          product_type: productData.product_type || 'hardware',
           price: productData.price || '',
           currency: productData.currency || 'USD',
           is_active: productData.is_active ?? true,
@@ -101,26 +96,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         });
 
         // Fetch categories
-        const categoriesResponse = await fetch(`${apiUrl}/crm-api/products/categories/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (categoriesResponse.ok) {
-          const categoriesData = await categoriesResponse.json();
-          setCategories(categoriesData.results || []);
-        }
+        const categoriesResponse = await apiClient.get('/crm-api/products/categories/?ordering=name');
+        setCategories(normalizePaginatedResponse<Category>(categoriesResponse.data));
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch product');
+        setError(extractErrorMessage(err, 'Failed to fetch product'));
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [productId, accessToken]);
+  }, [productId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,28 +114,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/products/products/${productId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          category: formData.category ? parseInt(formData.category) : null,
-          price: formData.price ? parseFloat(formData.price) : null,
-          stock_quantity: parseInt(formData.stock_quantity.toString()),
-        }),
+      const { category, ...rest } = formData;
+      await apiClient.patch(`/crm-api/products/products/${productId}/`, {
+        ...rest,
+        category_id: category ? parseInt(category) : null,
+        price: formData.price ? parseFloat(formData.price) : null,
+        stock_quantity: parseInt(formData.stock_quantity.toString()) || 0,
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update product. Status: ${response.status}`);
-      }
 
       router.push('/admin/products');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update product');
+      setError(extractErrorMessage(err, 'Failed to update product'));
     } finally {
       setSaving(false);
     }
@@ -161,22 +136,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/products/products/${productId}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete product. Status: ${response.status}`);
-      }
-
+      await apiClient.delete(`/crm-api/products/products/${productId}/`);
       router.push('/admin/products');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete product');
+      setError(extractErrorMessage(err, 'Failed to delete product'));
     }
   };
 
@@ -268,9 +231,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
-                <option value="Hardware">Hardware</option>
-                <option value="Software">Software</option>
-                <option value="Service">Service</option>
+                {PRODUCT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
             </div>
 

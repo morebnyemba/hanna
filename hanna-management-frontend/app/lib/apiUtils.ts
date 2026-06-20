@@ -4,12 +4,24 @@
 
 interface ApiError {
   response?: {
-    data?: {
-      error?: string;
-      message?: string;
-    };
+    data?: unknown;
   };
   message?: string;
+}
+
+/**
+ * Flattens Django REST Framework field errors into a readable string.
+ * Handles shapes like { sku: ["already exists"], detail: "Not found" }
+ * and { non_field_errors: ["..."] }.
+ */
+function formatFieldErrors(data: Record<string, unknown>): string | null {
+  const parts: string[] = [];
+  for (const [field, value] of Object.entries(data)) {
+    const text = Array.isArray(value) ? value.join(' ') : String(value);
+    if (!text) continue;
+    parts.push(field === 'non_field_errors' || field === 'detail' ? text : `${field}: ${text}`);
+  }
+  return parts.length > 0 ? parts.join(' • ') : null;
 }
 
 /**
@@ -20,12 +32,19 @@ interface ApiError {
  */
 export function extractErrorMessage(error: unknown, fallbackMessage: string = 'An error occurred'): string {
   const apiError = error as ApiError;
-  return (
-    apiError.response?.data?.error ||
-    apiError.response?.data?.message ||
-    apiError.message ||
-    fallbackMessage
-  );
+  const data = apiError.response?.data;
+
+  if (typeof data === 'string' && data) return data;
+
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>;
+    if (typeof record.error === 'string' && record.error) return record.error;
+    if (typeof record.message === 'string' && record.message) return record.message;
+    const fieldErrors = formatFieldErrors(record);
+    if (fieldErrors) return fieldErrors;
+  }
+
+  return apiError.message || fallbackMessage;
 }
 
 /**

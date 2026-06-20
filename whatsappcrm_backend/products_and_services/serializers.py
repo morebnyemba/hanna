@@ -40,6 +40,13 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     category = ProductCategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=ProductCategory.objects.all(),
+        source='category',
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
     images = ProductImageSerializer(many=True, read_only=True)
     tags = ProductTagSerializer(many=True, read_only=True)
     variants = ProductVariantSerializer(many=True, read_only=True)
