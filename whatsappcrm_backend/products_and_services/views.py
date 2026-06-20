@@ -55,14 +55,24 @@ class ProductViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """
-        Get products with images. Optionally filter by:
+        Get products with related data preloaded. Optionally filter by:
         - category_id: Filter by product category
         - is_active: Filter by active status (default: True for public list)
         """
-        queryset = Product.objects.prefetch_related('images').all()
+        # Preload every relation the serializer touches (category, images, tags,
+        # variants, reviews) so the public shop list does not trigger an N+1 query
+        # storm — one extra query per relation instead of one per product.
+        queryset = (
+            Product.objects
+            .select_related('category')
+            .prefetch_related('images', 'tags', 'variants', 'reviews')
+            .all()
+        )
 
-        # For public list view, only show active, published products by default
-        if self.action == 'list' and not self.request.user.is_authenticated:
+        # For anonymous shoppers, only ever expose active, published products.
+        # This applies to both `list` and `retrieve` so an unpublished/inactive
+        # product cannot be fetched directly by guessing its ID.
+        if self.action in ('list', 'retrieve') and not self.request.user.is_authenticated:
             queryset = queryset.filter(is_active=True, published=True)
 
         # Allow filtering by category
