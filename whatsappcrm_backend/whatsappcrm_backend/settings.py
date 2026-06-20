@@ -354,9 +354,12 @@ CELERY_TASK_ROUTES = {
     'meta_integration.download_whatsapp_media_task': {'queue': 'whatsapp'},
     # --- Flow engine (generates the reply) -> dedicated flow worker ---
     'flows.tasks.process_flow_for_message_task': {'queue': 'flow_processing'},
-    # --- Long-running Gemini AI work -> dedicated cpu worker, off the reply hot path ---
-    'flows.handle_ai_conversation_task': {'queue': 'cpu_heavy'},
-    'flows.handle_ai_shopping_task': {'queue': 'cpu_heavy'},
+    # --- Gemini AI work -> flow worker (gevent, I/O-bound: greenlets yield while
+    #     waiting on the model, giving far more concurrency than the prefork
+    #     cpu_heavy pool). Kept off the messaging worker so slow AI calls never
+    #     block outgoing message delivery. ---
+    'flows.handle_ai_conversation_task': {'queue': 'flow_processing'},
+    'flows.handle_ai_shopping_task': {'queue': 'flow_processing'},
     # --- Other CPU-intensive tasks ---
     'media_manager.tasks.trigger_media_asset_sync_task': {'queue': 'cpu_heavy'},
     'email_integration.process_attachment_with_gemini': {'queue': 'cpu_heavy'},
