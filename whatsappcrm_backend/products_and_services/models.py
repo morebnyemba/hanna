@@ -61,6 +61,7 @@ class Product(models.Model):
     price = models.DecimalField(_("Price"), max_digits=12, decimal_places=2, null=True, blank=True)
     currency = models.CharField(_("Currency"), max_length=3, default='USD')
     is_active = models.BooleanField(_("Is Active"), default=True, help_text=_("Whether this item is available for sale."))
+    published = models.BooleanField(_("Published"), default=False, db_index=True, help_text=_("Tick to display this product on the shop. Unpublished products are hidden from the storefront."))
     website_url = models.URLField(_("Website URL"), blank=True, null=True)
     whatsapp_catalog_id = models.CharField(_("WhatsApp Catalog ID"), max_length=255, blank=True, null=True)
     country_of_origin = models.CharField(_("Country of Origin"), max_length=2, blank=True, null=True, help_text=_("The two-letter country code (e.g., US, GB) required by WhatsApp."))

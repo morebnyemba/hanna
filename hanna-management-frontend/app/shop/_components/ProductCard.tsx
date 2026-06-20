@@ -11,6 +11,7 @@ export interface Product {
   price: string;
   currency: string;
   is_active: boolean;
+  published: boolean;
   stock_quantity: number;
   product_type: string;
   featured?: boolean;

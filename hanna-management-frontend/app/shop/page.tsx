@@ -102,12 +102,12 @@ export default function PublicShopPage() {
         const res: any = await apiClient.get(next);
         all = [...all, ...normalizePaginatedResponse<Product>(res.data)];
         next = res.data.next ? res.data.next.replace(/^https?:\/\/[^/]+/, '') : null;
-        const active = all.filter((p) => p.is_active);
+        const active = all.filter((p) => p.is_active && p.published);
         setProducts(active);
         if (firstPage) { setLoading(false); firstPage = false; }
       }
       try {
-        sessionStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(all.filter((p) => p.is_active)));
+        sessionStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(all.filter((p) => p.is_active && p.published)));
       } catch { /* best-effort */ }
     } catch {
       setProducts((prev) => {

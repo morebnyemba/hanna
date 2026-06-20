@@ -182,11 +182,11 @@ export default function CategoryShopLayout({ config }: CategoryShopLayoutProps) 
         const res: any = await apiClient.get(next);
         all = [...all, ...normalizePaginatedResponse<Product>(res.data)];
         next = res.data.next ? res.data.next.replace(/^https?:\/\/[^/]+/, '') : null;
-        setAllProducts(all.filter((p) => p.is_active));
+        setAllProducts(all.filter((p) => p.is_active && p.published));
         if (firstPage) { setLoading(false); firstPage = false; }
       }
       try {
-        sessionStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(all.filter((p) => p.is_active)));
+        sessionStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(all.filter((p) => p.is_active && p.published)));
       } catch { /* best-effort */ }
     } catch {
       setAllProducts((prev) => {
