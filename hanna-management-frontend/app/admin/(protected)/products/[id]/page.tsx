@@ -15,6 +15,8 @@ interface Product {
   price: string;
   currency: string;
   is_active: boolean;
+  published: boolean;
+  featured: boolean;
   stock_quantity: number;
   category: {
     id: number;
@@ -44,6 +46,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     price: '',
     currency: 'USD',
     is_active: true,
+    published: false,
+    featured: false,
     stock_quantity: 0,
     category: '',
     barcode: '',
@@ -87,6 +91,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           price: productData.price || '',
           currency: productData.currency || 'USD',
           is_active: productData.is_active ?? true,
+          published: productData.published ?? false,
+          featured: productData.featured ?? false,
           stock_quantity: productData.stock_quantity || 0,
           category: productData.category?.id?.toString() || '',
           barcode: productData.barcode || '',
@@ -378,7 +384,33 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
               />
               <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700">
-                Active
+                Active <span className="text-gray-400">(available for sale)</span>
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="published"
+                checked={formData.published}
+                onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
+                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+              />
+              <label htmlFor="published" className="ml-2 block text-sm text-gray-700">
+                Published <span className="text-gray-400">(show on shop)</span>
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="featured"
+                checked={formData.featured}
+                onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+              />
+              <label htmlFor="featured" className="ml-2 block text-sm text-gray-700">
+                Featured <span className="text-gray-400">(highlight on shop)</span>
               </label>
             </div>
           </div>

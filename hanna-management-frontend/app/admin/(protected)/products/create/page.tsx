@@ -21,6 +21,10 @@ export default function CreateProductPage() {
     description: '',
     price: '',
     category: '',
+    stock_quantity: '0',
+    is_active: true,
+    published: false,
+    featured: false,
   });
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,10 +70,11 @@ export default function CreateProductPage() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type } = target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? target.checked : value,
     }));
   };
 
@@ -141,6 +146,21 @@ export default function CreateProductPage() {
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
             </SelectField>
+            <InputField id="stock_quantity" label="Stock Quantity" type="number" value={formData.stock_quantity} onChange={handleChange} placeholder="e.g., 10" />
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <label htmlFor="is_active" className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" id="is_active" name="is_active" checked={formData.is_active} onChange={handleChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                Active <span className="text-gray-400">(available for sale)</span>
+              </label>
+              <label htmlFor="published" className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" id="published" name="published" checked={formData.published} onChange={handleChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                Published <span className="text-gray-400">(show on shop)</span>
+              </label>
+              <label htmlFor="featured" className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" id="featured" name="featured" checked={formData.featured} onChange={handleChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                Featured <span className="text-gray-400">(highlight on shop)</span>
+              </label>
+            </div>
           </div>
 
           {errors.api && (
