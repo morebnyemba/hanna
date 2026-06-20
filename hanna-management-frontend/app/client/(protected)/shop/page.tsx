@@ -16,6 +16,7 @@ interface Product {
   price: string;
   currency: string;
   is_active: boolean;
+  published: boolean;
   stock_quantity: number;
   product_type: string;
   category: {
@@ -217,8 +218,9 @@ export default function ShopPage() {
       }
       
       console.log('Total products fetched:', allProducts.length);
-      const activeProducts = allProducts.filter((p: Product) => p.is_active);
-      console.log('Active products:', activeProducts.length);
+      // Only show products that are active and published to the shop
+      const activeProducts = allProducts.filter((p: Product) => p.is_active && p.published);
+      console.log('Active & published products:', activeProducts.length);
       setProducts(activeProducts);
       setLoading(false);
     } catch (err) {

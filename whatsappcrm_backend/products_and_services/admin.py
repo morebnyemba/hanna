@@ -118,19 +118,20 @@ class ProductAdmin(admin.ModelAdmin):
     """
     Admin interface for the Product model.
     """
-    list_display = ('name', 'sku', 'barcode', 'product_type', 'category', 'price', 'is_active', 'stock_quantity', 'meta_sync_status', 'country_of_origin', 'brand', 'zoho_item_id')
+    list_display = ('name', 'sku', 'barcode', 'product_type', 'category', 'price', 'is_active', 'published', 'stock_quantity', 'meta_sync_status', 'country_of_origin', 'brand', 'zoho_item_id')
+    list_editable = ('published',)
     search_fields = ('name', 'sku', 'barcode', 'description', 'brand', 'zoho_item_id')
-    list_filter = ('product_type', 'category', 'is_active', 'country_of_origin', 'brand')
+    list_filter = ('product_type', 'category', 'is_active', 'published', 'country_of_origin', 'brand')
+    actions = ['reset_meta_sync_attempts', 'sync_to_meta_catalog', 'set_meta_visibility_published', 'set_meta_visibility_hidden', 'sync_selected_items', 'publish_to_shop', 'unpublish_from_shop']
     ordering = ('name',)
     inlines = [ProductImageInline]
-    actions = ['reset_meta_sync_attempts', 'sync_to_meta_catalog', 'set_meta_visibility_published', 'set_meta_visibility_hidden', 'sync_selected_items']
-    
+
     fieldsets = (
         (None, {
             'fields': ('name', 'sku', 'barcode', 'description', 'product_type', 'category', 'brand')
         }),
         ('Pricing & Availability', {
-            'fields': ('price', 'currency', 'is_active')
+            'fields': ('price', 'currency', 'is_active', 'published')
         }),
         ('Inventory & Origin', {
             'fields': ('stock_quantity', 'country_of_origin')
@@ -196,6 +197,26 @@ class ProductAdmin(admin.ModelAdmin):
         self.message_user(
             request,
             f'Reset sync attempts for {count} product(s). They will be synced on next save.'
+        )
+
+    @admin.action(description='Publish selected products to shop')
+    def publish_to_shop(self, request, queryset):
+        """Mark selected products as published so they appear on the shop."""
+        count = queryset.update(published=True)
+        self.message_user(
+            request,
+            f'{count} product(s) published to the shop.',
+            messages.SUCCESS
+        )
+
+    @admin.action(description='Unpublish selected products from shop')
+    def unpublish_from_shop(self, request, queryset):
+        """Mark selected products as unpublished so they are hidden from the shop."""
+        count = queryset.update(published=False)
+        self.message_user(
+            request,
+            f'{count} product(s) unpublished from the shop.',
+            messages.SUCCESS
         )
 
     @admin.action(description='Sync selected products to Meta Catalog')
