@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import ServiceWorkerRegistration from "./components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
   title: {
@@ -8,10 +9,21 @@ export const metadata: Metadata = {
     template: "%s | Hanna"
   },
   description: "Comprehensive management system for solar installations, warranties, products, and customer service in Zimbabwe",
+  applicationName: "Hanna",
   keywords: ["solar", "warranty management", "installation tracking", "Zimbabwe", "CRM", "inventory management"],
   authors: [{ name: "Hanna Digital" }],
   creator: "Hanna Digital",
   publisher: "Hanna Digital",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Hanna",
+  },
+  icons: {
+    icon: "/icons/icon.svg",
+    apple: "/icons/icon.svg",
+  },
   formatDetection: {
     telephone: false,
   },
@@ -25,6 +37,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#4f46e5",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,6 +53,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased font-sans">
         <Providers>{children}</Providers>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
