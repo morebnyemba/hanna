@@ -377,13 +377,13 @@ CELERY_TASK_ACKS_LATE = True
 # Reject tasks on worker lost (requeue them to be picked up by another worker)
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
-# Broker heartbeat: how often (seconds) the worker checks its Redis connection
-# is alive. The gevent pool's cooperative scheduling means a worker busy
-# running a greenlet can briefly delay the heartbeat check, which is what
-# produces benign "missed heartbeat" gossip log lines between workers. A
-# slightly longer heartbeat interval plus retry-on-startup avoids workers
-# flapping on transient delays without masking a real broker outage.
-CELERY_BROKER_HEARTBEAT = int(os.getenv('CELERY_BROKER_HEARTBEAT', '30'))
+# Keep broker reconnects resilient. socket_keepalive lets the OS detect a
+# dropped Redis TCP connection promptly instead of hanging on a dead socket.
+# (Note: AMQP broker_heartbeat does NOT apply to the Redis transport, so the
+# "missed heartbeat" gossip lines are handled at the worker level instead —
+# the workers run with --without-gossip/--without-mingle/--without-heartbeat
+# in docker-compose.yml, since those inter-worker clustering features are
+# RabbitMQ-oriented and only add overhead/noise on a single-broker Redis setup.)
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BROKER_TRANSPORT_OPTIONS = {
     'socket_keepalive': True,

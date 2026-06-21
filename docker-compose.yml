@@ -88,6 +88,9 @@ services:
       -P gevent
       --concurrency=20
       --prefetch-multiplier=1
+      --without-gossip
+      --without-mingle
+      --without-heartbeat
     # Under the gevent pool, gevent monkey-patching + async_to_sync (Channels)
     # makes Django's async-safety guard fire a false SynchronousOnlyOperation on
     # ORM calls. There is no real async web context in a Celery worker, so it is
@@ -117,6 +120,9 @@ services:
       -P gevent
       --concurrency=10
       --prefetch-multiplier=1
+      --without-gossip
+      --without-mingle
+      --without-heartbeat
     # See celery_messaging_worker: gevent pool needs the async guard disabled.
     environment:
       DJANGO_ALLOW_ASYNC_UNSAFE: "true"
@@ -140,6 +146,9 @@ services:
       -Q cpu_heavy
       -l INFO
       --concurrency=2
+      --without-gossip
+      --without-mingle
+      --without-heartbeat
     volumes:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles
