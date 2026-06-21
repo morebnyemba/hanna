@@ -6,6 +6,8 @@ import { FiArchive, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface Product {
   id: number;
@@ -61,19 +63,10 @@ export default function CreateSerializedItemPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/products/products/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
-        const data = await response.json();
-        setProducts(data.results);
-      } catch (err: any) {
-        setErrors({ api: err.message });
+        const response = await apiClient.get('/crm-api/products/products/');
+        setProducts(response.data.results);
+      } catch (err: unknown) {
+        setErrors({ api: extractErrorMessage(err, 'Failed to fetch products.') });
       }
     };
     if (accessToken) {
@@ -118,36 +111,18 @@ export default function CreateSerializedItemPage() {
     setErrors({});
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      
       // Transform formData to match API expectations
       const payload = {
         serial_number: formData.serial_number,
         product_id: parseInt(formData.product), // Send as product_id
         status: formData.status,
+        barcode: formData.barcode || null,
       };
 
-      const response = await fetch(`${apiUrl}/crm-api/products/serialized-items/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...payload,
-          barcode: formData.barcode || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.detail || errorData.error || JSON.stringify(errorData) || `Failed to create item. Status: ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
+      await apiClient.post('/crm-api/products/serialized-items/', payload);
       router.push('/admin/serialized-items');
-    } catch (err: any) {
-      setErrors({ api: err.message });
+    } catch (err: unknown) {
+      setErrors({ api: extractErrorMessage(err, 'Failed to create item.') });
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,8 @@ import Link from 'next/link';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface Customer {
   contact: {
@@ -24,12 +26,6 @@ interface Customer {
   postal_code: string;
   country: string;
 }
-
-// Safe API URL resolver without relying on Node types
-const getApiUrl = () => {
-  const envUrl = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NEXT_PUBLIC_API_URL) as string | undefined;
-  return envUrl || 'https://backend.hanna.co.zw';
-};
 
 const SkeletonRow = () => (
     <tr className="animate-pulse">
@@ -60,22 +56,10 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data. Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setCustomers(result.results); // Assuming the API returns data in a 'results' property
-    } catch (err: any) {
-      setError(err.message);
+      const response = await apiClient.get('/crm-api/customer-data/profiles/');
+      setCustomers(response.data.results); // Assuming the API returns data in a 'results' property
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to fetch customers.'));
     } finally {
       setLoading(false);
     }
@@ -162,23 +146,12 @@ export default function CustomersPage() {
 
     setIsDeleting(true);
     try {
-      const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/${customerToDelete.contact.id}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete customer. Status: ${response.status}`);
-      }
-
+      await apiClient.delete(`/crm-api/customer-data/profiles/${customerToDelete.contact.id}/`);
       setCustomers(customers.filter((c: Customer) => c.contact.id !== customerToDelete.contact.id));
       setDeleteModalOpen(false);
       setCustomerToDelete(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to delete customer.'));
     } finally {
       setIsDeleting(false);
     }

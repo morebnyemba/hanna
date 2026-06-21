@@ -10,6 +10,8 @@ import {
 } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import { DownloadInstallationReportButton } from '@/app/components/shared/DownloadButtons';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface CustomerDetails {
   id: string;
@@ -151,25 +153,11 @@ export default function InstallationSystemRecordDetailPage() {
     
     setGeneratingToken(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${id}/generate-claim-token/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to generate claim link');
-      }
-
-      const data = await response.json();
-      setClaimTokens([data, ...claimTokens]);
+      const response = await apiClient.post(`/crm-api/admin-panel/installation-system-records/${id}/generate-claim-token/`);
+      setClaimTokens([response.data, ...claimTokens]);
       handleSuccess('Claim link generated successfully!');
-    } catch (err: any) {
-      handleError(err.message);
+    } catch (err: unknown) {
+      handleError(extractErrorMessage(err, 'Failed to generate claim link.'));
     } finally {
       setGeneratingToken(false);
     }
@@ -189,21 +177,9 @@ export default function InstallationSystemRecordDetailPage() {
     if (!accessToken || !id) return;
     
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(
-        `${apiUrl}/crm-api/admin-panel/installation-system-records/${id}/claim-tokens/`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setClaimTokens(Array.isArray(data) ? data : data.results || []);
-      }
+      const response = await apiClient.get(`/crm-api/admin-panel/installation-system-records/${id}/claim-tokens/`);
+      const data = response.data;
+      setClaimTokens(Array.isArray(data) ? data : data.results || []);
     } catch (err) {
       // Silently fail if endpoint doesn't exist yet
     }
@@ -214,22 +190,10 @@ export default function InstallationSystemRecordDetailPage() {
       if (!accessToken || !id) return;
       
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${id}/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch installation record. Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        setRecord(data);
-      } catch (err: any) {
-        setError(err.message);
+        const response = await apiClient.get(`/crm-api/admin-panel/installation-system-records/${id}/`);
+        setRecord(response.data);
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch installation record.'));
       } finally {
         setLoading(false);
       }

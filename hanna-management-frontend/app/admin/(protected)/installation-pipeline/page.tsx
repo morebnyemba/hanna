@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { FiClock, FiCheck, FiAlertCircle, FiTool, FiPackage, FiUser } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface PipelineStage {
   stage: string;
@@ -32,22 +34,10 @@ export default function AdminInstallationPipelinePage() {
   useEffect(() => {
     const fetchPipeline = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-pipeline/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch installation pipeline. Status: ' + response.status);
-        }
-
-        const result = await response.json();
-        setPipelineData(result.stages || []);
-      } catch (err: any) {
-        setError(err.message);
+        const response = await apiClient.get('/crm-api/admin-panel/installation-pipeline/');
+        setPipelineData(response.data.stages || []);
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch installation pipeline.'));
       } finally {
         setLoading(false);
       }

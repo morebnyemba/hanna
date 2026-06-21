@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiShield, FiArrowLeft } from 'react-icons/fi';
-import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 const InputField = ({ id, label, value, onChange, required = false, type = 'text', placeholder = '' }: { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; type?: string; placeholder?: string; }) => (
     <div>
@@ -46,7 +47,6 @@ export default function CreateWarrantyClaimPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { accessToken } = useAuthStore();
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -70,24 +70,10 @@ export default function CreateWarrantyClaimPage() {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/warranty-claims/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to create claim. Status: ${response.status}`);
-      }
-
+      await apiClient.post('/crm-api/admin-panel/warranty-claims/', formData);
       router.push('/admin/warranty-claims');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to create claim.'));
     } finally {
       setLoading(false);
     }

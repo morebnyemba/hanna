@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiLoader, FiTool, FiSearch } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface Customer {
   id: string;
@@ -103,24 +105,14 @@ export default function CreateInstallationSystemRecordPage() {
       if (!accessToken) return;
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/admin-panel/technicians/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const techList = data.results || data;
-          setTechnicians(techList.map((t: any) => ({
-            id: t.id,
-            name: t.user?.first_name && t.user?.last_name
-              ? `${t.user.first_name} ${t.user.last_name}`
-              : t.user?.username || `Technician ${t.id}`,
-          })));
-        }
+        const response = await apiClient.get('/crm-api/admin-panel/technicians/');
+        const techList = response.data.results || response.data;
+        setTechnicians(techList.map((t: any) => ({
+          id: t.id,
+          name: t.user?.first_name && t.user?.last_name
+            ? `${t.user.first_name} ${t.user.last_name}`
+            : t.user?.username || `Technician ${t.id}`,
+        })));
       } catch (err) {
         console.error('Failed to fetch technicians:', err);
       } finally {
@@ -140,18 +132,8 @@ export default function CreateInstallationSystemRecordPage() {
 
     setLoadingCustomers(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/?search=${encodeURIComponent(searchTerm)}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCustomers(data.results || data);
-      }
+      const response = await apiClient.get(`/crm-api/customer-data/profiles/?search=${encodeURIComponent(searchTerm)}`);
+      setCustomers(response.data.results || response.data);
     } catch (err) {
       console.error('Failed to search customers:', err);
     } finally {
@@ -229,8 +211,6 @@ export default function CreateInstallationSystemRecordPage() {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-
       const payload = {
         customer: formData.customer,
         installation_type: formData.installation_type,
@@ -247,24 +227,10 @@ export default function CreateInstallationSystemRecordPage() {
         technicians: formData.technicians,
       };
 
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Failed to create record. Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      router.push(`/admin/installation-system-records/${result.id}`);
-    } catch (err: any) {
-      setError(err.message);
+      const response = await apiClient.post('/crm-api/admin-panel/installation-system-records/', payload);
+      router.push(`/admin/installation-system-records/${response.data.id}`);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to create record.'));
     } finally {
       setLoading(false);
     }

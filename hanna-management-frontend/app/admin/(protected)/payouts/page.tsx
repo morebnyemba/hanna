@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { FiDollarSign, FiCheck, FiX, FiClock, FiUser, FiCalendar, FiAlertCircle } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface Payout {
   id: string;
@@ -31,22 +33,10 @@ export default function AdminPayoutsPage() {
 
   const fetchPayouts = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/technician-payouts/?status=${filter}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch payouts. Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setPayouts(result.results || result);
-    } catch (err: any) {
-      setError(err.message);
+      const response = await apiClient.get(`/crm-api/admin-panel/technician-payouts/?status=${filter}`);
+      setPayouts(response.data.results || response.data);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to fetch payouts.'));
     } finally {
       setLoading(false);
     }
@@ -63,23 +53,11 @@ export default function AdminPayoutsPage() {
 
     setProcessingId(payoutId);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/technician-payouts/${payoutId}/approve/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to approve payout');
-      }
-
+      await apiClient.post(`/crm-api/admin-panel/technician-payouts/${payoutId}/approve/`);
       alert('Payout approved successfully!');
       await fetchPayouts();
-    } catch (err: any) {
-      alert(`Error: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error: ${extractErrorMessage(err, 'Failed to approve payout.')}`);
     } finally {
       setProcessingId(null);
     }
@@ -91,24 +69,11 @@ export default function AdminPayoutsPage() {
 
     setProcessingId(payoutId);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/technician-payouts/${payoutId}/reject/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reason }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reject payout');
-      }
-
+      await apiClient.post(`/crm-api/admin-panel/technician-payouts/${payoutId}/reject/`, { reason });
       alert('Payout rejected.');
       await fetchPayouts();
-    } catch (err: any) {
-      alert(`Error: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error: ${extractErrorMessage(err, 'Failed to reject payout.')}`);
     } finally {
       setProcessingId(null);
     }

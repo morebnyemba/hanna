@@ -7,6 +7,8 @@ import { useAuthStore } from '@/app/store/authStore';
 import ActionButtons from '@/app/components/shared/ActionButtons';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
 import { DownloadInstallationReportButton } from '@/app/components/shared/DownloadButtons';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface InstallationSystemRecord {
   id: string;
@@ -82,23 +84,11 @@ export default function InstallationSystemRecordsPage() {
 
   const fetchRecords = async (statusFilterValue?: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
       const filterParam = statusFilterValue ? `?installation_status=${statusFilterValue}` : '';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${filterParam}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data. Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setRecords(result.results || result);
-    } catch (err: any) {
-      setError(err.message);
+      const response = await apiClient.get(`/crm-api/admin-panel/installation-system-records/${filterParam}`);
+      setRecords(response.data.results || response.data);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to fetch records.'));
     } finally {
       setLoading(false);
     }
@@ -113,39 +103,19 @@ export default function InstallationSystemRecordsPage() {
   const handleStatusChange = async (recordId: string, newStatus: string) => {
     setUpdatingStatusId(recordId);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${recordId}/update_status/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Try to get error message from response
-        const errorMessage = 
-          data?.error || 
-          data?.detail || 
-          (Array.isArray(data?.error) ? data.error.join(', ') : null) ||
-          'Failed to update status';
-        throw new Error(errorMessage);
-      }
+      await apiClient.post(`/crm-api/admin-panel/installation-system-records/${recordId}/update_status/`, { status: newStatus });
 
       // Update local state
-      setRecords(prev => 
-        prev.map(record => 
-          record.id === recordId 
+      setRecords(prev =>
+        prev.map(record =>
+          record.id === recordId
             ? { ...record, installation_status: newStatus }
             : record
         )
       );
       handleSuccess('Status updated successfully');
-    } catch (err: any) {
-      handleError(err.message || 'Failed to update status');
+    } catch (err: unknown) {
+      handleError(extractErrorMessage(err, 'Failed to update status.'));
     } finally {
       setUpdatingStatusId(null);
     }
@@ -161,21 +131,13 @@ export default function InstallationSystemRecordsPage() {
 
     setIsDeleting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${recordToDelete.id}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) throw new Error('Delete failed');
+      await apiClient.delete(`/crm-api/admin-panel/installation-system-records/${recordToDelete.id}/`);
 
       setDeleteModalOpen(false);
       setRecordToDelete(null);
       fetchRecords(statusFilter);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to delete record.'));
     } finally {
       setIsDeleting(false);
     }

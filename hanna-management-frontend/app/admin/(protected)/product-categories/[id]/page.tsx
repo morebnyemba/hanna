@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/app/store/authStore';
 import { FiArrowLeft, FiSave } from 'react-icons/fi';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface ProductCategory {
   id: number;
@@ -34,26 +36,15 @@ export default function EditProductCategoryPage({ params }: { params: Promise<{ 
       if (!categoryId || !accessToken) return;
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/products/categories/${categoryId}/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch category. Status: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const response = await apiClient.get(`/crm-api/products/categories/${categoryId}/`);
+        const data = response.data;
         setCategory(data);
         setFormData({
           name: data.name || '',
           description: data.description || '',
         });
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch category.'));
       } finally {
         setLoading(false);
       }
@@ -78,24 +69,10 @@ export default function EditProductCategoryPage({ params }: { params: Promise<{ 
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/products/categories/${categoryId}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to update category. Status: ${response.status}`);
-      }
-
+      await apiClient.put(`/crm-api/products/categories/${categoryId}/`, formData);
       router.push('/admin/product-categories');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to update category.'));
     } finally {
       setSaving(false);
     }
