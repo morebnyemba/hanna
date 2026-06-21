@@ -63,14 +63,19 @@ class ProductSerializer(serializers.ModelSerializer):
             return round((1 - obj.price / obj.compare_at_price) * 100)
         return None
 
+    def _approved_reviews(self, obj):
+        # Filter in Python over the prefetched `reviews` cache so we don't fire a
+        # fresh query per product (a new .filter() would bypass prefetch_related).
+        return [r for r in obj.reviews.all() if r.is_approved]
+
     def get_avg_rating(self, obj):
-        approved = obj.reviews.filter(is_approved=True)
-        if not approved.exists():
+        approved = self._approved_reviews(obj)
+        if not approved:
             return None
-        return round(sum(r.rating for r in approved) / approved.count(), 1)
+        return round(sum(r.rating for r in approved) / len(approved), 1)
 
     def get_review_count(self, obj):
-        return obj.reviews.filter(is_approved=True).count()
+        return len(self._approved_reviews(obj))
 
 
 class CouponSerializer(serializers.ModelSerializer):

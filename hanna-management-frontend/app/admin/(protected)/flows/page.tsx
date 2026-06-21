@@ -6,6 +6,8 @@ import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 import ActionButtons from '@/app/components/shared/ActionButtons';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface Flow {
   id: number;
@@ -56,22 +58,10 @@ export default function FlowsPage() {
 
   const fetchFlows = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/flows/flows/`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data. Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setFlows(result.results);
-    } catch (err: any) {
-      setError(err.message);
+      const response = await apiClient.get('/crm-api/flows/flows/');
+      setFlows(response.data.results);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to fetch data.'));
     } finally {
       setLoading(false);
     }
@@ -93,23 +83,13 @@ export default function FlowsPage() {
 
     setIsDeleting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/flows/flows/${flowToDelete.id}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete flow. Status: ${response.status}`);
-      }
+      await apiClient.delete(`/crm-api/flows/flows/${flowToDelete.id}/`);
 
       setFlows(flows.filter(f => f.id !== flowToDelete.id));
       setDeleteModalOpen(false);
       setFlowToDelete(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to delete flow.'));
     } finally {
       setIsDeleting(false);
     }

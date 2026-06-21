@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { FiAlertTriangle, FiTrendingDown, FiTrendingUp, FiPackage, FiBarChart2 } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface FaultData {
   product_name: string;
@@ -32,23 +34,11 @@ export default function AdminFaultRateAnalyticsPage() {
   useEffect(() => {
     const fetchFaultAnalytics = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/admin-panel/fault-analytics/?sort_by=${sortBy}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch fault analytics. Status: ' + response.status);
-        }
-
-        const result = await response.json();
-        setFaultData(result.products || []);
-        setSummary(result.summary || null);
-      } catch (err: any) {
-        setError(err.message);
+        const response = await apiClient.get(`/crm-api/admin-panel/fault-analytics/?sort_by=${sortBy}`);
+        setFaultData(response.data.products || []);
+        setSummary(response.data.summary || null);
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch fault analytics.'));
       } finally {
         setLoading(false);
       }

@@ -137,6 +137,14 @@ class Product(models.Model):
         verbose_name = _("Product")
         verbose_name_plural = _("Products")
         ordering = ['name']
+        indexes = [
+            # Matches the public shop query: filter(is_active, published) ordered
+            # by name. Lets the storefront list be served straight from the index.
+            models.Index(
+                fields=['published', 'is_active', 'name'],
+                name='product_shop_listing_idx',
+            ),
+        ]
 
 
 class ProductTag(models.Model):

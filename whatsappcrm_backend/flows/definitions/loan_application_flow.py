@@ -57,7 +57,7 @@ LOAN_APPLICATION_FLOW = {
                         "name": "flow",
                         "parameters": {
                             "flow_message_version": "3",
-                            "flow_token": "{{ contact.id }}-loan-application-{{ 'now'|date:'U' }}",
+                            "flow_token": "{{ contact.id }}-loan-application-{{ 'now'|date('U') }}",
                             "flow_id": "{{ loan_application_whatsapp_flow.0.flow_id }}",
                             "flow_cta": "Start Application",
                             "flow_action": "navigate",

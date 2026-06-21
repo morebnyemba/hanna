@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
 import { FiSave, FiX, FiUser } from 'react-icons/fi';
 import Link from 'next/link';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface CustomerData {
   first_name: string;
@@ -44,19 +46,8 @@ export default function EditCustomerPage() {
   useEffect(() => {
     const fetchCustomer = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/${customerId}/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch customer data');
-        }
-
-        const data = await response.json();
+        const response = await apiClient.get(`/crm-api/customer-data/profiles/${customerId}/`);
+        const data = response.data;
         setFormData({
           first_name: data.first_name || '',
           last_name: data.last_name || '',
@@ -69,8 +60,8 @@ export default function EditCustomerPage() {
           country: data.country || '',
           phone_number: data.phone_number || '',
         });
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch customer data.'));
       } finally {
         setLoading(false);
       }
@@ -94,24 +85,10 @@ export default function EditCustomerPage() {
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/${customerId}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to update customer');
-      }
-
+      await apiClient.put(`/crm-api/customer-data/profiles/${customerId}/`, formData);
       router.push('/admin/customers');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to update customer.'));
     } finally {
       setSaving(false);
     }

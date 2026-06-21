@@ -6,6 +6,8 @@ import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 import ActionButtons from '@/app/components/shared/ActionButtons';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface WarrantyClaim {
   id?: number;
@@ -54,22 +56,10 @@ export default function WarrantyClaimsPage() {
 
   const fetchClaims = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/warranty-claims/`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data. Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setClaims(result.results);
-    } catch (err: any) {
-      setError(err.message);
+      const response = await apiClient.get('/crm-api/admin-panel/warranty-claims/');
+      setClaims(response.data.results);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to fetch warranty claims.'));
     } finally {
       setLoading(false);
     }
@@ -91,23 +81,12 @@ export default function WarrantyClaimsPage() {
 
     setIsDeleting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/warranty-claims/${claimToDelete.id}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete claim. Status: ${response.status}`);
-      }
-
+      await apiClient.delete(`/crm-api/admin-panel/warranty-claims/${claimToDelete.id}/`);
       setClaims(claims.filter(c => c.id !== claimToDelete.id));
       setDeleteModalOpen(false);
       setClaimToDelete(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to delete claim.'));
     } finally {
       setIsDeleting(false);
     }

@@ -6,6 +6,8 @@ import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 import ActionButtons from '@/app/components/shared/ActionButtons';
 import DeleteConfirmationModal from '@/app/components/shared/DeleteConfirmationModal';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface ProductCategory {
   id: number;
@@ -38,22 +40,10 @@ export default function ProductCategoriesPage() {
 
   const fetchCategories = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/products/categories/`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data. Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setCategories(result.results);
-    } catch (err: any) {
-      setError(err.message);
+      const response = await apiClient.get('/crm-api/products/categories/');
+      setCategories(response.data.results);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to fetch categories.'));
     } finally {
       setLoading(false);
     }
@@ -75,24 +65,13 @@ export default function ProductCategoriesPage() {
 
     setIsDeleting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/products/categories/${categoryToDelete.id}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete category. Status: ${response.status}`);
-      }
-
+      await apiClient.delete(`/crm-api/products/categories/${categoryToDelete.id}/`);
       // Remove from state
       setCategories(categories.filter(c => c.id !== categoryToDelete.id));
       setDeleteModalOpen(false);
       setCategoryToDelete(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to delete category.'));
     } finally {
       setIsDeleting(false);
     }

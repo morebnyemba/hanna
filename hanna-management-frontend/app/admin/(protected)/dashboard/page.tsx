@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUsers, FiMessageSquare, FiAlertCircle, FiShield, FiTool, FiCheckCircle, FiZap } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 import { AnalyticsChart } from './AnalyticsChart';
 import { ActivityLog } from './ActivityLog';
 
@@ -105,45 +107,15 @@ export default function AdminDashboardPage() {
 
       try {
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
+        // apiClient injects the base URL + bearer token and centrally handles
+        // 401s (logout + redirect), so we don't duplicate that here.
+        const response = await apiClient.get<DashboardData>('/crm-api/admin/dashboard-stats/');
 
-        const response = await fetch(`${apiUrl}/crm-api/admin/dashboard-stats/`, {
+        setData(response.data);
 
-          headers: {
+      } catch (err: unknown) {
 
-            'Authorization': `Bearer ${accessToken}`,
-
-            'Content-Type': 'application/json',
-
-          },
-
-        });
-
-
-
-        if (!response.ok) {
-
-          if (response.status === 401) {
-
-            // The layout will handle the actual logout action
-
-            router.push('/admin/login');
-
-          }
-
-          throw new Error(`Failed to fetch data. Status: ${response.status}`);
-
-        }
-
-
-
-        const result: DashboardData = await response.json();
-
-        setData(result);
-
-      } catch (err: any) {
-
-        setError(err.message);
+        setError(extractErrorMessage(err, 'Failed to load dashboard data.'));
 
       } finally {
 

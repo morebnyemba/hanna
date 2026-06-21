@@ -61,7 +61,7 @@ STARLINK_INSTALLATION_FLOW = {
                         "name": "flow",
                         "parameters": {
                             "flow_message_version": "3",
-                            "flow_token": "{{ contact.id }}-starlink-install-{{ 'now'|date:'U' }}",
+                            "flow_token": "{{ contact.id }}-starlink-install-{{ 'now'|date('U') }}",
                             "flow_id": "{{ starlink_whatsapp_flow.0.flow_id }}",
                             "flow_cta": "Start Request",
                             "flow_action": "navigate",

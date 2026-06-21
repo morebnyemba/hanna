@@ -20,6 +20,8 @@ import {
   Users
 } from 'lucide-react';
 import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface Device {
   id: string;
@@ -51,22 +53,10 @@ export default function AdminDeviceMonitoringPage() {
   useEffect(() => {
     const fetchDevices = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/admin-panel/device-monitoring/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch device monitoring data. Status: ' + response.status);
-        }
-
-        const result = await response.json();
-        setDevices(result.devices || []);
-      } catch (err: any) {
-        setError(err.message);
+        const response = await apiClient.get('/crm-api/admin-panel/device-monitoring/');
+        setDevices(response.data.devices || []);
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch device monitoring data.'));
       } finally {
         setLoading(false);
       }

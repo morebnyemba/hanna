@@ -6,6 +6,8 @@ import { FiUserPlus, FiArrowLeft } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
 import Link from 'next/link';
 import { InputField, SelectField } from '@/app/components/forms/FormComponents';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 
 
@@ -16,19 +18,10 @@ export default function CreateCustomerPage() {
   useEffect(() => {
     const fetchCountries = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(`${apiUrl}/crm-api/customer-data/countries/`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch countries');
-        }
-        const data = await response.json();
-        setCountries(data);
-      } catch (err: any) {
-        setErrors({ api: err.message });
+        const response = await apiClient.get('/crm-api/customer-data/countries/');
+        setCountries(response.data);
+      } catch (err: unknown) {
+        setErrors({ api: extractErrorMessage(err, 'Failed to fetch countries.') });
       }
     };
     if (accessToken) {
@@ -91,24 +84,10 @@ export default function CreateCustomerPage() {
     setErrors({});
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to create customer. Status: ${response.status}`);
-      }
-
+      await apiClient.post('/crm-api/customer-data/profiles/', formData);
       router.push('/admin/customers');
-    } catch (err: any) {
-      setErrors({ api: err.message });
+    } catch (err: unknown) {
+      setErrors({ api: extractErrorMessage(err, 'Failed to create customer.') });
     } finally {
       setLoading(false);
     }

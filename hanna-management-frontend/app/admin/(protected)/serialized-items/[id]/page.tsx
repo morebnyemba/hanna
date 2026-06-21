@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/app/store/authStore';
 import BarcodeScannerButton from '@/app/components/BarcodeScannerButton';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface ProductOption { id: number; name: string }
 
@@ -37,22 +39,13 @@ export default function EditSerializedItemPage() {
         return;
       }
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
         // Load products
-        const prodResp = await fetch(`${apiUrl}/crm-api/products/products/`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        });
-        if (prodResp.ok) {
-          const data = await prodResp.json();
-          setProducts(data.results || []);
-        }
+        const prodResp = await apiClient.get('/crm-api/products/products/');
+        setProducts(prodResp.data.results || []);
 
         // Load item
-        const itemResp = await fetch(`${apiUrl}/crm-api/products/serialized-items/${id}/`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        });
-        if (!itemResp.ok) throw new Error(`Failed to load item (${itemResp.status})`);
-        const item = await itemResp.json();
+        const itemResp = await apiClient.get(`/crm-api/products/serialized-items/${id}/`);
+        const item = itemResp.data;
         setFormData({
           serial_number: item.serial_number || '',
           barcode: item.barcode || '',
@@ -61,8 +54,8 @@ export default function EditSerializedItemPage() {
           current_location: item.current_location || 'warehouse',
           location_notes: item.location_notes || '',
         });
-      } catch (e: any) {
-        setError(e.message || 'Failed to load data');
+      } catch (e: unknown) {
+        setError(extractErrorMessage(e, 'Failed to load data.'));
       } finally {
         setLoading(false);
       }
@@ -83,29 +76,20 @@ export default function EditSerializedItemPage() {
     setSaving(true);
     setError(null);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const resp = await fetch(`${apiUrl}/crm-api/products/serialized-items/${id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          serial_number: formData.serial_number,
-          barcode: formData.barcode || null,
-          product_id: formData.product ? parseInt(formData.product) : null,
-          status: formData.status,
-          current_location: formData.current_location,
-          location_notes: formData.location_notes || '',
-        }),
+      await apiClient.patch(`/crm-api/products/serialized-items/${id}/`, {
+        serial_number: formData.serial_number,
+        barcode: formData.barcode || null,
+        product_id: formData.product ? parseInt(formData.product) : null,
+        status: formData.status,
+        current_location: formData.current_location,
+        location_notes: formData.location_notes || '',
       });
-      if (!resp.ok) throw new Error(`Failed to save (${resp.status})`);
       setSuccess('Item updated successfully');
       setTimeout(() => {
         router.push('/admin/serialized-items');
       }, 800);
-    } catch (e: any) {
-      setError(e.message || 'Failed to save');
+    } catch (e: unknown) {
+      setError(extractErrorMessage(e, 'Failed to save.'));
     } finally {
       setSaving(false);
     }

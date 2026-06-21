@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/app/store/authStore';
-import { 
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
+import {
   FiGitMerge, 
   FiArrowLeft, 
   FiSave, 
@@ -77,24 +79,10 @@ export default function EditFlowPage({
       if (!flowId || !accessToken) return;
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        
         // Fetch flow details
-        const flowResponse = await fetch(
-          `${apiUrl}/crm-api/flows/flows/${flowId}/`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        const flowResponse = await apiClient.get(`/crm-api/flows/flows/${flowId}/`);
 
-        if (!flowResponse.ok) {
-          throw new Error(`Failed to fetch flow. Status: ${flowResponse.status}`);
-        }
-
-        const flowData = await flowResponse.json();
+        const flowData = flowResponse.data;
         setFlow(flowData);
         setFormData({
           name: flowData.name || '',
@@ -106,22 +94,11 @@ export default function EditFlowPage({
         });
 
         // Fetch flow steps
-        const stepsResponse = await fetch(
-          `${apiUrl}/crm-api/flows/steps/?flow_id=${flowId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (stepsResponse.ok) {
-          const stepsData = await stepsResponse.json();
-          setSteps(stepsData.results || stepsData || []);
-        }
-      } catch (err: any) {
-        setError(err.message);
+        const stepsResponse = await apiClient.get(`/crm-api/flows/steps/?flow_id=${flowId}`);
+        const stepsData = stepsResponse.data;
+        setSteps(stepsData.results || stepsData || []);
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch flow.'));
       } finally {
         setLoading(false);
       }
@@ -138,8 +115,6 @@ export default function EditFlowPage({
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      
       const updateData = {
         ...formData,
         trigger_keywords: formData.trigger_keywords
@@ -148,29 +123,13 @@ export default function EditFlowPage({
           .filter(k => k.length > 0),
       };
 
-      const response = await fetch(
-        `${apiUrl}/crm-api/flows/flows/${flowId}/`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updateData),
-        }
-      );
+      const response = await apiClient.put(`/crm-api/flows/flows/${flowId}/`, updateData);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to update flow. Status: ${response.status}`);
-      }
-
-      const updatedFlow = await response.json();
-      setFlow(updatedFlow);
+      setFlow(response.data);
       alert('Flow updated successfully!');
       router.push('/admin/flows');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to update flow.'));
     } finally {
       setSaving(false);
     }

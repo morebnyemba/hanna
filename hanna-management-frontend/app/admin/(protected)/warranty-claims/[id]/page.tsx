@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface WarrantyClaim {
   id: number;
@@ -88,29 +90,15 @@ export default function WarrantyClaimDetailPage({
       if (!claimId || !accessToken) return;
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        const response = await fetch(
-          `${apiUrl}/crm-api/admin-panel/warranty-claims/${claimId}/`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch claim. Status: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const response = await apiClient.get(`/crm-api/admin-panel/warranty-claims/${claimId}/`);
+        const data = response.data;
         setClaim(data);
         setFormData({
           status: data.status || 'pending',
           resolution_notes: data.resolution_notes || '',
         });
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch claim.'));
       } finally {
         setLoading(false);
       }
@@ -127,29 +115,11 @@ export default function WarrantyClaimDetailPage({
     setError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(
-        `${apiUrl}/crm-api/admin-panel/warranty-claims/${claimId}/`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to update claim. Status: ${response.status}`);
-      }
-
-      const updatedClaim = await response.json();
-      setClaim(updatedClaim);
+      const response = await apiClient.put(`/crm-api/admin-panel/warranty-claims/${claimId}/`, formData);
+      setClaim(response.data);
       alert('Warranty claim updated successfully!');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to update claim.'));
     } finally {
       setSaving(false);
     }

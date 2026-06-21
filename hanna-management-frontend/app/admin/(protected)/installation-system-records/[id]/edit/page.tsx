@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiSave, FiLoader } from 'react-icons/fi';
 import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface Technician {
   id: number;
@@ -73,29 +75,13 @@ export default function EditInstallationSystemRecordPage() {
       if (!accessToken || !id) return;
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-        
         // Fetch the record and technicians in parallel
         const [recordResponse, techniciansResponse] = await Promise.all([
-          fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${id}/`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          }),
-          fetch(`${apiUrl}/crm-api/admin-panel/technicians/`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          }),
+          apiClient.get(`/crm-api/admin-panel/installation-system-records/${id}/`),
+          apiClient.get('/crm-api/admin-panel/technicians/'),
         ]);
 
-        if (!recordResponse.ok) {
-          throw new Error(`Failed to fetch record. Status: ${recordResponse.status}`);
-        }
-
-        const recordData = await recordResponse.json();
+        const recordData = recordResponse.data;
         setFormData({
           id: recordData.id,
           short_id: recordData.short_id,
@@ -114,18 +100,16 @@ export default function EditInstallationSystemRecordPage() {
           technicians: recordData.technician_details?.map((t: any) => t.id) || [],
         });
 
-        if (techniciansResponse.ok) {
-          const techData = await techniciansResponse.json();
-          const techList = techData.results || techData;
-          setTechnicians(techList.map((t: any) => ({
-            id: t.id,
-            name: t.user?.first_name && t.user?.last_name 
-              ? `${t.user.first_name} ${t.user.last_name}` 
-              : t.user?.username || `Technician ${t.id}`,
-          })));
-        }
-      } catch (err: any) {
-        setError(err.message);
+        const techData = techniciansResponse.data;
+        const techList = techData.results || techData;
+        setTechnicians(techList.map((t: any) => ({
+          id: t.id,
+          name: t.user?.first_name && t.user?.last_name
+            ? `${t.user.first_name} ${t.user.last_name}`
+            : t.user?.username || `Technician ${t.id}`,
+        })));
+      } catch (err: unknown) {
+        setError(extractErrorMessage(err, 'Failed to fetch record.'));
       } finally {
         setLoading(false);
       }
@@ -173,8 +157,6 @@ export default function EditInstallationSystemRecordPage() {
 
     setSaving(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      
       const payload = {
         installation_type: formData.installation_type,
         system_size: formData.system_size,
@@ -190,23 +172,11 @@ export default function EditInstallationSystemRecordPage() {
         technicians: formData.technicians || [],
       };
 
-      const response = await fetch(`${apiUrl}/crm-api/admin-panel/installation-system-records/${id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Failed to update record. Status: ${response.status}`);
-      }
+      await apiClient.patch(`/crm-api/admin-panel/installation-system-records/${id}/`, payload);
 
       router.push(`/admin/installation-system-records/${id}`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to update record.'));
     } finally {
       setSaving(false);
     }

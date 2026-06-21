@@ -2,7 +2,8 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { FiX, FiLoader } from 'react-icons/fi';
-import { useAuthStore } from '@/app/store/authStore';
+import apiClient from '@/app/lib/apiClient';
+import { extractErrorMessage } from '@/app/lib/apiUtils';
 
 interface ContactInfo {
   id: number;
@@ -57,7 +58,6 @@ export default function EditCustomerModal({ isOpen, onClose, customer, onSave }:
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { accessToken } = useAuthStore();
 
   useEffect(() => {
     if (customer) {
@@ -90,27 +90,12 @@ export default function EditCustomerModal({ isOpen, onClose, customer, onSave }:
     };
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend.hanna.co.zw';
-      const response = await fetch(`${apiUrl}/crm-api/customer-data/profiles/${customer.contact.id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to save customer data.');
-      }
-
-      const updatedCustomerData = await response.json();
-      onSave(updatedCustomerData); // Pass updated data back to parent
+      const response = await apiClient.patch(`/crm-api/customer-data/profiles/${customer.contact.id}/`, payload);
+      onSave(response.data); // Pass updated data back to parent
       onClose();
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, 'Failed to save customer data.'));
     } finally {
       setIsSaving(false);
     }
