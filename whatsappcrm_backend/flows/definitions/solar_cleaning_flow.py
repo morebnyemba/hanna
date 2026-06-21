@@ -44,7 +44,7 @@ SOLAR_CLEANING_FLOW = {
                         "name": "flow",
                         "parameters": {
                             "flow_message_version": "3",
-                            "flow_token": "{{ contact.id }}-solar-cleaning-{{ 'now'|date:'U' }}",
+                            "flow_token": "{{ contact.id }}-solar-cleaning-{{ 'now'|date('U') }}",
                             "flow_id": "{{ solar_cleaning_whatsapp_flow.0.flow_id }}",
                             "flow_cta": "Start Request",
                             "flow_action": "navigate",

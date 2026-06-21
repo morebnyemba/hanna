@@ -377,6 +377,18 @@ CELERY_TASK_ACKS_LATE = True
 # Reject tasks on worker lost (requeue them to be picked up by another worker)
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
+# Broker heartbeat: how often (seconds) the worker checks its Redis connection
+# is alive. The gevent pool's cooperative scheduling means a worker busy
+# running a greenlet can briefly delay the heartbeat check, which is what
+# produces benign "missed heartbeat" gossip log lines between workers. A
+# slightly longer heartbeat interval plus retry-on-startup avoids workers
+# flapping on transient delays without masking a real broker outage.
+CELERY_BROKER_HEARTBEAT = int(os.getenv('CELERY_BROKER_HEARTBEAT', '30'))
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'socket_keepalive': True,
+}
+
 
 # --- Channels (WebSocket) Configuration ---
 # For development, you can use the in-memory backend.
