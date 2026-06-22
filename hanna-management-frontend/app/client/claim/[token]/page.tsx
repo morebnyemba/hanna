@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuthStore } from '@/app/store/authStore';
 
 interface ISRDetails {
   token: string;
@@ -42,7 +43,6 @@ export default function ClaimInstallationPage() {
     last_name: '',
   });
   const [registering, setRegistering] = useState(false);
-  const [authToken, setAuthToken] = useState<string | null>(null);
 
   // Validate token on page load
   useEffect(() => {
@@ -126,13 +126,11 @@ export default function ClaimInstallationPage() {
       }
 
       const data = await response.json();
-      setAuthToken(data.access);
-      
-      // Store token in localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('access_token', data.access);
-        localStorage.setItem('refresh_token', data.refresh);
-      }
+
+      useAuthStore.getState().login(
+        { access: data.access, refresh: data.refresh },
+        { username: data.user.username, email: data.user.email, role: 'client' }
+      );
 
       setStep('success');
 

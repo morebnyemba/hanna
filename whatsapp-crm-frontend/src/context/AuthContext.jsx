@@ -87,15 +87,10 @@ export const AuthProvider = ({ children }) => {
         await logout({ showInfoToast: false });
         return { success: false, error: "Login failed due to a server configuration issue. Please contact support." };
       }
-      // Defensive sync: update both atoms and localStorage
+      // authService.login() already persisted the tokens via storeTokens(); just sync local state.
       setAccessToken(accessToken);
       setRefreshToken(refreshToken);
       setUser(result.user);
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      if (result.user) {
-        localStorage.setItem('user', JSON.stringify(result.user));
-      }
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
       return { success: true, user: result.user };
     } else {
@@ -105,14 +100,10 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async (options = {}) => {
     const { showInfoToast = true } = options;
-    await authService.logout(true); // true to notify backend
-    // Defensive sync: clear both atoms and localStorage
+    await authService.logout(true); // true to notify backend; also clears tokens via clearTokens()
     setAccessToken(null);
     setRefreshToken(null);
     setUser(null);
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
     // Remove the default header from the client
     delete apiClient.defaults.headers.common['Authorization'];
     if (showInfoToast) {

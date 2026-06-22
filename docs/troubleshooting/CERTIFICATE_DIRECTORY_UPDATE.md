@@ -41,10 +41,10 @@ After applying changes, verify the certificates are being served correctly:
 curl -vI https://dashboard.hanna.co.zw 2>&1 | grep -i "subject\|issuer"
 
 # Run the certificate path checker
-./check-certificate-paths.sh
+./scripts/ssl/check-certificate-paths.sh
 
 # Run the fix script to verify configuration
-./fix-certificate-directory.sh
+./scripts/ssl/fix-certificate-directory.sh
 ```
 
 ## Expected Results

@@ -1,5 +1,5 @@
 """
-Convert RELEASE_NOTES_v2.0.0.md to PDF
+Convert docs/releases/RELEASE_NOTES_v2.0.0.md to PDF
 Uses markdown2 and weasyprint for conversion
 """
 
@@ -156,8 +156,8 @@ def convert_md_to_pdf(md_file, pdf_file):
     print(f"  File size: {os.path.getsize(pdf_file) / 1024:.2f} KB")
 
 if __name__ == "__main__":
-    md_file = "RELEASE_NOTES_v2.0.0.md"
-    pdf_file = "RELEASE_NOTES_v2.0.0.pdf"
+    md_file = "docs/releases/RELEASE_NOTES_v2.0.0.md"
+    pdf_file = "docs/releases/RELEASE_NOTES_v2.0.0.pdf"
     
     if not os.path.exists(md_file):
         print(f"Error: {md_file} not found!")

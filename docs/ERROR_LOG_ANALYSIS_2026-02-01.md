@@ -147,7 +147,7 @@ if wait_retries >= MAX_WAIT_RETRIES:
 
 ## TEMPLATE NAME MAPPING (v2.0.0)
 
-From RELEASE_NOTES_v2.0.0.md:
+From releases/RELEASE_NOTES_v2.0.0.md:
 
 | Old Name | New Name | Purpose |
 |----------|----------|---------|
@@ -158,7 +158,7 @@ From RELEASE_NOTES_v2.0.0.md:
 | `hanna_installation_complete` | `pfungwa_installation_complete` | Installation done |
 | `hanna_warranty_claim_submitted` | `pfungwa_warranty_claim_submitted` | Warranty claim received |
 | `hanna_warranty_claim_approved` | `pfungwa_warranty_claim_approved` | Warranty approved |
-| (All 30 templates) | (Prefixed with `pfungwa_`) | See RELEASE_NOTES_v2.0.0.md |
+| (All 30 templates) | (Prefixed with `pfungwa_`) | See releases/RELEASE_NOTES_v2.0.0.md |
 
 ---
 

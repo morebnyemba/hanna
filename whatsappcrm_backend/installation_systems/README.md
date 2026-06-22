@@ -244,7 +244,7 @@ docker compose exec backend python manage.py migrate
 Or use the provided script:
 
 ```bash
-./run-migrations.sh
+./scripts/migrations/run-migrations.sh
 ```
 
 ## Testing

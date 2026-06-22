@@ -226,7 +226,7 @@ else:
 - **Full Analysis**: [ERROR_LOG_ANALYSIS_2026-02-01.md](ERROR_LOG_ANALYSIS_2026-02-01.md)
 - **Complete Fix Plan**: [PRODUCTION_ERROR_FIX_PLAN_2026-02-01.md](PRODUCTION_ERROR_FIX_PLAN_2026-02-01.md)
 - **Operations Guide**: [QUICK_START_FIX_2026-02-01.md](QUICK_START_FIX_2026-02-01.md)
-- **v2.0.0 Release Notes**: [RELEASE_NOTES_v2.0.0.md](RELEASE_NOTES_v2.0.0.md)
+- **v2.0.0 Release Notes**: [RELEASE_NOTES_v2.0.0.md](releases/RELEASE_NOTES_v2.0.0.md)
 
 ---
 

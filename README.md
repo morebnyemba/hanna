@@ -20,7 +20,7 @@ docker-compose up -d
 ### 2. Set Up SSL Certificates
 
 ```bash
-./setup-ssl-certificates.sh
+./scripts/ssl/setup-ssl-certificates.sh
 ```
 
 ### 3. Access Your Application
@@ -35,19 +35,19 @@ The application uses Let's Encrypt for free SSL certificates. The setup is fully
 
 ```bash
 # One-command setup (recommended for fresh installations)
-./bootstrap-ssl.sh --email your-email@example.com
+./scripts/ssl/bootstrap-ssl.sh --email your-email@example.com
 
 # Or manual setup
-./setup-ssl-certificates.sh --email your-email@example.com
+./scripts/ssl/setup-ssl-certificates.sh --email your-email@example.com
 
 # Fix certificate directory issues (if nginx shows old/expired certs)
-./fix-certificate-directory.sh
+./scripts/ssl/fix-certificate-directory.sh
 
 # Diagnose SSL issues
-./diagnose-ssl.sh
+./scripts/ssl/diagnose-ssl.sh
 
 # Troubleshoot browser warnings
-./troubleshoot-ssl-warnings.sh
+./scripts/ssl/troubleshoot-ssl-warnings.sh
 ```
 
 **Automatic Renewal:** Certificates are automatically renewed every 12 hours by the certbot container.
@@ -56,9 +56,9 @@ The application uses Let's Encrypt for free SSL certificates. The setup is fully
 
 | Issue | Fix |
 |-------|-----|
-| Browser shows certificate warnings | Run `./fix-certificate-directory.sh` |
-| Nginx using wrong certificate directory | Run `./fix-certificate-directory.sh` |
-| Certificate expired or self-signed | Run `./setup-ssl-certificates.sh --email your@email.com` |
+| Browser shows certificate warnings | Run `./scripts/ssl/fix-certificate-directory.sh` |
+| Nginx using wrong certificate directory | Run `./scripts/ssl/fix-certificate-directory.sh` |
+| Certificate expired or self-signed | Run `./scripts/ssl/setup-ssl-certificates.sh --email your@email.com` |
 | Staging certificate in production | See [SSL Configuration](docs/configuration/README_SSL.md) |
 
 For detailed SSL setup and troubleshooting, see [docs/configuration/README_SSL.md](docs/configuration/README_SSL.md)
@@ -245,13 +245,13 @@ See detailed deployment guides in the [docs/configuration/](docs/configuration/)
 
 ```bash
 # Identify the issue (30 seconds)
-./check-certificate-paths.sh
+./scripts/ssl/check-certificate-paths.sh
 
 # Auto-fix certificate path issues
-./fix-certificate-paths.sh
+./scripts/ssl/fix-certificate-paths.sh
 
 # Full diagnostic
-./diagnose-ssl.sh
+./scripts/ssl/diagnose-ssl.sh
 
 # View logs
 docker-compose logs nginx
@@ -273,7 +273,7 @@ This happens when migration files exist locally but aren't tracked by git. Run:
 
 ```bash
 # Use the automated fix script
-./fix-untracked-migrations.sh
+./scripts/migrations/fix-untracked-migrations.sh
 
 # Then pull and migrate
 git pull origin main
@@ -299,7 +299,7 @@ docker compose up -d --build
 docker compose exec backend python manage.py migrate
 ```
 
-**For inconsistent migration history errors, see:** `./fix-migration-history.sh`
+**For inconsistent migration history errors, see:** `./scripts/migrations/fix-migration-history.sh`
 
 ### Service Issues
 
@@ -319,7 +319,7 @@ docker-compose restart
 1. Check DNS: `dig dashboard.hanna.co.zw`
 2. Check firewall: Ensure ports 80 and 443 are open
 3. Check nginx: `docker-compose logs nginx`
-4. Run diagnostics: `./diagnose-ssl.sh`
+4. Run diagnostics: `./scripts/ssl/diagnose-ssl.sh`
 
 ## 📚 Documentation
 
@@ -365,7 +365,7 @@ These documents cover testing, security, monitoring, performance, documentation,
 
 For issues or questions:
 1. Check the **[documentation](docs/)** for guides and troubleshooting
-2. Run diagnostic tools (`./diagnose-ssl.sh`, `./check-certificate-paths.sh`)
+2. Run diagnostic tools (`./scripts/ssl/diagnose-ssl.sh`, `./scripts/ssl/check-certificate-paths.sh`)
 3. Review service logs (`docker-compose logs <service>`)
 4. Check **[troubleshooting docs](docs/troubleshooting/)** for common issues
 5. Open an issue on GitHub

@@ -16,7 +16,7 @@ For a fresh installation or when nginx fails to start due to missing certificate
 
 ```bash
 # Complete SSL setup in one command
-./bootstrap-ssl.sh --email your-email@example.com
+./scripts/ssl/bootstrap-ssl.sh --email your-email@example.com
 ```
 
 This script handles everything:
@@ -33,7 +33,7 @@ If you prefer manual control or the bootstrap script fails:
 
 ```bash
 # Create temporary certificates to allow nginx to start
-./init-ssl.sh
+./scripts/ssl/init-ssl.sh
 ```
 
 #### Step 2: Start the Application
@@ -46,7 +46,7 @@ docker-compose up -d
 
 ```bash
 # Run the SSL setup script
-./setup-ssl-certificates.sh --email your-email@example.com
+./scripts/ssl/setup-ssl-certificates.sh --email your-email@example.com
 ```
 
 The script will automatically:
@@ -59,7 +59,7 @@ The script will automatically:
 
 ```bash
 # Run diagnostics
-./diagnose-ssl.sh
+./scripts/ssl/diagnose-ssl.sh
 
 # Test HTTPS access
 curl -I https://dashboard.hanna.co.zw
@@ -90,7 +90,7 @@ docker-compose restart nginx
 
 **Solution:** Run the dedicated troubleshooting script:
 ```bash
-./troubleshoot-ssl-warnings.sh
+./scripts/ssl/troubleshoot-ssl-warnings.sh
 ```
 
 This script will automatically detect the issue and provide specific fix instructions.
@@ -104,19 +104,19 @@ For more details, see: [SSL_BROWSER_WARNING_FIX.md](SSL_BROWSER_WARNING_FIX.md)
 **Solution:** Use the bootstrap script or init script:
 ```bash
 # Option 1: Complete bootstrap (recommended)
-./bootstrap-ssl.sh --email your-email@example.com
+./scripts/ssl/bootstrap-ssl.sh --email your-email@example.com
 
 # Option 2: Manual fix
-./init-ssl.sh              # Create temporary certificates
+./scripts/ssl/init-ssl.sh              # Create temporary certificates
 docker-compose up -d nginx  # Start nginx
-./setup-ssl-certificates.sh # Get real certificates
+./scripts/ssl/setup-ssl-certificates.sh # Get real certificates
 ```
 
 ### Issue: Certificate files not found
 
 **Solution:** Run the SSL setup script:
 ```bash
-./setup-ssl-certificates.sh --email your-email@example.com
+./scripts/ssl/setup-ssl-certificates.sh --email your-email@example.com
 ```
 
 The script will now automatically create temporary certificates if needed.
@@ -135,7 +135,7 @@ docker-compose ps nginx
 docker-compose logs nginx
 
 # Run diagnostic tool
-./diagnose-ssl.sh
+./scripts/ssl/diagnose-ssl.sh
 ```
 
 ### Issue: ACME challenge failed
@@ -155,10 +155,10 @@ We provide several diagnostic and troubleshooting scripts:
 
 ```bash
 # General SSL diagnostics
-./diagnose-ssl.sh
+./scripts/ssl/diagnose-ssl.sh
 
 # Browser warning troubleshooting (NEW!)
-./troubleshoot-ssl-warnings.sh
+./scripts/ssl/troubleshoot-ssl-warnings.sh
 ```
 
 ## Documentation
@@ -178,15 +178,15 @@ We provide several diagnostic and troubleshooting scripts:
 
 ### Recent Fixes
 - Fixed `letsencrypt_webroot` mount to be read-write (was read-only, preventing ACME challenges)
-- Updated `certbot-renew.sh` to wait for initial certificates before starting renewal loop
+- Updated `scripts/ssl/certbot-renew.sh` to wait for initial certificates before starting renewal loop
 - Updated bootstrap and setup scripts to properly invoke certbot without interference from renewal service
 
 ### New Files
-- `setup-ssl-certificates.sh` - Script to obtain initial SSL certificates
-- `diagnose-ssl.sh` - Diagnostic tool for SSL and domain issues
+- `scripts/ssl/setup-ssl-certificates.sh` - Script to obtain initial SSL certificates
+- `scripts/ssl/diagnose-ssl.sh` - Diagnostic tool for SSL and domain issues
 - `SSL_SETUP_GUIDE.md` - Comprehensive SSL setup guide
-- `bootstrap-ssl.sh` - One-command complete SSL setup
-- `certbot-renew.sh` - Automatic certificate renewal script
+- `scripts/ssl/bootstrap-ssl.sh` - One-command complete SSL setup
+- `scripts/ssl/certbot-renew.sh` - Automatic certificate renewal script
 
 ## Security Features
 
@@ -200,6 +200,6 @@ We provide several diagnostic and troubleshooting scripts:
 ## Support
 
 If you encounter issues:
-1. Run the diagnostic script: `./diagnose-ssl.sh`
+1. Run the diagnostic script: `./scripts/ssl/diagnose-ssl.sh`
 2. Check the SSL setup guide: `SSL_SETUP_GUIDE.md`
 3. View container logs: `docker-compose logs nginx` or `docker-compose logs certbot`
