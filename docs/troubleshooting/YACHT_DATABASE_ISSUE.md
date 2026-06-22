@@ -158,7 +158,7 @@ docker-compose exec -T db pg_restore -U ${DB_USER} -d ${DB_NAME} < backup.dump
 3. **Once found, update docker-compose.yml to use that volume**
 
 4. **If data is lost and no backup exists:**
-   - Run migrations to recreate schema: `./run-migrations.sh`
+   - Run migrations to recreate schema: `./scripts/migrations/run-migrations.sh`
    - Manually re-enter critical data or restore from application-level backups
 
 ### About Yacht and Docker Compose

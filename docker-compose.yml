@@ -211,7 +211,7 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt  # SSL certificates from host
       - letsencrypt_webroot:/var/www/letsencrypt
-      - ./certbot-renew.sh:/usr/local/bin/certbot-renew.sh:ro
+      - ./scripts/ssl/certbot-renew.sh:/usr/local/bin/certbot-renew.sh:ro
     entrypoint: /bin/sh /usr/local/bin/certbot-renew.sh
     restart: unless-stopped
 

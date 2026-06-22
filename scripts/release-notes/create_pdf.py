@@ -7,8 +7,8 @@ import sys
 import os
 
 def main():
-    md_file = "RELEASE_NOTES_v2.0.0.md"
-    pdf_file = "RELEASE_NOTES_v2.0.0.pdf"
+    md_file = "docs/releases/RELEASE_NOTES_v2.0.0.md"
+    pdf_file = "docs/releases/RELEASE_NOTES_v2.0.0.pdf"
     
     if not os.path.exists(md_file):
         print(f"ERROR: {md_file} not found")

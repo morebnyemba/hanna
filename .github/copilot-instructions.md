@@ -219,19 +219,19 @@ The Django backend has modular apps including:
 ## Additional Tools & Scripts
 
 ### SSL Certificate Management
-- **Setup:** `./setup-ssl-certificates.sh`
-- **Bootstrap:** `./bootstrap-ssl.sh`
-- **Diagnose:** `./diagnose-ssl.sh`
-- **Fix paths:** `./fix-certificate-paths.sh`
+- **Setup:** `./scripts/ssl/setup-ssl-certificates.sh`
+- **Bootstrap:** `./scripts/ssl/bootstrap-ssl.sh`
+- **Diagnose:** `./scripts/ssl/diagnose-ssl.sh`
+- **Fix paths:** `./scripts/ssl/fix-certificate-paths.sh`
 
 ### Migration Management
-- **Fix conflicts:** `./fix-untracked-migrations.sh`
-- **Reset migrations:** `./reset-all-migrations.sh`
-- **Run migrations:** `./run-migrations.sh`
+- **Fix conflicts:** `./scripts/migrations/fix-untracked-migrations.sh`
+- **Reset migrations:** `./scripts/migrations/reset-all-migrations.sh`
+- **Run migrations:** `./scripts/migrations/run-migrations.sh`
 
 ### Media Diagnostics
-- **Check media:** `./diagnose_media.sh`
-- **NPM media:** `./diagnose_npm_media.sh`
+- **Check media:** `./scripts/media/diagnose_media.sh`
+- **NPM media:** `./scripts/media/diagnose_npm_media.sh`
 
 ## Useful Documentation
 For detailed information, refer to these files in the root:

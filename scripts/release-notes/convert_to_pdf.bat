@@ -22,21 +22,21 @@ echo.
 
 REM Try to convert using LaTeX engine (best quality)
 echo Attempting conversion with pdflatex...
-pandoc RELEASE_NOTES_v2.0.0.md -o RELEASE_NOTES_v2.0.0.pdf --pdf-engine=pdflatex 2>nul
+pandoc docs/releases/RELEASE_NOTES_v2.0.0.md -o docs/releases/RELEASE_NOTES_v2.0.0.pdf --pdf-engine=pdflatex 2>nul
 if %ERRORLEVEL% EQU 0 (
     echo SUCCESS: PDF created with pdflatex!
     goto :success
 )
 
 echo pdflatex not available, trying wkhtmltopdf...
-pandoc RELEASE_NOTES_v2.0.0.md -o RELEASE_NOTES_v2.0.0.pdf --pdf-engine=wkhtmltopdf 2>nul
+pandoc docs/releases/RELEASE_NOTES_v2.0.0.md -o docs/releases/RELEASE_NOTES_v2.0.0.pdf --pdf-engine=wkhtmltopdf 2>nul
 if %ERRORLEVEL% EQU 0 (
     echo SUCCESS: PDF created with wkhtmltopdf!
     goto :success
 )
 
 echo wkhtmltopdf not available, trying default engine...
-pandoc RELEASE_NOTES_v2.0.0.md -o RELEASE_NOTES_v2.0.0.pdf 2>nul
+pandoc docs/releases/RELEASE_NOTES_v2.0.0.md -o docs/releases/RELEASE_NOTES_v2.0.0.pdf 2>nul
 if %ERRORLEVEL% EQU 0 (
     echo SUCCESS: PDF created with default engine!
     goto :success
@@ -44,10 +44,10 @@ if %ERRORLEVEL% EQU 0 (
 
 REM If all fail, try converting to HTML first
 echo All PDF engines failed, trying HTML conversion...
-pandoc RELEASE_NOTES_v2.0.0.md -o RELEASE_NOTES_v2.0.0.html --standalone --self-contained
+pandoc docs/releases/RELEASE_NOTES_v2.0.0.md -o docs/releases/RELEASE_NOTES_v2.0.0.html --standalone --self-contained
 if %ERRORLEVEL% EQU 0 (
     echo SUCCESS: HTML file created!
-    echo You can open RELEASE_NOTES_v2.0.0.html in your browser and print to PDF
+    echo You can open docs/releases/RELEASE_NOTES_v2.0.0.html in your browser and print to PDF
     goto :end
 )
 
@@ -64,9 +64,9 @@ goto :end
 :success
 echo.
 echo ========================================
-echo PDF Location: %CD%\RELEASE_NOTES_v2.0.0.pdf
+echo PDF Location: %CD%\docs/releases/RELEASE_NOTES_v2.0.0.pdf
 echo ========================================
-for %%A in ("RELEASE_NOTES_v2.0.0.pdf") do echo File Size: %%~zA bytes
+for %%A in ("docs/releases/RELEASE_NOTES_v2.0.0.pdf") do echo File Size: %%~zA bytes
 echo.
 
 :end

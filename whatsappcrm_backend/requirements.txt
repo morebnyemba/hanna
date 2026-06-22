@@ -1,51 +1,52 @@
 # --- Core Django & Server ---
-django
-gunicorn
-psycopg2-binary
-python-dotenv
-whitenoise
+django==5.2.15
+gunicorn==26.0.0
+psycopg2-binary==2.9.12
+python-dotenv==1.2.2
+whitenoise==6.12.0
 
 # --- Django REST Framework & Auth ---
-djangorestframework
-djangorestframework-simplejwt
-django-cors-headers
-django-filter
-drf-nested-routers
-paynow
+djangorestframework==3.17.1
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
+django-filter==25.2
+drf-nested-routers==0.95.0
+paynow==1.0.8
+
 # --- Celery for Background Tasks ---
-celery
-kombu
-redis
-django-celery-beat
-django-celery-results
+celery==5.6.3
+kombu==5.6.2
+redis==8.0.0
+django-celery-beat==2.9.0
+django-celery-results==2.6.0
 
 # --- Channels for WebSockets ---
-channels
-channels-redis
-daphne
+channels==4.3.2
+channels-redis==4.3.0
+daphne==4.2.2
 
 # --- AI, Document & Image Processing ---
-google-genai
-google-api-core
-pdf2image
-pdfminer.six
-Pillow
-pytesseract
-qrcode[pil]
+google-genai==2.9.0
+google-api-core==2.31.0
+pdf2image==1.17.0
+pdfminer.six==20260107
+Pillow==12.2.0
+pytesseract==0.3.13
+qrcode[pil]==8.2
 
 # --- Admin & Utilities ---
-django-jazzmin
-django-extensions
-django-countries
-openpyxl
-reportlab
+django-jazzmin==3.0.4
+django-extensions==4.1
+django-countries==9.0.0
+openpyxl==3.1.5
+reportlab==5.0.0
 
 # --- API, Monitoring & Other ---
-drf-spectacular
-django-prometheus
-django-csp
-imapclient
-jinja2
-pydantic
-requests
-gevent
+drf-spectacular==0.29.0
+django-prometheus==2.5.0
+django-csp==4.0
+imapclient==3.1.0
+jinja2==3.1.6
+pydantic==2.13.4
+requests==2.34.2
+gevent==26.5.0
