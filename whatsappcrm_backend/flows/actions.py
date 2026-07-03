@@ -473,6 +473,7 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
     try:
         from products_and_services.models import Cart, CartItem, Product
         from django.db import transaction
+        from django.db.models import F
         from decimal import Decimal
 
         # Find cart by WhatsApp session key
@@ -511,6 +512,14 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
             total_amount += unit_price * ci.quantity
 
         with transaction.atomic():
+            # Lock the Product rows so a concurrent checkout can't decrement the
+            # same stock below zero.
+            locked_products = {
+                p.id: p for p in Product.objects.select_for_update().filter(
+                    id__in=[ci.product_id for ci in cart_items]
+                )
+            }
+
             order = Order.objects.create(
                 customer=customer_profile,
                 name=f"AI Shopping Order for {contact.name or contact.whatsapp_id}",
@@ -524,6 +533,7 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
             )
 
             order_items_to_create = []
+            oversold_notes = []
             for ci in cart_items:
                 unit_price = ci.product.price or Decimal('0.00')
                 order_items_to_create.append(OrderItem(
@@ -533,8 +543,21 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
                     unit_price=unit_price,
                     total_amount=unit_price * ci.quantity
                 ))
+
+                product = locked_products.get(ci.product_id, ci.product)
+                if product.stock_quantity < ci.quantity:
+                    oversold_notes.append(f"{product.name}: ordered {ci.quantity}, only {product.stock_quantity} in stock.")
+                    Product.objects.filter(pk=product.pk).update(stock_quantity=0)
+                else:
+                    Product.objects.filter(pk=product.pk).update(stock_quantity=F('stock_quantity') - ci.quantity)
+
             if order_items_to_create:
                 OrderItem.objects.bulk_create(order_items_to_create)
+
+            if oversold_notes:
+                order.notes = (order.notes or '') + "\n\n⚠️ STOCK SHORTFALL:\n" + "\n".join(oversold_notes)
+                order.save(update_fields=['notes'])
+                logger.warning(f"Order {order.order_number} oversold: {'; '.join(oversold_notes)}")
 
             # Clear cart after creating order
             CartItem.objects.filter(cart=cart).delete()
@@ -757,8 +780,9 @@ def process_cart_order(contact: Contact, context: Dict[str, Any], params: Dict[s
     """
     from .services import _resolve_value
     from django.db import transaction
+    from django.db.models import F
     from django.forms.models import model_to_dict
-    
+
     cart_var = params.get('cart_context_var', 'whatsapp_order_data')
     name_template = params.get('order_name_template', 'WhatsApp Order for {{ contact.name }}')
     save_to_var = params.get('save_order_to')
@@ -778,17 +802,19 @@ def process_cart_order(contact: Contact, context: Dict[str, Any], params: Dict[s
     order_name = _resolve_value(name_template, context, contact)
     customer_profile, _ = CustomerProfile.objects.get_or_create(contact=contact)
     
-    # Get products by their retailer_id (SKU)
+    # Get products by their retailer_id (SKU). Row-locked so concurrent checkouts
+    # can't both decrement the same stock past zero.
     skus = [item.get('product_retailer_id') for item in product_items if item.get('product_retailer_id')]
-    products = Product.objects.filter(sku__in=skus)
-    product_map = {p.sku: p for p in products}
-    
-    if not products.exists():
-        logger.warning(f"No valid products found for SKUs {skus} in WhatsApp order.")
-        return []
-    
+
     try:
         with transaction.atomic():
+            products = Product.objects.select_for_update().filter(sku__in=skus)
+            product_map = {p.sku: p for p in products}
+
+            if not product_map:
+                logger.warning(f"No valid products found for SKUs {skus} in WhatsApp order.")
+                return []
+
             # Generate order number with retry limit
             order_num = None
             max_retries = 100
@@ -797,17 +823,21 @@ def process_cart_order(contact: Contact, context: Dict[str, Any], params: Dict[s
                 if not Order.objects.filter(order_number=candidate).exists():
                     order_num = candidate
                     break
-            
+
             if not order_num:
                 # Fall back to UUID-based number if random attempts exhausted
                 order_num = f"WA-{str(uuid.uuid4().hex[:8]).upper()}"
-            
-            # Calculate total from the items
-            total_amount = sum(
-                Decimal(str(item.get('item_price', 0))) * item.get('quantity', 1)
-                for item in product_items
-            )
-            
+
+            # Calculate total using the authoritative DB price, not whatever price
+            # the WhatsApp catalog payload happens to report.
+            total_amount = Decimal('0.00')
+            for item in product_items:
+                sku = item.get('product_retailer_id')
+                quantity = item.get('quantity', 1)
+                product = product_map.get(sku)
+                unit_price = product.price if product else Decimal(str(item.get('item_price', 0)))
+                total_amount += unit_price * quantity
+
             order = Order.objects.create(
                 customer=customer_profile,
                 name=order_name,
@@ -819,26 +849,40 @@ def process_cart_order(contact: Contact, context: Dict[str, Any], params: Dict[s
                 notes=f"Order placed via WhatsApp Catalog. Contact: {contact.whatsapp_id}",
                 assigned_agent=customer_profile.assigned_agent
             )
-            
+
             order_items_to_create = []
+            oversold_notes = []
             for item in product_items:
                 sku = item.get('product_retailer_id')
                 quantity = item.get('quantity', 1)
-                item_price = Decimal(str(item.get('item_price', 0)))
-                
-                if sku in product_map:
-                    product = product_map[sku]
-                    order_items_to_create.append(OrderItem(
-                        order=order,
-                        product=product,
-                        quantity=quantity,
-                        unit_price=item_price or product.price,
-                        total_amount=(item_price or product.price) * quantity
-                    ))
-            
+
+                product = product_map.get(sku)
+                if not product:
+                    continue
+
+                unit_price = product.price
+                order_items_to_create.append(OrderItem(
+                    order=order,
+                    product=product,
+                    quantity=quantity,
+                    unit_price=unit_price,
+                    total_amount=unit_price * quantity
+                ))
+
+                if product.stock_quantity < quantity:
+                    oversold_notes.append(f"{product.name}: ordered {quantity}, only {product.stock_quantity} in stock.")
+                    Product.objects.filter(pk=product.pk).update(stock_quantity=0)
+                else:
+                    Product.objects.filter(pk=product.pk).update(stock_quantity=F('stock_quantity') - quantity)
+
             if order_items_to_create:
                 OrderItem.objects.bulk_create(order_items_to_create)
-            
+
+            if oversold_notes:
+                order.notes = (order.notes or '') + "\n\n⚠️ STOCK SHORTFALL:\n" + "\n".join(oversold_notes)
+                order.save(update_fields=['notes'])
+                logger.warning(f"Order {order.order_number} oversold: {'; '.join(oversold_notes)}")
+
             logger.info(f"Created Order (ID: {order.id}, Number: {order_num}) with {len(order_items_to_create)} items from WhatsApp catalog for contact {contact.id}.")
             
             if save_to_var:
@@ -1117,32 +1161,25 @@ def confirm_payment_method_and_initiate(contact: Contact, context: Dict[str, Any
     actions_to_perform = []
     
     # Check if it's a Paynow method (automated) or manual
-    from customer_data.payment_utils import is_automated_payment_method
+    from customer_data.payment_utils import is_automated_payment_method, validate_phone_number
     if is_automated_payment_method(payment_method):
-        # Automated Paynow payment - send confirmation and initiate payment
-        paynow_method_map = {
+        # Automated Paynow payment - actually initiate the payment via Paynow.
+        # Previously this branch only told the customer to "check your phone"
+        # without ever calling Paynow, so no payment prompt was ever sent.
+        method_display_map = {
             'paynow_ecocash': 'Ecocash',
             'paynow_onemoney': 'OneMoney',
             'paynow_innbucks': 'Innbucks'
         }
-        method_display = paynow_method_map.get(payment_method, 'Paynow')
-        
-        confirmation_msg = (
-            f"✅ *Payment Method Confirmed*\n\n"
-            f"You have selected: *{method_display}*\n\n"
-            f"Order: #{order.order_number}\n"
-            f"Amount: ${order.amount} {order.currency}\n\n"
-            f"Please check your phone for the payment prompt..."
-        )
-        
-        actions_to_perform.append({
-            'type': 'send_whatsapp_message',
-            'recipient_wa_id': contact.whatsapp_id,
-            'message_type': 'text',
-            'data': {'body': confirmation_msg}
-        })
-        
-        # Store order data back to context for payment initiation
+        paynow_method_type_map = {
+            'paynow_ecocash': 'ecocash',
+            'paynow_onemoney': 'onemoney',
+            'paynow_innbucks': 'innbucks'
+        }
+        method_display = method_display_map.get(payment_method, 'Paynow')
+        paynow_method_type = paynow_method_type_map.get(payment_method, 'ecocash')
+
+        # Store order data back to context for downstream flow steps
         context[order_var] = {
             'id': str(order.id),
             'order_number': order.order_number,
@@ -1150,7 +1187,84 @@ def confirm_payment_method_and_initiate(contact: Contact, context: Dict[str, Any
             'currency': order.currency,
             'payment_method': payment_method
         }
-        
+
+        try:
+            from paynow_integration.services import PaynowService
+            from customer_data.models import Payment, PaymentStatus
+            from decimal import Decimal
+            import uuid
+
+            validated_phone = validate_phone_number(contact.whatsapp_id)
+            customer_email = (order.customer.email if order.customer else '') or 'mnyemba@hanna.co.zw'
+            payment_reference = f"PAY-{order.order_number}-{uuid.uuid4().hex[:8].upper()}"
+
+            paynow_service = PaynowService(ipn_callback_url='/crm-api/paynow/ipn/')
+            payment = Payment.objects.create(
+                customer=order.customer,
+                order=order,
+                amount=order.amount,
+                currency=order.currency,
+                status=PaymentStatus.PENDING,
+                payment_method=paynow_method_type,
+                provider_transaction_id=payment_reference
+            )
+
+            result = paynow_service.initiate_express_checkout_payment(
+                amount=Decimal(str(order.amount)),
+                reference=payment_reference,
+                phone_number=validated_phone,
+                email=customer_email,
+                paynow_method_type=paynow_method_type,
+                description=f"Payment for Order {order.order_number}"
+            )
+
+            if result.get('success'):
+                payment.poll_url = result.get('poll_url')
+                payment.provider_response = result
+                payment.save(update_fields=['poll_url', 'provider_response'])
+                order.payment_status = Order.PaymentStatus.PENDING
+                order.save(update_fields=['payment_status'])
+
+                instructions = result.get('instructions') or f"Please check your {method_display} to complete the payment."
+                confirmation_msg = (
+                    f"✅ *Payment Method Confirmed*\n\n"
+                    f"You have selected: *{method_display}*\n\n"
+                    f"Order: #{order.order_number}\n"
+                    f"Amount: ${order.amount} {order.currency}\n\n"
+                    f"{instructions}"
+                )
+            else:
+                payment.status = PaymentStatus.FAILED
+                payment.provider_response = result
+                payment.save(update_fields=['status', 'provider_response'])
+                confirmation_msg = (
+                    f"❌ We couldn't start your {method_display} payment.\n\n"
+                    f"{result.get('message', 'Please try again or contact support.')}\n\n"
+                    f"Order: #{order.order_number}"
+                )
+        except ValueError as e:
+            # validate_phone_number raises ValueError on invalid phone
+            logger.error(f"Phone number validation failed for contact {contact.id}: {e}")
+            confirmation_msg = (
+                f"❌ We couldn't verify your phone number for payment.\n\n"
+                f"Please contact our support team to complete your payment.\n"
+                f"Order: #{order.order_number}"
+            )
+        except Exception as e:
+            logger.error(f"Error initiating Paynow payment for order {order.order_number}: {e}", exc_info=True)
+            confirmation_msg = (
+                f"❌ Something went wrong starting your payment.\n\n"
+                f"Please try again or contact support.\n"
+                f"Order: #{order.order_number}"
+            )
+
+        actions_to_perform.append({
+            'type': 'send_whatsapp_message',
+            'recipient_wa_id': contact.whatsapp_id,
+            'message_type': 'text',
+            'data': {'body': confirmation_msg}
+        })
+
     else:
         # Manual payment - send instructions
         from customer_data.payment_utils import get_bank_transfer_instructions, get_cash_payment_instructions

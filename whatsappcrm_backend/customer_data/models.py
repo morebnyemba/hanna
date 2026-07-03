@@ -473,7 +473,7 @@ class Payment(models.Model):
     )
     payment_method = models.CharField(_("Payment Method"), max_length=50, default='paynow')
     provider_transaction_id = models.CharField(
-        _("Provider Transaction ID"), max_length=255, blank=True, null=True, db_index=True,
+        _("Provider Transaction ID"), max_length=255, blank=True, null=True, unique=True, db_index=True,
         help_text=_("The unique ID for this transaction from the payment provider (e.g., Paynow poll URL or reference).")
     )
     poll_url = models.CharField(
