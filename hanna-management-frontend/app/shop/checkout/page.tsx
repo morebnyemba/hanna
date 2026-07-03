@@ -285,11 +285,16 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Guards state updates from an in-flight request that resolves after this
+    // effect has been cleaned up (unmount, step change, or reference change),
+    // which would otherwise call setState on a stale/unmounted run.
+    let active = true;
     setPaymentPollStatus('pending');
 
     const checkStatus = async () => {
       try {
         const res = await apiClient.get(`/crm-api/paynow/payment-status/${paymentInfo.payment_reference}/`);
+        if (!active) return;
         const s = res.data?.status;
         if (s === 'paid') {
           setPaymentPollStatus('paid');
@@ -308,13 +313,18 @@ export default function CheckoutPage() {
     checkStatus();
     pollIntervalRef.current = setInterval(checkStatus, PAYMENT_POLL_INTERVAL_MS);
     pollTimeoutRef.current = setTimeout(() => {
-      setPaymentPollStatus((prev) => (prev === 'pending' ? 'timeout' : prev));
-      stopPolling();
+      if (active) {
+        setPaymentPollStatus((prev) => (prev === 'pending' ? 'timeout' : prev));
+        stopPolling();
+      }
     }, PAYMENT_POLL_TIMEOUT_MS);
 
-    return stopPolling;
+    return () => {
+      active = false;
+      stopPolling();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, paymentInfo?.payment_reference]);
+  }, [step, paymentInfo?.payment_reference, stopPolling]);
 
   const isEmpty = !cart || cart.items.length === 0;
 

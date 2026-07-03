@@ -503,7 +503,8 @@ class MetaWebhookAPIView(View):
             # guard, a retried flow-response (e.g. a submitted payment form) would be
             # processed a second time, potentially double-initiating a payment.
             logger.info(f"Flow response with WAMID {whatsapp_message_id} already processed. Skipping duplicate processing.")
-            self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (already processed).')
+            if log_entry:
+                self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (already processed).')
             return
 
         # Process the WhatsApp flow response data
@@ -550,7 +551,8 @@ class MetaWebhookAPIView(View):
         )
         if not msg_created:
             logger.info(f"Order message with WAMID {whatsapp_message_id} already processed. Skipping duplicate order creation.")
-            self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (order already created).')
+            if log_entry:
+                self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (order already created).')
             return
 
         success, notes = process_order_from_catalog(msg_data, contact, active_config)

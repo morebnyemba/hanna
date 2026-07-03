@@ -1225,6 +1225,15 @@ def confirm_payment_method_and_initiate(contact: Contact, context: Dict[str, Any
                 order.payment_status = Order.PaymentStatus.PENDING
                 order.save(update_fields=['payment_status'])
 
+                # Fallback in case the Paynow IPN callback never arrives.
+                if payment.poll_url:
+                    from django.db import transaction
+                    from paynow_integration.tasks import poll_paynow_transaction_status
+                    payment_id = str(payment.id)
+                    transaction.on_commit(
+                        lambda: poll_paynow_transaction_status.apply_async(args=[payment_id], countdown=90)
+                    )
+
                 instructions = result.get('instructions') or f"Please check your {method_display} to complete the payment."
                 confirmation_msg = (
                     f"✅ *Payment Method Confirmed*\n\n"

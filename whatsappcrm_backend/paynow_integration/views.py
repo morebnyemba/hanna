@@ -356,6 +356,14 @@ def paynow_ipn_handler(request):
 
             was_already_successful = payment.status == PaymentStatus.SUCCESSFUL
 
+            # SUCCESSFUL is terminal. A later/duplicate IPN reporting a different
+            # status (e.g. 'failed' or 'cancelled') must never demote a payment
+            # that already cleared - that would incorrectly revert a paid order
+            # and is also a plausible spoofing/replay vector.
+            if was_already_successful:
+                logger.info(f"Payment {reference} is already SUCCESSFUL. Ignoring subsequent IPN status update ('{status_val}').")
+                return HttpResponse("OK", status=200)
+
             # Sanity-check the IPN amount against what we actually charged for.
             # A mismatch could indicate a misconfigured/compromised callback and
             # should never silently mark an order as paid.
