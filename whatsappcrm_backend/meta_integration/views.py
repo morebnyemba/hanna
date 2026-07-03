@@ -497,7 +497,16 @@ class MetaWebhookAPIView(View):
         if log_entry and log_entry.pk:
             log_entry.message = incoming_msg_obj
             log_entry.save(update_fields=['message'])
-        
+
+        if not msg_created:
+            # Meta retries webhook delivery on non-2xx/slow responses. Without this
+            # guard, a retried flow-response (e.g. a submitted payment form) would be
+            # processed a second time, potentially double-initiating a payment.
+            logger.info(f"Flow response with WAMID {whatsapp_message_id} already processed. Skipping duplicate processing.")
+            if log_entry:
+                self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (already processed).')
+            return
+
         # Process the WhatsApp flow response data
         success, notes = process_whatsapp_flow_response(msg_data, contact, active_config)
         
@@ -518,8 +527,34 @@ class MetaWebhookAPIView(View):
         Handles order messages from WhatsApp catalog.
         Processes the cart, creates an order, and initiates payment flow.
         """
+        from conversations.models import Message
         from flows.services import process_order_from_catalog
-        
+
+        whatsapp_message_id = msg_data.get("id")
+
+        # Meta retries webhook delivery on non-2xx/slow responses. This code path
+        # creates a brand-new Order with no idempotency key of its own, so without
+        # recording the wamid here, a retried delivery would create a duplicate
+        # Order for the same WhatsApp catalog checkout.
+        _, msg_created = Message.objects.get_or_create(
+            wamid=whatsapp_message_id,
+            defaults={
+                'contact': contact,
+                'app_config': active_config,
+                'direction': 'in',
+                'message_type': 'order',
+                'content_payload': msg_data,
+                'timestamp': timezone.now(),
+                'status': 'delivered',
+                'status_timestamp': timezone.now(),
+            }
+        )
+        if not msg_created:
+            logger.info(f"Order message with WAMID {whatsapp_message_id} already processed. Skipping duplicate order creation.")
+            if log_entry:
+                self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (order already created).')
+            return
+
         success, notes = process_order_from_catalog(msg_data, contact, active_config)
         
         if success:
@@ -741,7 +776,15 @@ class MetaWebhookAPIView(View):
                         payment.poll_url = result.get('poll_url')
                         payment.provider_response = result
                         payment.save(update_fields=['poll_url', 'provider_response'])
-                        
+
+                        # Fallback in case the Paynow IPN callback never arrives.
+                        if payment.poll_url:
+                            from paynow_integration.tasks import poll_paynow_transaction_status
+                            payment_id = str(payment.id)
+                            transaction.on_commit(
+                                lambda: poll_paynow_transaction_status.apply_async(args=[payment_id], countdown=90)
+                            )
+
                         success_msg = (
                             f"💳 *Payment Request Sent*\n\n"
                             f"Please approve the payment on your phone.\n\n"

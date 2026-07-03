@@ -212,7 +212,12 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated', # Default to requiring authentication
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20, 
+    'PAGE_SIZE': 20,
+    'DEFAULT_THROTTLE_RATES': {
+        # Limits abuse of the unauthenticated Paynow payment-initiation endpoint
+        # (each call triggers a real USSD/mobile-money push to a phone number).
+        'payment_initiation': '10/hour',
+    },
 }
 
 # --- Simple JWT Settings ---
@@ -575,6 +580,12 @@ JAZZMIN_UI_TWEAKS = {
 # It's best to set this in your .env file.
 BACKEND_DOMAIN_FOR_CSP = os.getenv('BACKEND_DOMAIN_FOR_CSP', 'backend.hanna.co.zw')
 FRONTEND_DOMAIN_FOR_CSP = os.getenv('FRONTEND_DOMAIN_FOR_CSP', 'dashboard.hanna.co.zw')
+
+# Public base URL of this backend, used to build absolute callback URLs (e.g. the
+# Paynow IPN result_url). Defaults to BACKEND_DOMAIN_FOR_CSP so payment callbacks
+# work out of the box without a separately-maintained env var; override with
+# SITE_URL if the public-facing domain differs from the CSP backend domain.
+SITE_URL = os.getenv('SITE_URL', f'https://{BACKEND_DOMAIN_FOR_CSP}')
 
 # Base directives for production
 connect_src_list = [

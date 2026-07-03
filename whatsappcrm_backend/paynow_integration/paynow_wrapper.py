@@ -1,4 +1,5 @@
 # paynow_wrapper.py
+import hmac
 import logging
 import hashlib # Still needed for IPN verification
 from decimal import Decimal
@@ -148,25 +149,29 @@ class PaynowSDK: # This class will wrap the official Paynow SDK
             logger.error(f"PaynowSDK: Unexpected error during Express Checkout initiation: {str(e)}", exc_info=True)
             return {"success": False, "message": f"Internal error processing payment: {str(e)}"}
 
-    def verify_ipn_callback(self, ipn_data: Dict[str, str]) -> bool:
+    def verify_ipn_hash(self, ipn_data: Dict[str, str]) -> bool:
         """
         Verifies the integrity of an IPN callback from Paynow using the generated hash.
         The official SDK does not provide a direct IPN verification method,
         so we retain our manual hash verification logic.
+
+        Per Paynow's IPN spec, the hash is computed over the concatenated
+        *values* of every field Paynow sends (excluding the `hash` field
+        itself), in the order they were sent, with the integration key
+        appended, then MD5-hashed and upper-cased. Hardcoding a fixed subset
+        of fields (status/reference/paynowreference/amount) does not match
+        real IPN payloads, which can include additional fields (e.g. pollurl).
         """
-        hash_received = ipn_data.get('hash')
-        
-        status = ipn_data.get('status', '')
-        reference = ipn_data.get('reference', '')
-        paynow_reference = ipn_data.get('paynowreference', '')
-        amount = ipn_data.get('amount', '')
-        
-        # The IPN hash calculation is specific and usually involves these fields + integration key.
-        # This is based on common Paynow IPN documentation patterns.
-        expected_hash_string = f"{status}{reference}{paynow_reference}{amount}{self.integration_key}"
+        hash_received = (ipn_data.get('hash') or '').upper()
+        if not hash_received:
+            return False
+
+        values = ''.join(str(v) for k, v in ipn_data.items() if k.lower() != 'hash')
+        expected_hash_string = f"{values}{self.integration_key}"
         expected_hash = hashlib.md5(expected_hash_string.encode('utf-8')).hexdigest().upper()
-        
-        return hash_received == expected_hash
+
+        # Constant-time comparison to avoid timing side-channels.
+        return hmac.compare_digest(hash_received, expected_hash)
 
     def check_transaction_status(self, poll_url: str) -> Dict[str, Any]:
         """

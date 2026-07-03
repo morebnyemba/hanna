@@ -1227,9 +1227,11 @@ class CartViewSet(viewsets.ViewSet):
         Returns: { order_number, amount, currency }
         """
         from django.db import transaction
+        from django.db.models import F
         from decimal import Decimal
         from customer_data.models import Order, OrderItem, CustomerProfile
         from conversations.models import Contact
+        from .models import Product
         import uuid
 
         cart = self._get_or_create_cart(request)
@@ -1311,6 +1313,26 @@ class CartViewSet(viewsets.ViewSet):
 
         try:
             with transaction.atomic():
+                # Re-validate stock at checkout time (not just at add-to-cart time)
+                # and lock the Product rows so two concurrent checkouts of the same
+                # last unit can't both succeed - add-to-cart only checks stock
+                # opportunistically, leaving a TOCTOU gap until now.
+                product_ids = [ci.product_id for ci in cart_items]
+                locked_products = {
+                    p.id: p for p in Product.objects.select_for_update().filter(id__in=product_ids)
+                }
+                insufficient = []
+                for ci in cart_items:
+                    product = locked_products.get(ci.product_id)
+                    if not product or product.stock_quantity < ci.quantity:
+                        available = product.stock_quantity if product else 0
+                        insufficient.append(f"{ci.product.name} (requested {ci.quantity}, available {available})")
+                if insufficient:
+                    return Response(
+                        {'error': f"Insufficient stock: {'; '.join(insufficient)}"},
+                        status=status.HTTP_409_CONFLICT
+                    )
+
                 # Create order with defensive null-safe assigned_agent
                 order_data = {
                     'customer': customer_profile,
@@ -1326,7 +1348,7 @@ class CartViewSet(viewsets.ViewSet):
                 # Only add assigned_agent if the profile has one
                 if hasattr(customer_profile, 'assigned_agent') and customer_profile.assigned_agent:
                     order_data['assigned_agent'] = customer_profile.assigned_agent
-                
+
                 order = Order.objects.create(**order_data)
 
                 order_items_to_create = []
@@ -1341,6 +1363,10 @@ class CartViewSet(viewsets.ViewSet):
                     ))
                 if order_items_to_create:
                     OrderItem.objects.bulk_create(order_items_to_create)
+
+                # Decrement stock now that the order is committed.
+                for ci in cart_items:
+                    Product.objects.filter(pk=ci.product_id).update(stock_quantity=F('stock_quantity') - ci.quantity)
 
                 # Clear the cart
                 cart.items.all().delete()

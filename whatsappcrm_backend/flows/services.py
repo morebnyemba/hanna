@@ -2029,86 +2029,119 @@ def process_order_from_catalog(msg_data: dict, contact: Contact, app_config) -> 
     from meta_integration.utils import send_whatsapp_message
     from .models import WhatsAppFlow
     from decimal import Decimal
+    from django.db import transaction
+    from django.db.models import F
     import random
-    
+
     try:
         order_data = msg_data.get("order", {})
         catalog_id = order_data.get("catalog_id")
         product_items = order_data.get("product_items", [])
         text_message = order_data.get("text", "")  # Optional message from customer
-        
+
         if not product_items:
             logger.warning(f"Order message has no product items: {msg_data}")
             return False, 'No product items in order'
-        
+
         logger.info(f"Processing WhatsApp catalog order for contact {contact.id} with {len(product_items)} items.")
-        
+
         # Get or create customer profile
         customer_profile, created = CustomerProfile.objects.get_or_create(contact=contact)
         if created:
             logger.info(f"Created new CustomerProfile for contact {contact.id}")
-        
+
         # Get products by their retailer_id (SKU)
         skus = [item.get('product_retailer_id') for item in product_items if item.get('product_retailer_id')]
-        products = Product.objects.filter(sku__in=skus)
-        product_map = {p.sku: p for p in products}
-        
-        # Generate unique order number with retry limit
-        import uuid as uuid_module
-        order_num = None
-        max_retries = 100
-        for _ in range(max_retries):
-            candidate = f"WA-{random.randint(10000, 99999)}"
-            if not Order.objects.filter(order_number=candidate).exists():
-                order_num = candidate
-                break
-        
-        if not order_num:
-            # Fall back to UUID-based number if random attempts exhausted
-            order_num = f"WA-{str(uuid_module.uuid4().hex[:8]).upper()}"
-        
-        # Calculate total from the items
+
+        oversold_notes = []
+        order = None
+        order_items_created = []
         total_amount = Decimal('0.00')
         currency = 'USD'
-        for item in product_items:
-            item_price = Decimal(str(item.get('item_price', '0')))
-            quantity = int(item.get('quantity', 1))
-            total_amount += item_price * quantity
-            currency = item.get('currency', 'USD')
-        
-        # Create the order
-        order = Order.objects.create(
-            customer=customer_profile,
-            name=f"WhatsApp Catalog Order for {contact.name or contact.whatsapp_id}",
-            order_number=order_num,
-            stage=Order.Stage.CLOSED_WON,
-            payment_status=Order.PaymentStatus.PENDING,
-            amount=total_amount,
-            currency=currency,
-            notes=f"Order placed via WhatsApp Catalog.\nCatalog ID: {catalog_id}\nCustomer Note: {text_message}",
-            assigned_agent=customer_profile.assigned_agent
-        )
-        
-        # Create order items
-        order_items_created = []
-        for item in product_items:
-            sku = item.get('product_retailer_id')
-            quantity = int(item.get('quantity', 1))
-            item_price = Decimal(str(item.get('item_price', '0')))
-            
-            product = product_map.get(sku)
-            if product:
+
+        # Wrap order + item creation + stock deduction in a single transaction so a
+        # failure partway through never leaves an Order with a total that doesn't
+        # match its items, and lock Product rows so concurrent orders can't both
+        # decrement the same stock past zero.
+        with transaction.atomic():
+            products = Product.objects.select_for_update().filter(sku__in=skus)
+            product_map = {p.sku: p for p in products}
+
+            # Generate unique order number with retry limit
+            import uuid as uuid_module
+            order_num = None
+            max_retries = 100
+            for _ in range(max_retries):
+                candidate = f"WA-{random.randint(10000, 99999)}"
+                if not Order.objects.filter(order_number=candidate).exists():
+                    order_num = candidate
+                    break
+
+            if not order_num:
+                # Fall back to UUID-based number if random attempts exhausted
+                order_num = f"WA-{str(uuid_module.uuid4().hex[:8]).upper()}"
+
+            # Calculate total from the items using the authoritative DB price, not
+            # whatever price the WhatsApp catalog webhook happens to report (that
+            # catalog data can drift from Product.price after a sync lag or manual
+            # catalog edit).
+            for item in product_items:
+                sku = item.get('product_retailer_id')
+                quantity = int(item.get('quantity', 1))
+                product = product_map.get(sku)
+                unit_price = product.price if product else Decimal(str(item.get('item_price', '0')))
+                total_amount += unit_price * quantity
+                currency = item.get('currency', currency)
+
+            # Create the order
+            order = Order.objects.create(
+                customer=customer_profile,
+                name=f"WhatsApp Catalog Order for {contact.name or contact.whatsapp_id}",
+                order_number=order_num,
+                stage=Order.Stage.CLOSED_WON,
+                payment_status=Order.PaymentStatus.PENDING,
+                amount=total_amount,
+                currency=currency,
+                notes=f"Order placed via WhatsApp Catalog.\nCatalog ID: {catalog_id}\nCustomer Note: {text_message}",
+                assigned_agent=customer_profile.assigned_agent
+            )
+
+            # Create order items and atomically deduct stock
+            for item in product_items:
+                sku = item.get('product_retailer_id')
+                quantity = int(item.get('quantity', 1))
+                product = product_map.get(sku)
+
+                if not product:
+                    logger.warning(f"Product with SKU '{sku}' not found in database for WhatsApp order.")
+                    continue
+
+                unit_price = product.price
                 order_item = OrderItem.objects.create(
                     order=order,
                     product=product,
                     quantity=quantity,
-                    unit_price=item_price or product.price,
-                    total_amount=(item_price or product.price) * quantity
+                    unit_price=unit_price,
+                    total_amount=unit_price * quantity
                 )
                 order_items_created.append(order_item)
-            else:
-                logger.warning(f"Product with SKU '{sku}' not found in database for WhatsApp order.")
-        
+
+                # The order is already committed on WhatsApp's side by this point, so
+                # we can't reject it here for insufficient stock - instead we floor
+                # stock at zero and flag the shortfall for staff follow-up/backorder.
+                if product.stock_quantity < quantity:
+                    oversold_notes.append(
+                        f"{product.name}: ordered {quantity}, only {product.stock_quantity} in stock."
+                    )
+                    Product.objects.filter(pk=product.pk).update(stock_quantity=0)
+                else:
+                    Product.objects.filter(pk=product.pk).update(stock_quantity=F('stock_quantity') - quantity)
+
+            if oversold_notes:
+                order.notes = (order.notes or '') + "\n\n⚠️ STOCK SHORTFALL:\n" + "\n".join(oversold_notes)
+                order.save(update_fields=['notes'])
+                logger.warning(f"Order {order.order_number} oversold: {'; '.join(oversold_notes)}")
+
         logger.info(f"Created Order {order.order_number} with {len(order_items_created)} items for contact {contact.id}.")
         
         # Send confirmation message

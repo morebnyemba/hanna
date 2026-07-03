@@ -1,10 +1,12 @@
 # whatsappcrm_backend/paynow_integration/views.py
 
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework import serializers
+from rest_framework.throttling import AnonRateThrottle
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 from django.http import HttpResponse
 from django.urls import reverse
 import logging
@@ -23,6 +25,13 @@ logger = logging.getLogger(__name__)
 
 # URL path constant for IPN callback - used in initiate_whatsapp_payment and paynow_ipn_handler
 PAYNOW_IPN_URL_PATH = '/crm-api/paynow/ipn/'
+
+
+class PaymentInitiationThrottle(AnonRateThrottle):
+    """Throttles the unauthenticated payment-initiation/OTP endpoints, since each
+    call triggers a real mobile-money push (USSD prompt/OTP SMS) to a phone number
+    and could otherwise be abused to spam or rack up gateway costs."""
+    scope = 'payment_initiation'
 
 
 class PaynowConfigViewSet(viewsets.ModelViewSet):
@@ -55,6 +64,7 @@ class PaynowConfigViewSet(viewsets.ModelViewSet):
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])  # Allow anonymous access for WhatsApp flow endpoint
+@throttle_classes([PaymentInitiationThrottle])
 def initiate_whatsapp_payment(request):
     """
     Endpoint to initiate a payment from a WhatsApp flow.
@@ -151,7 +161,16 @@ def initiate_whatsapp_payment(request):
             payment.poll_url = result.get('poll_url')
             payment.provider_response = result
             payment.save(update_fields=['poll_url', 'provider_response'])
-            
+
+            # Schedule a fallback status poll in case Paynow's IPN callback never
+            # arrives (webhooks are inherently unreliable). Delayed so the IPN
+            # gets first chance to confirm the payment without redundant polling.
+            if payment.poll_url:
+                from .tasks import poll_paynow_transaction_status
+                transaction.on_commit(
+                    lambda: poll_paynow_transaction_status.apply_async(args=[str(payment.id)], countdown=90)
+                )
+
             # Update order payment status if order exists
             if order:
                 order.payment_status = Order.PaymentStatus.PENDING
@@ -207,6 +226,7 @@ def initiate_whatsapp_payment(request):
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
+@throttle_classes([PaymentInitiationThrottle])
 def submit_omari_otp(request):
     """
     Submit Omari OTP to complete payment.
@@ -307,14 +327,7 @@ def paynow_ipn_handler(request):
         if not paynow_service.verify_ipn_hash(ipn_data):
             logger.error(f"IPN hash verification failed for reference: {reference}")
             return HttpResponse("Invalid hash", status=403)
-        
-        # Find payment by reference
-        try:
-            payment = Payment.objects.get(provider_transaction_id=reference)
-        except Payment.DoesNotExist:
-            logger.error(f"Payment not found for reference: {reference}")
-            return HttpResponse("Payment not found", status=404)
-        
+
         # Map Paynow status to our status
         status_map = {
             'paid': PaymentStatus.SUCCESSFUL,
@@ -327,24 +340,62 @@ def paynow_ipn_handler(request):
             'sent': PaymentStatus.PENDING,
             'created': PaymentStatus.PENDING
         }
-        
+
         new_status = status_map.get(status_val, PaymentStatus.PENDING)
-        
-        # Update payment
-        payment.status = new_status
-        payment.provider_response = ipn_data
-        if poll_url:
-            payment.poll_url = poll_url
-        payment.save()
-        
-        logger.info(f"Payment {reference} updated to status: {new_status}")
-        
-        # Update order if payment was successful
-        if new_status == PaymentStatus.SUCCESSFUL and payment.order:
-            payment.order.payment_status = Order.PaymentStatus.PAID
-            payment.order.save(update_fields=['payment_status'])
-            logger.info(f"Order {payment.order.order_number} marked as PAID")
-            
+
+        # Find and lock the payment by reference. Paynow retries IPN delivery on
+        # non-200 responses and can send multiple statuses over a transaction's
+        # lifecycle, so this whole block must be atomic + idempotent to avoid
+        # double-processing (duplicate notifications/receipts, lost updates).
+        with transaction.atomic():
+            try:
+                payment = Payment.objects.select_for_update().get(provider_transaction_id=reference)
+            except Payment.DoesNotExist:
+                logger.error(f"Payment not found for reference: {reference}")
+                return HttpResponse("Payment not found", status=404)
+
+            was_already_successful = payment.status == PaymentStatus.SUCCESSFUL
+
+            # SUCCESSFUL is terminal. A later/duplicate IPN reporting a different
+            # status (e.g. 'failed' or 'cancelled') must never demote a payment
+            # that already cleared - that would incorrectly revert a paid order
+            # and is also a plausible spoofing/replay vector.
+            if was_already_successful:
+                logger.info(f"Payment {reference} is already SUCCESSFUL. Ignoring subsequent IPN status update ('{status_val}').")
+                return HttpResponse("OK", status=200)
+
+            # Sanity-check the IPN amount against what we actually charged for.
+            # A mismatch could indicate a misconfigured/compromised callback and
+            # should never silently mark an order as paid.
+            if amount:
+                try:
+                    if Decimal(str(amount)) != payment.amount:
+                        logger.error(
+                            f"IPN amount mismatch for reference {reference}: "
+                            f"received {amount}, expected {payment.amount}. Rejecting."
+                        )
+                        return HttpResponse("Amount mismatch", status=400)
+                except InvalidOperation:
+                    logger.warning(f"IPN amount '{amount}' for reference {reference} is not a valid decimal; skipping amount check.")
+
+            # Update payment
+            payment.status = new_status
+            payment.provider_response = ipn_data
+            if poll_url:
+                payment.poll_url = poll_url
+            payment.save(update_fields=['status', 'provider_response', 'poll_url', 'updated_at'])
+
+            logger.info(f"Payment {reference} updated to status: {new_status}")
+
+            # Update order if payment was successful
+            if new_status == PaymentStatus.SUCCESSFUL and payment.order:
+                payment.order.payment_status = Order.PaymentStatus.PAID
+                payment.order.save(update_fields=['payment_status'])
+                logger.info(f"Order {payment.order.order_number} marked as PAID")
+
+        # Notifications are sent outside the DB transaction (network I/O), and only
+        # on the transition into SUCCESSFUL — never re-sent for a duplicate/retried IPN.
+        if new_status == PaymentStatus.SUCCESSFUL and payment.order and not was_already_successful:
             # Send confirmation to customer via WhatsApp
             try:
                 from meta_integration.utils import send_whatsapp_message

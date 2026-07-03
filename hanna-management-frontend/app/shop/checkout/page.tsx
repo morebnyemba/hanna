@@ -23,6 +23,7 @@ interface DeliveryDetails {
 interface PaymentInfo {
   instructions?: string;
   paynow_reference?: string;
+  payment_reference?: string;
   poll_url?: string;
   payment_method?: string;
   requires_otp?: boolean;
@@ -36,6 +37,11 @@ interface PaymentInfo {
 type PaymentMethod = 'ecocash' | 'omari' | 'innbucks' | 'telecash';
 
 type Step = 'details' | 'confirm' | 'pay' | 'success';
+
+type PaymentPollStatus = 'idle' | 'pending' | 'paid' | 'failed' | 'timeout';
+
+const PAYMENT_POLL_INTERVAL_MS = 4000;
+const PAYMENT_POLL_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
 const STEPS: { key: Step; label: string }[] = [
   { key: 'details', label: 'Delivery & Payment' },
@@ -146,6 +152,9 @@ export default function CheckoutPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [termsError, setTermsError] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentPollStatus, setPaymentPollStatus] = useState<PaymentPollStatus>('idle');
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     apiClient.get('/crm-api/products/csrf/')
@@ -215,6 +224,7 @@ export default function CheckoutPage() {
       setPaymentInfo({
         instructions: d.instructions,
         paynow_reference: d.paynow_reference,
+        payment_reference: d.payment_reference,
         poll_url: d.poll_url,
         payment_method: d.payment_method || paymentMethod,
         requires_otp: d.requires_otp || false,
@@ -233,7 +243,7 @@ export default function CheckoutPage() {
   };
 
   const submitOTP = async () => {
-    if (!otpCode || !paymentInfo?.paynow_reference) {
+    if (!otpCode || !paymentInfo?.payment_reference) {
       setError('Please enter the OTP code');
       return;
     }
@@ -241,12 +251,14 @@ export default function CheckoutPage() {
     setError(null);
     try {
       const res = await apiClient.post('/crm-api/paynow/submit-otp/', {
-        payment_reference: paymentInfo.paynow_reference,
+        payment_reference: paymentInfo.payment_reference,
         otp_code: otpCode,
       }, csrfHeaders());
       if (res.data?.success) {
         setOtpCode('');
-        setStep('success');
+        // Don't jump straight to "success" - the OTP submission only authorizes
+        // the payment, it doesn't confirm funds were actually received. Let the
+        // status poll (already running for the 'pay' step) confirm completion.
       } else {
         setError(res.data?.message || 'Failed to submit OTP');
       }
@@ -256,6 +268,63 @@ export default function CheckoutPage() {
       setSubmitting(false);
     }
   };
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+    if (pollTimeoutRef.current) { clearTimeout(pollTimeoutRef.current); pollTimeoutRef.current = null; }
+  }, []);
+
+  // Poll the backend for real payment confirmation while on the 'pay' step.
+  // A mobile-money push can take anywhere from seconds to a couple of minutes
+  // to be authorized, so we can't assume success just because the user clicked
+  // a "done" button - only the backend (via Paynow's IPN or its own poll) knows
+  // whether money actually moved.
+  useEffect(() => {
+    if (step !== 'pay' || !paymentInfo?.payment_reference) {
+      stopPolling();
+      return;
+    }
+
+    // Guards state updates from an in-flight request that resolves after this
+    // effect has been cleaned up (unmount, step change, or reference change),
+    // which would otherwise call setState on a stale/unmounted run.
+    let active = true;
+    setPaymentPollStatus('pending');
+
+    const checkStatus = async () => {
+      try {
+        const res = await apiClient.get(`/crm-api/paynow/payment-status/${paymentInfo.payment_reference}/`);
+        if (!active) return;
+        const s = res.data?.status;
+        if (s === 'paid') {
+          setPaymentPollStatus('paid');
+          stopPolling();
+          setStep('success');
+        } else if (s === 'failed') {
+          setPaymentPollStatus('failed');
+          stopPolling();
+        }
+        // 'pending' -> keep polling
+      } catch {
+        // Transient network/API error - keep polling until timeout.
+      }
+    };
+
+    checkStatus();
+    pollIntervalRef.current = setInterval(checkStatus, PAYMENT_POLL_INTERVAL_MS);
+    pollTimeoutRef.current = setTimeout(() => {
+      if (active) {
+        setPaymentPollStatus((prev) => (prev === 'pending' ? 'timeout' : prev));
+        stopPolling();
+      }
+    }, PAYMENT_POLL_TIMEOUT_MS);
+
+    return () => {
+      active = false;
+      stopPolling();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, paymentInfo?.payment_reference, stopPolling]);
 
   const isEmpty = !cart || cart.items.length === 0;
 
@@ -601,18 +670,44 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  <div className="bg-sky-50 border border-sky-100 rounded-xl p-4">
-                    <p className="text-sm text-sky-700 font-medium">
-                      💬 You will receive a WhatsApp confirmation message once payment is complete.
-                    </p>
-                  </div>
+                  {/* Live payment confirmation status */}
+                  {paymentPollStatus === 'pending' && (
+                    <div className="bg-sky-50 border border-sky-100 rounded-xl p-4 flex items-center gap-3">
+                      <div className="w-5 h-5 border-2 border-sky-300 border-t-sky-600 rounded-full animate-spin flex-shrink-0" />
+                      <p className="text-sm text-sky-700 font-medium">
+                        Waiting for payment confirmation… Approve the prompt on your phone.
+                      </p>
+                    </div>
+                  )}
+                  {paymentPollStatus === 'failed' && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                      <p className="text-sm text-red-700 font-semibold mb-1">Payment was not completed.</p>
+                      <p className="text-xs text-red-600">It may have been cancelled or declined. You can go back and try again, or contact support with your reference above.</p>
+                    </div>
+                  )}
+                  {paymentPollStatus === 'timeout' && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <p className="text-sm text-amber-700 font-semibold mb-1">Still waiting on confirmation.</p>
+                      <p className="text-xs text-amber-600">This is taking longer than usual. You'll get a WhatsApp message once it's confirmed — you can safely leave this page.</p>
+                    </div>
+                  )}
 
-                  <button
-                    onClick={() => setStep('success')}
-                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm transition"
-                  >
-                    Done — Back to Shop
-                  </button>
+                  <div className="flex gap-3">
+                    {(paymentPollStatus === 'failed' || paymentPollStatus === 'timeout') && (
+                      <button
+                        onClick={() => { setError(null); setPaymentPollStatus('idle'); setStep('confirm'); }}
+                        className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-sm transition"
+                      >
+                        Try Again
+                      </button>
+                    )}
+                    <button
+                      onClick={() => router.push('/shop')}
+                      className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm transition"
+                    >
+                      Leave &amp; Check Later
+                    </button>
+                  </div>
                 </div>
               )}
 
