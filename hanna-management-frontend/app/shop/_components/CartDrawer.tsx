@@ -1,6 +1,7 @@
 'use client';
 
-import { FiX, FiShoppingCart, FiPackage, FiPlus, FiMinus, FiTrash2 } from 'react-icons/fi';
+import { useState } from 'react';
+import { FiX, FiShoppingCart, FiPackage, FiPlus, FiMinus, FiTrash2, FiTag } from 'react-icons/fi';
 import type { Product } from './ProductCard';
 
 export interface CartItem {
@@ -14,6 +15,10 @@ export interface Cart {
   id: number;
   items: CartItem[];
   total_items: number;
+  subtotal?: string;
+  discount_amount?: string;
+  coupon_code?: string | null;
+  coupon_description?: string | null;
   total_price: string;
 }
 
@@ -29,16 +34,30 @@ interface CartDrawerProps {
   onClearConfirm: () => void;
   onClearCancel: () => void;
   onCheckout: () => void;
+  onApplyCoupon: (code: string) => void;
+  onRemoveCoupon: () => void;
 }
 
 export default function CartDrawer({
   open, cart, cartLoading, clearConfirm,
   onClose, onUpdateQty, onRemove, onClearRequest, onClearConfirm, onClearCancel, onCheckout,
+  onApplyCoupon, onRemoveCoupon,
 }: CartDrawerProps) {
+  const [couponInput, setCouponInput] = useState('');
+
   if (!open) return null;
 
   const isEmpty = !cart || cart.items.length === 0;
   const total = cart ? parseFloat(cart.total_price) : 0;
+  const subtotal = cart?.subtotal ? parseFloat(cart.subtotal) : total;
+  const discount = cart?.discount_amount ? parseFloat(cart.discount_amount) : 0;
+
+  const handleApply = () => {
+    const code = couponInput.trim();
+    if (!code) return;
+    onApplyCoupon(code);
+    setCouponInput('');
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -143,6 +162,51 @@ export default function CartDrawer({
         {/* Footer */}
         {!isEmpty && (
           <div className="border-t border-purple-50 px-5 py-4 bg-white space-y-3">
+            {/* Coupon */}
+            {cart?.coupon_code ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-1.5 text-sm text-green-700 font-semibold">
+                  <FiTag className="w-3.5 h-3.5" />
+                  {cart.coupon_code} applied
+                </div>
+                <button onClick={onRemoveCoupon} disabled={cartLoading} className="text-xs text-green-700 underline hover:text-green-900">
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApply(); } }}
+                  placeholder="Coupon code"
+                  disabled={cartLoading}
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                />
+                <button
+                  onClick={handleApply}
+                  disabled={cartLoading || !couponInput.trim()}
+                  className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-semibold hover:bg-purple-200 disabled:opacity-50 transition"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+
+            {discount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">Subtotal</span>
+                <span className="text-gray-700">USD {subtotal.toFixed(2)}</span>
+              </div>
+            )}
+            {discount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-green-600">Discount</span>
+                <span className="text-green-600">-USD {discount.toFixed(2)}</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-gray-600">Order Total</span>
               <span className="text-2xl font-extrabold text-orange-500">USD {total.toFixed(2)}</span>

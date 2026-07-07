@@ -90,13 +90,15 @@ export default function CreateProductPage() {
 
     try {
       const { category, stock_quantity, ...rest } = formData;
-      await apiClient.post('/crm-api/products/products/', {
+      const res = await apiClient.post('/crm-api/products/products/', {
         ...rest,
         category_id: category ? Number(category) : null,
         stock_quantity: Number(stock_quantity) || 0,
       });
 
-      router.push('/admin/products');
+      // Go straight to the edit page so images can be added right away -
+      // uploads require an existing product id.
+      router.push(`/admin/products/${res.data.id}`);
     } catch (err) {
       setErrors({ api: extractErrorMessage(err, 'Failed to create product') });
     } finally {

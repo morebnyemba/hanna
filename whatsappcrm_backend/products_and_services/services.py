@@ -1163,7 +1163,60 @@ Please assign a technician and schedule the installation.""",
             
             logger.info(f"Created portal user {user.id} for customer {customer.id}")
             return user
-            
+
         except Exception as e:
             logger.error(f"Failed to create portal user for customer {customer.id}: {str(e)}")
             return None
+
+
+def recalculate_cart_discount(coupon, cart_items, subtotal: Decimal) -> Decimal:
+    """
+    Recompute a coupon's discount from live cart contents at checkout time,
+    rather than trusting Cart.discount_amount as stored when the coupon was
+    applied - the cart (or the coupon itself) may have changed since then, so
+    that stored value can go stale between apply and checkout. Pass the
+    already-fetched (ideally select_for_update()'d) Coupon instance, not the
+    cart, since callers typically need to lock/re-check it anyway.
+    Returns Decimal('0.00') if there's no coupon, or it's no longer valid/eligible.
+    """
+    if not coupon:
+        return Decimal('0.00')
+
+    valid, _ = coupon.is_valid()
+    if not valid or subtotal < coupon.minimum_order_amount:
+        return Decimal('0.00')
+
+    applicable_product_ids = set(coupon.applicable_products.values_list('id', flat=True))
+    applicable_category_ids = set(coupon.applicable_categories.values_list('id', flat=True))
+    if applicable_product_ids or applicable_category_ids:
+        eligible_subtotal = sum(
+            (ci.product.price or Decimal('0.00')) * ci.quantity for ci in cart_items
+            if ci.product_id in applicable_product_ids or ci.product.category_id in applicable_category_ids
+        )
+    else:
+        eligible_subtotal = subtotal
+
+    if eligible_subtotal <= 0:
+        return Decimal('0.00')
+
+    return coupon.calculate_discount(eligible_subtotal)
+
+
+def check_coupon_customer_limit(coupon, customer_profile):
+    """
+    Enforce Coupon.max_uses_per_customer. There's no dedicated redemption
+    ledger, so this counts past Orders for this customer whose notes record a
+    redemption of this coupon code (written by checkout at order-creation
+    time). Returns (allowed: bool, error_message: str).
+    """
+    if not customer_profile:
+        return True, ''
+
+    from customer_data.models import Order
+    used_count = Order.objects.filter(
+        customer=customer_profile,
+        notes__icontains=f"Coupon applied: {coupon.code}"
+    ).count()
+    if used_count >= coupon.max_uses_per_customer:
+        return False, f'You have already used coupon "{coupon.code}" the maximum number of times allowed.'
+    return True, ''

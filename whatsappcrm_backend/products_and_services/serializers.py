@@ -22,9 +22,13 @@ class ProductTagSerializer(serializers.ModelSerializer):
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    # Writable so the standalone ProductImageViewSet can create/reassign images.
+    # Not used when nested read-only inside ProductSerializer.images.
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+
     class Meta:
         model = ProductImage
-        fields = ['id', 'image', 'alt_text', 'created_at']
+        fields = ['id', 'product', 'image', 'alt_text', 'created_at']
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
@@ -86,9 +90,14 @@ class CouponSerializer(serializers.ModelSerializer):
         model = Coupon
         fields = [
             'id', 'code', 'description', 'discount_type', 'discount_value',
-            'minimum_order_amount', 'max_uses', 'uses', 'is_active',
-            'valid_from', 'valid_until', 'is_valid', 'validity_message',
+            'minimum_order_amount', 'max_uses', 'uses', 'max_uses_per_customer',
+            'is_active', 'valid_from', 'valid_until', 'applicable_products',
+            'applicable_categories', 'is_valid', 'validity_message',
+            'created_at', 'updated_at',
         ]
+
+    def validate_code(self, value):
+        return value.strip().upper()
 
     def get_is_valid(self, obj):
         valid, _ = obj.is_valid()

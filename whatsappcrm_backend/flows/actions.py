@@ -471,7 +471,8 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
     """
     actions_to_perform: List[Dict[str, Any]] = []
     try:
-        from products_and_services.models import Cart, CartItem, Product
+        from products_and_services.models import Cart, CartItem, Product, Coupon
+        from products_and_services.services import recalculate_cart_discount, check_coupon_customer_limit
         from django.db import transaction
         from django.db.models import F
         from decimal import Decimal
@@ -506,10 +507,12 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
             order_num = f"AI-{str(uuid.uuid4().hex[:8]).upper()}"
 
         # Calculate total
-        total_amount = Decimal('0.00')
+        subtotal = Decimal('0.00')
         for ci in cart_items:
             unit_price = ci.product.price or Decimal('0.00')
-            total_amount += unit_price * ci.quantity
+            subtotal += unit_price * ci.quantity
+
+        order_notes = f"Order placed via AI Shopping Assistant. Contact: {contact.whatsapp_id}"
 
         with transaction.atomic():
             # Lock the Product rows so a concurrent checkout can't decrement the
@@ -520,6 +523,29 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
                 )
             }
 
+            # Lock the coupon (if any) and re-validate against live state - the
+            # cart's stored coupon/discount_amount may be stale if the coupon or
+            # cart contents changed since it was applied. Unlike the web
+            # storefront checkout, there's no interactive way to ask the user to
+            # remove an invalid coupon mid-chat, so an expired/limit-reached
+            # coupon just silently drops the discount rather than blocking the
+            # order outright.
+            coupon_at_checkout = None
+            if cart.coupon_id:
+                candidate_coupon = Coupon.objects.select_for_update().get(pk=cart.coupon_id)
+                valid, _ = candidate_coupon.is_valid()
+                allowed, _ = check_coupon_customer_limit(candidate_coupon, customer_profile)
+                under_cap = candidate_coupon.max_uses is None or candidate_coupon.uses < candidate_coupon.max_uses
+                if valid and allowed and under_cap:
+                    coupon_at_checkout = candidate_coupon
+                else:
+                    logger.warning(f"Coupon {candidate_coupon.code} no longer usable at checkout for contact {contact.id}; dropping discount.")
+
+            discount_amount = recalculate_cart_discount(coupon_at_checkout, cart_items, subtotal)
+            total_amount = max(Decimal('0.00'), subtotal - discount_amount)
+            if coupon_at_checkout and discount_amount > 0:
+                order_notes += f" Coupon applied: {coupon_at_checkout.code} (-{discount_amount} {currency})."
+
             order = Order.objects.create(
                 customer=customer_profile,
                 name=f"AI Shopping Order for {contact.name or contact.whatsapp_id}",
@@ -528,7 +554,7 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
                 payment_status=Order.PaymentStatus.PENDING,
                 amount=total_amount,
                 currency=currency,
-                notes=f"Order placed via AI Shopping Assistant. Contact: {contact.whatsapp_id}",
+                notes=order_notes,
                 assigned_agent=customer_profile.assigned_agent
             )
 
@@ -559,8 +585,14 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
                 order.save(update_fields=['notes'])
                 logger.warning(f"Order {order.order_number} oversold: {'; '.join(oversold_notes)}")
 
-            # Clear cart after creating order
+            # Record coupon redemption (row already locked and re-validated above,
+            # so this increment can't race past max_uses) and clear cart after checkout.
+            if coupon_at_checkout:
+                Coupon.objects.filter(pk=coupon_at_checkout.pk).update(uses=F('uses') + 1)
             CartItem.objects.filter(cart=cart).delete()
+            cart.coupon = None
+            cart.discount_amount = 0
+            cart.save(update_fields=['coupon', 'discount_amount'])
 
             context['order_info'] = {
                 'id': str(order.id),
