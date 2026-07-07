@@ -131,6 +131,14 @@ class Product(models.Model):
         if not self.sku:
             from .utils import generate_sku
             self.sku = generate_sku(self)
+        # Normalize blank values to NULL for unique fields. Postgres treats ''
+        # as a real, comparable value under a unique constraint (unlike NULL,
+        # which is always distinct), so multiple products left with a blank
+        # barcode/zoho_item_id collide with each other and fail to save.
+        if self.barcode == '':
+            self.barcode = None
+        if self.zoho_item_id == '':
+            self.zoho_item_id = None
         super().save(*args, **kwargs)
 
     class Meta:
@@ -478,6 +486,15 @@ class SerializedItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} (SN: {self.serial_number})"
+
+    def save(self, *args, **kwargs):
+        # Postgres treats '' as a real, comparable value under a unique
+        # constraint (unlike NULL, which is always distinct), so multiple
+        # items left with a blank barcode collide with each other and fail
+        # to save.
+        if self.barcode == '':
+            self.barcode = None
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("Serialized Item")
