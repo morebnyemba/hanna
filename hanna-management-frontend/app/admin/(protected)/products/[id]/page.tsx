@@ -6,6 +6,7 @@ import { FiPackage, FiTrash2, FiSave, FiArrowLeft } from 'react-icons/fi';
 import Link from 'next/link';
 import apiClient from '@/app/lib/apiClient';
 import { extractErrorMessage, normalizePaginatedResponse } from '@/app/lib/apiUtils';
+import ProductImageManager from '../_components/ProductImageManager';
 
 const PRODUCT_TYPES = [
   { value: 'hardware', label: 'Hardware Device' },
@@ -407,6 +408,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md border border-gray-200 mt-6">
+        <ProductImageManager productId={productId} />
       </div>
     </>
   );

@@ -22,9 +22,13 @@ class ProductTagSerializer(serializers.ModelSerializer):
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    # Writable so the standalone ProductImageViewSet can create/reassign images.
+    # Not used when nested read-only inside ProductSerializer.images.
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+
     class Meta:
         model = ProductImage
-        fields = ['id', 'image', 'alt_text', 'created_at']
+        fields = ['id', 'product', 'image', 'alt_text', 'created_at']
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):

@@ -1,11 +1,12 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, SolarPackage, ProductReview, StockNotification, Coupon
+from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, SolarPackage, ProductReview, StockNotification, Coupon, ProductImage
 from .serializers import (
     ProductSerializer,
     ProductCategorySerializer,
@@ -43,6 +44,8 @@ from .serializers import (
     StockNotificationSerializer,
     # Coupon serializer
     CouponSerializer,
+    # Product image serializer
+    ProductImageSerializer,
 )
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
@@ -1310,6 +1313,7 @@ class CartViewSet(viewsets.ViewSet):
         from customer_data.models import Order, OrderItem, CustomerProfile
         from conversations.models import Contact
         from .models import Product
+        from .services import recalculate_cart_discount, check_coupon_customer_limit
         import uuid
 
         cart = self._get_or_create_cart(request)
@@ -1342,15 +1346,11 @@ class CartViewSet(viewsets.ViewSet):
             unit_price = Decimal(str(ci.product.price)) if ci.product.price else Decimal('0.00')
             subtotal += unit_price * ci.quantity
 
-        discount_amount = cart.discount_amount or Decimal('0.00')
-        total_amount = max(Decimal('0.00'), subtotal - discount_amount)
-
-        # Build order notes with delivery details
+        # Build order notes with delivery details (coupon line, if any, is
+        # appended once the discount is finalized inside the atomic block below).
         delivery_summary = f"Delivery to: {full_name}, {phone_norm}, {address}{', ' + city if city else ''}."
         if notes:
             delivery_summary += f" Notes: {notes}"
-        if cart.coupon_id and discount_amount > 0:
-            delivery_summary += f" Coupon applied: {cart.coupon.code} (-{discount_amount} {currency})."
 
         # Create a customer contact/profile (or get existing)
         try:
@@ -1416,6 +1416,37 @@ class CartViewSet(viewsets.ViewSet):
                         status=status.HTTP_409_CONFLICT
                     )
 
+                # Lock the coupon row (if any) so a concurrent checkout can't push
+                # uses past max_uses between our validity check and the increment
+                # below, and re-validate against live state - the cart's stored
+                # coupon/discount_amount may be stale if the coupon changed (or
+                # the cart contents changed) since it was applied.
+                coupon_at_checkout = None
+                if cart.coupon_id:
+                    coupon_at_checkout = Coupon.objects.select_for_update().get(pk=cart.coupon_id)
+
+                    valid, message = coupon_at_checkout.is_valid()
+                    if not valid:
+                        return Response(
+                            {'error': f'Coupon no longer valid: {message} Please remove it and try again.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                    allowed, limit_message = check_coupon_customer_limit(coupon_at_checkout, customer_profile)
+                    if not allowed:
+                        return Response({'error': limit_message}, status=status.HTTP_400_BAD_REQUEST)
+
+                    if coupon_at_checkout.max_uses is not None and coupon_at_checkout.uses >= coupon_at_checkout.max_uses:
+                        return Response(
+                            {'error': 'This coupon has just reached its usage limit. Please remove it and try again.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                discount_amount = recalculate_cart_discount(coupon_at_checkout, cart_items, subtotal)
+                total_amount = max(Decimal('0.00'), subtotal - discount_amount)
+                if coupon_at_checkout and discount_amount > 0:
+                    delivery_summary += f" Coupon applied: {coupon_at_checkout.code} (-{discount_amount} {currency})."
+
                 # Create order with defensive null-safe assigned_agent
                 order_data = {
                     'customer': customer_profile,
@@ -1451,9 +1482,11 @@ class CartViewSet(viewsets.ViewSet):
                 for ci in cart_items:
                     Product.objects.filter(pk=ci.product_id).update(stock_quantity=F('stock_quantity') - ci.quantity)
 
-                # Record coupon redemption and clear it from the cart along with the items.
-                if cart.coupon_id:
-                    Coupon.objects.filter(pk=cart.coupon_id).update(uses=F('uses') + 1)
+                # Record coupon redemption (row is already locked and re-validated
+                # above, so this increment can't race past max_uses) and clear it
+                # from the cart along with the items.
+                if coupon_at_checkout:
+                    Coupon.objects.filter(pk=coupon_at_checkout.pk).update(uses=F('uses') + 1)
 
                 cart.items.all().delete()
                 cart.coupon = None
@@ -2820,7 +2853,26 @@ class CouponViewSet(viewsets.ModelViewSet):
     """
     queryset = Coupon.objects.all()
     serializer_class = CouponSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
+
+
+class ProductImageViewSet(viewsets.ModelViewSet):
+    """
+    Staff-only CRUD for product images. Public shop pages get images via the
+    nested read-only ProductSerializer.images field - this endpoint is what
+    the admin dashboard uses to upload/edit/delete/reorder them.
+    """
+    queryset = ProductImage.objects.all()
+    serializer_class = ProductImageSerializer
+    permission_classes = [permissions.IsAdminUser]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        product_id = self.request.query_params.get('product_id')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+        return queryset
 
 
 @api_view(['POST'])

@@ -79,6 +79,10 @@ export default function EditCouponPage({ params }: { params: Promise<{ id: strin
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.valid_from && formData.valid_until && new Date(formData.valid_from) >= new Date(formData.valid_until)) {
+      setError('Valid until date must be after valid from date.');
+      return;
+    }
     setSaving(true);
     setError(null);
 
@@ -89,8 +93,8 @@ export default function EditCouponPage({ params }: { params: Promise<{ id: strin
         discount_value: formData.discount_value || '0',
         max_uses: formData.max_uses ? Number(formData.max_uses) : null,
         max_uses_per_customer: Number(formData.max_uses_per_customer) || 1,
-        valid_from: formData.valid_from || null,
-        valid_until: formData.valid_until || null,
+        valid_from: formData.valid_from ? new Date(formData.valid_from).toISOString() : null,
+        valid_until: formData.valid_until ? new Date(formData.valid_until).toISOString() : null,
       });
       router.push('/admin/coupons');
     } catch (err: unknown) {
