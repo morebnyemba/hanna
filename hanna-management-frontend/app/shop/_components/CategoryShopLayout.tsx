@@ -256,6 +256,27 @@ export default function CategoryShopLayout({ config }: CategoryShopLayoutProps) 
     } finally { setCartLoading(false); }
   };
 
+  const applyCoupon = async (code: string) => {
+    setCartLoading(true);
+    try {
+      const res = await apiClient.post('/crm-api/products/cart/apply-coupon/', { code }, csrfHeaders());
+      setCart(res.data.cart);
+      pushToast(res.data.message || 'Coupon applied');
+    } catch (err: any) {
+      pushToast(err?.response?.data?.error || 'Invalid coupon code', 'error');
+    } finally { setCartLoading(false); }
+  };
+
+  const removeCoupon = async () => {
+    setCartLoading(true);
+    try {
+      const res = await apiClient.post('/crm-api/products/cart/remove-coupon/', {}, csrfHeaders());
+      setCart(res.data.cart);
+    } catch (err: any) {
+      pushToast(err?.response?.data?.error || 'Failed to remove coupon', 'error');
+    } finally { setCartLoading(false); }
+  };
+
   // Filter: first apply category terms, then user's secondary search
   const categoryProducts = allProducts.filter((p) => {
     const haystack = `${p.name} ${p.description || ''} ${p.category?.name || ''}`.toLowerCase();
@@ -385,6 +406,8 @@ export default function CategoryShopLayout({ config }: CategoryShopLayoutProps) 
         onClearConfirm={clearCart}
         onClearCancel={() => setClearConfirm(false)}
         onCheckout={() => { setShowCart(false); router.push('/shop/checkout'); }}
+        onApplyCoupon={applyCoupon}
+        onRemoveCoupon={removeCoupon}
       />
 
       <AIAssistantFAB

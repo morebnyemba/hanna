@@ -471,7 +471,7 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
     """
     actions_to_perform: List[Dict[str, Any]] = []
     try:
-        from products_and_services.models import Cart, CartItem, Product
+        from products_and_services.models import Cart, CartItem, Product, Coupon
         from django.db import transaction
         from django.db.models import F
         from decimal import Decimal
@@ -506,10 +506,17 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
             order_num = f"AI-{str(uuid.uuid4().hex[:8]).upper()}"
 
         # Calculate total
-        total_amount = Decimal('0.00')
+        subtotal = Decimal('0.00')
         for ci in cart_items:
             unit_price = ci.product.price or Decimal('0.00')
-            total_amount += unit_price * ci.quantity
+            subtotal += unit_price * ci.quantity
+
+        discount_amount = cart.discount_amount or Decimal('0.00')
+        total_amount = max(Decimal('0.00'), subtotal - discount_amount)
+
+        order_notes = f"Order placed via AI Shopping Assistant. Contact: {contact.whatsapp_id}"
+        if cart.coupon_id and discount_amount > 0:
+            order_notes += f" Coupon applied: {cart.coupon.code} (-{discount_amount} {currency})."
 
         with transaction.atomic():
             # Lock the Product rows so a concurrent checkout can't decrement the
@@ -528,7 +535,7 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
                 payment_status=Order.PaymentStatus.PENDING,
                 amount=total_amount,
                 currency=currency,
-                notes=f"Order placed via AI Shopping Assistant. Contact: {contact.whatsapp_id}",
+                notes=order_notes,
                 assigned_agent=customer_profile.assigned_agent
             )
 
@@ -559,8 +566,13 @@ def checkout_cart_for_contact(contact: Contact, context: Dict[str, Any], params:
                 order.save(update_fields=['notes'])
                 logger.warning(f"Order {order.order_number} oversold: {'; '.join(oversold_notes)}")
 
-            # Clear cart after creating order
+            # Record coupon redemption and clear cart (items + coupon) after creating order
+            if cart.coupon_id:
+                Coupon.objects.filter(pk=cart.coupon_id).update(uses=F('uses') + 1)
             CartItem.objects.filter(cart=cart).delete()
+            cart.coupon = None
+            cart.discount_amount = 0
+            cart.save(update_fields=['coupon', 'discount_amount'])
 
             context['order_info'] = {
                 'id': str(order.id),

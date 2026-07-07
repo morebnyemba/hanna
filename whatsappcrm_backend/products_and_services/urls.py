@@ -19,6 +19,7 @@ router.register(r'retailer', views.RetailerPortalViewSet, basename='retailer-por
 # Retailer Branch portal endpoints (main portal for branch operations)
 router.register(r'retailer-branch', views.RetailerBranchPortalViewSet, basename='retailer-branch-portal')
 router.register(r'reviews', views.ProductReviewViewSet, basename='review')
+router.register(r'coupons', views.CouponViewSet, basename='coupon')
 
 app_name = 'products_and_services_api'
 

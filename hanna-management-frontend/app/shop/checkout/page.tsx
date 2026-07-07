@@ -98,6 +98,8 @@ function FieldError({ msg }: { msg?: string }) {
 function OrderSummary({ cart }: { cart: Cart | null }) {
   if (!cart || cart.items.length === 0) return null;
   const total = parseFloat(cart.total_price);
+  const subtotal = cart.subtotal ? parseFloat(cart.subtotal) : total;
+  const discount = cart.discount_amount ? parseFloat(cart.discount_amount) : 0;
   return (
     <div className="bg-white rounded-2xl border border-purple-100 shadow-sm p-5">
       <h3 className="font-extrabold text-purple-900 text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -123,7 +125,19 @@ function OrderSummary({ cart }: { cart: Cart | null }) {
           </div>
         ))}
       </div>
-      <div className="border-t border-purple-100 pt-3 flex items-center justify-between">
+      {discount > 0 && (
+        <div className="border-t border-purple-100 pt-3 space-y-1.5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-500">Subtotal</span>
+            <span className="text-gray-700">USD {subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-green-600">Discount {cart.coupon_code ? `(${cart.coupon_code})` : ''}</span>
+            <span className="text-green-600">-USD {discount.toFixed(2)}</span>
+          </div>
+        </div>
+      )}
+      <div className={`${discount > 0 ? '' : 'border-t border-purple-100 pt-3'} flex items-center justify-between`}>
         <span className="text-sm font-semibold text-gray-600">Total</span>
         <span className="text-xl font-extrabold text-orange-500">USD {total.toFixed(2)}</span>
       </div>

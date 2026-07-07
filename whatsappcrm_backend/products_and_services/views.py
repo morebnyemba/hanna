@@ -5,7 +5,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
-from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, SolarPackage, ProductReview, StockNotification
+from .models import Product, ProductCategory, SerializedItem, Cart, CartItem, ItemLocationHistory, SolarPackage, ProductReview, StockNotification, Coupon
 from .serializers import (
     ProductSerializer,
     ProductCategorySerializer,
@@ -41,6 +41,8 @@ from .serializers import (
     # Review and stock notification serializers
     ProductReviewSerializer,
     StockNotificationSerializer,
+    # Coupon serializer
+    CouponSerializer,
 )
 from .services import ItemTrackingService
 from django.contrib.auth import get_user_model
@@ -1208,6 +1210,82 @@ class CartViewSet(viewsets.ViewSet):
             'cart': cart_serializer.data
         }, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['post'], url_path='apply-coupon')
+    def apply_coupon(self, request):
+        """
+        Apply a discount coupon code to the current cart.
+
+        POST /crm-api/products/cart/apply-coupon/
+        Body: { "code": "SAVE10" }
+        """
+        code = (request.data.get('code') or '').strip()
+        if not code:
+            return Response({'error': 'Coupon code is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cart = self._get_or_create_cart(request)
+        cart_items = list(cart.items.select_related('product', 'product__category'))
+        if not cart_items:
+            return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            coupon = Coupon.objects.get(code__iexact=code)
+        except Coupon.DoesNotExist:
+            return Response({'error': 'Invalid coupon code'}, status=status.HTTP_404_NOT_FOUND)
+
+        valid, message = coupon.is_valid()
+        if not valid:
+            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        subtotal = sum(item.subtotal for item in cart_items)
+        if subtotal < coupon.minimum_order_amount:
+            return Response(
+                {'error': f'This coupon requires a minimum order of {coupon.minimum_order_amount}.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # If the coupon is restricted to specific products/categories, only the
+        # subtotal of matching items is eligible for the discount.
+        applicable_product_ids = set(coupon.applicable_products.values_list('id', flat=True))
+        applicable_category_ids = set(coupon.applicable_categories.values_list('id', flat=True))
+        if applicable_product_ids or applicable_category_ids:
+            eligible_subtotal = sum(
+                item.subtotal for item in cart_items
+                if item.product_id in applicable_product_ids or item.product.category_id in applicable_category_ids
+            )
+            if eligible_subtotal <= 0:
+                return Response(
+                    {'error': 'This coupon does not apply to any items in your cart.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            eligible_subtotal = subtotal
+
+        cart.coupon = coupon
+        cart.discount_amount = coupon.calculate_discount(eligible_subtotal)
+        cart.save(update_fields=['coupon', 'discount_amount'])
+
+        return Response({
+            'message': f'Coupon "{coupon.code}" applied.',
+            'cart': CartSerializer(cart).data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='remove-coupon')
+    def remove_coupon(self, request):
+        """
+        Remove any coupon applied to the current cart.
+
+        POST /crm-api/products/cart/remove-coupon/
+        """
+        cart = self._get_or_create_cart(request)
+        cart.coupon = None
+        cart.discount_amount = 0
+        cart.save(update_fields=['coupon', 'discount_amount'])
+
+        return Response({
+            'message': 'Coupon removed.',
+            'cart': CartSerializer(cart).data
+        }, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['post'], url_path='checkout')
     def checkout_cart(self, request):
         """
@@ -1259,15 +1337,20 @@ class CartViewSet(viewsets.ViewSet):
         currency = cart_items[0].product.currency if cart_items and cart_items[0].product.currency else 'USD'
 
         # Calculate total
-        total_amount = Decimal('0.00')
+        subtotal = Decimal('0.00')
         for ci in cart_items:
             unit_price = Decimal(str(ci.product.price)) if ci.product.price else Decimal('0.00')
-            total_amount += unit_price * ci.quantity
+            subtotal += unit_price * ci.quantity
+
+        discount_amount = cart.discount_amount or Decimal('0.00')
+        total_amount = max(Decimal('0.00'), subtotal - discount_amount)
 
         # Build order notes with delivery details
         delivery_summary = f"Delivery to: {full_name}, {phone_norm}, {address}{', ' + city if city else ''}."
         if notes:
             delivery_summary += f" Notes: {notes}"
+        if cart.coupon_id and discount_amount > 0:
+            delivery_summary += f" Coupon applied: {cart.coupon.code} (-{discount_amount} {currency})."
 
         # Create a customer contact/profile (or get existing)
         try:
@@ -1368,8 +1451,14 @@ class CartViewSet(viewsets.ViewSet):
                 for ci in cart_items:
                     Product.objects.filter(pk=ci.product_id).update(stock_quantity=F('stock_quantity') - ci.quantity)
 
-                # Clear the cart
+                # Record coupon redemption and clear it from the cart along with the items.
+                if cart.coupon_id:
+                    Coupon.objects.filter(pk=cart.coupon_id).update(uses=F('uses') + 1)
+
                 cart.items.all().delete()
+                cart.coupon = None
+                cart.discount_amount = 0
+                cart.save(update_fields=['coupon', 'discount_amount'])
 
         except Exception as e:
             import traceback
@@ -2721,6 +2810,17 @@ class ProductReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(is_approved=False)
+
+
+class CouponViewSet(viewsets.ModelViewSet):
+    """
+    Admin-only CRUD for discount coupons. Coupons are never listed publicly -
+    a customer redeems one by code via CartViewSet.apply_coupon, they aren't
+    browsable.
+    """
+    queryset = Coupon.objects.all()
+    serializer_class = CouponSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
 @api_view(['POST'])
