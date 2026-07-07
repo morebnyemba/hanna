@@ -799,7 +799,7 @@ class SerializedItemViewSet(viewsets.ModelViewSet):
                         item = SerializedItem.objects.create(
                             product=product,
                             serial_number=serial_number,
-                            barcode=barcode or '',
+                            barcode=barcode or None,
                             status=SerializedItem.Status.IN_STOCK,
                             current_location=SerializedItem.Location.CUSTOMER,
                             location_notes=notes
