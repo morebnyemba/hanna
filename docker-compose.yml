@@ -33,9 +33,13 @@ services:
       - ./whatsappcrm_backend:/app
       - staticfiles_volume:/app/staticfiles # Mount the static files volume (used by collectstatic)
       - mediafiles_volume:/app/mediafiles # Mount the media files volume (user uploads)
+    # collectstatic repopulates staticfiles_volume on every start so WhiteNoise
+    # can serve /static/ (nginx proxies those requests to Daphne).
+    # Run migrate manually if needed:
+    #   docker compose exec backend python manage.py migrate
     command: >
-      sh -c "# python manage.py migrate &&
-             daphne -b 0.0.0.0 -p 8000 whatsappcrm_backend.asgi:application"
+      sh -c "python manage.py collectstatic --noinput &&
+      exec daphne -b 0.0.0.0 -p 8000 whatsappcrm_backend.asgi:application"
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
