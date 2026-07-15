@@ -98,6 +98,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whatsappcrm_backend.middleware.QueryPerformanceMiddleware',  # DB query performance monitoring
 ]
 
 ROOT_URLCONF = 'whatsappcrm_backend.urls'
@@ -475,6 +476,12 @@ ADMIN_NOTIFICATION_FALLBACK_TEMPLATE_NAME = os.getenv('ADMIN_NOTIFICATION_FALLBA
 # Frontend Dashboard URL for admin redirects (configurable across environments)
 FRONTEND_DASHBOARD_URL = os.getenv('FRONTEND_DASHBOARD_URL', 'https://dashboard.hanna.co.zw')
 
+# --- Database Query Performance Settings ---
+# Threshold in milliseconds for logging slow queries (default: 200ms)
+SLOW_QUERY_THRESHOLD_MS = float(os.getenv('SLOW_QUERY_THRESHOLD_MS', '200'))
+# Threshold for high query count per request (N+1 detection, default: 50)
+QUERY_COUNT_THRESHOLD = int(os.getenv('QUERY_COUNT_THRESHOLD', '50'))
+
 
 # --- Logging Configuration ---
 LOGGING = {
@@ -488,6 +495,7 @@ LOGGING = {
     'loggers': {
         'django': {'handlers': ['console'], 'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'), 'propagate': False},
         'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'django.db.performance': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
         'celery': {'handlers': ['console'], 'level': 'INFO', 'propagate': True},
         'meta_integration': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
         'conversations': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
