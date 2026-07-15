@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiTool, FiPackage, FiRefreshCw, FiAlertCircle, FiCpu } from 'react-icons/fi';
+import { FiTool, FiPackage, FiRefreshCw, FiAlertCircle, FiCpu, FiBarChart2, FiShield, FiMapPin } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
 import StatCard from './StatCard';
 import { DateRange } from 'react-day-picker';
@@ -9,17 +9,38 @@ import { subDays } from 'date-fns';
 import { DateRangePicker } from '@/app/components/DateRangePicker';
 import { Alert } from '@/app/components/Alert';
 import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface FailureRate {
+  product_id: number;
+  product_name: string;
+  sku: string;
+  total_sold: number;
+  total_claims: number;
+  failure_rate: number;
+}
+
+interface InventorySummary {
+  total_serialized_items: number;
+  items_at_customers: number;
+  items_at_manufacturer: number;
+  items_in_repair: number;
+}
 
 interface ManufacturerAnalytics {
   warranty_metrics: {
     total_warranty_repairs: number;
     items_pending_collection: number;
     items_replaced: number;
+    total_warranty_claims?: number;
+    pending_claims?: number;
   };
   fault_analytics: {
     overloaded_inverters: number;
     ai_insight_common_faults: string[];
   };
+  failure_rates_by_model?: FailureRate[];
+  inventory_summary?: InventorySummary;
 }
 
 const StatCardSkeleton = () => (
@@ -105,16 +126,129 @@ export default function ManufacturerDashboardPage() {
         )}
       </div>
 
-      {!loading && !error && data && data.fault_analytics?.ai_insight_common_faults && data.fault_analytics.ai_insight_common_faults.length > 0 && (
-        <div className="mt-8 bg-white p-6 rounded-lg shadow-md border">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center"><FiCpu className="mr-3" /> AI Insight: Common Fault Keywords</h2>
-            <div className="flex flex-wrap gap-2">
-                {data.fault_analytics.ai_insight_common_faults.map((fault, index) => (
-                    <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded-full">
-                        {fault}
-                    </span>
-                ))}
+      {/* Additional Stats Row */}
+      {!loading && !error && data && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-4">
+          <StatCard 
+            icon={<FiShield size={24} className="text-purple-500" />} 
+            title="Total Warranty Claims" 
+            value={data.warranty_metrics?.total_warranty_claims ?? 0} 
+            color="border-purple-500" 
+          />
+          <StatCard 
+            icon={<FiAlertCircle size={24} className="text-orange-500" />} 
+            title="Pending Claims" 
+            value={data.warranty_metrics?.pending_claims ?? 0} 
+            color="border-orange-500" 
+          />
+          <StatCard 
+            icon={<FiPackage size={24} className="text-indigo-500" />} 
+            title="Total Serialized Items" 
+            value={data.inventory_summary?.total_serialized_items ?? 0} 
+            color="border-indigo-500" 
+          />
+          <StatCard 
+            icon={<FiMapPin size={24} className="text-teal-500" />} 
+            title="Items at Customers" 
+            value={data.inventory_summary?.items_at_customers ?? 0} 
+            color="border-teal-500" 
+          />
+        </div>
+      )}
+
+      {/* Failure Rates by Model - HANNA Core Scope Requirement */}
+      {!loading && !error && data && data.failure_rates_by_model && data.failure_rates_by_model.length > 0 && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FiBarChart2 className="w-5 h-5 text-gray-700" />
+              Failure Rates by Product Model
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Sold</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Claims</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Failure Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {data.failure_rates_by_model.map((item) => (
+                    <tr key={item.product_id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{item.product_name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{item.sku || '-'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center">{item.total_sold}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center">{item.total_claims}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          item.failure_rate > 10 ? 'bg-red-100 text-red-800' :
+                          item.failure_rate > 5 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {item.failure_rate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Inventory Summary */}
+      {!loading && !error && data && data.inventory_summary && (
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FiMapPin className="w-5 h-5 text-gray-700" />
+                Inventory Location Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700">Items at Customer Sites</span>
+                  <span className="font-semibold text-purple-600">{data.inventory_summary.items_at_customers}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700">Items at Manufacturer</span>
+                  <span className="font-semibold text-indigo-600">{data.inventory_summary.items_at_manufacturer}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700">Items in Repair</span>
+                  <span className="font-semibold text-orange-600">{data.inventory_summary.items_in_repair}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {data.fault_analytics?.ai_insight_common_faults && data.fault_analytics.ai_insight_common_faults.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FiCpu className="w-5 h-5 text-gray-700" />
+                  AI Insight: Common Fault Keywords
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {data.fault_analytics.ai_insight_common_faults.map((fault, index) => (
+                    <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1.5 rounded-full">
+                      {fault}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

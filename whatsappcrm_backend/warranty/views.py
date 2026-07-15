@@ -116,7 +116,7 @@ class ManufacturerProductViewSet(viewsets.ModelViewSet):
 
 class ManufacturerSerializedItemViewSet(viewsets.ViewSet):
     """
-    Viewset for manufacturers to create serialized items (physical instances of products).
+    Viewset for manufacturers to manage serialized items (physical instances of products).
     Supports auto-creating products if product_id is not provided.
     
     POST /crm-api/manufacturer/serialized-items/
@@ -164,14 +164,89 @@ class ManufacturerSerializedItemViewSet(viewsets.ViewSet):
         } for item in serialized_items]
         
         return Response(data)
+    
+    def retrieve(self, request, pk=None):
+        """Get a specific serialized item by ID"""
+        manufacturer = request.user.manufacturer_profile
+        try:
+            item = SerializedItem.objects.select_related('product').get(
+                id=pk,
+                product__manufacturer=manufacturer
+            )
+            return Response({
+                'id': item.id,
+                'serial_number': item.serial_number,
+                'barcode': item.barcode,
+                'status': item.status,
+                'status_display': item.get_status_display(),
+                'current_location': item.current_location,
+                'current_location_display': item.get_current_location_display(),
+                'location_notes': item.location_notes,
+                'product': ProductSerializer(item.product).data,
+                'created_at': item.created_at,
+                'updated_at': item.updated_at,
+            })
+        except SerializedItem.DoesNotExist:
+            return Response(
+                {'error': 'Serialized item not found or does not belong to this manufacturer'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    def destroy(self, request, pk=None):
+        """Delete a serialized item (only if it belongs to the manufacturer)"""
+        manufacturer = request.user.manufacturer_profile
+        try:
+            item = SerializedItem.objects.get(
+                id=pk,
+                product__manufacturer=manufacturer
+            )
+            # Check if item has warranty or is sold - prevent deletion
+            if hasattr(item, 'warranty'):
+                return Response(
+                    {'error': 'Cannot delete serialized item with an associated warranty'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if item.status in ['sold', 'delivered']:
+                return Response(
+                    {'error': 'Cannot delete serialized item that has been sold or delivered'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            item.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except SerializedItem.DoesNotExist:
+            return Response(
+                {'error': 'Serialized item not found or does not belong to this manufacturer'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 class ManufacturerWarrantyClaimDetailView(generics.RetrieveUpdateAPIView):
-    serializer_class = WarrantyClaimListSerializer
+    """
+    Retrieve and update warranty claim details for manufacturers.
+    Provides comprehensive claim information including product, customer,
+    warranty details, and related repair job cards.
+    """
     permission_classes = [IsManufacturer]
     lookup_field = 'claim_id'
 
+    def get_serializer_class(self):
+        from .serializers import ManufacturerWarrantyClaimDetailSerializer, WarrantyClaimListSerializer
+        if self.request.method == 'GET':
+            return ManufacturerWarrantyClaimDetailSerializer
+        return WarrantyClaimListSerializer
+
     def get_queryset(self):
-        return WarrantyClaim.objects.filter(warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile)
+        return WarrantyClaim.objects.filter(
+            warranty__serialized_item__product__manufacturer=self.request.user.manufacturer_profile
+        ).select_related(
+            'warranty',
+            'warranty__serialized_item',
+            'warranty__serialized_item__product',
+            'warranty__customer',
+            'warranty__customer__contact',
+        ).prefetch_related(
+            'warranty__serialized_item__job_cards',
+        )
 
 class ManufacturerWarrantyViewSet(viewsets.ModelViewSet):
     serializer_class = WarrantySerializer

@@ -212,43 +212,145 @@ class AdminAnalyticsView(APIView):
 class ManufacturerAnalyticsView(APIView):
     """
     Provides targeted analytics for the manufacturer dashboard.
+    Includes warranty metrics, fault analytics, failure rates by model,
+    and installed serial numbers visibility as per HANNA Core Scope.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        from warranty.permissions import IsManufacturer
+        
+        # Check if user is a manufacturer
+        if not hasattr(request.user, 'manufacturer_profile'):
+            return Response({'error': 'User is not a manufacturer'}, status=403)
+        
+        manufacturer = request.user.manufacturer_profile
         start_date, end_date = get_date_range(request)
-        date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
-
+        
+        # Build date filter only if dates are provided
+        if start_date and end_date:
+            date_filter = Q(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        else:
+            date_filter = Q()
+        
+        # Get manufacturer's products
+        manufacturer_products = Product.objects.filter(manufacturer=manufacturer)
+        
         # --- Warranty & Repair Metrics ---
-        total_warranty_repairs = JobCard.objects.filter(
+        # Filter job cards for manufacturer's products
+        manufacturer_job_cards = JobCard.objects.filter(
+            serialized_item__product__in=manufacturer_products
+        )
+        
+        total_warranty_repairs = manufacturer_job_cards.filter(
             date_filter,
             is_under_warranty=True,
             status__in=[JobCard.Status.RESOLVED, JobCard.Status.CLOSED]
         ).count()
 
-        items_pending_collection = JobCard.objects.filter(status=JobCard.Status.RESOLVED).count() # This is likely a current state, not historical
+        items_pending_collection = manufacturer_job_cards.filter(
+            status=JobCard.Status.RESOLVED
+        ).count()
         
-        items_replaced = WarrantyClaim.objects.filter(date_filter, status=WarrantyClaim.ClaimStatus.REPLACED).count()
+        # Warranty claims for manufacturer's products
+        manufacturer_warranty_claims = WarrantyClaim.objects.filter(
+            warranty__serialized_item__product__in=manufacturer_products
+        )
+        
+        items_replaced = manufacturer_warranty_claims.filter(
+            date_filter, 
+            status=WarrantyClaim.ClaimStatus.REPLACED
+        ).count()
+        
+        total_warranty_claims = manufacturer_warranty_claims.filter(date_filter).count()
+        pending_claims = manufacturer_warranty_claims.filter(
+            status=WarrantyClaim.ClaimStatus.PENDING
+        ).count()
+
+        # --- Failure Rates by Model (HANNA Core Scope requirement) ---
+        failure_rates_by_model = []
+        for product in manufacturer_products:
+            total_sold = product.serialized_items.filter(
+                status__in=['sold', 'delivered']
+            ).count()
+            total_claims = WarrantyClaim.objects.filter(
+                date_filter,
+                warranty__serialized_item__product=product
+            ).count()
+            
+            failure_rate = (total_claims / total_sold * 100) if total_sold > 0 else 0
+            
+            if total_sold > 0:  # Only include products with sales
+                failure_rates_by_model.append({
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'sku': product.sku,
+                    'total_sold': total_sold,
+                    'total_claims': total_claims,
+                    'failure_rate': round(failure_rate, 2),
+                })
+        
+        # Sort by failure rate descending
+        failure_rates_by_model.sort(key=lambda x: x['failure_rate'], reverse=True)
 
         # --- Fault Analysis ---
-        overloaded_inverters = JobCard.objects.filter(date_filter, reported_fault__icontains='overload').count()
+        overloaded_inverters = manufacturer_job_cards.filter(
+            date_filter, 
+            reported_fault__icontains='overload'
+        ).count()
 
-        # AI Insight: Common Fault Keywords
-        all_faults = JobCard.objects.filter(date_filter).exclude(reported_fault__isnull=True).exclude(reported_fault__exact='').values_list('reported_fault', flat=True)
+        # AI Insight: Common Fault Keywords from manufacturer's job cards
+        all_faults = manufacturer_job_cards.filter(date_filter).exclude(
+            reported_fault__isnull=True
+        ).exclude(
+            reported_fault__exact=''
+        ).values_list('reported_fault', flat=True)
+        
         words = re.findall(r'\b\w+\b', ' '.join(all_faults).lower())
         stopwords = set(['the', 'a', 'an', 'is', 'not', 'and', 'or', 'but', 'to', 'of', 'in', 'for', 'on', 'with', 'it', 'no', 'fault', 'power', 'unit'])
         meaningful_words = [word for word in words if word not in stopwords and not word.isdigit()]
         common_faults = [item[0] for item in Counter(meaningful_words).most_common(5)]
+
+        # --- Installed Serial Numbers Summary ---
+        from products_and_services.models import SerializedItem
+        
+        total_serialized_items = SerializedItem.objects.filter(
+            product__in=manufacturer_products
+        ).count()
+        
+        items_at_customers = SerializedItem.objects.filter(
+            product__in=manufacturer_products,
+            current_location='customer'
+        ).count()
+        
+        items_at_manufacturer = SerializedItem.objects.filter(
+            product__in=manufacturer_products,
+            current_location='manufacturer'
+        ).count()
+        
+        items_in_repair = SerializedItem.objects.filter(
+            product__in=manufacturer_products,
+            status__in=['in_repair', 'awaiting_parts', 'outsourced']
+        ).count()
 
         data = {
             'warranty_metrics': {
                 'total_warranty_repairs': total_warranty_repairs,
                 'items_pending_collection': items_pending_collection,
                 'items_replaced': items_replaced,
+                'total_warranty_claims': total_warranty_claims,
+                'pending_claims': pending_claims,
             },
             'fault_analytics': {
                 'overloaded_inverters': overloaded_inverters,
                 'ai_insight_common_faults': common_faults,
+            },
+            'failure_rates_by_model': failure_rates_by_model[:10],  # Top 10
+            'inventory_summary': {
+                'total_serialized_items': total_serialized_items,
+                'items_at_customers': items_at_customers,
+                'items_at_manufacturer': items_at_manufacturer,
+                'items_in_repair': items_in_repair,
             }
         }
         return Response(data)
