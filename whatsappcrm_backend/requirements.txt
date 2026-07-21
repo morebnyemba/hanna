@@ -30,7 +30,7 @@ google-genai==2.9.0
 google-api-core==2.31.0
 pdf2image==1.17.0
 pdfminer.six==20260107
-Pillow==12.2.0
+Pillow==12.3.0
 pytesseract==0.3.13
 qrcode[pil]==8.2
 
