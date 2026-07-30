@@ -141,7 +141,15 @@ DATABASES = {
         # Connection pooling: Keep database connections open for reuse instead of
         # opening/closing a new connection for every request or Celery task.
         # This significantly reduces latency, especially for high-concurrency workers.
-        # Set to 0 for unlimited persistent connections, or a specific number of seconds.
+        # 0 closes the connection at the end of each request/task; a number of
+        # seconds keeps it open that long (None, which this setting cannot express,
+        # would mean unlimited).
+        #
+        # Only safe above 0 where connections can actually be reused -- long-lived
+        # threads or processes. The gevent Celery workers override this to 0 via
+        # DB_CONN_MAX_AGE in docker-compose.yml: they get a fresh greenlet (and so
+        # a fresh thread-local connection) per task, so a persistent connection is
+        # never reused, just leaked until it ages out. See the comment there.
         'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '600')),  # 10 minutes
         # Health checks: Verify connections are still usable before reusing them.
         # Prevents errors from stale/broken connections after server restarts or timeouts.
