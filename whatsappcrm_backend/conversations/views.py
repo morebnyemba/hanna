@@ -8,9 +8,9 @@ from functools import reduce
 from operator import or_
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
 import logging # Make sure logging is imported
+
+from whatsappcrm_backend import realtime
 
 from .models import Contact, Message
 from .serializers import (
@@ -161,17 +161,16 @@ class ContactViewSet(viewsets.ModelViewSet):
         contact.save(update_fields=['needs_human_intervention', 'intervention_requested_at', 'last_seen'])
         
         # --- Broadcast update via WebSocket ---
-        channel_layer = get_channel_layer()
         group_name = f'conversation_{contact.id}'
-        
+
         # Use the detail serializer to get the full, updated contact representation
         serializer = ContactDetailSerializer(contact)
-        
-        async_to_sync(channel_layer.group_send)(
+
+        if realtime.group_send(
             group_name,
             {'type': 'contact_updated', 'contact': serializer.data}
-        )
-        logger.info(f"Broadcasted contact update for contact {contact.id} to group {group_name}.")
+        ):
+            logger.info(f"Broadcasted contact update for contact {contact.id} to group {group_name}.")
         
         return Response(serializer.data, status=status.HTTP_200_OK)
 
