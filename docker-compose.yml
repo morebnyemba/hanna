@@ -105,8 +105,20 @@ services:
     # go through whatsappcrm_backend/realtime.py, which serialises them. Calling
     # async_to_sync directly makes concurrent greenlets raise "You cannot use
     # AsyncToSync in the same thread as an async event loop".
+    #
+    # DB_CONN_MAX_AGE must stay 0 on the gevent workers. Django keeps database
+    # connections in a thread-local, and gevent makes that greenlet-local, so a
+    # persistent CONN_MAX_AGE cannot be reused: the gevent pool spawns a new
+    # greenlet per task, each one opens its own connection, and close_old_
+    # connections at task end will not close a connection younger than the max
+    # age. Every task then leaks a connection until the age expires and Postgres
+    # hits "FATAL: sorry, too many clients already" within minutes. 0 closes the
+    # connection at the end of each task. Prefork workers and Daphne keep the
+    # 600s default from settings.py, where the threads are long-lived and the
+    # connection count is bounded.
     environment:
       DJANGO_ALLOW_ASYNC_UNSAFE: "true"
+      DB_CONN_MAX_AGE: "0"
     volumes:
       - ./whatsappcrm_backend:/app
       - mediafiles_volume:/app/mediafiles
@@ -132,9 +144,11 @@ services:
       --without-gossip
       --without-mingle
       --without-heartbeat
-    # See celery_messaging_worker: gevent pool needs the async guard disabled.
+    # See celery_messaging_worker: the gevent pool needs the async guard disabled
+    # and non-persistent database connections.
     environment:
       DJANGO_ALLOW_ASYNC_UNSAFE: "true"
+      DB_CONN_MAX_AGE: "0"
     volumes:
       - ./whatsappcrm_backend:/app
       - mediafiles_volume:/app/mediafiles
