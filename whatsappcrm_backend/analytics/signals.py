@@ -2,16 +2,15 @@
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
 from customer_data.models import Order, JobCard, InstallationRequest, SiteAssessmentRequest, SolarCleaningRequest, Payment, CustomerProfile
+
+from whatsappcrm_backend import realtime
 
 def trigger_analytics_update(sender, instance, **kwargs):
     """
     Triggers a websocket update for the admin analytics dashboard.
     """
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
+    realtime.group_send(
         'admin_analytics',
         {
             'type': 'analytics_update',

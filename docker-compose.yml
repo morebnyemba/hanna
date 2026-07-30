@@ -100,6 +100,11 @@ services:
     # ORM calls. There is no real async web context in a Celery worker, so it is
     # safe to disable the guard here. Without this, ORM access in tasks (and the
     # result backend) fails and messages are never sent.
+    #
+    # Relatedly: all greenlets share one OS thread, so Channels broadcasts must
+    # go through whatsappcrm_backend/realtime.py, which serialises them. Calling
+    # async_to_sync directly makes concurrent greenlets raise "You cannot use
+    # AsyncToSync in the same thread as an async event loop".
     environment:
       DJANGO_ALLOW_ASYNC_UNSAFE: "true"
     volumes:

@@ -1,7 +1,5 @@
 # stats/tasks.py
 from celery import shared_task
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
 import logging
 
 from django.utils import timezone
@@ -11,24 +9,21 @@ from . import services
 from conversations.models import Contact, Message
 from meta_integration.models import MetaAppConfig
 from meta_integration.tasks import send_whatsapp_message_task
+from whatsappcrm_backend import realtime
 
 logger = logging.getLogger(__name__)
 
 def _broadcast_update(update_type, payload):
     """Helper function to send updates to the dashboard group."""
-    channel_layer = get_channel_layer()
-    if channel_layer:
-        logger.debug(f"Broadcasting update: type='{update_type}'")
-        async_to_sync(channel_layer.group_send)(
-            'dashboard_updates',
-            {
-                'type': 'dashboard.update',
-                'update_type': update_type,
-                'payload': payload
-            }
-        )
-    else:
-        logger.warning("Cannot broadcast update: Channel layer not found.")
+    logger.debug(f"Broadcasting update: type='{update_type}'")
+    realtime.group_send(
+        'dashboard_updates',
+        {
+            'type': 'dashboard.update',
+            'update_type': update_type,
+            'payload': payload
+        }
+    )
 
 @shared_task(name="stats.update_dashboard_stats")
 def update_dashboard_stats():
