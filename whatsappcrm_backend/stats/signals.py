@@ -39,44 +39,56 @@ def on_contact_change(sender, instance, created, **kwargs):
     """
     logger.debug(f"Contact changed {instance.id}, created={created}: Scheduling updates.")
 
-    # --- Schedule a full stats update ---
-    update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
+    # Every apply_async()/.delay() call below is a Celery producer call to
+    # Redis, made synchronously here because this signal fires inside
+    # Contact.save() -- including from request handlers (e.g. the WhatsApp
+    # webhook, or the admin customer-profile endpoint) that are not expecting
+    # a dashboard-stats side effect to be able to fail their save. A dashboard
+    # update is a live-UI nicety, never a reason to fail the contact save (or
+    # the webhook/view that triggered it), so failures here are logged and
+    # swallowed -- same policy as whatsappcrm_backend/realtime.py's
+    # broadcasts.
+    try:
+        # --- Schedule a full stats update ---
+        update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
 
-    # --- Handle specific real-time events ---
-    if created:
-        activity_payload = {
-            "id": f"contact_new_{instance.id}",
-            "text": f"New contact: {instance.name or instance.whatsapp_id}",
-            "timestamp": instance.first_seen.isoformat(),
-            "iconName": "FiUsers",
-            "iconColor": "text-emerald-500"
-        }
-        broadcast_activity_log.delay(activity_payload)
+        # --- Handle specific real-time events ---
+        if created:
+            activity_payload = {
+                "id": f"contact_new_{instance.id}",
+                "text": f"New contact: {instance.name or instance.whatsapp_id}",
+                "timestamp": instance.first_seen.isoformat(),
+                "iconName": "FiUsers",
+                "iconColor": "text-emerald-500"
+            }
+            broadcast_activity_log.delay(activity_payload)
 
-    # Check for human intervention flag changes
-    update_fields = kwargs.get('update_fields') or set()
-    if instance.needs_human_intervention and ('needs_human_intervention' in update_fields or created):
-        logger.info(f"Human intervention needed for contact {instance.id}. Broadcasting notification.")
+        # Check for human intervention flag changes
+        update_fields = kwargs.get('update_fields') or set()
+        if instance.needs_human_intervention and ('needs_human_intervention' in update_fields or created):
+            logger.info(f"Human intervention needed for contact {instance.id}. Broadcasting notification.")
 
-        # --- UI Notification (existing) ---
-        notification_payload = {
-            "contact_id": instance.id,
-            "name": instance.name or instance.whatsapp_id,
-            "message": f"Contact '{instance.name or instance.whatsapp_id}' requires human assistance."
-        }
-        broadcast_human_intervention_notification.delay(notification_payload)
+            # --- UI Notification (existing) ---
+            notification_payload = {
+                "contact_id": instance.id,
+                "name": instance.name or instance.whatsapp_id,
+                "message": f"Contact '{instance.name or instance.whatsapp_id}' requires human assistance."
+            }
+            broadcast_human_intervention_notification.delay(notification_payload)
 
-        # --- WhatsApp Notification (NEW) ---
-        from notifications.services import queue_notifications_to_users
-        queue_notifications_to_users(
-            template_name='pfungwa_human_handover_flow',
-            group_names=["Technical Admin"],
-            related_contact=instance
-        )
+            # --- WhatsApp Notification (NEW) ---
+            from notifications.services import queue_notifications_to_users
+            queue_notifications_to_users(
+                template_name='pfungwa_human_handover_flow',
+                group_names=["Technical Admin"],
+                related_contact=instance
+            )
 
-        # --- NEW: Schedule the timeout check task ---
-        logger.info(f"Scheduling handover timeout check for contact {instance.id} in 60 seconds.")
-        check_handover_timeout.apply_async(args=[instance.id], countdown=60)
+            # --- NEW: Schedule the timeout check task ---
+            logger.info(f"Scheduling handover timeout check for contact {instance.id} in 60 seconds.")
+            check_handover_timeout.apply_async(args=[instance.id], countdown=60)
+    except Exception:
+        logger.warning(f"Failed to schedule dashboard updates for contact {instance.id}.", exc_info=True)
 
 
 @receiver(post_save, sender=Flow)
