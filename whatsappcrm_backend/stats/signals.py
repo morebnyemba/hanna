@@ -29,7 +29,14 @@ def on_new_message(sender, instance, created, **kwargs):
     """
     if created:
         logger.debug(f"New message {instance.id}: Scheduling dashboard stats update.")
-        update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
+        # See on_contact_change below: this is a Celery producer call to Redis,
+        # firing synchronously inside Message.save() -- including from the
+        # WhatsApp webhook view, for every single inbound/outbound message. A
+        # dashboard update is a nicety, never a reason to fail that save.
+        try:
+            update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
+        except Exception:
+            logger.warning(f"Failed to schedule dashboard update for message {instance.id}.", exc_info=True)
 
 
 @receiver(post_save, sender=Contact)
@@ -103,7 +110,10 @@ def on_flow_change(sender, instance, created, **kwargs):
             "iconName": "FiZap",
             "iconColor": "text-purple-500"
         }
-        broadcast_activity_log.delay(activity_payload)
+        try:
+            broadcast_activity_log.delay(activity_payload)
+        except Exception:
+            logger.warning(f"Failed to broadcast activity log for flow {instance.id}.", exc_info=True)
 
 
 @receiver(post_save, sender=Order)
@@ -113,60 +123,63 @@ def on_order_change(sender, instance, created, **kwargs):
     and, if created, schedule a notification to be sent AFTER the transaction commits.
     """
     logger.debug(f"Order changed {instance.pk}, created={created}: Scheduling updates.")
-    update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
+    try:
+        update_dashboard_stats.apply_async(countdown=DEBOUNCE_DELAY)
 
-    if created:
-        # --- MODIFIED: Only send generic notification if the source is NOT an email import ---
-        # The email import task now sends its own, more descriptive notification.
-        if instance.source != Order.Source.EMAIL_IMPORT and \
-           instance.customer and \
-           hasattr(instance.customer, 'contact') and \
-           instance.customer.contact:
-            # Prepare data for the notification template.
-            order_data = {
-                'id': str(instance.pk),
-                'name': instance.name,
-                'order_number': instance.order_number,
-                'amount': float(instance.amount) if instance.amount else 0.0,
-            }
-            customer_data = {
-                'id': str(instance.customer.pk),
-                'full_name': instance.customer.get_full_name(),
-                'contact_name': getattr(instance.customer.contact, 'name', 'N/A'),
-            }
-            # --- FIX: Flatten the context to match the template's expectations ---
-            # Use serialized dictionaries, not model instances, for JSONField compatibility
-            template_context = {
-                'order': order_data,
-                'customer': customer_data,
-            }
-            from notifications.services import queue_notifications_to_users
-            queue_notifications_to_users(
-                template_name='pfungwa_new_order_created',
-                group_names=["System Admins", "Sales Team"],
-                related_contact=instance.customer.contact,
-                template_context=template_context
-            )
-            logger.info(f"Queued 'pfungwa_new_order_created' notification for Order ID {instance.pk}.")
+        if created:
+            # --- MODIFIED: Only send generic notification if the source is NOT an email import ---
+            # The email import task now sends its own, more descriptive notification.
+            if instance.source != Order.Source.EMAIL_IMPORT and \
+               instance.customer and \
+               hasattr(instance.customer, 'contact') and \
+               instance.customer.contact:
+                # Prepare data for the notification template.
+                order_data = {
+                    'id': str(instance.pk),
+                    'name': instance.name,
+                    'order_number': instance.order_number,
+                    'amount': float(instance.amount) if instance.amount else 0.0,
+                }
+                customer_data = {
+                    'id': str(instance.customer.pk),
+                    'full_name': instance.customer.get_full_name(),
+                    'contact_name': getattr(instance.customer.contact, 'name', 'N/A'),
+                }
+                # --- FIX: Flatten the context to match the template's expectations ---
+                # Use serialized dictionaries, not model instances, for JSONField compatibility
+                template_context = {
+                    'order': order_data,
+                    'customer': customer_data,
+                }
+                from notifications.services import queue_notifications_to_users
+                queue_notifications_to_users(
+                    template_name='pfungwa_new_order_created',
+                    group_names=["System Admins", "Sales Team"],
+                    related_contact=instance.customer.contact,
+                    template_context=template_context
+                )
+                logger.info(f"Queued 'pfungwa_new_order_created' notification for Order ID {instance.pk}.")
 
-            # The activity log is a simple Celery task and less likely to fail.
-            activity_payload = {
-                "id": f"order_new_{instance.pk}",
-                "text": f"New Order: '{instance.name}' for {instance.customer}",
-                "timestamp": instance.created_at.isoformat(),
-                "iconName": "FiShoppingCart",
-                "iconColor": "text-blue-500"
-            }
-            broadcast_activity_log.delay(activity_payload)
+                # The activity log is a simple Celery task and less likely to fail.
+                activity_payload = {
+                    "id": f"order_new_{instance.pk}",
+                    "text": f"New Order: '{instance.name}' for {instance.customer}",
+                    "timestamp": instance.created_at.isoformat(),
+                    "iconName": "FiShoppingCart",
+                    "iconColor": "text-blue-500"
+                }
+                broadcast_activity_log.delay(activity_payload)
 
-        else:
-            # Handle placeholder orders
-            activity_payload = {
-                "id": f"order_new_{instance.pk}",
-                "text": f"New Placeholder Order: '{instance.name or instance.order_number}' created.",
-                "timestamp": instance.created_at.isoformat(),
-                "iconName": "FiShoppingCart",
-                "iconColor": "text-gray-500"
-            }
-            broadcast_activity_log.delay(activity_payload)
-            logger.info(f"Logged creation of placeholder order ID {instance.pk} (no customer attached).")
+            else:
+                # Handle placeholder orders
+                activity_payload = {
+                    "id": f"order_new_{instance.pk}",
+                    "text": f"New Placeholder Order: '{instance.name or instance.order_number}' created.",
+                    "timestamp": instance.created_at.isoformat(),
+                    "iconName": "FiShoppingCart",
+                    "iconColor": "text-gray-500"
+                }
+                broadcast_activity_log.delay(activity_payload)
+                logger.info(f"Logged creation of placeholder order ID {instance.pk} (no customer attached).")
+    except Exception:
+        logger.warning(f"Failed to schedule dashboard updates for order {instance.pk}.", exc_info=True)
