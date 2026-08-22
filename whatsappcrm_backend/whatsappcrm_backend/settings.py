@@ -1,6 +1,7 @@
 # whatsappcrm_backend/whatsappcrm_backend/settings.py
 
 import os
+import socket
 from pathlib import Path
 from datetime import timedelta
 import dotenv # For loading .env file
@@ -390,8 +391,17 @@ CELERY_TASK_ACKS_LATE = True
 # Reject tasks on worker lost (requeue them to be picked up by another worker)
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
-# Keep broker reconnects resilient. socket_keepalive lets the OS detect a
-# dropped Redis TCP connection promptly instead of hanging on a dead socket.
+# Keep broker connections resilient AND bounded. Kombu's redis transport
+# defaults socket_timeout/socket_connect_timeout to None (Kombu source,
+# kombu/transport/redis.py) -- meaning a producer call (.delay()/apply_async(),
+# e.g. the one in stats/signals.py's on_contact_change, which fires
+# synchronously inside every Contact.save(), including from request handlers)
+# can block that thread forever if the connection is bad. Plain
+# socket_keepalive=True alone does not fix this: without tuned intervals it
+# just uses the OS defaults (Linux waits ~2 hours of idle time before even
+# starting keepalive probes), so a half-open connection goes undetected for
+# a very long time. Both must be set explicitly so a wedged connection fails
+# fast with a catchable error instead of hanging the request that touched it.
 # (Note: AMQP broker_heartbeat does NOT apply to the Redis transport, so the
 # "missed heartbeat" gossip lines are handled at the worker level instead —
 # the workers run with --without-gossip/--without-mingle/--without-heartbeat
@@ -399,7 +409,14 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 # RabbitMQ-oriented and only add overhead/noise on a single-broker Redis setup.)
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'socket_timeout': 5,          # Max seconds to wait on a send/recv before giving up.
+    'socket_connect_timeout': 5,  # Max seconds to wait when establishing a new connection.
     'socket_keepalive': True,
+    'socket_keepalive_options': {
+        socket.TCP_KEEPIDLE: 60,   # Start probing after 60s idle (Linux default is 7200s).
+        socket.TCP_KEEPINTVL: 10,  # Probe every 10s thereafter.
+        socket.TCP_KEEPCNT: 3,     # Give up (and let socket_timeout above catch it) after 3 misses.
+    },
 }
 
 
