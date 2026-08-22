@@ -93,7 +93,14 @@ def initiate_paynow_payment_task(self, order_number: str, method: str, contact_w
             description=f"Payment for Order {order.order_number}"
         )
     except Exception as e:
+        # Without this, the Payment row this task just created is orphaned at
+        # PENDING with no poll_url forever: the IPN can never arrive for a
+        # checkout that was never actually initiated, and the poll fallback
+        # below is never scheduled since it depends on a successful `result`.
         logger.error(f"{log_prefix} Error initiating Paynow payment: {e}", exc_info=True)
+        payment.status = PaymentStatus.FAILED
+        payment.provider_response = {'error': str(e), 'error_type': type(e).__name__}
+        payment.save(update_fields=['status', 'provider_response'])
         send_whatsapp_message(
             to_phone_number=contact_whatsapp_id,
             message_type='text',
