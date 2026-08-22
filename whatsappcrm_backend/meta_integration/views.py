@@ -671,7 +671,7 @@ class MetaWebhookAPIView(View):
                 # User selected specific Paynow method (ecocash, onemoney, innbucks)
                 # method_or_type contains the payment method (ecocash, onemoney, innbucks)
                 method = method_or_type
-                
+
                 try:
                     order = Order.objects.get(order_number=order_number)
                     # Map to correct enum value
@@ -686,14 +686,14 @@ class MetaWebhookAPIView(View):
                     logger.error(f"Order {order_number} not found for Paynow payment")
                     self._save_log(log_entry, 'failed', f'Order {order_number} not found')
                     return
-                
+
                 method_display_map = {
                     'ecocash': 'Ecocash',
                     'onemoney': 'OneMoney',
                     'innbucks': 'Innbucks'
                 }
                 method_display = method_display_map.get(method, 'Paynow')
-                
+
                 # Send confirmation
                 confirmation_msg = (
                     f"✅ *Payment Method Confirmed*\n\n"
@@ -702,139 +702,28 @@ class MetaWebhookAPIView(View):
                     f"Amount: ${order.amount} {order.currency}\n\n"
                     f"Initiating payment... Please check your phone for the payment prompt."
                 )
-                
+
                 send_whatsapp_message(
                     to_phone_number=contact.whatsapp_id,
                     message_type='text',
                     data={'body': confirmation_msg}
                 )
-                
-                # Initiate Paynow payment
-                try:
-                    from paynow_integration.services import PaynowService
-                    from customer_data.models import Payment, PaymentStatus
-                    from customer_data.payment_utils import validate_phone_number
-                    from decimal import Decimal
-                    import uuid
-                    
-                    # Validate and format phone number
-                    try:
-                        validated_phone = validate_phone_number(contact.whatsapp_id)
-                    except ValueError as e:
-                        logger.error(f"Phone number validation failed: {e}")
-                        error_msg = (
-                            f"❌ Invalid phone number format.\n\n"
-                            f"Please contact our support team to complete your payment.\n"
-                            f"Order: #{order.order_number}"
-                        )
-                        send_whatsapp_message(
-                            to_phone_number=contact.whatsapp_id,
-                            message_type='text',
-                            data={'body': error_msg}
-                        )
-                        self._save_log(log_entry, 'failed', str(e))
-                        return
-                    
-                    # Get customer email if available, otherwise use default
-                    customer_email = ''
-                    if order.customer:
-                        customer_email = (order.customer.email or '').strip()
-                    
-                    # Fallback to company email if customer email is empty
-                    if not customer_email:
-                        customer_email = 'mnyemba@hanna.co.zw'
-                    
-                    # Create payment reference
-                    payment_reference = f"PAY-{order.order_number}-{uuid.uuid4().hex[:8].upper()}"
-                    
-                    # Initialize Paynow service
-                    paynow_service = PaynowService(ipn_callback_url='/crm-api/paynow/ipn/')
-                    
-                    # Create Payment record
-                    payment = Payment.objects.create(
-                        customer=order.customer,
-                        order=order,
-                        amount=order.amount,
-                        currency=order.currency,
-                        status=PaymentStatus.PENDING,
-                        payment_method=method,
-                        provider_transaction_id=payment_reference
-                    )
-                    
-                    # Initiate Paynow express checkout
-                    result = paynow_service.initiate_express_checkout_payment(
-                        amount=Decimal(str(order.amount)),
-                        reference=payment_reference,
-                        phone_number=validated_phone,
-                        email=customer_email,
-                        paynow_method_type=method,
-                        description=f"Payment for Order {order.order_number}"
-                    )
-                    
-                    if result.get('success'):
-                        # Update payment with Paynow details
-                        payment.poll_url = result.get('poll_url')
-                        payment.provider_response = result
-                        payment.save(update_fields=['poll_url', 'provider_response'])
 
-                        # Fallback in case the Paynow IPN callback never arrives.
-                        if payment.poll_url:
-                            from paynow_integration.tasks import poll_paynow_transaction_status
-                            payment_id = str(payment.id)
-                            transaction.on_commit(
-                                lambda: poll_paynow_transaction_status.apply_async(args=[payment_id], countdown=90)
-                            )
-
-                        success_msg = (
-                            f"💳 *Payment Request Sent*\n\n"
-                            f"Please approve the payment on your phone.\n\n"
-                            f"Reference: {result.get('paynow_reference', 'N/A')}\n\n"
-                            f"You will receive a confirmation once payment is complete."
-                        )
-                        
-                        send_whatsapp_message(
-                            to_phone_number=contact.whatsapp_id,
-                            message_type='text',
-                            data={'body': success_msg}
-                        )
-                        
-                        self._save_log(log_entry, 'processed', f'Paynow payment initiated for order {order_number}')
-                        logger.info(f"Paynow payment initiated for order {order_number}")
-                    else:
-                        # Payment initiation failed
-                        payment.status = PaymentStatus.FAILED
-                        payment.provider_response = result
-                        payment.save(update_fields=['status', 'provider_response'])
-                        
-                        error_msg = (
-                            f"❌ Payment initiation failed.\n\n"
-                            f"Reason: {result.get('message', 'Unknown error')}\n\n"
-                            f"Please try again or contact our support team."
-                        )
-                        
-                        send_whatsapp_message(
-                            to_phone_number=contact.whatsapp_id,
-                            message_type='text',
-                            data={'body': error_msg}
-                        )
-                        
-                        self._save_log(log_entry, 'failed', f'Paynow payment failed: {result.get("message")}')
-                        logger.error(f"Paynow payment failed for order {order_number}: {result.get('message')}")
-                        
-                except Exception as e:
-                    logger.error(f"Error initiating Paynow payment: {e}", exc_info=True)
-                    error_msg = (
-                        f"❌ An error occurred while processing your payment.\n\n"
-                        f"Please contact our support team with order number: {order.order_number}"
-                    )
-                    
-                    send_whatsapp_message(
-                        to_phone_number=contact.whatsapp_id,
-                        message_type='text',
-                        data={'body': error_msg}
-                    )
-                    
-                    self._save_log(log_entry, 'failed', f'Exception processing Paynow payment: {str(e)[:200]}')
+                # Initiate the Paynow payment out-of-band via Celery. The `paynow`
+                # SDK's requests.post() calls carry no timeout, so calling it
+                # inline here (inside this view's @transaction.atomic block)
+                # could hang the request indefinitely on a slow/unresponsive
+                # Paynow endpoint -- wedging this webhook connection, its open
+                # DB transaction, and the row locks it holds until the process
+                # was restarted, during which the bot stopped responding for
+                # every contact, not just this one.
+                from paynow_integration.tasks import initiate_paynow_payment_task
+                contact_whatsapp_id = contact.whatsapp_id
+                transaction.on_commit(
+                    lambda: initiate_paynow_payment_task.delay(order_number, method, contact_whatsapp_id)
+                )
+                self._save_log(log_entry, 'processed', f'Queued Paynow payment initiation for order {order_number}')
+                logger.info(f"Queued Paynow payment initiation task for order {order_number}.")
             
         except Exception as e:
             logger.error(f"Error handling payment method selection: {e}", exc_info=True)

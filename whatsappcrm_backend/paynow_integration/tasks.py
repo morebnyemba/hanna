@@ -8,6 +8,8 @@ idempotent update as the IPN handler in views.py.
 """
 import logging
 import random
+import uuid
+from decimal import Decimal
 
 from celery import shared_task
 from django.db import transaction
@@ -19,6 +21,131 @@ logger = logging.getLogger(__name__)
 
 # Must match paynow_integration/views.py PAYNOW_IPN_URL_PATH.
 PAYNOW_IPN_URL_PATH = '/crm-api/paynow/ipn/'
+
+
+@shared_task(name="paynow_integration.initiate_paynow_payment_task", bind=True, max_retries=2, default_retry_delay=5)
+def initiate_paynow_payment_task(self, order_number: str, method: str, contact_whatsapp_id: str):
+    """
+    Initiates a Paynow Express Checkout payment for an order and messages the
+    customer with the outcome.
+
+    This used to run inline inside the WhatsApp webhook view (inside its
+    @transaction.atomic block). The `paynow` SDK's underlying requests.post()
+    calls (paynow/model.py) carry no timeout, so a slow or unresponsive Paynow
+    endpoint could hang that HTTP request indefinitely -- wedging the ASGI
+    connection (and the open DB transaction/row locks it held) until the
+    process was restarted, during which the webhook stopped responding for
+    every contact, not just the one paying. Running it as a Celery task keeps
+    an unbounded third-party call off the request/response path entirely.
+    """
+    from customer_data.payment_utils import validate_phone_number
+    from meta_integration.utils import send_whatsapp_message
+
+    log_prefix = f"[Paynow Initiate - Order: {order_number}]"
+
+    try:
+        order = Order.objects.select_related('customer').get(order_number=order_number)
+    except Order.DoesNotExist:
+        logger.error(f"{log_prefix} Order not found.")
+        return
+
+    try:
+        validated_phone = validate_phone_number(contact_whatsapp_id)
+    except ValueError as e:
+        logger.error(f"{log_prefix} Phone number validation failed: {e}")
+        send_whatsapp_message(
+            to_phone_number=contact_whatsapp_id,
+            message_type='text',
+            data={'body': (
+                f"❌ Invalid phone number format.\n\n"
+                f"Please contact our support team to complete your payment.\n"
+                f"Order: #{order.order_number}"
+            )}
+        )
+        return
+
+    customer_email = ''
+    if order.customer:
+        customer_email = (order.customer.email or '').strip()
+    if not customer_email:
+        customer_email = 'mnyemba@hanna.co.zw'
+
+    payment_reference = f"PAY-{order.order_number}-{uuid.uuid4().hex[:8].upper()}"
+    paynow_service = PaynowService(ipn_callback_url=PAYNOW_IPN_URL_PATH)
+
+    payment = Payment.objects.create(
+        customer=order.customer,
+        order=order,
+        amount=order.amount,
+        currency=order.currency,
+        status=PaymentStatus.PENDING,
+        payment_method=method,
+        provider_transaction_id=payment_reference
+    )
+
+    try:
+        result = paynow_service.initiate_express_checkout_payment(
+            amount=Decimal(str(order.amount)),
+            reference=payment_reference,
+            phone_number=validated_phone,
+            email=customer_email,
+            paynow_method_type=method,
+            description=f"Payment for Order {order.order_number}"
+        )
+    except Exception as e:
+        # Without this, the Payment row this task just created is orphaned at
+        # PENDING with no poll_url forever: the IPN can never arrive for a
+        # checkout that was never actually initiated, and the poll fallback
+        # below is never scheduled since it depends on a successful `result`.
+        logger.error(f"{log_prefix} Error initiating Paynow payment: {e}", exc_info=True)
+        payment.status = PaymentStatus.FAILED
+        payment.provider_response = {'error': str(e), 'error_type': type(e).__name__}
+        payment.save(update_fields=['status', 'provider_response'])
+        send_whatsapp_message(
+            to_phone_number=contact_whatsapp_id,
+            message_type='text',
+            data={'body': (
+                f"❌ An error occurred while processing your payment.\n\n"
+                f"Please contact our support team with order number: {order.order_number}"
+            )}
+        )
+        return
+
+    if result.get('success'):
+        payment.poll_url = result.get('poll_url')
+        payment.provider_response = result
+        payment.save(update_fields=['poll_url', 'provider_response'])
+
+        # Fallback in case the Paynow IPN callback never arrives.
+        if payment.poll_url:
+            poll_paynow_transaction_status.apply_async(args=[str(payment.id)], countdown=90)
+
+        send_whatsapp_message(
+            to_phone_number=contact_whatsapp_id,
+            message_type='text',
+            data={'body': (
+                f"💳 *Payment Request Sent*\n\n"
+                f"Please approve the payment on your phone.\n\n"
+                f"Reference: {result.get('paynow_reference', 'N/A')}\n\n"
+                f"You will receive a confirmation once payment is complete."
+            )}
+        )
+        logger.info(f"{log_prefix} Paynow payment initiated. PaynowRef: {result.get('paynow_reference')}.")
+    else:
+        payment.status = PaymentStatus.FAILED
+        payment.provider_response = result
+        payment.save(update_fields=['status', 'provider_response'])
+
+        send_whatsapp_message(
+            to_phone_number=contact_whatsapp_id,
+            message_type='text',
+            data={'body': (
+                f"❌ Payment initiation failed.\n\n"
+                f"Reason: {result.get('message', 'Unknown error')}\n\n"
+                f"Please try again or contact our support team."
+            )}
+        )
+        logger.error(f"{log_prefix} Paynow payment failed: {result.get('message')}")
 
 
 @shared_task(name="paynow_integration.poll_paynow_transaction_status", bind=True, max_retries=8, default_retry_delay=60)
