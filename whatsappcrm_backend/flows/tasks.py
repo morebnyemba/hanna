@@ -88,6 +88,97 @@ def process_flow_for_message_task(message_id: int):
         logger.error(f"Critical error in process_flow_for_message_task for message {message_id}: {e}", exc_info=True)
 
 
+def _finish_webhook_log(log_entry_id, status, notes):
+    """Record the outcome of deferred webhook processing on its WebhookEventLog.
+
+    The webhook now acks before this work runs, so without this the admin's
+    event log would sit at 'processing_queued' forever and there would be no
+    record of whether the deferred half succeeded.
+    """
+    if not log_entry_id:
+        return
+    from meta_integration.models import WebhookEventLog
+    try:
+        log_entry = WebhookEventLog.objects.get(pk=log_entry_id)
+    except WebhookEventLog.DoesNotExist:
+        logger.warning(f"WebhookEventLog {log_entry_id} vanished before it could be finalised.")
+        return
+    log_entry.processing_status = status
+    log_entry.processing_notes = (
+        f"{log_entry.processing_notes}\n{notes}" if log_entry.processing_notes else notes
+    )
+    log_entry.processed_at = timezone.now()
+    try:
+        log_entry.save(update_fields=['processing_status', 'processing_notes', 'processed_at'])
+    except Exception:
+        logger.error(f"Could not finalise WebhookEventLog {log_entry_id}.", exc_info=True)
+
+
+@shared_task(queue='flow_processing')
+def process_whatsapp_flow_response_task(message_id: int, log_entry_id: int = None):
+    """
+    Process a submitted WhatsApp Flow (nfm_reply) off the webhook request path.
+
+    This used to run inline in MetaWebhookAPIView, which meant a single webhook
+    executed WhatsAppFlowResponseProcessor -- and, through it, the whole flow
+    engine via process_message_for_flow -- while holding a Daphne worker thread
+    and an open transaction. Meta gives a webhook a few seconds before it retries
+    delivery, and a retry that lands while the first is still running is how one
+    submitted form turned into duplicate work. The webhook now records the
+    message and acks; everything below happens here, on the flow worker.
+    """
+    from .services import process_whatsapp_flow_response
+
+    try:
+        incoming_message = Message.objects.select_related('contact', 'app_config').get(pk=message_id)
+    except Message.DoesNotExist:
+        logger.error(f"process_whatsapp_flow_response_task: Message {message_id} not found.")
+        _finish_webhook_log(log_entry_id, 'error', f'Message {message_id} not found.')
+        return
+
+    config = incoming_message.app_config or MetaAppConfig.objects.get_active_config()
+    success, notes = process_whatsapp_flow_response(
+        incoming_message.content_payload or {}, incoming_message.contact, config
+    )
+
+    if not success:
+        _finish_webhook_log(log_entry_id, 'error', notes)
+        return
+
+    # Continue the flow that was waiting on this submission. Called directly
+    # rather than re-queued: this task already runs on the flow worker, and a
+    # second hop would only add broker latency between the user's submission and
+    # the reply, plus another chance to lose the work.
+    process_flow_for_message_task(message_id)
+    _finish_webhook_log(log_entry_id, 'processed', f"{notes} Flow continuation completed.")
+
+
+@shared_task(queue='flow_processing')
+def process_catalog_order_task(message_id: int, log_entry_id: int = None):
+    """
+    Turn a WhatsApp catalog order into an Order off the webhook request path.
+
+    process_order_from_catalog creates the Order, its items, and decrements
+    stock. Running that inline meant the webhook held its transaction -- and the
+    row locks on every Product in the cart -- for the duration, so concurrent
+    checkouts serialised behind each other on the request path.
+    """
+    from .services import process_order_from_catalog
+
+    try:
+        incoming_message = Message.objects.select_related('contact', 'app_config').get(pk=message_id)
+    except Message.DoesNotExist:
+        logger.error(f"process_catalog_order_task: Message {message_id} not found.")
+        _finish_webhook_log(log_entry_id, 'error', f'Message {message_id} not found.')
+        return
+
+    config = incoming_message.app_config or MetaAppConfig.objects.get_active_config()
+    success, notes = process_order_from_catalog(
+        incoming_message.content_payload or {}, incoming_message.contact, config
+    )
+    _finish_webhook_log(log_entry_id, 'processed' if success else 'failed', notes)
+
+
 @shared_task(
     name="flows.handle_ai_conversation_task",
     autoretry_for=(core_exceptions.ResourceExhausted, genai_errors.ServerError),

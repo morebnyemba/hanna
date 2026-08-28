@@ -463,9 +463,8 @@ class MetaWebhookAPIView(View):
         Handles WhatsApp Flow response messages (nfm_reply type).
         Creates a message object and queues flow continuation asynchronously.
         """
-        from flows.services import process_whatsapp_flow_response
         from conversations.models import Message
-        from flows.tasks import process_flow_for_message_task
+        from flows.tasks import process_whatsapp_flow_response_task
         from datetime import datetime
         
         whatsapp_message_id = msg_data.get("id")
@@ -507,20 +506,22 @@ class MetaWebhookAPIView(View):
                 self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (already processed).')
             return
 
-        # Process the WhatsApp flow response data
-        success, notes = process_whatsapp_flow_response(msg_data, contact, active_config)
-        
-        if success:
-            # Queue the flow continuation task asynchronously for reliable transition
-            # Capture just the ID to avoid keeping the object in memory
-            msg_id = incoming_msg_obj.id
-            transaction.on_commit(
-                lambda: process_flow_for_message_task.delay(msg_id)
+        # Hand the whole thing to the flow worker and ack. Processing a flow
+        # response runs the flow engine (WhatsAppFlowResponseProcessor ->
+        # process_message_for_flow), which is far too much work to do while Meta
+        # is waiting on this response and a Daphne thread and transaction are
+        # held open. The task reports the outcome back onto this log entry.
+        msg_id = incoming_msg_obj.id
+        log_id = log_entry.id if log_entry and log_entry.pk else None
+        if log_entry and log_entry.pk:
+            self._save_log(log_entry, 'processing_queued', 'Flow response queued for processing.')
+        transaction.on_commit(
+            lambda: self._safe_delay(
+                process_whatsapp_flow_response_task, msg_id, log_id,
+                description=f"flow response processing for message {msg_id}",
             )
-            logger.info(f"Queued flow continuation task for WhatsApp flow response message {msg_id}.")
-            self._save_log(log_entry, 'processed', f"{notes} Flow continuation queued.")
-        else:
-            self._save_log(log_entry, 'error', notes)
+        )
+        logger.info(f"Queued flow response processing for message {msg_id}.")
 
     def _handle_order_message(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog):
         """
@@ -528,7 +529,7 @@ class MetaWebhookAPIView(View):
         Processes the cart, creates an order, and initiates payment flow.
         """
         from conversations.models import Message
-        from flows.services import process_order_from_catalog
+        from flows.tasks import process_catalog_order_task
 
         whatsapp_message_id = msg_data.get("id")
 
@@ -536,7 +537,7 @@ class MetaWebhookAPIView(View):
         # creates a brand-new Order with no idempotency key of its own, so without
         # recording the wamid here, a retried delivery would create a duplicate
         # Order for the same WhatsApp catalog checkout.
-        _, msg_created = Message.objects.get_or_create(
+        incoming_msg_obj, msg_created = Message.objects.get_or_create(
             wamid=whatsapp_message_id,
             defaults={
                 'contact': contact,
@@ -555,14 +556,21 @@ class MetaWebhookAPIView(View):
                 self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (order already created).')
             return
 
-        success, notes = process_order_from_catalog(msg_data, contact, active_config)
-        
-        if success:
-            self._save_log(log_entry, 'processed', notes)
-            logger.info(f"Order message processed successfully: {notes}")
-        else:
-            self._save_log(log_entry, 'failed', notes)
-            logger.error(f"Order message processing failed: {notes}")
+        # Queued rather than processed inline: creating the Order, its items and
+        # the stock decrements takes row locks on every Product in the cart, and
+        # holding those on the request path serialised concurrent checkouts
+        # behind each other. The task reports the outcome back onto this log.
+        msg_id = incoming_msg_obj.id
+        log_id = log_entry.id if log_entry and log_entry.pk else None
+        if log_entry and log_entry.pk:
+            self._save_log(log_entry, 'processing_queued', 'Catalog order queued for processing.')
+        transaction.on_commit(
+            lambda: self._safe_delay(
+                process_catalog_order_task, msg_id, log_id,
+                description=f"catalog order processing for message {msg_id}",
+            )
+        )
+        logger.info(f"Queued catalog order processing for message {msg_id}.")
 
     def _handle_payment_method_selection(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog, button_id: str):
         """
@@ -734,6 +742,23 @@ class MetaWebhookAPIView(View):
             logger.error(f"Error handling payment method selection: {e}", exc_info=True)
             self._save_log(log_entry, 'failed', f'Exception handling payment selection: {str(e)[:200]}')
 
+    def _safe_delay(self, task, *args, description: str = "task", **kwargs):
+        """Dispatch a Celery task without letting a broker failure fail the webhook.
+
+        Every deferred handler below is queued from transaction.on_commit, i.e.
+        after the response body is already decided. Raising there would surface
+        as a 500 and make Meta redeliver the entire webhook -- re-running every
+        other change in the same delivery -- for what is a broker problem, not a
+        payload problem. The work is recoverable from the persisted Message and
+        WebhookEventLog rows instead.
+        """
+        try:
+            task.delay(*args, **kwargs)
+            return True
+        except Exception:
+            logger.error(f"Failed to queue {description}.", exc_info=True)
+            return False
+
     def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig, show_typing_indicator: bool = True):
         """
         Dispatches a Celery task to send a read receipt for the given message ID.
@@ -751,19 +776,15 @@ class MetaWebhookAPIView(View):
         # and let a broker hiccup (bounded by CELERY_BROKER_TRANSPORT_OPTIONS'
         # socket_timeout, but still an exception) turn a read receipt -- a
         # courtesy -- into a 500 that makes Meta redeliver the whole webhook.
-        def _dispatch():
-            try:
-                send_read_receipt_task.delay(
-                    wamid=wamid,
-                    config_id=config_id,
-                    show_typing_indicator=show_typing_indicator
-                )
-            except Exception:
-                logger.warning(
-                    f"Could not queue read receipt task for WAMID {wamid}.", exc_info=True
-                )
-
-        transaction.on_commit(_dispatch)
+        transaction.on_commit(
+            lambda: self._safe_delay(
+                send_read_receipt_task,
+                wamid=wamid,
+                config_id=config_id,
+                show_typing_indicator=show_typing_indicator,
+                description=f"read receipt for WAMID {wamid}",
+            )
+        )
         logger.info(f"Queued read receipt task for WAMID {wamid} (Typing: {show_typing_indicator}).")
 
 
