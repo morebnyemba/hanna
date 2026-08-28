@@ -166,7 +166,10 @@ class MetaWebhookAPIView(View):
         logger.debug("Webhook signature verified successfully.")
         return True
 
-    @transaction.atomic
+    # Deliberately NOT @transaction.atomic. Each change in the delivery now opens
+    # its own short transaction (see the dispatch loop below), so a failure in one
+    # no longer discards the others' log rows, and no transaction is held open
+    # across the whole batch.
     def post(self, request: HttpRequest, *args, **kwargs): # app_id_or_name removed as it's not in urls.py for this view
         from conversations.services import get_or_create_contact_by_wa_id
 
@@ -227,6 +230,9 @@ class MetaWebhookAPIView(View):
             return HttpResponse("Invalid signature", status=403)
 
         log_entry = None # Initialize
+        # Changes that raised, collected so the response can ask Meta to redeliver
+        # while the changes that succeeded stay committed.
+        failed_changes = []
         base_log_defaults = {
             'app_config': target_config, 'payload_object_type': payload.get("object")
         }
@@ -245,87 +251,115 @@ class MetaWebhookAPIView(View):
                         logger.info(f"Processing entry[{entry_idx}].change[{change_idx}]: field='{field}', phone_id='{phone_id}'")
                         log_defaults_for_change = {**base_log_defaults, 'waba_id_received': waba_id, 'phone_number_id_received': phone_id}
 
-                        if field == "messages":
-                            if "messages" in value:
-                                for msg_data in value["messages"]:
-                                    wamid = msg_data.get("id")
-                                    # Use update_or_create for WebhookEventLog to handle retries from Meta
-                                    log_entry, created_log = WebhookEventLog.objects.update_or_create(
-                                        event_identifier=wamid,
-                                        app_config=target_config,
-                                        defaults={
-                                            'payload_object_type': payload.get("object"),
-                                            'waba_id_received': waba_id,
-                                            'phone_number_id_received': phone_id,
-                                            'event_type': f"message_{msg_data.get('type', 'unknown')}",
-                                            'payload': msg_data,
-                                            'processing_status': 'pending' # Reset to pending if reprocessing
-                                        }
-                                    )
-                                    if created_log or log_entry.processing_status in ['pending', 'pending_reprocessing', 'error']: # Process if new or needs reprocessing
-                                        contact_wa_id = msg_data.get("from")
-                                        profile_name = value.get("contacts", [{}])[0].get("profile", {}).get("name", "Unknown")
-                                        contact, _ = get_or_create_contact_by_wa_id(
-                                            wa_id=contact_wa_id,
-                                            name=profile_name,
-                                            meta_app_config=target_config
-                                        )
-                                        self._handle_message(msg_data, metadata, value, target_config, log_entry, contact)
-                                    else:
-                                        logger.info(f"Skipping already processed/ignored WebhookEventLog for WAMID: {wamid} (DB ID: {log_entry.id})")
+                        # One transaction per change, not one per delivery.
+                        # A delivery can carry several changes, and wrapping the
+                        # whole post() in a single atomic block meant one failing
+                        # change rolled back the WebhookEventLog rows for all the
+                        # others -- losing the record of events that had actually
+                        # been handled. It also held one transaction open across
+                        # every change in the batch. Failures are captured per
+                        # change so the rest still commit; the response code below
+                        # then asks Meta to redeliver, which is safe because each
+                        # handler is keyed on the wamid and is idempotent.
+                        try:
+                            with transaction.atomic():
+                                if field == "messages":
+                                    if "messages" in value:
+                                        for msg_data in value["messages"]:
+                                            wamid = msg_data.get("id")
+                                            # Use update_or_create for WebhookEventLog to handle retries from Meta
+                                            log_entry, created_log = WebhookEventLog.objects.update_or_create(
+                                                event_identifier=wamid,
+                                                app_config=target_config,
+                                                defaults={
+                                                    'payload_object_type': payload.get("object"),
+                                                    'waba_id_received': waba_id,
+                                                    'phone_number_id_received': phone_id,
+                                                    'event_type': f"message_{msg_data.get('type', 'unknown')}",
+                                                    'payload': msg_data,
+                                                    'processing_status': 'pending' # Reset to pending if reprocessing
+                                                }
+                                            )
+                                            if created_log or log_entry.processing_status in ['pending', 'pending_reprocessing', 'error']: # Process if new or needs reprocessing
+                                                contact_wa_id = msg_data.get("from")
+                                                profile_name = value.get("contacts", [{}])[0].get("profile", {}).get("name", "Unknown")
+                                                contact, _ = get_or_create_contact_by_wa_id(
+                                                    wa_id=contact_wa_id,
+                                                    name=profile_name,
+                                                    meta_app_config=target_config
+                                                )
+                                                self._handle_message(msg_data, metadata, value, target_config, log_entry, contact)
+                                            else:
+                                                logger.info(f"Skipping already processed/ignored WebhookEventLog for WAMID: {wamid} (DB ID: {log_entry.id})")
                             
-                            elif "statuses" in value:
-                                for status_data in value["statuses"]:
-                                    wamid = status_data.get("id") # This is the WAMID of the message being updated
-                                    status_val = status_data.get("status")
+                                    elif "statuses" in value:
+                                        for status_data in value["statuses"]:
+                                            wamid = status_data.get("id") # This is the WAMID of the message being updated
+                                            status_val = status_data.get("status")
                                     
-                                    # Create a more unique identifier for status updates to avoid overwriting.
-                                    # A single message (wamid) can have multiple statuses (sent, delivered, read).
-                                    status_identifier = f"{wamid}_{status_val}"
+                                            # Create a more unique identifier for status updates to avoid overwriting.
+                                            # A single message (wamid) can have multiple statuses (sent, delivered, read).
+                                            status_identifier = f"{wamid}_{status_val}"
 
+                                            log_entry, _ = WebhookEventLog.objects.update_or_create(
+                                                event_identifier=status_identifier, app_config=target_config,
+                                                defaults={'event_type': 'message_status', 
+                                                          **log_defaults_for_change, 'payload': status_data, 
+                                                          'processing_status': 'pending'}
+                                            )
+                                            self.handle_status_update(status_data, metadata, target_config, log_entry)
+                                    # Add elif for "errors" here similar to above if needed
+                                    elif "errors" in value:
+                                        for error_data in value["errors"]:
+                                            # This is for errors related to a specific message attempt
+                                            error_code = error_data.get('code')
+                                            log_id = f"error_{error_code}_{timezone.now().timestamp()}"
+                                            log_entry, _ = WebhookEventLog.objects.update_or_create(
+                                                event_identifier=log_id, app_config=target_config, event_type='error',
+                                                defaults={**log_defaults_for_change, 'payload': error_data, 'processing_status': 'pending'}
+                                            )
+                                            self.handle_error_notification(error_data, metadata, target_config, log_entry)
+                                    else:
+                                        logger.warning(f"Change field is 'messages' but no 'messages' or 'statuses' key. Value keys: {value.keys()}")
+                                # Add other field handlers ('message_template_status_update', etc.)
+                                elif field == "account_update":
                                     log_entry, _ = WebhookEventLog.objects.update_or_create(
-                                        event_identifier=status_identifier, app_config=target_config,
-                                        defaults={'event_type': 'message_status', 
-                                                  **log_defaults_for_change, 'payload': status_data, 
-                                                  'processing_status': 'pending'}
+                                        event_identifier=f"{field}_{value.get('event', 'unknown')}_{entry.get('id', 'unknown')}_{timezone.now().timestamp()}",
+                                        app_config=target_config, event_type='account_update',
+                                        defaults={**log_defaults_for_change, 'payload': value, 'processing_status': 'pending'}
                                     )
-                                    self.handle_status_update(status_data, metadata, target_config, log_entry)
-                            # Add elif for "errors" here similar to above if needed
-                            elif "errors" in value:
-                                for error_data in value["errors"]:
-                                    # This is for errors related to a specific message attempt
-                                    error_code = error_data.get('code')
-                                    log_id = f"error_{error_code}_{timezone.now().timestamp()}"
+                                    self.handle_account_update(value, metadata, target_config, log_entry)
+                                elif field == "message_template_status_update":
                                     log_entry, _ = WebhookEventLog.objects.update_or_create(
-                                        event_identifier=log_id, app_config=target_config, event_type='error',
-                                        defaults={**log_defaults_for_change, 'payload': error_data, 'processing_status': 'pending'}
+                                        event_identifier=f"{field}_{value.get('message_template_id')}_{value.get('event')}",
+                                        app_config=target_config, event_type='template_status',
+                                        defaults={**log_defaults_for_change, 'payload': value, 'processing_status': 'pending'}
                                     )
-                                    self.handle_error_notification(error_data, metadata, target_config, log_entry)
-                            else:
-                                logger.warning(f"Change field is 'messages' but no 'messages' or 'statuses' key. Value keys: {value.keys()}")
-                        # Add other field handlers ('message_template_status_update', etc.)
-                        elif field == "account_update":
-                            log_entry, _ = WebhookEventLog.objects.update_or_create(
-                                event_identifier=f"{field}_{value.get('event', 'unknown')}_{entry.get('id', 'unknown')}_{timezone.now().timestamp()}",
-                                app_config=target_config, event_type='account_update',
-                                defaults={**log_defaults_for_change, 'payload': value, 'processing_status': 'pending'}
+                                    self.handle_template_status_update(value, metadata, target_config, log_entry)
+                                else:
+                                    generic_event_id = f"{field}_{entry.get('id', 'unknown')}_{change_idx}_{timezone.now().timestamp()}"
+                                    log_entry, _ = WebhookEventLog.objects.update_or_create(
+                                        event_identifier=generic_event_id, app_config=target_config, event_type=field or 'unknown_field',
+                                        defaults={**log_defaults_for_change, 'payload': value, 'processing_status': 'pending'}
+                                    )
+                                    logger.warning(f"Unhandled change field '{field}'. Logged with ID {log_entry.id}")
+                                    self._save_log(log_entry, 'ignored', f"Unhandled field: {field}")
+                        except Exception as change_exc:
+                            failed_changes.append(f"{field or 'unknown'}[{change_idx}]: {change_exc}")
+                            logger.error(
+                                f"Error processing entry[{entry_idx}].change[{change_idx}] "
+                                f"(field={field}): {change_exc}", exc_info=True
                             )
-                            self.handle_account_update(value, metadata, target_config, log_entry)
-                        elif field == "message_template_status_update":
-                            log_entry, _ = WebhookEventLog.objects.update_or_create(
-                                event_identifier=f"{field}_{value.get('message_template_id')}_{value.get('event')}",
-                                app_config=target_config, event_type='template_status',
-                                defaults={**log_defaults_for_change, 'payload': value, 'processing_status': 'pending'}
-                            )
-                            self.handle_template_status_update(value, metadata, target_config, log_entry)
-                        else:
-                            generic_event_id = f"{field}_{entry.get('id', 'unknown')}_{change_idx}_{timezone.now().timestamp()}"
-                            log_entry, _ = WebhookEventLog.objects.update_or_create(
-                                event_identifier=generic_event_id, app_config=target_config, event_type=field or 'unknown_field',
-                                defaults={**log_defaults_for_change, 'payload': value, 'processing_status': 'pending'}
-                            )
-                            logger.warning(f"Unhandled change field '{field}'. Logged with ID {log_entry.id}")
-                            self._save_log(log_entry, 'ignored', f"Unhandled field: {field}")
+                            try:
+                                WebhookEventLog.objects.create(
+                                    **log_defaults_for_change,
+                                    event_identifier=f"change_error_{timezone.now().timestamp()}",
+                                    event_type='error', payload=value,
+                                    processing_status='failed',
+                                    processing_notes=f"Change processing error: {str(change_exc)[:250]}",
+                                )
+                            except Exception:
+                                logger.error("Could not record the failed change.", exc_info=True)
 
 
             else: # Other object types
@@ -336,6 +370,18 @@ class MetaWebhookAPIView(View):
                 )
                 logger.warning(f"Received webhook for unhandled object type: {payload.get('object')}")
                 self._save_log(log_entry, 'ignored', f"Unhandled object: {payload.get('object')}")
+
+            if failed_changes:
+                # Some changes were handled and are committed; at least one was
+                # not. A non-2xx asks Meta to redeliver the whole payload, which
+                # the wamid-keyed idempotency guards in each handler make safe --
+                # the parts that succeeded short-circuit as duplicates and the
+                # failed one gets another attempt.
+                logger.error(
+                    f"Webhook completed with {len(failed_changes)} failed change(s): "
+                    f"{'; '.join(failed_changes)[:500]}"
+                )
+                return HttpResponse("PARTIAL_FAILURE", status=500)
 
             return HttpResponse("EVENT_RECEIVED", status=200)
 
@@ -463,9 +509,8 @@ class MetaWebhookAPIView(View):
         Handles WhatsApp Flow response messages (nfm_reply type).
         Creates a message object and queues flow continuation asynchronously.
         """
-        from flows.services import process_whatsapp_flow_response
         from conversations.models import Message
-        from flows.tasks import process_flow_for_message_task
+        from flows.tasks import process_whatsapp_flow_response_task
         from datetime import datetime
         
         whatsapp_message_id = msg_data.get("id")
@@ -507,20 +552,22 @@ class MetaWebhookAPIView(View):
                 self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (already processed).')
             return
 
-        # Process the WhatsApp flow response data
-        success, notes = process_whatsapp_flow_response(msg_data, contact, active_config)
-        
-        if success:
-            # Queue the flow continuation task asynchronously for reliable transition
-            # Capture just the ID to avoid keeping the object in memory
-            msg_id = incoming_msg_obj.id
-            transaction.on_commit(
-                lambda: process_flow_for_message_task.delay(msg_id)
+        # Hand the whole thing to the flow worker and ack. Processing a flow
+        # response runs the flow engine (WhatsAppFlowResponseProcessor ->
+        # process_message_for_flow), which is far too much work to do while Meta
+        # is waiting on this response and a Daphne thread and transaction are
+        # held open. The task reports the outcome back onto this log entry.
+        msg_id = incoming_msg_obj.id
+        log_id = log_entry.id if log_entry and log_entry.pk else None
+        if log_entry and log_entry.pk:
+            self._save_log(log_entry, 'processing_queued', 'Flow response queued for processing.')
+        transaction.on_commit(
+            lambda: self._safe_delay(
+                process_whatsapp_flow_response_task, msg_id, log_id,
+                description=f"flow response processing for message {msg_id}",
             )
-            logger.info(f"Queued flow continuation task for WhatsApp flow response message {msg_id}.")
-            self._save_log(log_entry, 'processed', f"{notes} Flow continuation queued.")
-        else:
-            self._save_log(log_entry, 'error', notes)
+        )
+        logger.info(f"Queued flow response processing for message {msg_id}.")
 
     def _handle_order_message(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog):
         """
@@ -528,7 +575,7 @@ class MetaWebhookAPIView(View):
         Processes the cart, creates an order, and initiates payment flow.
         """
         from conversations.models import Message
-        from flows.services import process_order_from_catalog
+        from flows.tasks import process_catalog_order_task
 
         whatsapp_message_id = msg_data.get("id")
 
@@ -536,7 +583,7 @@ class MetaWebhookAPIView(View):
         # creates a brand-new Order with no idempotency key of its own, so without
         # recording the wamid here, a retried delivery would create a duplicate
         # Order for the same WhatsApp catalog checkout.
-        _, msg_created = Message.objects.get_or_create(
+        incoming_msg_obj, msg_created = Message.objects.get_or_create(
             wamid=whatsapp_message_id,
             defaults={
                 'contact': contact,
@@ -555,14 +602,21 @@ class MetaWebhookAPIView(View):
                 self._save_log(log_entry, 'processed', 'Duplicate webhook delivery ignored (order already created).')
             return
 
-        success, notes = process_order_from_catalog(msg_data, contact, active_config)
-        
-        if success:
-            self._save_log(log_entry, 'processed', notes)
-            logger.info(f"Order message processed successfully: {notes}")
-        else:
-            self._save_log(log_entry, 'failed', notes)
-            logger.error(f"Order message processing failed: {notes}")
+        # Queued rather than processed inline: creating the Order, its items and
+        # the stock decrements takes row locks on every Product in the cart, and
+        # holding those on the request path serialised concurrent checkouts
+        # behind each other. The task reports the outcome back onto this log.
+        msg_id = incoming_msg_obj.id
+        log_id = log_entry.id if log_entry and log_entry.pk else None
+        if log_entry and log_entry.pk:
+            self._save_log(log_entry, 'processing_queued', 'Catalog order queued for processing.')
+        transaction.on_commit(
+            lambda: self._safe_delay(
+                process_catalog_order_task, msg_id, log_id,
+                description=f"catalog order processing for message {msg_id}",
+            )
+        )
+        logger.info(f"Queued catalog order processing for message {msg_id}.")
 
     def _handle_payment_method_selection(self, msg_data: dict, contact, active_config: MetaAppConfig, log_entry: WebhookEventLog, button_id: str):
         """
@@ -571,7 +625,9 @@ class MetaWebhookAPIView(View):
         """
         from customer_data.models import Order
         from customer_data.payment_utils import parse_payment_button_id
-        from meta_integration.utils import send_whatsapp_message
+        # Queued, not sent inline: this handler runs on the webhook request path
+        # inside an open transaction. See queue_whatsapp_message's docstring.
+        from meta_integration.utils import queue_whatsapp_message
         
         try:
             # Parse button ID into components
@@ -628,14 +684,15 @@ class MetaWebhookAPIView(View):
                     }
                 }
                 
-                send_whatsapp_message(
-                    to_phone_number=contact.whatsapp_id,
+                queue_whatsapp_message(
+                    contact=contact,
                     message_type='interactive',
-                    data=paynow_selection_message
+                    data=paynow_selection_message,
+                    config=active_config,
                 )
                 
-                self._save_log(log_entry, 'processed', f'Sent Paynow method selection for order {order_number}')
-                logger.info(f"Sent Paynow method selection for order {order_number}")
+                self._save_log(log_entry, 'processed', f'Queued Paynow method selection for order {order_number}')
+                logger.info(f"Queued Paynow method selection for order {order_number}")
                 
             elif action == 'pay' and method_or_type == 'manual':
                 # User selected manual payment
@@ -658,14 +715,15 @@ class MetaWebhookAPIView(View):
                     order.currency
                 )
                 
-                send_whatsapp_message(
-                    to_phone_number=contact.whatsapp_id,
+                queue_whatsapp_message(
+                    contact=contact,
                     message_type='text',
-                    data={'body': instructions_msg}
+                    data={'body': instructions_msg},
+                    config=active_config,
                 )
                 
-                self._save_log(log_entry, 'processed', f'Sent manual payment instructions for order {order_number}')
-                logger.info(f"Sent manual payment instructions for order {order_number}")
+                self._save_log(log_entry, 'processed', f'Queued manual payment instructions for order {order_number}')
+                logger.info(f"Queued manual payment instructions for order {order_number}")
                 
             elif action == 'paynow':
                 # User selected specific Paynow method (ecocash, onemoney, innbucks)
@@ -703,10 +761,11 @@ class MetaWebhookAPIView(View):
                     f"Initiating payment... Please check your phone for the payment prompt."
                 )
 
-                send_whatsapp_message(
-                    to_phone_number=contact.whatsapp_id,
+                queue_whatsapp_message(
+                    contact=contact,
                     message_type='text',
-                    data={'body': confirmation_msg}
+                    data={'body': confirmation_msg},
+                    config=active_config,
                 )
 
                 # Initiate the Paynow payment out-of-band via Celery. The `paynow`
@@ -729,6 +788,23 @@ class MetaWebhookAPIView(View):
             logger.error(f"Error handling payment method selection: {e}", exc_info=True)
             self._save_log(log_entry, 'failed', f'Exception handling payment selection: {str(e)[:200]}')
 
+    def _safe_delay(self, task, *args, description: str = "task", **kwargs):
+        """Dispatch a Celery task without letting a broker failure fail the webhook.
+
+        Every deferred handler below is queued from transaction.on_commit, i.e.
+        after the response body is already decided. Raising there would surface
+        as a 500 and make Meta redeliver the entire webhook -- re-running every
+        other change in the same delivery -- for what is a broker problem, not a
+        payload problem. The work is recoverable from the persisted Message and
+        WebhookEventLog rows instead.
+        """
+        try:
+            task.delay(*args, **kwargs)
+            return True
+        except Exception:
+            logger.error(f"Failed to queue {description}.", exc_info=True)
+            return False
+
     def _send_read_receipt(self, wamid: str, app_config: MetaAppConfig, show_typing_indicator: bool = True):
         """
         Dispatches a Celery task to send a read receipt for the given message ID.
@@ -738,12 +814,24 @@ class MetaWebhookAPIView(View):
             logger.warning(f"Cannot send read receipt: Missing WAMID.")
             return
 
-        send_read_receipt_task.delay(
-            wamid=wamid,
-            config_id=app_config.id,
-            show_typing_indicator=show_typing_indicator
+        config_id = app_config.id
+
+        # Queued on commit, and never allowed to fail the webhook. This runs
+        # inside post()'s transaction: dispatching straight away would both
+        # queue a receipt for a message whose transaction may still roll back,
+        # and let a broker hiccup (bounded by CELERY_BROKER_TRANSPORT_OPTIONS'
+        # socket_timeout, but still an exception) turn a read receipt -- a
+        # courtesy -- into a 500 that makes Meta redeliver the whole webhook.
+        transaction.on_commit(
+            lambda: self._safe_delay(
+                send_read_receipt_task,
+                wamid=wamid,
+                config_id=config_id,
+                show_typing_indicator=show_typing_indicator,
+                description=f"read receipt for WAMID {wamid}",
+            )
         )
-        logger.info(f"Dispatched read receipt task for WAMID {wamid} (Typing: {show_typing_indicator}).")
+        logger.info(f"Queued read receipt task for WAMID {wamid} (Typing: {show_typing_indicator}).")
 
 
     # --- Placeholder for other handlers from your original file ---

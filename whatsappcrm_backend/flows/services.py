@@ -1291,7 +1291,10 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
     # Check if this is a location message and the contact has a pending request awaiting location
     if message_data.get('type') == 'location' and contact.conversation_context:
         from customer_data.models import SiteAssessmentRequest, InstallationRequest
-        from meta_integration.utils import send_whatsapp_message
+        # Queued, not sent inline: process_message_for_flow also runs on the Meta
+        # webhook request path (via WhatsAppFlowResponseProcessor handling an
+        # nfm_reply), inside an open transaction. See queue_whatsapp_message.
+        from meta_integration.utils import queue_whatsapp_message
         
         location_data = message_data.get('location', {})
         latitude = location_data.get('latitude')
@@ -1332,10 +1335,10 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                     confirmation += f"📌 Location: {assessment.location_name}\n"
                 confirmation += f"\nOur team will use this information to prepare for your site visit."
                 
-                send_whatsapp_message(
-                    to_phone_number=contact.whatsapp_id,
+                queue_whatsapp_message(
+                    contact=contact,
                     message_type='text',
-                    data={'body': confirmation}
+                    data={'body': confirmation},
                 )
                 
                 logger.info(f"Location pin saved for site assessment {assessment.id} (Assessment ID: {assessment.assessment_id})")
@@ -1380,10 +1383,10 @@ def process_message_for_flow(contact: Contact, message_data: dict, incoming_mess
                     confirmation += f"📌 Location: {installation.location_name}\n"
                 confirmation += f"\nOur installation team will use this information to prepare for your visit."
                 
-                send_whatsapp_message(
-                    to_phone_number=contact.whatsapp_id,
+                queue_whatsapp_message(
+                    contact=contact,
                     message_type='text',
-                    data={'body': confirmation}
+                    data={'body': confirmation},
                 )
                 
                 logger.info(f"Location pin saved for installation request {installation.id} ({installation_type_display})")
@@ -2026,7 +2029,9 @@ def process_order_from_catalog(msg_data: dict, contact: Contact, app_config) -> 
     """
     from customer_data.models import CustomerProfile, Order, OrderItem
     from products_and_services.models import Product
-    from meta_integration.utils import send_whatsapp_message
+    # Queued, not sent inline: process_order_from_catalog is called from the Meta
+    # webhook request path, inside an open transaction. See queue_whatsapp_message.
+    from meta_integration.utils import queue_whatsapp_message
     from .models import WhatsAppFlow
     from decimal import Decimal
     from django.db import transaction
@@ -2160,10 +2165,11 @@ def process_order_from_catalog(msg_data: dict, contact: Contact, app_config) -> 
         confirmation_message += f"\n*Total:* ${total_amount} {currency}\n\n"
         confirmation_message += "💡 Having issues? Reply 'menu' for help or contact our support team."
         
-        send_whatsapp_message(
-            to_phone_number=contact.whatsapp_id,
+        queue_whatsapp_message(
+            contact=contact,
             message_type='text',
-            data={'body': confirmation_message}
+            data={'body': confirmation_message},
+            config=app_config,
         )
         
         # Send payment method selection message
@@ -2196,10 +2202,11 @@ def process_order_from_catalog(msg_data: dict, contact: Contact, app_config) -> 
                 }
             }
             
-            send_whatsapp_message(
-                to_phone_number=contact.whatsapp_id,
+            queue_whatsapp_message(
+                contact=contact,
                 message_type='interactive',
-                data=payment_method_message
+                data=payment_method_message,
+                config=app_config,
             )
             logger.info(f"Sent payment method selection for order {order.order_number}")
         except Exception as e:
