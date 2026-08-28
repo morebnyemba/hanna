@@ -29,6 +29,17 @@ ORDERING_WAIT_MAX_RETRIES = 60
 # How long to keep retrying the actual Meta API call for a message before giving
 # up and marking it failed. Also wall-clock, for the reason given at its use site.
 SEND_RETRY_BUDGET_SECONDS = 300
+# Retry ceiling for the send path. It must be an explicit number, NOT None:
+# Task.retry() resolves `max_retries=None` to the task's own max_retries
+# (celery/app/task.py: `max_retries = self.max_retries if max_retries is None
+# else max_retries`), i.e. 10 -- so passing None would silently reimpose the very
+# counter the wall-clock budget exists to escape, and a message that had spent
+# attempts waiting its turn would be failed on its first transient error. Sized
+# to outlast both wall-clock budgets combined (ordering can consume up to
+# ORDERING_WAIT_MAX_RETRIES, then the send path up to
+# SEND_RETRY_BUDGET_SECONDS / default_retry_delay), so the deadline is what ends
+# the retries and never this number.
+SEND_RETRY_MAX_RETRIES = 200
 
 # Bounded well under the global CELERY_TASK_TIME_LIMIT. This task's only blocking
 # call is a requests.post with a 20s timeout, so anything approaching two minutes
@@ -203,7 +214,7 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
                 raise self.MaxRetriesExceededError(
                     f"Send retry budget ({SEND_RETRY_BUDGET_SECONDS}s) exhausted."
                 )
-            raise self.retry(exc=e, max_retries=None)  # Bounded by send_deadline above
+            raise self.retry(exc=e, max_retries=SEND_RETRY_MAX_RETRIES)  # Bounded by send_deadline
         except self.MaxRetriesExceededError:
             logger.error(f"Max retries exceeded for sending Message ID {outgoing_message_id}.")
             # This is a permanent failure. Save the final state and send the notification signal.
