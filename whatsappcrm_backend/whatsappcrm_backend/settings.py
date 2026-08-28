@@ -321,7 +321,24 @@ CELERY_TASK_SERIALIZER = 'json'  # How tasks are serialized
 CELERY_RESULT_SERIALIZER = 'json'# How results are serialized
 CELERY_TIMEZONE = TIME_ZONE # Use Django's timezone (should be 'UTC')
 CELERY_TASK_TRACK_STARTED = True # Optional: To track if a task has started
-CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT_SECONDS', '1800')) # Optional: Hard time limit for tasks (e.g., 30 minutes)
+# Global ceiling, deliberately generous: it is the backstop for the long CPU/AI
+# tasks on the prefork cpu_heavy worker (media sync, Gemini attachment
+# processing, solar sync), whose realistic upper bound is not well characterised.
+# Latency-sensitive tasks do NOT rely on it -- they set their own much tighter
+# time_limit/soft_time_limit in their @shared_task decorators, because 30 minutes
+# is far too long to let one wedged task hold a slot on the messaging or flow
+# worker (see meta_integration/tasks.py and flows/tasks.py).
+#
+# Note which limit actually bites on which worker. The messaging and flow workers
+# run the gevent pool, and celery.concurrency.gevent's TaskPool.on_apply accepts
+# only `timeout` (the HARD limit, enforced with gevent.Timeout) -- `soft_timeout`
+# is passed by the worker but swallowed into **_ and never applied. So on those
+# two workers the hard limit is the one that does anything; the soft limits below
+# matter on the prefork cpu_heavy worker, where both are honoured.
+CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT_SECONDS', '1800'))
+# Soft limit raises SoftTimeLimitExceeded inside the task so it can clean up
+# before the hard kill. Prefork only, per the note above.
+CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv('CELERY_TASK_SOFT_TIME_LIMIT_SECONDS', '1680'))
 CELERY_RESULT_EXTENDED = True
 CELERY_CACHE_BACKEND = 'django-cache'
 

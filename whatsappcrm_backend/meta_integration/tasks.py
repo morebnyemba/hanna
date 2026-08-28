@@ -30,7 +30,14 @@ ORDERING_WAIT_MAX_RETRIES = 60
 # up and marking it failed. Also wall-clock, for the reason given at its use site.
 SEND_RETRY_BUDGET_SECONDS = 300
 
-@shared_task(bind=True, max_retries=10, default_retry_delay=3, queue='msg_sending')
+# Bounded well under the global CELERY_TASK_TIME_LIMIT. This task's only blocking
+# call is a requests.post with a 20s timeout, so anything approaching two minutes
+# is wedged, not slow -- and on the gevent messaging worker a wedged task holds
+# one of only 20 slots for the whole limit. The hard limit is what the gevent
+# pool enforces; the soft limit is here for correctness if this task is ever
+# moved to a prefork queue.
+@shared_task(bind=True, max_retries=10, default_retry_delay=3, queue='msg_sending',
+             time_limit=120, soft_time_limit=90)
 def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id: int):
     """
     Celery task to send a WhatsApp message asynchronously.
@@ -210,7 +217,10 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
     outgoing_msg.save(update_fields=['wamid', 'status', 'error_details', 'status_timestamp'])
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=10, queue='msg_sending')
+# A read receipt is one API call with a 15s timeout and is pure courtesy; it must
+# never occupy a messaging slot for longer than the message sends it sits beside.
+@shared_task(bind=True, max_retries=3, default_retry_delay=10, queue='msg_sending',
+             time_limit=60, soft_time_limit=45)
 def send_read_receipt_task(self, wamid: str, config_id: int, show_typing_indicator: bool = False):
     """
     Celery task to send a read receipt for a given message ID.

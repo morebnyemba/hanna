@@ -2,6 +2,23 @@ services:
   db:
     image: postgres:15-alpine
     container_name: whatsappcrm_db
+    # max_connections is set explicitly rather than left at the image default of
+    # 100, because the platform's ceiling is the sum of several independently
+    # configured services and nothing else documents it:
+    #
+    #   backend (daphne)     ASGI_THREADS=24, CONN_MAX_AGE=600  -> up to 24
+    #   celery_messaging     gevent concurrency=20, CONN_MAX_AGE=0 -> up to 20
+    #   celery_flow          gevent concurrency=10, CONN_MAX_AGE=0 -> up to 10
+    #   celery_cpu           prefork concurrency=2               -> 2
+    #   celery_beat                                              -> 1
+    #   email_idle_fetcher                                       -> 1
+    #                                                       total  58
+    #
+    # plus superuser_reserved_connections (3). 100 would hold, but with no margin
+    # for a psql session or a second beat during a deploy -- and exhausting it
+    # surfaces as "FATAL: sorry, too many clients already", i.e. a hard outage.
+    # Raise the concurrency figures above and this must move with them.
+    command: postgres -c max_connections=120
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
@@ -10,6 +27,12 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   redis:
@@ -24,6 +47,13 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
       - "6379:6379"
+    healthcheck:
+      # PING is not in redis.conf's rename-command list, so it stays available.
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   backend:
@@ -57,9 +87,26 @@ services:
       ASGI_THREADS: "24"
     env_file:
       - ./whatsappcrm_backend/.env.prod
+    healthcheck:
+      # Hits the app through Daphne, so it fails if the ASGI thread pool is
+      # wedged as well as if the process is down. Uses the image's own Python --
+      # no curl in the slim base. /healthz/ does one trivial DB query.
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz/', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # collectstatic runs before daphne binds, so allow for it.
+      start_period: 90s
+    # Wait for the dependency to be HEALTHY, not merely started. Plain
+    # depends_on only orders container creation, so backend and the workers
+    # previously raced Postgres' first-boot initdb and Redis' load-from-AOF:
+    # whoever lost crashed on connect and was restarted by the restart policy,
+    # which looked like random boot failures after every deploy.
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -68,7 +115,8 @@ services:
     volumes:
       - mediafiles_volume:/usr/share/nginx/html/media:ro  # Mount media files for serving (read-only)
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
   hanna-management-frontend:
@@ -78,7 +126,8 @@ services:
     # Note: Camera/barcode scanning features use browser WebRTC APIs (navigator.mediaDevices)
     # and do not require server-side device access
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
   # ── Celery workers (optimised for 2 vCPU / 8 GB RAM) ──────────────────────
@@ -140,8 +189,10 @@ services:
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   # Worker 2 — flow processing + AI conversations  (gevent, 10 greenlets)
@@ -170,8 +221,10 @@ services:
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   # Worker 3 — CPU-bound tasks  (prefork, 1 process)
@@ -194,8 +247,10 @@ services:
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   celery_beat:
@@ -208,8 +263,10 @@ services:
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   email_idle_fetcher:
@@ -222,7 +279,8 @@ services:
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   nginx:
@@ -238,9 +296,12 @@ services:
       - ./nginx_proxy/ssl_custom:/etc/nginx/ssl_custom:ro  # Custom SSL configs
       - letsencrypt_webroot:/var/www/letsencrypt  # ACME challenge directory for Let's Encrypt (read-write needed)
     depends_on:
-      - backend
-      - frontend
-      - hanna-management-frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+      hanna-management-frontend:
+        condition: service_started
     restart: unless-stopped
 
   certbot:

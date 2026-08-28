@@ -12,11 +12,13 @@ from customer_data.views import MyTokenObtainPairView, UserRegistrationView
 from stats.views import DashboardSummaryStatsAPIView
 from warranty.views import ManufacturerDashboardStatsAPIView, ManufacturerJobCardListView, ManufacturerJobCardDetailView, ManufacturerWarrantyClaimListView
 # Import the new landing page view and admin redirect
-from .views import LandingPageView, AdminRedirectView
+from .views import LandingPageView, AdminRedirectView, healthz
 
 urlpatterns = [
     # Landing Page at the root
     path('', LandingPageView.as_view(), name='landing_page'),
+    # Container healthcheck target (see docker-compose.yml). Not proxied by nginx.
+    path('healthz/', healthz, name='healthz'),
 
     # Django Admin interface - redirected to frontend for centralized management
     # To access the Django admin for development, use a superuser account

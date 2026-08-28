@@ -30,7 +30,11 @@ logger = logging.getLogger(__name__)
 AI_SHOPPING_MAX_PRODUCTS = 50  # Maximum products to include in AI context (token limit consideration)
 # ---------------------------------
 
-@shared_task(queue='flow_processing')
+# The flow engine is DB-bound with no unbounded external calls, so five minutes
+# is already far beyond a healthy run. Capping it matters because the flow worker
+# has only 10 gevent slots: ten wedged flows on the 30-minute global limit would
+# stall every conversation on the platform for half an hour.
+@shared_task(queue='flow_processing', time_limit=300, soft_time_limit=240)
 def process_flow_for_message_task(message_id: int):
     """
     This task asynchronously runs the entire flow engine for an incoming message.
@@ -114,7 +118,7 @@ def _finish_webhook_log(log_entry_id, status, notes):
         logger.error(f"Could not finalise WebhookEventLog {log_entry_id}.", exc_info=True)
 
 
-@shared_task(queue='flow_processing')
+@shared_task(queue='flow_processing', time_limit=300, soft_time_limit=240)
 def process_whatsapp_flow_response_task(message_id: int, log_entry_id: int = None):
     """
     Process a submitted WhatsApp Flow (nfm_reply) off the webhook request path.
@@ -153,7 +157,7 @@ def process_whatsapp_flow_response_task(message_id: int, log_entry_id: int = Non
     _finish_webhook_log(log_entry_id, 'processed', f"{notes} Flow continuation completed.")
 
 
-@shared_task(queue='flow_processing')
+@shared_task(queue='flow_processing', time_limit=300, soft_time_limit=240)
 def process_catalog_order_task(message_id: int, log_entry_id: int = None):
     """
     Turn a WhatsApp catalog order into an Order off the webhook request path.
