@@ -10,14 +10,34 @@ It walks the chain in the order a message travels -- config -> inbound webhook
 place the chain is broken, so the failure is located rather than guessed at.
 Everything here only reads; it sends no WhatsApp messages and changes no state.
 """
+import argparse
 import os
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
 from django.db import connection
+from django.db.models import F, Q
 from django.utils import timezone
 
 OK, WARN, BAD, INFO = 'OK', 'WARN', 'FAIL', '--'
+
+
+def positive_int(value):
+    """argparse type for --hours.
+
+    A plain `int` would accept 0 and negatives, which puts the window's start in
+    the future: every activity query then returns nothing and the tool cheerfully
+    reports a healthy-looking "no activity" while the bot is on fire. A
+    diagnostic that can lie about the thing it exists to measure is worse than no
+    diagnostic, so reject the input instead.
+    """
+    try:
+        hours = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(f"--hours must be a whole number, got {value!r}")
+    if hours < 1:
+        raise argparse.ArgumentTypeError(f"--hours must be at least 1, got {hours}")
+    return hours
 
 
 class Command(BaseCommand):
@@ -25,7 +45,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--hours', type=int, default=24,
+            '--hours', type=positive_int, default=24,
             help='How far back to look for message activity (default: 24).',
         )
         parser.add_argument(
@@ -247,43 +267,70 @@ class Command(BaseCommand):
         out = Message.objects.filter(direction='out', timestamp__gte=self.since)
         total = out.count()
         self._line(OK if total else BAD, f"{total} outgoing message(s) in the window.")
-        if not total:
-            if getattr(self, 'had_inbound', False):
-                self.problems.append(
-                    "Inbound messages arrived but the bot produced NO outgoing messages: "
-                    "the flow engine is not generating replies. Check the flow worker's "
-                    "logs for process_flow_for_message_task."
-                )
-            else:
-                # No replies is the expected consequence of no inbound, not a
-                # separate fault -- saying otherwise sends you down a false trail.
-                self._line(INFO, "  (expected: nothing came in to reply to)")
-            return
 
-        for status in ('pending_dispatch', 'sent', 'delivered', 'read', 'failed'):
-            count = out.filter(status=status).count()
-            if not count:
-                continue
-            level = BAD if status in ('failed', 'pending_dispatch') else OK
-            self._line(level, f"  {status}: {count}")
-
-        stuck = out.filter(status='pending_dispatch',
-                           timestamp__lt=timezone.now() - timedelta(minutes=10))
-        if stuck.exists():
+        if total:
+            for status in ('pending_dispatch', 'sent', 'delivered', 'read', 'failed'):
+                count = out.filter(status=status).count()
+                if not count:
+                    continue
+                level = BAD if status in ('failed', 'pending_dispatch') else OK
+                self._line(level, f"  {status}: {count}")
+        elif self.had_inbound:
             self.problems.append(
-                f"{stuck.count()} message(s) have sat in 'pending_dispatch' for over 10 "
-                "minutes: they were created but the msg_sending worker never picked them "
-                "up. The worker is down, or the broker lost the task."
+                "Inbound messages arrived but the bot produced NO outgoing messages: "
+                "the flow engine is not generating replies. Check the flow worker's "
+                "logs for process_flow_for_message_task."
+            )
+        else:
+            # No replies is the expected consequence of no inbound, not a
+            # separate fault -- saying otherwise sends you down a false trail.
+            self._line(INFO, "  (expected: nothing came in to reply to)")
+
+        # The two checks below run even when the window above was empty, and are
+        # deliberately NOT bounded by self.since. `out` filters on when a message
+        # was CREATED, but these ask when its status last changed -- and the worst
+        # cases fall outside the creation window precisely because they are the
+        # worst. A message wedged in 'pending_dispatch' for three days is the most
+        # diagnostic thing on this whole report, and a creation-time filter would
+        # hide it: the longer it has been stuck, the less likely it is to be
+        # reported, and an empty window would skip the check altogether.
+        self._check_stuck_and_failed(Message)
+
+    def _check_stuck_and_failed(self, Message):
+        from django.db.models import F, Q
+
+        stuck = Message.objects.filter(
+            direction='out', status='pending_dispatch',
+            timestamp__lt=timezone.now() - timedelta(minutes=10),
+        )
+        stuck_count = stuck.count()
+        if stuck_count:
+            oldest = stuck.order_by('timestamp').first()
+            age = timezone.now() - oldest.timestamp
+            self._line(BAD, f"  {stuck_count} stuck in 'pending_dispatch' "
+                            f"(oldest {age.days}d {age.seconds // 3600}h old)")
+            self.problems.append(
+                f"{stuck_count} message(s) have sat in 'pending_dispatch' for over 10 "
+                f"minutes (oldest: {age.days}d {age.seconds // 3600}h). They were created "
+                "but the msg_sending worker never picked them up -- the worker is down, "
+                "or the broker lost the task."
             )
 
-        failed = out.filter(status='failed').order_by('-timestamp')
-        if failed.exists():
-            self._line(BAD, f"  most recent failures ({min(3, failed.count())} shown):")
+        # Keyed on the status transition, not creation: a message sent two days
+        # ago that failed ten minutes ago is current news. status_timestamp is
+        # null on older rows, so fall back to creation time for those.
+        failed = Message.objects.filter(direction='out', status='failed').filter(
+            Q(status_timestamp__gte=self.since)
+            | Q(status_timestamp__isnull=True, timestamp__gte=self.since)
+        ).order_by(F('status_timestamp').desc(nulls_last=True), '-timestamp')
+        failed_count = failed.count()
+        if failed_count:
+            self._line(BAD, f"  {failed_count} failed recently; most recent:")
             for m in failed[:3]:
                 self._line(INFO, f"    #{m.id}: {str(m.error_details)[:200]}")
             self.problems.append(
-                f"{failed.count()} outgoing message(s) failed -- the error details above "
-                "say why (a Meta error code here is the real answer)."
+                f"{failed_count} outgoing message(s) failed -- the error details above say "
+                "why (a Meta error code here is usually the whole answer)."
             )
 
     # --- 6. broker + workers ----------------------------------------------
