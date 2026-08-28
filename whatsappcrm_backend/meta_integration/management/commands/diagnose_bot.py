@@ -297,8 +297,6 @@ class Command(BaseCommand):
         self._check_stuck_and_failed(Message)
 
     def _check_stuck_and_failed(self, Message):
-        from django.db.models import F, Q
-
         stuck = Message.objects.filter(
             direction='out', status='pending_dispatch',
             timestamp__lt=timezone.now() - timedelta(minutes=10),
