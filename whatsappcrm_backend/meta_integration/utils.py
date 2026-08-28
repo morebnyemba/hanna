@@ -253,3 +253,74 @@ def download_whatsapp_media(media_id: str, config: MetaAppConfig) -> Optional[Tu
     except Exception as e:
         logger.error(f"An unexpected error occurred during media download for Media ID {media_id}: {e}", exc_info=True)
         return None
+
+
+def queue_whatsapp_message(contact, message_type: str, data: dict,
+                           config: 'MetaAppConfig' = None,
+                           related_incoming_message=None):
+    """
+    Queue an outgoing WhatsApp message instead of sending it inline.
+
+    Use this anywhere a message is produced on the *request* path (the Meta
+    webhook, the Paynow IPN callback, any DRF view). ``send_whatsapp_message``
+    does a blocking ``requests.post`` to graph.facebook.com with a 20s timeout;
+    Daphne runs every sync Django view in one small shared thread pool (asyncio's
+    default executor -- ``min(32, cpu_count + 4)``, i.e. 6 threads on a 2 vCPU
+    box), so a handful of concurrent handlers sitting in that call occupy the
+    whole pool and the entire site stops responding until they return. Worse,
+    the webhook handlers run inside an open DB transaction, so the row locks
+    they hold are held for the duration of the HTTP call too.
+
+    This records the message as a normal outgoing ``Message`` row and hands the
+    actual network call to the ``msg_sending`` Celery worker, dispatched with
+    ``transaction.on_commit`` so nothing is queued for a transaction that later
+    rolls back. It mirrors what the flow engine already does in
+    ``flows/tasks.py``, which keeps every outgoing message on one code path
+    (and therefore visible in the conversation history and the ordering gate).
+
+    Returns the created Message, or None if no config could be resolved.
+    """
+    from django.db import transaction
+    from conversations.models import Message
+    from .tasks import send_whatsapp_message_task
+
+    if not config:
+        config = get_active_meta_config_for_sending()
+    if not config:
+        logger.error(
+            "Cannot queue WhatsApp message to %s: no active MetaAppConfig available.",
+            getattr(contact, 'whatsapp_id', contact),
+        )
+        return None
+
+    outgoing_msg = Message.objects.create(
+        contact=contact,
+        app_config=config,
+        direction='out',
+        message_type=message_type,
+        content_payload=data,
+        status='pending_dispatch',
+        related_incoming_message=related_incoming_message,
+    )
+
+    msg_id = outgoing_msg.id
+    config_id = config.id
+    # Dispatching the Celery task is itself a Redis producer call. It is bounded
+    # by CELERY_BROKER_TRANSPORT_OPTIONS' socket_timeout, but a broker failure
+    # must never take down the webhook that produced the message -- the row is
+    # already persisted and can be re-dispatched.
+    def _dispatch():
+        try:
+            send_whatsapp_message_task.delay(msg_id, config_id)
+        except Exception:
+            logger.error(
+                "Failed to queue send_whatsapp_message_task for Message %s; "
+                "it stays in 'pending_dispatch' for retry.", msg_id, exc_info=True,
+            )
+
+    transaction.on_commit(_dispatch)
+    logger.info(
+        "Queued outgoing %s message %s for %s.",
+        message_type, msg_id, getattr(contact, 'whatsapp_id', contact),
+    )
+    return outgoing_msg

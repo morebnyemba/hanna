@@ -5,8 +5,21 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Regex pattern for splitting multiple phone numbers (case-insensitive for 'or')
-PHONE_DELIMITER_PATTERN = re.compile(r'[/\\|,\-]|\s+or\s+', re.IGNORECASE)
+# Delimiters that unambiguously separate several phone numbers packed into one
+# field, e.g. "0775014661/0773046797" (case-insensitive for 'or').
+PHONE_DELIMITER_PATTERN = re.compile(r'[/\\|,]|\s+or\s+', re.IGNORECASE)
+
+# A '-' is ambiguous: it separates two numbers in "0773854789-0772368614", but
+# groups digits inside ONE number in "077-235-4523". It used to be an
+# unconditional delimiter, which truncated every hyphenated number to its first
+# group -- "263-77-235-4523" normalised to "263". flows/tasks.py normalises the
+# recipient before dispatch, so those replies were addressed to a nonsense number
+# and silently never arrived.
+#
+# Both readings are resolved by length: a hyphen only separates numbers when
+# every side is long enough to BE a number on its own. Digit groups are short, so
+# "077-235-4523" falls through to the non-digit cleanup that strips the hyphens.
+MIN_DIGITS_FOR_STANDALONE_NUMBER = 7
 
 
 def normalize_phone_number(phone_number: str, default_country_code: str = '263') -> str:
@@ -33,13 +46,27 @@ def normalize_phone_number(phone_number: str, default_country_code: str = '263')
     if not phone_number:
         return ""
     
-    # Handle multiple phone numbers separated by common delimiters (/, \, |, or, etc.)
-    # Take only the first phone number
+    # Handle multiple phone numbers packed into one field. Take only the first.
     if PHONE_DELIMITER_PATTERN.search(phone_number):
-        parts = PHONE_DELIMITER_PATTERN.split(phone_number)
-        phone_number = parts[0].strip()
+        parts = [p.strip() for p in PHONE_DELIMITER_PATTERN.split(phone_number) if p and p.strip()]
         if len(parts) > 1:
             logger.info(f"Multiple phone numbers detected ({len(parts)} total). Using first number.")
+        if parts:
+            phone_number = parts[0]
+
+    # Hyphens: separators only if every side stands alone as a number (see
+    # MIN_DIGITS_FOR_STANDALONE_NUMBER), otherwise they are digit grouping.
+    if '-' in phone_number:
+        hyphen_parts = [p.strip() for p in phone_number.split('-') if p.strip()]
+        if len(hyphen_parts) > 1 and all(
+            len(re.sub(r'\D', '', part)) >= MIN_DIGITS_FOR_STANDALONE_NUMBER
+            for part in hyphen_parts
+        ):
+            logger.info(
+                f"Multiple hyphen-separated phone numbers detected "
+                f"({len(hyphen_parts)} total). Using first number."
+            )
+            phone_number = hyphen_parts[0]
     
     # Remove all non-digit characters except '+'
     cleaned = re.sub(r'[^\d+]', '', phone_number)

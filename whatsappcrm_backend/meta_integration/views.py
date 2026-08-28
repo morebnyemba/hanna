@@ -571,7 +571,9 @@ class MetaWebhookAPIView(View):
         """
         from customer_data.models import Order
         from customer_data.payment_utils import parse_payment_button_id
-        from meta_integration.utils import send_whatsapp_message
+        # Queued, not sent inline: this handler runs on the webhook request path
+        # inside an open transaction. See queue_whatsapp_message's docstring.
+        from meta_integration.utils import queue_whatsapp_message
         
         try:
             # Parse button ID into components
@@ -628,14 +630,15 @@ class MetaWebhookAPIView(View):
                     }
                 }
                 
-                send_whatsapp_message(
-                    to_phone_number=contact.whatsapp_id,
+                queue_whatsapp_message(
+                    contact=contact,
                     message_type='interactive',
-                    data=paynow_selection_message
+                    data=paynow_selection_message,
+                    config=active_config,
                 )
                 
-                self._save_log(log_entry, 'processed', f'Sent Paynow method selection for order {order_number}')
-                logger.info(f"Sent Paynow method selection for order {order_number}")
+                self._save_log(log_entry, 'processed', f'Queued Paynow method selection for order {order_number}')
+                logger.info(f"Queued Paynow method selection for order {order_number}")
                 
             elif action == 'pay' and method_or_type == 'manual':
                 # User selected manual payment
@@ -658,14 +661,15 @@ class MetaWebhookAPIView(View):
                     order.currency
                 )
                 
-                send_whatsapp_message(
-                    to_phone_number=contact.whatsapp_id,
+                queue_whatsapp_message(
+                    contact=contact,
                     message_type='text',
-                    data={'body': instructions_msg}
+                    data={'body': instructions_msg},
+                    config=active_config,
                 )
                 
-                self._save_log(log_entry, 'processed', f'Sent manual payment instructions for order {order_number}')
-                logger.info(f"Sent manual payment instructions for order {order_number}")
+                self._save_log(log_entry, 'processed', f'Queued manual payment instructions for order {order_number}')
+                logger.info(f"Queued manual payment instructions for order {order_number}")
                 
             elif action == 'paynow':
                 # User selected specific Paynow method (ecocash, onemoney, innbucks)
@@ -703,10 +707,11 @@ class MetaWebhookAPIView(View):
                     f"Initiating payment... Please check your phone for the payment prompt."
                 )
 
-                send_whatsapp_message(
-                    to_phone_number=contact.whatsapp_id,
+                queue_whatsapp_message(
+                    contact=contact,
                     message_type='text',
-                    data={'body': confirmation_msg}
+                    data={'body': confirmation_msg},
+                    config=active_config,
                 )
 
                 # Initiate the Paynow payment out-of-band via Celery. The `paynow`
@@ -738,12 +743,28 @@ class MetaWebhookAPIView(View):
             logger.warning(f"Cannot send read receipt: Missing WAMID.")
             return
 
-        send_read_receipt_task.delay(
-            wamid=wamid,
-            config_id=app_config.id,
-            show_typing_indicator=show_typing_indicator
-        )
-        logger.info(f"Dispatched read receipt task for WAMID {wamid} (Typing: {show_typing_indicator}).")
+        config_id = app_config.id
+
+        # Queued on commit, and never allowed to fail the webhook. This runs
+        # inside post()'s transaction: dispatching straight away would both
+        # queue a receipt for a message whose transaction may still roll back,
+        # and let a broker hiccup (bounded by CELERY_BROKER_TRANSPORT_OPTIONS'
+        # socket_timeout, but still an exception) turn a read receipt -- a
+        # courtesy -- into a 500 that makes Meta redeliver the whole webhook.
+        def _dispatch():
+            try:
+                send_read_receipt_task.delay(
+                    wamid=wamid,
+                    config_id=config_id,
+                    show_typing_indicator=show_typing_indicator
+                )
+            except Exception:
+                logger.warning(
+                    f"Could not queue read receipt task for WAMID {wamid}.", exc_info=True
+                )
+
+        transaction.on_commit(_dispatch)
+        logger.info(f"Queued read receipt task for WAMID {wamid} (Typing: {show_typing_indicator}).")
 
 
     # --- Placeholder for other handlers from your original file ---

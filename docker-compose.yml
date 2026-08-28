@@ -40,6 +40,21 @@ services:
     command: >
       sh -c "python manage.py collectstatic --noinput &&
       exec daphne -b 0.0.0.0 -p 8000 whatsappcrm_backend.asgi:application"
+    # Django runs every synchronous view (all of the REST API, the admin, and the
+    # Meta webhook) in a thread pool. Daphne only sizes that pool when
+    # ASGI_THREADS is set; otherwise it falls back to asyncio's default executor,
+    # min(32, cpu_count + 4) -- just 6 threads on this 2 vCPU host. Six
+    # concurrent slow requests were enough to occupy the pool and make the whole
+    # site stop responding (nginx then times out at 110s and returns 504), which
+    # is what "the platform fails after a while" looked like. The blocking calls
+    # that caused it are now queued to Celery instead, but the pool is still far
+    # too small to absorb a burst, so size it explicitly.
+    #
+    # Keep this in step with Postgres' max_connections (default 100): each thread
+    # can hold one connection for CONN_MAX_AGE (600s). 24 here + up to 30 from the
+    # gevent Celery workers + ~4 from beat/cpu/idle-fetcher leaves headroom.
+    environment:
+      ASGI_THREADS: "24"
     env_file:
       - ./whatsappcrm_backend/.env.prod
     depends_on:

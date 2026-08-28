@@ -18,6 +18,18 @@ from .catalog_service import MetaCatalogService
 
 logger = logging.getLogger(__name__)
 
+# How long send_whatsapp_message_task will hold a message back to preserve
+# ordering before giving up on ordering and sending it anyway. Generous enough to
+# cover a flow that replies with a long burst of messages, bounded so a contact's
+# queue can never wedge. See the gate in send_whatsapp_message_task.
+ORDERING_WAIT_BUDGET_SECONDS = 120
+# Retry ceiling used only while waiting on ordering (3s apart). Sized to outlast
+# ORDERING_WAIT_BUDGET_SECONDS so the wall-clock deadline is what ends the wait.
+ORDERING_WAIT_MAX_RETRIES = 60
+# How long to keep retrying the actual Meta API call for a message before giving
+# up and marking it failed. Also wall-clock, for the reason given at its use site.
+SEND_RETRY_BUDGET_SECONDS = 300
+
 @shared_task(bind=True, max_retries=10, default_retry_delay=3, queue='msg_sending')
 def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id: int):
     """
@@ -53,53 +65,82 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
     if outgoing_msg.wamid and outgoing_msg.status == 'sent':
         logger.info(f"send_whatsapp_message_task: Message ID {outgoing_message_id} (WAMID: {outgoing_msg.wamid}) already marked as sent. Skipping.")
         return
-    if outgoing_msg.status == 'failed' and self.request.retries >= self.max_retries:
-         logger.warning(f"send_whatsapp_message_task: Message ID {outgoing_message_id} already failed and max retries reached. Skipping.")
-         return
-
-    # To ensure sequential delivery, check for preceding messages that are either:
-    # 1. Still pending dispatch (these should always be sent first).
-    # 2. Were sent recently but not yet confirmed as delivered. We'll wait for a short period
-    #    (e.g., 2 minutes) for the delivery receipt. This prevents sending a new message
-    #    before the previous one is confirmed delivered by WhatsApp's servers.
-    stale_threshold = timezone.now() - timedelta(seconds=20)
-
-    # NEW: Add a threshold for stale pending messages to prevent deadlocks.
-    # If a message has been pending for more than 5 minutes, assume it's stuck and proceed.
-    stale_pending_threshold = timezone.now() - timedelta(minutes=1)
-
-    # Find the specific message causing the halt for better logging
-    # A message is halting if it's a preceding message for the same contact AND
-    # 1. It is still pending dispatch (must wait for it to be sent).
-    # OR
-    # 2. It was sent very recently, and we are waiting for a delivery receipt to ensure order.
-    halting_message = Message.objects.filter(
-        Q(contact=outgoing_msg.contact),
-        Q(direction='out'),
-        Q(id__lt=outgoing_msg.id),
-        (
-            Q(status='pending_dispatch', timestamp__gte=stale_pending_threshold) | # Only wait for RECENTLY created pending messages.
-            Q(status='sent', status_timestamp__gte=stale_threshold) # Wait for recently sent messages to be delivered.
-        )
-    ).order_by('-id').first() # Get the most recent one for logging
-
-    if halting_message:
+    # Give up on a message whose send budget has run out. This is keyed to the
+    # same wall-clock deadline the retry path uses, not to self.request.retries:
+    # that counter is shared with the ordering gate below, so a retry-count check
+    # here would abandon a message that had merely spent its attempts *waiting
+    # its turn* rather than failing to send.
+    if (outgoing_msg.status == 'failed'
+            and timezone.now() >= outgoing_msg.timestamp + timedelta(seconds=SEND_RETRY_BUDGET_SECONDS)):
         logger.warning(
-            f"send_whatsapp_message_task: Halting message ID {outgoing_message_id} for contact "
-            f"{outgoing_msg.contact.whatsapp_id}. Waiting for preceding message ID {halting_message.id} "
-            f"(Status: {halting_message.status}, Status Time: {halting_message.status_timestamp}, "
-            f"Created: {halting_message.timestamp}). Retrying."
+            f"send_whatsapp_message_task: Message ID {outgoing_message_id} already failed and its "
+            f"{SEND_RETRY_BUDGET_SECONDS}s send budget is exhausted. Skipping."
         )
-        try:
-            raise self.retry() # Uses the task's default_retry_delay
-        except self.MaxRetriesExceededError:
-            logger.error(f"Max retries exceeded for message {outgoing_message_id} while waiting. Marking as failed.")
-            outgoing_msg.status = 'failed'
-            outgoing_msg.error_details = {'error': 'Max retries exceeded while waiting for preceding message.'}
-            outgoing_msg.status_timestamp = timezone.now()
-            outgoing_msg.save(update_fields=['status', 'error_details', 'status_timestamp'])
-            message_send_failed.send(sender=self.__class__, message_instance=outgoing_msg)
-            return
+        return
+
+    # --- Sequential delivery gate ---
+    # Hold a message back while an earlier message to the same contact is still
+    # pending dispatch, or was sent so recently that its delivery receipt has not
+    # landed yet, so replies arrive in the order the flow produced them.
+    #
+    # This gate is best-effort ORDERING, never a delivery decision. It used to be
+    # both, and that silently broke the bot: a wait consumed the same
+    # `max_retries` budget as a real send failure (10 x 3s = 30s), while the wait
+    # itself is CUMULATIVE down the chain -- message 2 waits for 1, message 3
+    # waits for 2, and so on. Whenever delivery receipts lagged or stopped
+    # arriving (so a message stayed status='sent' for the full 20s window instead
+    # of flipping to 'delivered'), message 2 took ~20s and every message from the
+    # third onwards exhausted its retries while still waiting and was marked
+    # 'failed' WITHOUT EVER BEING SENT. Any flow step that replies with three or
+    # more messages therefore lost most of its replies, which reads to a user as
+    # "the bot doesn't work".
+    #
+    # So the wait is now bounded by wall-clock age rather than by retry count,
+    # and when the budget runs out the message is SENT anyway (out of order at
+    # worst) instead of being failed. An undelivered message is a bug; a
+    # slightly-out-of-order one is cosmetic.
+    ordering_wait_deadline = outgoing_msg.timestamp + timedelta(seconds=ORDERING_WAIT_BUDGET_SECONDS)
+    if timezone.now() < ordering_wait_deadline:
+        stale_threshold = timezone.now() - timedelta(seconds=20)
+        # Only wait for RECENTLY created pending messages, so one stuck message
+        # cannot dam the queue for a contact indefinitely.
+        stale_pending_threshold = timezone.now() - timedelta(minutes=1)
+
+        halting_message = Message.objects.filter(
+            Q(contact=outgoing_msg.contact),
+            Q(direction='out'),
+            Q(id__lt=outgoing_msg.id),
+            (
+                Q(status='pending_dispatch', timestamp__gte=stale_pending_threshold) |
+                Q(status='sent', status_timestamp__gte=stale_threshold)
+            )
+        ).order_by('-id').first()  # Most recent one, for logging
+
+        if halting_message:
+            logger.info(
+                f"send_whatsapp_message_task: Holding message ID {outgoing_message_id} for contact "
+                f"{outgoing_msg.contact.whatsapp_id} behind preceding message ID {halting_message.id} "
+                f"(Status: {halting_message.status}, Status Time: {halting_message.status_timestamp}, "
+                f"Created: {halting_message.timestamp}). Retrying."
+            )
+            try:
+                # max_retries is raised for the ordering wait specifically: with a
+                # 3s delay the default budget of 10 covers only 30s, far short of
+                # ORDERING_WAIT_BUDGET_SECONDS, so the deadline above -- not the
+                # retry counter -- is what ends the wait.
+                raise self.retry(max_retries=ORDERING_WAIT_MAX_RETRIES)
+            except self.MaxRetriesExceededError:
+                # Fall through and send. Never fail a message for an ordering wait.
+                logger.warning(
+                    f"send_whatsapp_message_task: Ordering-wait retries exhausted for message "
+                    f"{outgoing_message_id}; sending it now (possibly out of order)."
+                )
+    else:
+        logger.warning(
+            f"send_whatsapp_message_task: Ordering wait budget "
+            f"({ORDERING_WAIT_BUDGET_SECONDS}s) exceeded for message {outgoing_message_id}; "
+            f"sending it now (possibly out of order) rather than dropping it."
+        )
 
     logger.info(f"Task send_whatsapp_message_task started for Message ID: {outgoing_message_id}, Contact: {outgoing_msg.contact.whatsapp_id}")
 
@@ -145,9 +186,17 @@ def send_whatsapp_message_task(self, outgoing_message_id: int, active_config_id:
         outgoing_msg.status = 'failed'
         outgoing_msg.error_details = {'error': str(e), 'type': type(e).__name__}
         try:
-            # Retry the task if it's a network issue or a temporary problem
-            # Celery will automatically retry based on max_retries and default_retry_delay.
-            raise self.retry(exc=e) # Re-raise to trigger Celery's retry mechanism
+            # Retry on network/transient errors. The budget is wall-clock rather
+            # than a retry count because self.request.retries is shared with the
+            # ordering gate above -- a message that waited out several ordering
+            # retries would otherwise arrive here with its send budget already
+            # spent and be failed on its first transient error, never retried.
+            send_deadline = outgoing_msg.timestamp + timedelta(seconds=SEND_RETRY_BUDGET_SECONDS)
+            if timezone.now() >= send_deadline:
+                raise self.MaxRetriesExceededError(
+                    f"Send retry budget ({SEND_RETRY_BUDGET_SECONDS}s) exhausted."
+                )
+            raise self.retry(exc=e, max_retries=None)  # Bounded by send_deadline above
         except self.MaxRetriesExceededError:
             logger.error(f"Max retries exceeded for sending Message ID {outgoing_message_id}.")
             # This is a permanent failure. Save the final state and send the notification signal.
