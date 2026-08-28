@@ -446,6 +446,20 @@ CHANNEL_LAYERS = {
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # Celery Beat schedule can be configured here. It is currently empty.
 CELERY_BEAT_SCHEDULE = {
+    # Delete task results older than CELERY_RESULT_EXPIRES (Celery's default,
+    # 1 day). Celery only ships this entry in its own default schedule, which
+    # the django_celery_beat DatabaseScheduler replaces -- so with 'django-db'
+    # as the result backend and nothing running the cleanup, every task this
+    # platform has ever run was still a row in
+    # django_celery_results_taskresult. CELERY_RESULT_EXTENDED=True stores each
+    # one's name, args and kwargs too, and beat alone queues several tasks every
+    # five minutes, so the table grew without bound and took query planning and
+    # disk with it. result_expires is only a policy; this is what enforces it.
+    'celery-result-backend-cleanup': {
+        'task': 'celery.backend_cleanup',
+        # Daily, off-peak. The task is a bulk delete of expired rows.
+        'schedule': crontab(minute=0, hour=3),
+    },
     'check-24h-window-reminders': {
         'task': 'notifications.tasks.check_and_send_24h_window_reminders',
         # Runs every hour at the top of the hour.
