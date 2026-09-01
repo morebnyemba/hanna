@@ -77,6 +77,10 @@ router.register(r'installation-pipeline', views.AdminInstallationPipelineViewSet
 router.register(r'fault-analytics', views.AdminFaultAnalyticsViewSet, basename='fault-analytics')
 router.register(r'device-monitoring', views.AdminDeviceMonitoringViewSet, basename='device-monitoring')
 
+# Task Monitoring
+router.register(r'tasks', views.TaskProgressViewSet, basename='task-progress')
+router.register(r'failed-tasks', views.FailedTaskViewSet, basename='failed-task')
+
 urlpatterns = [
     path('', include(router.urls)),
     # Alias for technician payouts (backward compatibility)

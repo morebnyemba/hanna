@@ -8,6 +8,7 @@ This command creates all the notification templates needed for:
 - Technician notifications
 - Customer notifications
 - Admin/System notifications
+- Invoice processing notifications
 
 Run with: python manage.py seed_notification_templates
 """
@@ -22,6 +23,7 @@ from notifications.models import NotificationTemplate
 
 # Each template has:
 # - name: Unique identifier (used in code to reference the template)
+# - category: Template category for organization
 # - description: Human-readable description
 # - message_body: The message content (Jinja2 supported)
 # - body_parameters: Mapping for Meta WhatsApp template parameters
@@ -33,14 +35,17 @@ NOTIFICATION_TEMPLATES = [
     # ============================================================================
     {
         "name": "pfungwa_new_order_created",
-        "description": "Sent to admin when a new order is created",
-        "message_body": """New Order Created
+        "category": "order",
+        "description": "Sent to admin staff when a new customer order is created and needs review.",
+        "message_body": """📦 *New Order Created*
 
-Order: {{ order_number }}
-Customer: {{ customer_name }}
-Amount: ${{ order_amount }}
+A new order has been placed and requires your attention.
 
-Status: Requires review and processing""",
+• *Order #:* {{ order_number }}
+• *Customer:* {{ customer_name }}
+• *Amount:* ${{ order_amount }}
+
+📋 *Action Required:* Please review and process this order.""",
         "body_parameters": {
             "1": "order_number",
             "2": "customer_name",
@@ -49,15 +54,18 @@ Status: Requires review and processing""",
     },
     {
         "name": "pfungwa_order_confirmation",
-        "description": "Sent to customer when their order is confirmed",
-        "message_body": """Order Confirmed
+        "category": "order",
+        "description": "Sent to the customer to confirm their order has been received and is being processed.",
+        "message_body": """✅ *Order Confirmed*
 
-Customer: {{ customer_name }}
-Order Number: {{ order_number }}
-Amount: ${{ order_amount }}
+Hi {{ customer_name }}, your order has been confirmed!
 
-Status: Confirmed and being processed
-{{ cart_items_list }}""",
+• *Order #:* {{ order_number }}
+• *Total:* ${{ order_amount }}
+
+{{ cart_items_list }}
+
+We're processing your order now. You'll receive updates as it progresses.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "order_number",
@@ -66,15 +74,17 @@ Status: Confirmed and being processed
     },
     {
         "name": "pfungwa_payment_received",
-        "description": "Sent to customer when payment is received",
-        "message_body": """Payment Received
+        "category": "order",
+        "description": "Sent to the customer to confirm their payment has been received and verified.",
+        "message_body": """💰 *Payment Received*
 
-Order Number: {{ order_number }}
-Amount: ${{ order_amount }}
-Payment Method: {{ payment_method }}
+Hi {{ customer_name }}, we've received your payment!
 
-Status: Payment confirmed
-Your order is now being processed.""",
+• *Order #:* {{ order_number }}
+• *Amount Paid:* ${{ order_amount }}
+• *Method:* {{ payment_method }}
+
+Your order is now being processed. Thank you!""",
         "body_parameters": {
             "1": "customer_name",
             "2": "order_number",
@@ -83,14 +93,16 @@ Your order is now being processed.""",
     },
     {
         "name": "pfungwa_payment_reminder",
-        "description": "Reminder sent to customer for pending payment",
-        "message_body": """Payment Reminder
+        "category": "order",
+        "description": "Friendly reminder sent to customer when payment for their order is still pending.",
+        "message_body": """⏳ *Payment Reminder*
 
-Order Number: {{ order_number }}
-Amount Due: ${{ order_amount }}
+Hi {{ customer_name }}, this is a friendly reminder about your pending payment.
 
-Status: Awaiting payment
-Please complete payment to proceed with order processing.""",
+• *Order #:* {{ order_number }}
+• *Amount Due:* ${{ order_amount }}
+
+Please complete your payment so we can proceed with your order. If you've already paid, please disregard this message.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "order_number",
@@ -99,18 +111,77 @@ Please complete payment to proceed with order processing.""",
     },
     {
         "name": "pfungwa_order_dispatched",
-        "description": "Sent to customer when order is dispatched",
-        "message_body": """Order Dispatched
+        "category": "order",
+        "description": "Sent to the customer when their order has been shipped/dispatched for delivery.",
+        "message_body": """🚚 *Order Dispatched*
 
-Order Number: {{ order_number }}
-Estimated Delivery: {{ delivery_date }}
+Hi {{ customer_name }}, your order is on its way!
+
+• *Order #:* {{ order_number }}
+• *Estimated Delivery:* {{ delivery_date }}
 {{ tracking_info }}
 
-Status: Dispatched""",
+You'll be notified when delivery is complete.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "order_number",
             "3": "delivery_date"
+        }
+    },
+    {
+        "name": "pfungwa_new_online_order_placed",
+        "category": "order",
+        "description": "Sent to admin staff when a customer places an order online through the WhatsApp flow.",
+        "message_body": """🛒 *New Online Order Placed*
+
+A customer has placed an order via WhatsApp.
+
+• *Customer:* {{ customer_name }}
+• *Order #:* {{ order_number }}
+• *Amount:* ${{ order_amount }}
+
+📋 *Action Required:* Review and confirm the order.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "order_number",
+            "3": "order_amount"
+        }
+    },
+    {
+        "name": "pfungwa_new_placeholder_order_created",
+        "category": "order",
+        "description": "Sent to admin when a placeholder order is auto-created during a flow (e.g., inquiry).",
+        "message_body": """📝 *Placeholder Order Created*
+
+A placeholder order has been auto-generated.
+
+• *Customer:* {{ customer_name }}
+• *Order #:* {{ order_number }}
+• *Notes:* {{ order_notes }}
+
+📋 *Action Required:* Review and update order details.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "order_number",
+            "3": "order_notes"
+        }
+    },
+    {
+        "name": "pfungwa_order_payment_status_updated",
+        "category": "order",
+        "description": "Sent to the customer when the payment status of their order is updated by admin.",
+        "message_body": """💳 *Payment Status Updated*
+
+Hi {{ customer_name }}, the payment status for your order has been updated.
+
+• *Order #:* {{ order_number }}
+• *New Status:* {{ new_status }}
+
+If you have any questions, please reach out to us.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "order_number",
+            "3": "new_status"
         }
     },
 
@@ -119,20 +190,22 @@ Status: Dispatched""",
     # ============================================================================
     {
         "name": "pfungwa_solar_package_purchased",
-        "description": "Sent to customer when they purchase a solar package",
-        "message_body": """Solar Package Purchased
+        "category": "installation",
+        "description": "Sent to the customer when they purchase a solar package, outlining next steps.",
+        "message_body": """☀️ *Solar Package Purchased*
 
-Package: {{ package_name }}
-System Size: {{ system_size }}kW
-Order Number: {{ order_number }}
+Hi {{ customer_name }}, thank you for choosing us for your solar installation!
 
-Installation Record: {{ isr_id }}
+• *Package:* {{ package_name }}
+• *System Size:* {{ system_size }}kW
+• *Order #:* {{ order_number }}
+• *Installation Record:* {{ isr_id }}
 
-Next Steps:
-1. Our team will contact you to schedule installation
-2. Site assessment will be arranged
-3. Installation and commissioning
-4. Warranty registration""",
+*What happens next:*
+1️⃣ Our team will contact you to schedule installation
+2️⃣ A site assessment will be arranged
+3️⃣ Installation and system commissioning
+4️⃣ Warranty registration for all components""",
         "body_parameters": {
             "1": "customer_name",
             "2": "package_name",
@@ -141,19 +214,21 @@ Next Steps:
     },
     {
         "name": "pfungwa_installation_scheduled",
-        "description": "Sent to customer when installation is scheduled",
-        "message_body": """Installation Scheduled
+        "category": "installation",
+        "description": "Sent to the customer to confirm their installation date, time, and assigned technician.",
+        "message_body": """📅 *Installation Scheduled*
 
-Location: {{ installation_address }}
-Date: {{ installation_date }}
-Time: {{ installation_time }}
+Hi {{ customer_name }}, your installation has been scheduled!
 
-Assigned Technician: {{ technician_name }}
+• *Location:* {{ installation_address }}
+• *Date:* {{ installation_date }}
+• *Time:* {{ installation_time }}
+• *Technician:* {{ technician_name }}
 
-Preparation Required:
-- Ensure someone is present
-- Roof/installation area must be accessible
-- Electrical panel must be accessible""",
+*Please prepare:*
+✅ Ensure someone is present at the property
+✅ Roof/installation area must be accessible
+✅ Electrical panel must be accessible""",
         "body_parameters": {
             "1": "customer_name",
             "2": "installation_date",
@@ -162,22 +237,22 @@ Preparation Required:
     },
     {
         "name": "pfungwa_installation_complete",
-        "description": "Sent to customer when installation is completed",
-        "message_body": """Installation Completed
+        "category": "installation",
+        "description": "Sent to the customer when their installation is complete, including warranty and portal info.",
+        "message_body": """🎉 *Installation Complete*
 
-System: {{ installation_type }}
-Size: {{ system_size }}kW
-Installation Record: {{ isr_id }}
+Hi {{ customer_name }}, your installation has been successfully completed!
 
-Status: Successfully installed and commissioned
+• *System:* {{ installation_type }}
+• *Size:* {{ system_size }}kW
+• *Record:* {{ isr_id }}
 
-Warranties Registered:
 {{ warranty_summary }}
 
-Portal Access: https://hanna.co.zw/client
-- Monitor your system
-- View warranties
-- Request service""",
+🌐 *Access your portal:* https://hanna.co.zw/client
+• Monitor your system performance
+• View warranty certificates
+• Request maintenance or service""",
         "body_parameters": {
             "1": "customer_name",
             "2": "installation_type",
@@ -186,21 +261,256 @@ Portal Access: https://hanna.co.zw/client
     },
     {
         "name": "pfungwa_installation_request_new",
-        "description": "Sent to admin when new installation request is created",
-        "message_body": """New Installation Request
+        "category": "installation",
+        "description": "Sent to admin staff when a new installation request is submitted by a customer.",
+        "message_body": """🔧 *New Installation Request*
 
-Customer: {{ customer_name }}
-Phone: {{ customer_phone }}
-Type: {{ installation_type }}
-Address: {{ installation_address }}
+A customer has requested an installation.
 
-Request ID: {{ installation_request_id }}
+• *Customer:* {{ customer_name }}
+• *Phone:* {{ customer_phone }}
+• *Type:* {{ installation_type }}
+• *Address:* {{ installation_address }}
+• *Request ID:* {{ installation_request_id }}
 
-Status: Requires scheduling""",
+📋 *Action Required:* Schedule the installation.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "installation_type",
             "3": "installation_request_id"
+        }
+    },
+    {
+        "name": "pfungwa_new_installation_request",
+        "category": "installation",
+        "description": "Generic notification sent to admin for any new installation request from a WhatsApp flow.",
+        "message_body": """🔧 *New Installation Request*
+
+A new installation request has been submitted.
+
+• *Customer:* {{ customer_name }}
+• *Phone:* {{ install_phone }}
+• *Type:* {{ install_kit_type }}
+• *Address:* {{ install_address }}
+{{ install_alt_contact_line }}
+{{ install_location_pin_line }}
+• *Preferred Date:* {{ install_preferred_date }}
+• *Availability:* {{ install_availability }}
+
+📋 *Action Required:* Review and schedule.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "install_phone",
+            "3": "install_kit_type"
+        }
+    },
+    {
+        "name": "pfungwa_new_starlink_installation_request",
+        "category": "installation",
+        "description": "Sent to admin when a customer requests a Starlink installation.",
+        "message_body": """📡 *New Starlink Installation Request*
+
+A customer has requested a Starlink installation.
+
+• *Customer:* {{ customer_name }}
+• *Phone:* {{ install_phone }}
+• *Address:* {{ install_address }}
+{{ install_alt_contact_line }}
+{{ install_location_pin_line }}
+• *Preferred Date:* {{ install_preferred_date }}
+• *Availability:* {{ install_availability }}
+
+📋 *Action Required:* Review and schedule installation.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "install_phone",
+            "3": "install_address"
+        }
+    },
+    {
+        "name": "pfungwa_new_hybrid_installation_request",
+        "category": "installation",
+        "description": "Sent to admin when a customer requests a hybrid (solar + starlink) installation.",
+        "message_body": """⚡📡 *New Hybrid Installation Request*
+
+A customer has requested a hybrid Solar + Starlink installation.
+
+• *Customer:* {{ customer_name }}
+• *Phone:* {{ install_phone }}
+• *Kit Type:* {{ install_kit_type }}
+• *Address:* {{ install_address }}
+{{ install_alt_contact_line }}
+{{ install_location_pin_line }}
+• *Preferred Date:* {{ install_preferred_date }}
+• *Availability:* {{ install_availability }}
+
+📋 *Action Required:* Review and schedule.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "install_phone",
+            "3": "install_kit_type"
+        }
+    },
+    {
+        "name": "pfungwa_new_custom_furniture_installation_request",
+        "category": "installation",
+        "description": "Sent to admin when a customer requests a custom furniture installation.",
+        "message_body": """🪑 *New Custom Furniture Installation Request*
+
+A customer has requested a custom furniture installation.
+
+• *Customer:* {{ contact_name }}
+• *Order #:* {{ furniture_order_number }}
+• *Type:* {{ furniture_type }}
+• *Specs:* {{ furniture_specifications }}
+• *Name:* {{ furniture_full_name }}
+• *Phone:* {{ furniture_contact_phone }}
+{{ furniture_alt_contact_line }}
+• *Address:* {{ furniture_address }}
+{{ furniture_location_pin_line }}
+• *Preferred Date:* {{ furniture_preferred_date }}
+• *Availability:* {{ furniture_availability }}
+
+📋 *Action Required:* Review and schedule.""",
+        "body_parameters": {
+            "1": "contact_name",
+            "2": "furniture_type",
+            "3": "furniture_full_name"
+        }
+    },
+    {
+        "name": "pfungwa_new_furniture_installation_request",
+        "category": "installation",
+        "description": "Sent to admin when a general furniture installation request is submitted.",
+        "message_body": """🪑 *New Furniture Installation Request*
+
+A new furniture installation request has been submitted.
+
+• *Customer:* {{ customer_name }}
+• *Phone:* {{ install_phone }}
+• *Address:* {{ install_address }}
+{{ install_alt_contact_line }}
+{{ install_location_pin_line }}
+• *Preferred Date:* {{ install_preferred_date }}
+
+📋 *Action Required:* Review and schedule.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "install_phone",
+            "3": "install_address"
+        }
+    },
+    {
+        "name": "pfungwa_admin_order_and_install_created",
+        "category": "installation",
+        "description": "Sent to admin when both an order and installation request are created together.",
+        "message_body": """📦🔧 *Order & Installation Created*
+
+A new order with an installation request has been created.
+
+• *Customer:* {{ customer_name }}
+• *Order #:* {{ order_number }}
+• *Amount:* ${{ order_amount }}
+• *Installation Type:* {{ installation_type }}
+
+📋 *Action Required:* Review order and schedule installation.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "order_number",
+            "3": "order_amount"
+        }
+    },
+
+    # ============================================================================
+    # SITE ASSESSMENT / CLEANING TEMPLATES
+    # ============================================================================
+    {
+        "name": "pfungwa_new_site_assessment_request",
+        "category": "installation",
+        "description": "Sent to admin when a customer requests a site assessment before installation.",
+        "message_body": """📍 *New Site Assessment Request*
+
+A customer has requested a site assessment.
+
+• *Customer:* {{ customer_name }}
+• *Phone:* {{ assess_phone }}
+• *Address:* {{ assess_address }}
+• *Assessment #:* {{ assessment_number }}
+{{ assess_location_pin_line }}
+• *Preferred Date:* {{ assess_preferred_date }}
+
+📋 *Action Required:* Schedule the site assessment.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "assess_phone",
+            "3": "assessment_number"
+        }
+    },
+    {
+        "name": "pfungwa_assessment_status_updated",
+        "category": "installation",
+        "description": "Sent to the customer when the status of their site assessment is updated.",
+        "message_body": """📍 *Assessment Status Updated*
+
+Hi {{ customer_name }}, your site assessment status has been updated.
+
+• *Assessment #:* {{ assessment_number }}
+• *New Status:* {{ new_status }}
+
+Our team will keep you informed of the next steps.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "assessment_number",
+            "3": "new_status"
+        }
+    },
+    {
+        "name": "pfungwa_new_solar_cleaning_request",
+        "category": "installation",
+        "description": "Sent to admin when a customer requests solar panel cleaning.",
+        "message_body": """🧹 *New Solar Panel Cleaning Request*
+
+A customer has requested solar panel cleaning.
+
+• *Customer:* {{ customer_name }}
+• *Phone:* {{ cleaning_phone }}
+• *Address:* {{ cleaning_address }}
+• *Roof Type:* {{ cleaning_roof_type }}
+• *Panel Type:* {{ cleaning_panel_type }}
+{{ cleaning_location_pin_line }}
+• *Preferred Date:* {{ cleaning_preferred_date }}
+• *Availability:* {{ cleaning_availability }}
+
+📋 *Action Required:* Schedule the cleaning service.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "cleaning_phone",
+            "3": "cleaning_address"
+        }
+    },
+
+    # ============================================================================
+    # LOAN APPLICATION TEMPLATES
+    # ============================================================================
+    {
+        "name": "pfungwa_new_loan_application",
+        "category": "order",
+        "description": "Sent to admin when a customer submits a loan/financing application.",
+        "message_body": """🏦 *New Loan Application*
+
+A customer has submitted a financing application.
+
+• *Customer:* {{ customer_name }}
+• *Loan Type:* {{ loan_type }}
+• *Employment:* {{ loan_employment_status }}
+{{ loan_amount_line }}
+{{ loan_product_line }}
+
+📋 *Action Required:* Review the application.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "loan_type",
+            "3": "loan_employment_status"
         }
     },
 
@@ -209,17 +519,19 @@ Status: Requires scheduling""",
     # ============================================================================
     {
         "name": "pfungwa_technician_job_assigned",
-        "description": "Sent to technician when a new job is assigned",
-        "message_body": """New Job Assigned
+        "category": "technician",
+        "description": "Sent to a technician when a new installation job is assigned to them.",
+        "message_body": """👷 *New Job Assigned to You*
 
-Customer: {{ customer_name }}
-Address: {{ installation_address }}
-Date: {{ installation_date }}
-System: {{ system_size }}kW {{ installation_type }}
+Hi {{ technician_name }}, you've been assigned a new job.
 
-Installation ID: {{ isr_id }}
+• *Customer:* {{ customer_name }}
+• *Address:* {{ installation_address }}
+• *Date:* {{ installation_date }}
+• *System:* {{ system_size }}kW {{ installation_type }}
+• *Installation ID:* {{ isr_id }}
 
-Status: Please confirm availability""",
+📋 *Action Required:* Please confirm your availability.""",
         "body_parameters": {
             "1": "technician_name",
             "2": "customer_name",
@@ -228,16 +540,17 @@ Status: Please confirm availability""",
     },
     {
         "name": "pfungwa_technician_job_reminder",
-        "description": "Reminder sent to technician before scheduled job",
-        "message_body": """Job Reminder
+        "category": "technician",
+        "description": "Reminder sent to technician the day before a scheduled installation.",
+        "message_body": """⏰ *Job Reminder — Tomorrow*
 
-Customer: {{ customer_name }}
-Address: {{ installation_address }}
-Scheduled Time: {{ installation_time }}
+Hi {{ technician_name }}, you have a scheduled job tomorrow.
 
-Installation scheduled for tomorrow.
+• *Customer:* {{ customer_name }}
+• *Address:* {{ installation_address }}
+• *Time:* {{ installation_time }}
 
-Ensure all required equipment and documentation are ready.""",
+✅ Please ensure all equipment and documentation are ready.""",
         "body_parameters": {
             "1": "technician_name",
             "2": "customer_name",
@@ -246,14 +559,16 @@ Ensure all required equipment and documentation are ready.""",
     },
     {
         "name": "pfungwa_payout_approved",
-        "description": "Sent to technician when payout is approved",
-        "message_body": """Payout Approved
+        "category": "technician",
+        "description": "Sent to a technician when their installation payout has been approved.",
+        "message_body": """✅ *Payout Approved*
 
-Payout ID: {{ payout_id }}
-Amount: ${{ payout_amount }}
-Installations: {{ installation_count }}
+Hi {{ technician_name }}, your payout has been approved!
 
-Status: Approved
+• *Payout ID:* {{ payout_id }}
+• *Amount:* ${{ payout_amount }}
+• *Installations:* {{ installation_count }}
+
 Payment will be processed shortly.""",
         "body_parameters": {
             "1": "technician_name",
@@ -263,14 +578,17 @@ Payment will be processed shortly.""",
     },
     {
         "name": "pfungwa_payout_paid",
-        "description": "Sent to technician when payout is completed",
-        "message_body": """Payment Completed
+        "category": "technician",
+        "description": "Sent to a technician when their payout has been processed and payment completed.",
+        "message_body": """💵 *Payment Completed*
 
-Payout ID: {{ payout_id }}
-Amount: ${{ payout_amount }}
-Reference: {{ payment_reference }}
+Hi {{ technician_name }}, your payment has been processed!
 
-Status: Payment processed successfully""",
+• *Payout ID:* {{ payout_id }}
+• *Amount:* ${{ payout_amount }}
+• *Reference:* {{ payment_reference }}
+
+Thank you for your work!""",
         "body_parameters": {
             "1": "technician_name",
             "2": "payout_amount",
@@ -283,16 +601,17 @@ Status: Payment processed successfully""",
     # ============================================================================
     {
         "name": "pfungwa_warranty_registered",
-        "description": "Sent to customer when warranty is registered",
-        "message_body": """Warranty Registered
+        "category": "warranty",
+        "description": "Sent to the customer when a product warranty is successfully registered.",
+        "message_body": """🛡️ *Warranty Registered*
 
-Product: {{ product_name }}
-Serial Number: {{ serial_number }}
-Valid Until: {{ warranty_end_date }}
+Hi {{ customer_name }}, your warranty has been successfully registered.
 
-Status: Successfully registered
+• *Product:* {{ product_name }}
+• *Serial #:* {{ serial_number }}
+• *Valid Until:* {{ warranty_end_date }}
 
-Warranty certificate available in your client portal.""",
+Your warranty certificate is available in the client portal.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "product_name",
@@ -301,19 +620,20 @@ Warranty certificate available in your client portal.""",
     },
     {
         "name": "pfungwa_warranty_expiring",
-        "description": "Reminder sent when warranty is about to expire",
-        "message_body": """Warranty Expiring
+        "category": "warranty",
+        "description": "Proactive reminder sent when a customer's warranty is nearing its expiry date.",
+        "message_body": """⚠️ *Warranty Expiring Soon*
 
-Product: {{ product_name }}
-Serial Number: {{ serial_number }}
-Expiration Date: {{ warranty_end_date }}
+Hi {{ customer_name }}, your warranty is expiring soon.
 
-Status: Expiring soon
+• *Product:* {{ product_name }}
+• *Serial #:* {{ serial_number }}
+• *Expires:* {{ warranty_end_date }}
 
-Consider:
-- Extended warranty options
-- Service check before expiry
-- System upgrades""",
+Consider the following before it expires:
+• Extended warranty options
+• Service check-up
+• System upgrades""",
         "body_parameters": {
             "1": "customer_name",
             "2": "product_name",
@@ -322,15 +642,17 @@ Consider:
     },
     {
         "name": "pfungwa_warranty_claim_submitted",
-        "description": "Sent to customer when warranty claim is submitted",
-        "message_body": """Warranty Claim Submitted
+        "category": "warranty",
+        "description": "Sent to the customer confirming their warranty claim has been submitted for review.",
+        "message_body": """📝 *Warranty Claim Submitted*
 
-Claim Number: {{ claim_number }}
-Product: {{ product_name }}
-Issue: {{ reported_issue }}
+Hi {{ customer_name }}, we've received your warranty claim.
 
-Status: Under review
-Response expected within 2 business days""",
+• *Claim #:* {{ claim_number }}
+• *Product:* {{ product_name }}
+• *Issue:* {{ reported_issue }}
+
+Our team will review your claim. You can expect a response within 2 business days.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "claim_number",
@@ -339,21 +661,61 @@ Response expected within 2 business days""",
     },
     {
         "name": "pfungwa_warranty_claim_approved",
-        "description": "Sent to customer when warranty claim is approved",
-        "message_body": """Warranty Claim Approved
+        "category": "warranty",
+        "description": "Sent to the customer when their warranty claim has been approved and resolution determined.",
+        "message_body": """✅ *Warranty Claim Approved*
 
-Claim Number: {{ claim_number }}
-Product: {{ product_name }}
-Resolution: {{ resolution_type }}
+Hi {{ customer_name }}, your warranty claim has been approved!
+
+• *Claim #:* {{ claim_number }}
+• *Product:* {{ product_name }}
+• *Resolution:* {{ resolution_type }}
 {{ resolution_notes_section }}
 
-Status: Approved
-
-Next steps will be communicated shortly.""",
+We'll be in touch with next steps.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "claim_number",
             "3": "resolution_type"
+        }
+    },
+    {
+        "name": "pfungwa_new_warranty_claim_submitted",
+        "category": "warranty",
+        "description": "Sent to admin staff when a customer submits a new warranty claim for review.",
+        "message_body": """🛡️ *New Warranty Claim Submitted*
+
+A customer has submitted a warranty claim.
+
+• *Customer:* {{ customer_name }}
+• *Claim #:* {{ claim_number }}
+• *Product:* {{ product_name }}
+• *Issue:* {{ reported_issue }}
+
+📋 *Action Required:* Review and respond to the claim.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "claim_number",
+            "3": "product_name"
+        }
+    },
+    {
+        "name": "pfungwa_warranty_claim_status_updated",
+        "category": "warranty",
+        "description": "Sent to the customer when the status of their warranty claim changes.",
+        "message_body": """🛡️ *Warranty Claim Updated*
+
+Hi {{ customer_name }}, the status of your warranty claim has been updated.
+
+• *Claim #:* {{ claim_number }}
+• *New Status:* {{ claim_status }}
+{{ resolution_notes_section }}
+
+We'll keep you informed of any further updates.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "claim_number",
+            "3": "claim_status"
         }
     },
 
@@ -362,14 +724,16 @@ Next steps will be communicated shortly.""",
     # ============================================================================
     {
         "name": "pfungwa_service_request_received",
-        "description": "Sent to customer when service request is received",
-        "message_body": """Service Request Received
+        "category": "service",
+        "description": "Sent to the customer to confirm a service/repair request has been received.",
+        "message_body": """📩 *Service Request Received*
 
-Reference: {{ service_request_id }}
-Issue: {{ reported_issue }}
+Hi {{ customer_name }}, we've received your service request.
 
-Status: Under review
-Team will contact within 24 hours""",
+• *Reference:* {{ service_request_id }}
+• *Issue:* {{ reported_issue }}
+
+Our team will contact you within 24 hours to discuss next steps.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "service_request_id",
@@ -378,14 +742,17 @@ Team will contact within 24 hours""",
     },
     {
         "name": "pfungwa_job_card_created",
-        "description": "Sent to customer when job card is created",
-        "message_body": """Job Card Created
+        "category": "service",
+        "description": "Sent to the customer when a job card is created for their service request.",
+        "message_body": """🔧 *Job Card Created*
 
-Job Card Number: {{ job_card_number }}
-Product: {{ product_description }}
-Issue: {{ reported_fault }}
+Hi {{ customer_name }}, a job card has been created for your service request.
 
-Status: Technician assignment in progress""",
+• *Job Card #:* {{ job_card_number }}
+• *Product:* {{ product_description }}
+• *Issue:* {{ reported_fault }}
+
+A technician will be assigned shortly.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "job_card_number",
@@ -394,18 +761,83 @@ Status: Technician assignment in progress""",
     },
     {
         "name": "pfungwa_job_card_completed",
-        "description": "Sent to customer when job is completed",
-        "message_body": """Service Completed
+        "category": "service",
+        "description": "Sent to the customer when their service/repair job has been completed.",
+        "message_body": """✅ *Service Completed*
 
-Job Card: {{ job_card_number }}
+Hi {{ customer_name }}, your service job has been completed!
+
+• *Job Card #:* {{ job_card_number }}
 {{ resolution_notes_section }}
 
-Status: Completed
-
-Your feedback is appreciated.""",
+We appreciate your business. Your feedback is welcome!""",
         "body_parameters": {
             "1": "customer_name",
             "2": "job_card_number"
+        }
+    },
+    {
+        "name": "pfungwa_job_card_created_successfully",
+        "category": "service",
+        "description": "Sent to admin staff when a job card is auto-created from an invoice email.",
+        "message_body": """🔧 *Job Card Auto-Created*
+
+A job card was automatically created from an email invoice.
+
+• *Job Card #:* {{ job_card_number }}
+• *Product:* {{ product_description }}
+• *Serial #:* {{ product_serial_number }}
+• *Issue:* {{ reported_fault }}
+
+📋 *Action Required:* Review and assign a technician.""",
+        "body_parameters": {
+            "1": "job_card_number",
+            "2": "product_description",
+            "3": "reported_fault"
+        }
+    },
+
+    # ============================================================================
+    # INVOICE PROCESSING TEMPLATES
+    # ============================================================================
+    {
+        "name": "pfungwa_invoice_processed_successfully",
+        "category": "invoice",
+        "description": "Sent to admin staff when an email invoice has been automatically parsed and processed.",
+        "message_body": """📄 *Invoice Processed Successfully*
+
+An email invoice has been automatically processed.
+
+• *From:* {{ sender }}
+• *File:* {{ filename }}
+• *Order #:* {{ order_number }}
+• *Amount:* ${{ order_amount }}
+• *Customer:* {{ customer_name }}
+
+The order has been created and linked to the customer profile.""",
+        "body_parameters": {
+            "1": "sender",
+            "2": "order_number",
+            "3": "order_amount"
+        }
+    },
+    {
+        "name": "pfungwa_customer_invoice_confirmation",
+        "category": "invoice",
+        "description": "Sent to the customer confirming their invoice has been received and an order created.",
+        "message_body": """📄 *Invoice Confirmation*
+
+Hi {{ customer_name }}, we've received and processed your invoice.
+
+• *Order #:* {{ order_number }}
+• *Total:* ${{ total_amount }}
+• *Date:* {{ invoice_date }}
+
+If you have any questions about this invoice, please reach out to us.""",
+        "body_parameters": {
+            "1": "customer_name",
+            "2": "order_number",
+            "3": "total_amount"
         }
     },
 
@@ -414,14 +846,16 @@ Your feedback is appreciated.""",
     # ============================================================================
     {
         "name": "pfungwa_admin_24h_window_reminder",
-        "description": "Reminder to admin about 24-hour messaging window",
-        "message_body": """24-Hour Messaging Window Alert
+        "category": "admin",
+        "description": "Reminder sent to admin agents when the 24-hour WhatsApp messaging window is about to close.",
+        "message_body": """⏰ *24-Hour Messaging Window Expiring*
 
-Contact: {{ contact_name }}
-Phone: {{ customer_whatsapp_id }}
+The messaging window for a contact is about to expire.
 
-Status: Messaging window expiring soon
-Use template message to continue conversation""",
+• *Contact:* {{ contact_name }}
+• *Phone:* {{ customer_whatsapp_id }}
+
+📋 *Action Required:* Send a template message to keep the conversation active, or the window will close.""",
         "body_parameters": {
             "1": "contact_name",
             "2": "customer_whatsapp_id"
@@ -429,14 +863,16 @@ Use template message to continue conversation""",
     },
     {
         "name": "pfungwa_message_send_failure",
-        "description": "Sent to admin when message sending fails",
-        "message_body": """Message Send Failure
+        "category": "admin",
+        "description": "Alert sent to admin when a WhatsApp message fails to deliver after all retries.",
+        "message_body": """❌ *Message Delivery Failed*
 
-Contact: {{ contact_name }}
-Phone: {{ customer_whatsapp_id }}
+A WhatsApp message could not be delivered.
 
-Status: Message delivery failed
-Please check conversation and retry or use template""",
+• *Contact:* {{ contact_name }}
+• *Phone:* {{ customer_whatsapp_id }}
+
+📋 *Action Required:* Check the conversation and retry, or send a template message.""",
         "body_parameters": {
             "1": "contact_name",
             "2": "customer_whatsapp_id"
@@ -444,16 +880,35 @@ Please check conversation and retry or use template""",
     },
     {
         "name": "pfungwa_human_handover_required",
-        "description": "Sent to admin when bot needs human intervention",
-        "message_body": """Human Intervention Requested
+        "category": "admin",
+        "description": "Alert sent to admin when a customer requests to speak with a human agent.",
+        "message_body": """🙋 *Human Agent Requested*
 
-Contact: {{ contact_name }}
-Phone: {{ customer_whatsapp_id }}
+A customer has requested to speak with a human agent.
 
-Status: Customer requested human agent
-Last Bot Message: {{ last_bot_message }}
+• *Contact:* {{ contact_name }}
+• *Phone:* {{ customer_whatsapp_id }}
+• *Last Bot Message:* {{ last_bot_message }}
 
-Please respond promptly""",
+📋 *Action Required:* Please respond promptly to this customer.""",
+        "body_parameters": {
+            "1": "contact_name",
+            "2": "customer_whatsapp_id"
+        }
+    },
+    {
+        "name": "pfungwa_human_handover_flow",
+        "category": "admin",
+        "description": "Alert sent to admin team when the bot triggers a human handover due to customer need or error.",
+        "message_body": """🙋 *Human Handover Triggered*
+
+The bot has flagged a conversation for human attention.
+
+• *Contact:* {{ contact_name }}
+• *Phone:* {{ customer_whatsapp_id }}
+• *Reason:* {{ last_bot_message }}
+
+📋 *Action Required:* Take over this conversation.""",
         "body_parameters": {
             "1": "contact_name",
             "2": "customer_whatsapp_id"
@@ -461,14 +916,17 @@ Please respond promptly""",
     },
     {
         "name": "pfungwa_low_stock_alert",
-        "description": "Alert sent when product stock is low",
-        "message_body": """Low Stock Alert
+        "category": "admin",
+        "description": "Alert sent to inventory managers when a product's stock falls below the reorder threshold.",
+        "message_body": """📉 *Low Stock Alert*
 
-Product: {{ product_name }}
-SKU: {{ product_sku }}
-Current Stock: {{ stock_quantity }}
+A product is running low on stock and may need reordering.
 
-Status: Reorder required""",
+• *Product:* {{ product_name }}
+• *SKU:* {{ product_sku }}
+• *Current Stock:* {{ stock_quantity }}
+
+📋 *Action Required:* Reorder to avoid stockouts.""",
         "body_parameters": {
             "1": "product_name",
             "2": "product_sku",
@@ -481,14 +939,17 @@ Status: Reorder required""",
     # ============================================================================
     {
         "name": "pfungwa_branch_order_received",
-        "description": "Sent to branch when order is assigned to them",
-        "message_body": """New Order for Branch
+        "category": "retailer",
+        "description": "Sent to a retailer branch when a new order is assigned to them for fulfillment.",
+        "message_body": """📦 *New Order Assigned to Your Branch*
 
-Order: {{ order_number }}
-Customer: {{ customer_name }}
-Amount: ${{ order_amount }}
+A new order has been assigned for processing.
 
-Status: Requires processing and dispatch""",
+• *Order #:* {{ order_number }}
+• *Customer:* {{ customer_name }}
+• *Amount:* ${{ order_amount }}
+
+📋 *Action Required:* Process and prepare for dispatch.""",
         "body_parameters": {
             "1": "order_number",
             "2": "customer_name",
@@ -497,14 +958,17 @@ Status: Requires processing and dispatch""",
     },
     {
         "name": "pfungwa_retailer_commission_earned",
-        "description": "Sent to retailer when commission is earned",
-        "message_body": """Commission Earned
+        "category": "retailer",
+        "description": "Sent to a retailer when they earn a commission from a sale.",
+        "message_body": """💰 *Commission Earned*
 
-Order: {{ order_number }}
-Sale Amount: ${{ order_amount }}
-Commission: ${{ commission_amount }}
+You've earned a commission on a sale!
 
-Status: Recorded""",
+• *Order #:* {{ order_number }}
+• *Sale Amount:* ${{ order_amount }}
+• *Your Commission:* ${{ commission_amount }}
+
+The commission has been recorded in the system.""",
         "body_parameters": {
             "1": "order_number",
             "2": "order_amount",
@@ -517,15 +981,17 @@ Status: Recorded""",
     # ============================================================================
     {
         "name": "pfungwa_system_offline_alert",
-        "description": "Alert when monitored system goes offline",
-        "message_body": """System Offline Alert
+        "category": "monitoring",
+        "description": "Alert sent when a monitored solar/energy system goes offline unexpectedly.",
+        "message_body": """🔴 *System Offline*
 
-Customer: {{ customer_name }}
-System: {{ system_type }} - {{ system_size }}kW
-Last Seen: {{ last_seen_time }}
+A monitored system has gone offline.
 
-Status: Offline
-Investigation required""",
+• *Customer:* {{ customer_name }}
+• *System:* {{ system_type }} — {{ system_size }}kW
+• *Last Seen:* {{ last_seen_time }}
+
+📋 *Action Required:* Investigate the cause of the outage.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "system_type",
@@ -534,13 +1000,16 @@ Investigation required""",
     },
     {
         "name": "pfungwa_system_back_online",
-        "description": "Notification when system comes back online",
-        "message_body": """System Online
+        "category": "monitoring",
+        "description": "Notification sent when a previously offline system comes back online.",
+        "message_body": """🟢 *System Back Online*
 
-Customer: {{ customer_name }}
-System: {{ system_type }}
+A previously offline system is now back online.
 
-Status: System restored and functioning normally""",
+• *Customer:* {{ customer_name }}
+• *System:* {{ system_type }}
+
+The system has been restored and is functioning normally.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "system_type"
@@ -552,21 +1021,23 @@ Status: System restored and functioning normally""",
     # ============================================================================
     {
         "name": "pfungwa_portal_access_granted",
-        "description": "Sent to customer when portal access is granted",
-        "message_body": """Portal Access Granted
+        "category": "portal",
+        "description": "Sent to the customer when their client portal account is created.",
+        "message_body": """🌐 *Portal Access Granted*
 
-Portal: https://hanna.co.zw/client
-Username: {{ username }}
-Temporary Password: {{ temp_password }}
+Hi {{ customer_name }}, your client portal account has been created!
 
-Status: Account created
-Please change password on first login
+• *Portal:* https://hanna.co.zw/client
+• *Username:* {{ username }}
+• *Temporary Password:* {{ temp_password }}
 
-Available Features:
-- System monitoring
-- Warranty management
-- Service requests
-- Document access""",
+⚠️ Please change your password on first login.
+
+*Available features:*
+• System monitoring dashboard
+• Warranty management
+• Service request submission
+• Document access""",
         "body_parameters": {
             "1": "customer_name",
             "2": "username",
@@ -575,13 +1046,15 @@ Available Features:
     },
     {
         "name": "pfungwa_password_reset",
-        "description": "Password reset notification",
-        "message_body": """Password Reset
+        "category": "portal",
+        "description": "Sent to a user when their portal password is reset by an admin.",
+        "message_body": """🔑 *Password Reset*
 
-Temporary Password: {{ temp_password }}
+Hi {{ customer_name }}, your password has been reset.
 
-Status: Reset completed
-Please login and change password immediately""",
+• *Temporary Password:* {{ temp_password }}
+
+⚠️ Please log in and change your password immediately for security.""",
         "body_parameters": {
             "1": "customer_name",
             "2": "temp_password"
@@ -627,6 +1100,7 @@ class Command(BaseCommand):
             if existing:
                 # Update existing template
                 existing.description = template_data.get('description', '')
+                existing.category = template_data.get('category', 'other')
                 existing.message_body = template_data['message_body']
                 existing.body_parameters = template_data.get('body_parameters', {})
                 existing.buttons = template_data.get('buttons', [])
@@ -640,6 +1114,7 @@ class Command(BaseCommand):
                 # Create new template
                 NotificationTemplate.objects.create(
                     name=name,
+                    category=template_data.get('category', 'other'),
                     description=template_data.get('description', ''),
                     message_body=template_data['message_body'],
                     body_parameters=template_data.get('body_parameters', {}),

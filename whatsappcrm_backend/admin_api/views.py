@@ -32,6 +32,7 @@ from installation_systems.models import (
     PayoutConfiguration,
     InstallerPayout
 )
+from .models import FailedTask, TaskProgress
 
 # Import PDF generators
 from warranty.pdf_utils import WarrantyCertificateGenerator, InstallationReportGenerator
@@ -54,6 +55,8 @@ from .serializers import (
     InstallerPayoutListSerializer,
     InstallerPayoutDetailSerializer,
     ClientClaimTokenSerializer,
+    FailedTaskSerializer,
+    TaskProgressSerializer,
 )
 
 
@@ -1259,3 +1262,69 @@ class TechnicianChecklistViewSet(viewsets.ReadOnlyModelViewSet):
         
         serializer = self.get_serializer(checklist)
         return Response(serializer.data)
+
+
+# --- Task Monitoring ViewSets ---
+
+class FailedTaskViewSet(viewsets.ModelViewSet):
+    """
+    Admin API for viewing and managing permanently failed Celery tasks (dead letter queue).
+    Supports filtering by task_name and status, and a custom action to retry failed tasks.
+    """
+    queryset = FailedTask.objects.all()
+    serializer_class = FailedTaskSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['task_name', 'status']
+    search_fields = ['task_id', 'task_name', 'exception_message']
+    ordering_fields = ['created_at', 'task_name', 'status']
+    ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'])
+    def retry(self, request, pk=None):
+        """Retry a failed task by re-dispatching it."""
+        failed_task = self.get_object()
+        if failed_task.status != 'failed':
+            return Response(
+                {'error': 'Only tasks with status "failed" can be retried.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            from celery import current_app
+            current_app.send_task(
+                failed_task.task_name,
+                args=failed_task.args,
+                kwargs=failed_task.kwargs,
+            )
+            failed_task.status = 'retried'
+            failed_task.save(update_fields=['status'])
+            return Response({'message': f'Task {failed_task.task_id} has been re-dispatched.'})
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to retry task: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, pk=None):
+        """Mark a failed task as resolved."""
+        failed_task = self.get_object()
+        failed_task.status = 'resolved'
+        failed_task.resolved_at = timezone.now()
+        failed_task.save(update_fields=['status', 'resolved_at'])
+        return Response({'message': f'Task {failed_task.task_id} marked as resolved.'})
+
+
+class TaskProgressViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Admin API for monitoring Celery task progress.
+    Read-only endpoint for tracking long-running task status.
+    """
+    queryset = TaskProgress.objects.all()
+    serializer_class = TaskProgressSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['task_name', 'status']
+    search_fields = ['task_id', 'task_name', 'message']
+    ordering_fields = ['created_at', 'updated_at', 'task_name', 'status']
+    ordering = ['-updated_at']

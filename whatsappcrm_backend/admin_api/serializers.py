@@ -436,3 +436,41 @@ class ClientClaimTokenSerializer(serializers.ModelSerializer):
         else:
             return 'active'
 
+
+# --- Task Monitoring Serializers ---
+
+class FailedTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = None  # Set dynamically to avoid circular import at module level
+        fields = [
+            'id', 'task_id', 'task_name', 'args', 'kwargs',
+            'exception_type', 'exception_message', 'traceback',
+            'retries', 'status', 'created_at', 'resolved_at',
+        ]
+        read_only_fields = [
+            'id', 'task_id', 'task_name', 'args', 'kwargs',
+            'exception_type', 'exception_message', 'traceback',
+            'retries', 'created_at',
+        ]
+
+    def __init__(self, *args, **kwargs):
+        from .models import FailedTask
+        super().__init__(*args, **kwargs)
+        self.Meta.model = FailedTask
+
+
+class TaskProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = None  # Set dynamically to avoid circular import at module level
+        fields = [
+            'id', 'task_id', 'task_name', 'status',
+            'progress_percent', 'message', 'result', 'error',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = fields
+
+    def __init__(self, *args, **kwargs):
+        from .models import TaskProgress
+        super().__init__(*args, **kwargs)
+        self.Meta.model = TaskProgress
+

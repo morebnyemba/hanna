@@ -367,6 +367,11 @@ class Order(models.Model):
         verbose_name = _("Order")
         verbose_name_plural = _("Orders")
         ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['customer', 'created_at']),
+            models.Index(fields=['stage', 'payment_status']),
+            models.Index(fields=['created_at']),
+        ]
 
 
 class OrderItem(models.Model):
@@ -591,6 +596,16 @@ class InstallationRequest(models.Model):
 
     def __str__(self):
         return f"Installation for {self.full_name} ({self.status})"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Installation Request"
+        verbose_name_plural = "Installation Requests"
+        indexes = [
+            models.Index(fields=['customer', 'status']),
+            models.Index(fields=['status', 'installation_type']),
+            models.Index(fields=['created_at']),
+        ]
 
 class SiteAssessmentRequest(models.Model):
     STATUS_CHOICES = [
