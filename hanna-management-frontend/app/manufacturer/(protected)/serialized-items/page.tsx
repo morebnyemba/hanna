@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FiBox, FiPlus, FiTrash2, FiSearch } from 'react-icons/fi';
 import apiClient from '@/lib/apiClient';
+import { Alert } from '@/app/components/Alert';
+import { getErrorMessage } from '@/app/hooks/useApiErrorHandler';
 
 interface SerializedItem {
   id: number;
@@ -31,6 +33,7 @@ export default function SerializedItemsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSerializedItems();
@@ -40,9 +43,17 @@ export default function SerializedItemsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<{ results: SerializedItem[] }>('/crm-api/manufacturer/serialized-items/');
-      setItems(response.data.results || []);
-    } catch (err: any) {
+      const response = await apiClient.get('/crm-api/manufacturer/serialized-items/');
+      // Handle both paginated response (with results) and plain array
+      const data = response.data;
+      if (Array.isArray(data)) {
+        setItems(data);
+      } else if (data.results && Array.isArray(data.results)) {
+        setItems(data.results);
+      } else {
+        setItems([]);
+      }
+    } catch (err) {
       console.error('Failed to fetch serialized items:', err);
       setError('Failed to load serialized items. Please try again.');
     } finally {
@@ -54,12 +65,15 @@ export default function SerializedItemsPage() {
     if (!window.confirm('Are you sure you want to delete this serialized item?')) return;
 
     setDeleteLoading(id);
+    setError(null);
     try {
       await apiClient.delete(`/crm-api/manufacturer/serialized-items/${id}/`);
       setItems((prev) => prev.filter((item) => item.id !== id));
-    } catch (err: any) {
+      setSuccessMessage('Serialized item deleted successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
       console.error('Failed to delete serialized item:', err);
-      alert('Failed to delete serialized item. Please try again.');
+      setError(getErrorMessage(err));
     } finally {
       setDeleteLoading(null);
     }
@@ -87,6 +101,24 @@ export default function SerializedItemsPage() {
         </Link>
       </div>
 
+      {successMessage && (
+        <Alert 
+          variant="success" 
+          message={successMessage} 
+          onClose={() => setSuccessMessage(null)} 
+          className="mb-6"
+        />
+      )}
+
+      {error && (
+        <Alert 
+          variant="error" 
+          message={error} 
+          onClose={() => setError(null)} 
+          className="mb-6"
+        />
+      )}
+
       {/* Search Bar */}
       <div className="mb-6 relative">
         <FiSearch className="absolute left-3 top-3 text-gray-400" />
@@ -98,32 +130,6 @@ export default function SerializedItemsPage() {
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
       </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 rounded-xl bg-red-500/20 p-4 border border-red-500/30">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-red-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Loading State */}
       {loading && (
