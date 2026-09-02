@@ -426,8 +426,76 @@ class Command(BaseCommand):
                             "Postgres is close to max_connections; new connections will "
                             "be refused, which takes down workers and the web tier alike."
                         )
+                    self._check_locks(c)
                 else:
                     self._line(OK, f"Database reachable ({connection.vendor}).")
         except Exception as e:
             self._line(BAD, f"Database check failed: {e}")
             self.problems.append(f"Database is not reachable ({e}).")
+
+    def _check_locks(self, cursor):
+        """Long-held transactions and lock waits.
+
+        The connection-count check above stays green as long as Postgres will
+        still hand out a fresh connection -- exactly the situation in the logs
+        that motivated this: /healthz/ (a trivial, untouched-table SELECT) kept
+        returning 200 every cycle while webhook requests hung indefinitely on
+        Contact/WebhookEventLog and were eventually force-killed by Daphne. A
+        connection-count check cannot see that; it takes a session stuck with
+        an open transaction (root cause) or a session blocked waiting on
+        another's lock (the symptom) to explain it. pg_blocking_pids() ties
+        the two together: it names which pid is holding up which.
+        """
+        cursor.execute("""
+            SELECT pid,
+                   state,
+                   COALESCE(EXTRACT(EPOCH FROM (now() - xact_start)), 0) AS xact_seconds,
+                   wait_event_type,
+                   wait_event,
+                   left(query, 200) AS query,
+                   pg_blocking_pids(pid) AS blocked_by
+            FROM pg_stat_activity
+            WHERE pid <> pg_backend_pid()
+              AND (
+                    (state = 'idle in transaction' AND xact_start < now() - interval '30 seconds')
+                    OR cardinality(pg_blocking_pids(pid)) > 0
+                  )
+            ORDER BY xact_seconds DESC
+        """)
+        columns = [c.name for c in cursor.description]
+        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        idle_in_xact = [r for r in rows if r['state'] == 'idle in transaction']
+        blocked = [r for r in rows if r['blocked_by']]
+
+        if not rows:
+            self._line(OK, "No long-held transactions or lock waits.")
+            return
+
+        if idle_in_xact:
+            self._line(BAD, f"{len(idle_in_xact)} session(s) idle in transaction >30s:")
+            for r in idle_in_xact[:5]:
+                self._line(INFO, f"    pid {r['pid']} held {r['xact_seconds']:.0f}s -- {r['query'] or '(empty)'}")
+            self.problems.append(
+                f"{len(idle_in_xact)} database session(s) are sitting 'idle in "
+                "transaction' with an open transaction -- almost always a leaked "
+                "connection/transaction (a request that hung and was killed "
+                "without its DB thread being cancelled, or a script/shell left "
+                "open mid-transaction). It holds whatever row/table locks it "
+                "acquired for as long as it sits there, blocking anything else "
+                "that touches the same rows -- e.g. the webhook's Contact/"
+                "WebhookEventLog writes hanging until Meta's client gives up. "
+                "Identify the pid above and, once confirmed stale, "
+                "`SELECT pg_terminate_backend(<pid>);`."
+            )
+
+        if blocked:
+            self._line(BAD, f"{len(blocked)} session(s) currently blocked on another session's lock:")
+            for r in blocked[:5]:
+                self._line(INFO, f"    pid {r['pid']} waiting on {r['blocked_by']} ({r['wait_event']}) -- {r['query'] or '(empty)'}")
+            self.problems.append(
+                f"{len(blocked)} query/queries are actively blocked waiting on a "
+                "lock held by another session (see the blocking pid(s) above). "
+                "This is what a wedged webhook request looks like from the "
+                "database side while it's still in flight."
+            )
