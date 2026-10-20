@@ -18,7 +18,11 @@ urlpatterns = [
     # Path for Meta to send webhook events to our MetaWebhookAPIView
     # This will be accessed via a URL like: /crm-api/meta/webhook/ (defined in project's urls.py)
     path('webhook/', views.MetaWebhookAPIView.as_view(), name='meta_webhook_receiver'),
-    
+    # Same view without the trailing slash. Otherwise APPEND_SLASH answers Meta's
+    # POST with a 301, Meta follows it as a body-less GET, and every inbound
+    # message is dropped as a failed verification (403).
+    path('webhook', views.MetaWebhookAPIView.as_view(), name='meta_webhook_receiver_noslash'),
+
     # Paths for DRF API for managing MetaAppConfig and viewing WebhookEventLog
     # These will be accessible under a prefix like: /crm-api/meta/api/
     # e.g., /crm-api/meta/api/configs/
