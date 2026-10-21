@@ -587,6 +587,25 @@ Please login and change password immediately""",
             "2": "temp_password"
         }
     },
+    {
+        "name": "pfungwa_sla_alert",
+        "description": "Sent to staff when a service request approaches or breaches its SLA deadline",
+        "message_body": """SLA Alert
+
+Request: {{ request_type }} #{{ request_id }}
+Response: {{ response_status }} (due {{ response_deadline }})
+Resolution: {{ resolution_status }} (due {{ resolution_deadline }})
+
+Status: Action required to meet the SLA""",
+        "body_parameters": {
+            "1": "request_type",
+            "2": "request_id",
+            "3": "response_status",
+            "4": "response_deadline",
+            "5": "resolution_status",
+            "6": "resolution_deadline"
+        }
+    },
 ]
 
 

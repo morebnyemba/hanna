@@ -76,7 +76,7 @@ def monitor_sla_compliance():
     Should be run every hour via Celery Beat.
     """
     from .models import SLAStatus
-    from notifications.services import NotificationService
+    from notifications.services import queue_notifications_to_users
     from django.utils import timezone
     
     logger.info("Starting SLA compliance monitoring task")
@@ -99,27 +99,22 @@ def monitor_sla_compliance():
                     # Get the request object
                     request_object = sla_status.content_object
                     
-                    # Prepare notification context
+                    # Deadlines are pre-formatted: the context is stored in a
+                    # JSONField on each Notification, which cannot hold datetimes.
                     context = {
                         'request_type': sla_status.sla_threshold.get_request_type_display(),
-                        'request_id': str(request_object.pk),
+                        'request_id': str(request_object.pk) if request_object else sla_status.object_id,
                         'response_status': sla_status.get_response_status_display(),
                         'resolution_status': sla_status.get_resolution_status_display(),
-                        'response_deadline': sla_status.response_time_deadline,
-                        'resolution_deadline': sla_status.resolution_time_deadline,
+                        'response_deadline': _format_deadline(sla_status.response_time_deadline),
+                        'resolution_deadline': _format_deadline(sla_status.resolution_time_deadline),
                     }
-                    
-                    # Determine recipients based on request type
-                    recipients = _get_sla_notification_recipients(request_object)
-                    
-                    # Send notification to each recipient
-                    for recipient_email in recipients:
-                        NotificationService.send_notification(
-                            recipient_email=recipient_email,
-                            template_name='sla_alert',
-                            context=context,
-                            channel='email'
-                        )
+
+                    queue_notifications_to_users(
+                        template_name='pfungwa_sla_alert',
+                        group_names=SLA_ALERT_GROUPS,
+                        template_context=context,
+                    )
                     
                     # Update last notification time
                     sla_status.last_notification_sent = timezone.now()
@@ -195,31 +190,15 @@ def check_expiring_warranties():
         raise
 
 
-def _get_sla_notification_recipients(request_object):
-    """
-    Helper function to extract notification recipients from a request object.
-    
-    Args:
-        request_object: The request object (InstallationRequest, WarrantyClaim, etc.)
-        
-    Returns:
-        list: List of email addresses
-    """
-    recipients = []
-    
-    # Try to get customer email
-    try:
-        if hasattr(request_object, 'customer'):
-            customer = request_object.customer
-            if customer is not None:
-                email = getattr(customer, 'email', None)
-                if email:
-                    recipients.append(email)
-    except Exception:
-        # Silently handle any errors
-        pass
-    
-    return recipients
+# Staff groups (see notifications' create_notification_groups) that receive SLA
+# alerts. Users in both groups get one alert: queue_notifications_to_users
+# de-duplicates recipients.
+SLA_ALERT_GROUPS = ['Technical Admin', 'Pfungwa Staff']
+
+
+def _format_deadline(deadline):
+    from django.utils import timezone
+    return timezone.localtime(deadline).strftime('%Y-%m-%d %H:%M') if deadline else 'N/A'
 
 
 @shared_task(queue='celery')

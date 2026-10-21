@@ -158,6 +158,18 @@ DATABASES = {
     }
 }
 
+# Backstop: have Postgres end any session that sits idle inside an open
+# transaction. Nothing here legitimately does, and one that does holds its row
+# locks until it ends -- a frozen worker once kept a transaction open for 22h and
+# every webhook, reply and read receipt touching that contact queued behind it.
+# Five minutes turns that from an outage into a blip.
+if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+    DATABASES['default']['OPTIONS'] = {
+        'options': '-c idle_in_transaction_session_timeout={}'.format(
+            int(os.getenv('DB_IDLE_IN_TRANSACTION_TIMEOUT_MS', '300000'))
+        ),
+    }
+
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
